@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     labels:
       caddy_0: https://crazyalbum.com
-      caddy_0.reverse_proxy: "{{upstreams 80}}"
+      caddy_0.reverse_proxy: "{{upstreams 3000}}"
       caddy_0.header.Strict-Transport-Security: "`max-age=31536000; includeSubDomains`"
       caddy_0.header.X-Content-Type-Options: "nosniff"
       caddy_0.header.Referrer-Policy: "strict-origin-when-cross-origin"
@@ -18,6 +18,8 @@ services:
       caddy_2: :80
       caddy_2.@crazyalbum.host: crazyalbum.com www.crazyalbum.com
       caddy_2.redir: "@crazyalbum https://{host}{uri}"
+    volumes:
+      - ../data:/data
     networks:
       - frontend-net
 

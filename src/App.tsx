@@ -35,6 +35,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/editor" element={<EditorPage />} />
+      <Route path="/editor/:projectId" element={<EditorPage />} />
     </Routes>
   );
 }

@@ -34,3 +34,10 @@ export interface ProjectState {
   pages: PageData[];
 }
 
+export interface ProjectRecord {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  sharePath: string;
+  project: ProjectState;
+}

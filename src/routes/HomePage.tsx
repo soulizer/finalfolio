@@ -1,7 +1,4 @@
 import { Link } from 'react-router-dom';
-import architecture from '../assets/architecture.svg';
-import portrait from '../assets/portrait.svg';
-import studio from '../assets/studio.svg';
 
 const sections = [
   {
@@ -13,15 +10,15 @@ const sections = [
     copy: 'Cover, essay, grid, and diptych layouts keep magazines consistent without feeling preset.',
   },
   {
-    title: 'Browser-to-PDF workflow',
-    copy: 'Assemble the issue online and print to PDF when the sequence is ready to share.',
+    title: 'Server-backed issues',
+    copy: 'Save an issue on the server, reopen it later, and share the editable URL with collaborators.',
   },
 ];
 
 const workflow = [
-  'Drop photographs into the asset rail.',
-  'Choose a magazine page structure and tune the crop.',
-  'Print the full issue to PDF straight from the browser.',
+  'Upload photographs and keep them on the server.',
+  'Shape the issue page-by-page while the final layout stays visible.',
+  'Save a shareable URL and print to PDF when the sequence is ready.',
 ];
 
 export function HomePage() {
@@ -34,7 +31,7 @@ export function HomePage() {
         <nav className="site-nav">
           <a href="#product">Product</a>
           <a href="#workflow">Workflow</a>
-          <Link to="/editor">Demo editor</Link>
+          <Link to="/editor">Editor</Link>
         </nav>
       </header>
 
@@ -49,7 +46,7 @@ export function HomePage() {
             </p>
             <div className="hero__actions">
               <Link className="button button--primary" to="/editor">
-                Open the editor demo
+                Start a project
               </Link>
               <a className="button button--ghost" href="#product">
                 See the product
@@ -59,18 +56,18 @@ export function HomePage() {
 
           <div className="hero__preview" aria-label="Magazine preview">
             <div className="hero-sheet hero-sheet--front">
-              <img alt="Architectural cover study" src={architecture} />
+              <img alt="Architectural cover study" src="/builtins/architecture.svg" />
               <div className="hero-sheet__label">
                 <span>Issue 01</span>
                 <strong>Quiet Streets</strong>
               </div>
             </div>
             <div className="hero-sheet hero-sheet--back">
-              <img alt="Studio essay spread" src={studio} />
+              <img alt="Studio essay spread" src="/builtins/studio.svg" />
               <div className="hero-sheet__caption">Essay page</div>
             </div>
             <div className="hero-sheet hero-sheet--detail">
-              <img alt="Portrait contact frame" src={portrait} />
+              <img alt="Portrait contact frame" src="/builtins/portrait.svg" />
             </div>
           </div>
         </section>
@@ -119,7 +116,7 @@ export function HomePage() {
                 <div />
               </div>
               <div className="browser-stage__page">
-                <img alt="" src={studio} />
+                <img alt="" src="/builtins/studio.svg" />
                 <div className="browser-stage__copy">
                   <p>Live page preview</p>
                   <strong>Templates, crops, captions.</strong>
@@ -141,23 +138,22 @@ export function HomePage() {
             <h2>Closer to a lightweight editorial studio than a template storefront.</h2>
           </div>
           <p>
-            The goal is not maximal features on day one. It is a refined surface that shows how photographs, captions,
-            and sequence can become a coherent issue in the browser.
+            The goal is a credible first publishing workflow: server-stored projects, stable editor links, restrained
+            layouts, and PDF output without turning the product into generic SaaS furniture.
           </p>
         </section>
 
         <section className="cta-panel" data-reveal>
           <div>
-            <p className="eyebrow">Prototype</p>
-            <h2>Use the demo editor now.</h2>
-            <p>It includes sample assets, uploads, page templates, crop controls, and print-to-PDF output.</p>
+            <p className="eyebrow">MVP</p>
+            <h2>Build an issue now.</h2>
+            <p>Start with sample assets or upload your own photographs, then save a shareable editor URL.</p>
           </div>
           <Link className="button button--primary" to="/editor">
-            Launch /editor
+            Open /editor
           </Link>
         </section>
       </main>
     </div>
   );
 }
-

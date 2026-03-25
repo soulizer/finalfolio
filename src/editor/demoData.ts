@@ -1,8 +1,3 @@
-import architecture from '../assets/architecture.svg';
-import landscape from '../assets/landscape.svg';
-import portrait from '../assets/portrait.svg';
-import stillLife from '../assets/still-life.svg';
-import studio from '../assets/studio.svg';
 import { Asset, CropSettings, ProjectState, TemplateId } from './types';
 
 const defaultCrop = (): CropSettings => ({ x: 50, y: 50, scale: 1 });
@@ -31,11 +26,11 @@ export const templateMeta: Record<TemplateId, { label: string; description: stri
 };
 
 export const builtInAssets: Asset[] = [
-  { id: 'architecture', name: 'Architecture', src: architecture, note: 'Steel, windows, and late shadows.', builtIn: true },
-  { id: 'landscape', name: 'Landscape', src: landscape, note: 'A restrained horizon for open spreads.', builtIn: true },
-  { id: 'portrait', name: 'Portrait', src: portrait, note: 'Soft portrait study with negative space.', builtIn: true },
-  { id: 'still-life', name: 'Still life', src: stillLife, note: 'Tabletop composition with quiet contrast.', builtIn: true },
-  { id: 'studio', name: 'Studio', src: studio, note: 'Interior frame with shelving and daylight.', builtIn: true },
+  { id: 'architecture', name: 'Architecture', src: '/builtins/architecture.svg', note: 'Steel, windows, and late shadows.', builtIn: true },
+  { id: 'landscape', name: 'Landscape', src: '/builtins/landscape.svg', note: 'A restrained horizon for open spreads.', builtIn: true },
+  { id: 'portrait', name: 'Portrait', src: '/builtins/portrait.svg', note: 'Soft portrait study with negative space.', builtIn: true },
+  { id: 'still-life', name: 'Still life', src: '/builtins/still-life.svg', note: 'Tabletop composition with quiet contrast.', builtIn: true },
+  { id: 'studio', name: 'Studio', src: '/builtins/studio.svg', note: 'Interior frame with shelving and daylight.', builtIn: true },
 ];
 
 export function createDefaultProject(): ProjectState {
@@ -117,4 +112,3 @@ export function createDefaultProject(): ProjectState {
     ],
   };
 }
-
