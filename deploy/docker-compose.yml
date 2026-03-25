@@ -1,0 +1,27 @@
+services:
+  crazyalbum-web:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: crazyalbum-web
+    restart: unless-stopped
+    labels:
+      caddy_0: https://crazyalbum.com
+      caddy_0.reverse_proxy: "{{upstreams 80}}"
+      caddy_0.header.Strict-Transport-Security: "`max-age=31536000; includeSubDomains`"
+      caddy_0.header.X-Content-Type-Options: "nosniff"
+      caddy_0.header.Referrer-Policy: "strict-origin-when-cross-origin"
+
+      caddy_1: https://www.crazyalbum.com
+      caddy_1.redir: https://crazyalbum.com{uri}
+
+      caddy_2: :80
+      caddy_2.@crazyalbum.host: crazyalbum.com www.crazyalbum.com
+      caddy_2.redir: "@crazyalbum https://{host}{uri}"
+    networks:
+      - frontend-net
+
+networks:
+  frontend-net:
+    external: true
+    name: frontend-net
