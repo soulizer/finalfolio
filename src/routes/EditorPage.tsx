@@ -15,6 +15,8 @@ import {
   getPageSlotOrder,
   getTemplateLabel,
   normalizeProjectState,
+  pageThemeMeta,
+  pageThemeOrder,
   remapPageToTemplate,
   templatePackOrder,
   templatePacks,
@@ -419,7 +421,10 @@ export function EditorPage() {
   }
 
   function createPageFromTemplate(template: TemplateId) {
-    return createPageDraft(template, createPageId(), template === 'custom' ? { customTemplate: customTemplateDraft } : {});
+    return createPageDraft(template, createPageId(), {
+      theme: selectedPage?.theme,
+      ...(template === 'custom' ? { customTemplate: customTemplateDraft } : {}),
+    });
   }
 
   function selectPage(pageId: string) {
@@ -807,6 +812,7 @@ export function EditorPage() {
   const sequenceLabel = `${project.pages.length} page${project.pages.length === 1 ? '' : 's'} in print order`;
   const selectedTemplateMeta = templateMeta[templateChoice];
   const selectedTemplateLabel = getTemplateLabel(templateChoice, templateChoice === 'custom' ? customTemplateDraft : null);
+  const selectedThemeMeta = pageThemeMeta[selectedPage.theme];
   const assetsLabel = `${placedAssetCount} placed / ${unusedAssetCount} unused`;
 
   if (loadState === 'loading') {
@@ -1050,7 +1056,7 @@ export function EditorPage() {
         <main className="editor-canvas-wrap">
           <section className="editor-stage">
             <div className="editor-stage__header">
-              <div>
+              <div className="editor-stage__intro">
                 <p className="eyebrow">Live page</p>
                 <h1>{project.title}</h1>
                 <p>{project.subtitle}</p>
@@ -1342,6 +1348,35 @@ export function EditorPage() {
                 ? 'Applying the custom layout preserves matching frame names first, then carries remaining placed images into the open frames.'
                 : 'Applying a preset preserves matching slots first, then carries remaining placed images in order.'}
             </p>
+          </div>
+
+          <div className="editor-panel">
+            <div className="editor-panel__heading">
+              <div>
+                <p className="eyebrow">Page surface</p>
+                <h2>{selectedThemeMeta.label}</h2>
+              </div>
+              <span className="panel-tag">{selectedThemeMeta.summary}</span>
+            </div>
+            <p className="panel-note">Theme changes affect the live preview and printed page background together.</p>
+            <div className="theme-grid" role="group" aria-label="Page theme">
+              {pageThemeOrder.map((themeId) => {
+                const meta = pageThemeMeta[themeId];
+                return (
+                  <button
+                    key={themeId}
+                    type="button"
+                    className={`theme-card ${selectedPage.theme === themeId ? 'is-active' : ''}`}
+                    onClick={() => updateSelectedPage((page) => ({ ...page, theme: themeId }))}
+                  >
+                    <span className={`theme-card__swatch theme-card__swatch--${themeId}`} aria-hidden="true" />
+                    <strong>{meta.label}</strong>
+                    <small>{meta.summary}</small>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="panel-note">{selectedThemeMeta.description}</p>
           </div>
 
           <div className="editor-panel">

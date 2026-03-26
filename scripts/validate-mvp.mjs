@@ -64,6 +64,7 @@ try {
         {
           id: 'page-cover',
           template: 'cover',
+          theme: 'pale-blue',
           kicker: 'Cover',
           title: 'Validation Issue',
           deck: 'Issue 07',
@@ -99,6 +100,8 @@ try {
     createdRecord = await store.createProjectRecord({ project });
     assert.equal(createdRecord.id, 'projectval01');
     assert.equal(createdRecord.project.assets[0].src, '/uploads/1760000000000-validation-image.png');
+    assert.equal(createdRecord.project.pages[0].theme, 'pale-blue');
+    assert.equal(createdRecord.project.pages[1].theme, 'warm-beige');
     assert.equal(createdRecord.project.pages[1].crops.top.fit, 'contain');
     assert.equal(createSharePath(createdRecord.id), '/editor/projectval01');
 
@@ -115,6 +118,7 @@ try {
         {
           id: 'page-mosaic',
           template: 'mosaic',
+          theme: 'light-gray',
           kicker: 'Sequence',
           title: 'Interior pacing',
           deck: 'Template variety stays intact before export.',
@@ -194,6 +198,24 @@ try {
                       ...page.crops,
                       top: { ...page.crops.top, fit: 'stretch' },
                     },
+                  }
+                : page,
+            ),
+          },
+        }),
+      /Project payload is invalid\./,
+    );
+
+    assert.throws(
+      () =>
+        store.sanitizeProjectState({
+          project: {
+            ...updatedRecord.project,
+            pages: updatedRecord.project.pages.map((page, index) =>
+              index === 0
+                ? {
+                    ...page,
+                    theme: 'sunset-peach',
                   }
                 : page,
             ),
@@ -310,12 +332,16 @@ try {
     assert.match(styles, /@media print/);
     assert.match(styles, /\.magazine-sheet--editor/);
     assert.match(styles, /\.magazine-sheet--print/);
+    assert.match(styles, /\.magazine-page--theme-pale-blue/);
+    assert.match(styles, /\.theme-card__swatch--light-gray/);
     assert.match(styles, /\.asset-frame__media/);
     assert.match(styles, /\.placement-chip/);
     assert.match(styles, /\.segmented-control/);
     assert.match(editorPage, /Apply to page/);
     assert.match(editorPage, /Add after current/);
     assert.match(editorPage, /Clear from all pages/);
+    assert.match(editorPage, /Page surface/);
+    assert.match(editorPage, /Page theme/);
     assert.match(editorPage, /Remove .* unused/);
     assert.match(editorPage, /window\.print\(\)/);
     assert.match(editorPage, /Keep full image/);

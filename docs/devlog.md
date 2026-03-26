@@ -1,5 +1,24 @@
 # CrazyAlbum Devlog
 
+## 2026-03-26 Acceptance Fix Pass
+
+### What changed
+
+- Rebuilt the large-screen editor shell around a fixed-height center stage so the live A4 page stays visually anchored and materially larger. The left and right rails now own the desktop scrolling behavior, the stage header is compact, and the page strip has been reduced to a smaller horizontal sequence rail instead of stealing a full block of vertical space.
+- Added persistent per-page paper themes across draft state, server saves, reopen flows, and print output. Editors can now choose `Warm beige`, `Pale blue`, `Pure white`, or `Light gray`, and the selected theme applies to the live preview surface, image frame treatment, and printed page background together.
+- Simplified print pagination so exported sheets break before each subsequent page instead of forcing `break-after` on every page wrapper. This removes the trailing blank page path while keeping the same A4 preview/print component tree.
+- Fixed class-name drift between the preview markup and stylesheet for `mosaic`, `triptych`, and `custom` pages while doing the acceptance pass. That keeps the template-pack and custom-template work coherent instead of letting the new layout/theme changes sit on top of already-misaligned page CSS.
+- New pages created after the current page now inherit the current page theme so a themed issue can be extended without reapplying the same surface choice page by page.
+
+### Validation
+
+- `npm run validate:mvp`
+
+### Remaining limits
+
+- This sandbox still cannot produce a browser-rendered print proof, so the blank-last-page fix and the revised large-screen preview balance still need one manual browser pass in a socket-enabled environment.
+- The acceptance fix preserved the existing template-pack and custom-template data flow, but those paths should still be included in that manual pass because their final sign-off depends on rendered layout rather than store/state validation alone.
+
 ## 2026-03-26 Editor Layout Balance Pass
 
 ### What changed

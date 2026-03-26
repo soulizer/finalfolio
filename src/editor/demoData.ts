@@ -19,6 +19,7 @@ import {
   ImageFit,
   LayoutArea,
   PageData,
+  PageThemeId,
   ProjectState,
   TemplateId,
 } from './types';
@@ -28,6 +29,12 @@ export interface TemplateDefinition {
   summary: string;
   description: string;
   slots: string[];
+}
+
+export interface PageThemeDefinition {
+  label: string;
+  summary: string;
+  description: string;
 }
 
 export interface CustomLayoutPreset {
@@ -52,6 +59,32 @@ export interface TemplatePackDefinition {
 }
 
 const defaultFit: ImageFit = 'cover';
+export const defaultPageTheme: PageThemeId = 'warm-beige';
+
+export const pageThemeMeta: Record<PageThemeId, PageThemeDefinition> = {
+  'warm-beige': {
+    label: 'Warm beige',
+    summary: 'Editorial paper',
+    description: 'The current signature paper tone with warm contrast for classic magazine pages.',
+  },
+  'pale-blue': {
+    label: 'Pale blue',
+    summary: 'Cool daylight',
+    description: 'A quiet blue paper tone that keeps the page airy without flattening photographs.',
+  },
+  'pure-white': {
+    label: 'Pure white',
+    summary: 'Bright neutral',
+    description: 'A crisp white sheet for maximum contrast and the cleanest print background.',
+  },
+  'light-gray': {
+    label: 'Light gray',
+    summary: 'Soft neutral',
+    description: 'A restrained gray sheet when you want a quieter page without a warm cast.',
+  },
+};
+
+export const pageThemeOrder: PageThemeId[] = ['warm-beige', 'pale-blue', 'pure-white', 'light-gray'];
 
 const defaultCustomTemplateSource: CustomTemplateDefinition = {
   name: 'Editorial Split',
@@ -295,7 +328,7 @@ export const templateOrder: TemplateId[] = [
   'custom',
 ];
 
-const pageStarters: Record<TemplateId, Omit<PageData, 'id' | 'slots' | 'crops' | 'template' | 'customTemplate'>> = {
+const pageStarters: Record<TemplateId, Omit<PageData, 'id' | 'slots' | 'crops' | 'template' | 'customTemplate' | 'theme'>> = {
   cover: {
     kicker: 'Cover',
     title: 'Untitled Issue',
@@ -442,6 +475,10 @@ function clamp(value: number, min: number, max: number) {
 
 function isTemplateId(value: unknown): value is TemplateId {
   return typeof value === 'string' && value in templateMeta;
+}
+
+export function normalizePageTheme(value: unknown): PageThemeId {
+  return typeof value === 'string' && value in pageThemeMeta ? (value as PageThemeId) : defaultPageTheme;
 }
 
 function isAsset(value: unknown): value is Asset {
@@ -634,6 +671,7 @@ function createStarterPage(template: TemplateId, id: string, customTemplate?: Cu
   return {
     id,
     template,
+    theme: defaultPageTheme,
     kicker: starter.kicker,
     title: starter.title,
     deck: starter.deck,
@@ -677,6 +715,7 @@ function normalizePageData(page: unknown, index: number): PageData {
   return {
     id: typeof nextPage.id === 'string' && nextPage.id.trim().length ? nextPage.id : starter.id,
     template,
+    theme: normalizePageTheme(nextPage.theme),
     kicker: trimToLimit(typeof nextPage.kicker === 'string' ? nextPage.kicker : starter.kicker, PAGE_KICKER_LIMIT),
     title: trimToLimit(typeof nextPage.title === 'string' ? nextPage.title : starter.title, PAGE_TITLE_LIMIT),
     deck: trimToLimit(typeof nextPage.deck === 'string' ? nextPage.deck : starter.deck, PAGE_DECK_LIMIT),
@@ -691,6 +730,7 @@ function normalizePageData(page: unknown, index: number): PageData {
 function carryAssetsToTemplate(page: PageData, template: TemplateId, customTemplate?: CustomTemplateDefinition | null) {
   const currentSlots = getPageSlotOrder(page);
   const nextPage = createPageDraft(template, page.id, {
+    theme: page.theme,
     kicker: page.kicker,
     title: page.title,
     deck: page.deck,
@@ -740,6 +780,7 @@ export function createPageDraft(template: TemplateId, id: string, overrides: Par
   return {
     id,
     template,
+    theme: normalizePageTheme(overrides.theme),
     kicker: trimToLimit(overrides.kicker ?? starter.kicker, PAGE_KICKER_LIMIT),
     title: trimToLimit(overrides.title ?? starter.title, PAGE_TITLE_LIMIT),
     deck: trimToLimit(overrides.deck ?? starter.deck, PAGE_DECK_LIMIT),

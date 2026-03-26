@@ -1,5 +1,6 @@
 export type BuiltInTemplateId = 'cover' | 'essay' | 'folio' | 'grid' | 'diptych' | 'panorama' | 'mosaic' | 'triptych';
 export type TemplateId = BuiltInTemplateId | 'custom';
+export type PageThemeId = 'warm-beige' | 'pale-blue' | 'pure-white' | 'light-gray';
 
 export type ImageFit = 'cover' | 'contain';
 
@@ -39,6 +40,7 @@ export interface CustomTemplateDefinition {
 export interface PageData {
   id: string;
   template: TemplateId;
+  theme: PageThemeId;
   kicker: string;
   title: string;
   deck: string;

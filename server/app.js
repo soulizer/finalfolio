@@ -42,6 +42,8 @@ export const templateSlots = {
   triptych: ['a', 'b', 'c'],
 };
 const allowedImageFits = new Set(['cover', 'contain']);
+const allowedPageThemes = new Set(['warm-beige', 'pale-blue', 'pure-white', 'light-gray']);
+const defaultPageTheme = 'warm-beige';
 const CUSTOM_TEMPLATE_SLOT_LIMIT = 6;
 
 const allowedUploadTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']);
@@ -254,6 +256,18 @@ function sanitizeCropSettings(expectedSlots, crops) {
   );
 }
 
+function sanitizePageTheme(theme) {
+  if (theme === undefined) {
+    return defaultPageTheme;
+  }
+
+  if (typeof theme !== 'string' || !allowedPageThemes.has(theme)) {
+    throwInvalidProject();
+  }
+
+  return theme;
+}
+
 function sanitizeSlots(expectedSlots, slots, assetIds) {
   if (!slots || typeof slots !== 'object') {
     throwInvalidProject();
@@ -293,6 +307,7 @@ function sanitizePage(page, assetIds, pageIds) {
   return {
     id: pageId,
     template,
+    theme: sanitizePageTheme(page.theme),
     kicker: sanitizeText(page.kicker, 'Page kicker', defaultTextLimits.pageKicker, { trim: true }),
     title: sanitizeText(page.title, 'Page title', defaultTextLimits.pageTitle, { allowEmpty: false, trim: true }),
     deck: sanitizeText(page.deck, 'Page deck', defaultTextLimits.pageDeck, { trim: true }),

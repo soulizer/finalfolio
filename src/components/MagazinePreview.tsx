@@ -106,6 +106,7 @@ export function MagazinePreview({
   onAssignDroppedAsset,
 }: MagazinePreviewProps) {
   const customTemplate = page.customTemplate;
+  const pageClassName = `magazine-page magazine-page--${page.template} magazine-page--theme-${page.theme}`;
   const renderSlot = (slot: string, options: { className?: string; hintLabel?: string } = {}) => (
     <AssetFrame
       slot={slot}
@@ -121,7 +122,7 @@ export function MagazinePreview({
   );
 
   return (
-    <article className={`magazine-page magazine-page--${page.template}`}>
+    <article className={pageClassName}>
       <header className="magazine-page__meta">
         <span>{page.kicker}</span>
         <span>{issue}</span>
