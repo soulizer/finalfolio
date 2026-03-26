@@ -870,53 +870,6 @@ export function EditorPage() {
     <div className="editor-shell">
       <div className="editor-layout">
         <aside className="editor-sidebar editor-sidebar--navigation">
-          <section className="editor-panel editor-panel--page-actions">
-            <div className="editor-panel__heading">
-              <div>
-                <p className="eyebrow">Page actions</p>
-                <h2>{selectedPagePositionLabel}</h2>
-              </div>
-              <span className="panel-tag">{selectedTemplateLabel}</span>
-            </div>
-            <p className="panel-note">New pages inherit the active layout choice from the preset rail on the right.</p>
-            <div className="editor-page-actions">
-              <button
-                type="button"
-                className="button button--primary button--small editor-page-actions__button editor-page-actions__button--wide"
-                onClick={() => addPage()}
-              >
-                Add selected layout
-              </button>
-              <button type="button" className="button button--ghost button--small editor-page-actions__button" onClick={duplicatePage}>
-                Duplicate page
-              </button>
-              <button
-                type="button"
-                className="button button--ghost button--small editor-page-actions__button"
-                disabled={selectedPageIndex <= 0}
-                onClick={() => moveSelectedPage(-1)}
-              >
-                Move earlier
-              </button>
-              <button
-                type="button"
-                className="button button--ghost button--small editor-page-actions__button"
-                disabled={selectedPageIndex >= project.pages.length - 1}
-                onClick={() => moveSelectedPage(1)}
-              >
-                Move later
-              </button>
-              <button
-                type="button"
-                className="button button--ghost button--small editor-page-actions__button editor-page-actions__button--danger"
-                disabled={project.pages.length === 1}
-                onClick={removeSelectedPage}
-              >
-                Remove page
-              </button>
-            </div>
-          </section>
-
           <section className="page-strip-panel">
             <div className="page-strip-panel__header">
               <div>
@@ -941,6 +894,79 @@ export function EditorPage() {
                 </button>
               ))}
             </div>
+          </section>
+
+          <section className="editor-panel">
+            <div className="editor-panel__heading">
+              <div>
+                <p className="eyebrow">Starter packs</p>
+                <h2>Multi-page packs</h2>
+              </div>
+              <span className="panel-tag">{templatePacks[defaultTemplatePackId].label} default</span>
+            </div>
+            <p className="panel-note">One click can replace the issue sequence or insert a finished pack after the current page. Every inserted page still edits like a normal page afterwards.</p>
+            <div className="template-pack-grid">
+              {templatePackOrder.map((packId) => {
+                const pack = templatePacks[packId];
+                return (
+                  <article key={packId} className={`template-pack-card ${packId === defaultTemplatePackId ? 'is-featured' : ''}`}>
+                    <div className="template-pack-card__copy">
+                      <span>{pack.label}</span>
+                      <strong>{pack.summary}</strong>
+                      <p>{pack.description}</p>
+                    </div>
+                    <p className="template-pack-card__sequence">
+                      {pack.pages.map((page) => getTemplateLabel(page.template, page.customTemplate)).join(' / ')}
+                    </p>
+                    <div className="editor-panel__actions editor-panel__actions--tight">
+                      <button
+                        type="button"
+                        className="button button--primary button--small"
+                        onClick={() => applyTemplatePack(packId, 'replace')}
+                      >
+                        Replace sequence
+                      </button>
+                      <button
+                        type="button"
+                        className="button button--ghost button--small"
+                        onClick={() => applyTemplatePack(packId, 'insert')}
+                      >
+                        Insert after current
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="editor-panel">
+            <div className="editor-panel__heading">
+              <div>
+                <p className="eyebrow">Page surface</p>
+                <h2>{selectedThemeMeta.label}</h2>
+              </div>
+              <span className="panel-tag">{selectedThemeMeta.summary}</span>
+            </div>
+            <p className="panel-note">Theme changes affect the live preview and printed page background together.</p>
+            <div className="theme-grid" role="group" aria-label="Page theme">
+              {pageThemeOrder.map((themeId) => {
+                const meta = pageThemeMeta[themeId];
+                return (
+                  <button
+                    key={themeId}
+                    type="button"
+                    className={`theme-card ${selectedPage.theme === themeId ? 'is-active' : ''}`}
+                    onClick={() => updateSelectedPage((page) => ({ ...page, theme: themeId }))}
+                  >
+                    <span className={`theme-card__swatch theme-card__swatch--${themeId}`} aria-hidden="true" />
+                    <strong>{meta.label}</strong>
+                    <small>{meta.summary}</small>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="panel-note">{selectedThemeMeta.description}</p>
           </section>
         </aside>
 
@@ -1204,54 +1230,46 @@ export function EditorPage() {
         </aside>
 
         <aside className="editor-sidebar editor-sidebar--operations">
-          <div className="editor-sidebar__stack editor-sidebar__stack--sticky">
-            <section className="editor-topbar">
-              <div className="editor-topbar__brand">
-                <Link to="/">CrazyAlbum</Link>
-                <span>{`${selectedPagePositionLabel} | ${selectedPageTemplateLabel}`}</span>
-              </div>
-              <div className="editor-topbar__actions">
-                <button type="button" className="button button--ghost" onClick={startNewDraft}>
-                  New draft
-                </button>
-                <button type="button" className="button button--primary" onClick={() => window.print()}>
-                  Print / PDF
-                </button>
-              </div>
-            </section>
-
-            <section className="editor-project-bar">
-              <div className="editor-project-bar__copy">
-                <p className="eyebrow">Project</p>
+          <section className="editor-panel editor-panel--project-actions">
+            <div className="editor-panel__heading">
+              <div>
+                <p className="eyebrow">Project actions</p>
                 <h2>{projectRecord ? 'Stable editor URL' : 'Draft on this device'}</h2>
-                <p>{statusText}</p>
               </div>
-              <div className="editor-project-bar__actions">
-                <input
-                  aria-label="Project URL"
-                  className="editor-project-bar__input"
-                  readOnly
-                  value={projectRecord ? shareUrl : 'Create a stable editor URL to save this issue on the server.'}
-                />
-                <button
-                  type="button"
-                  className="button button--ghost"
-                  disabled={!projectRecord}
-                  onClick={() => void handleCopyLink()}
-                >
-                  {copyState === 'copied' ? 'Copied' : copyState === 'error' ? 'Copy failed' : 'Copy link'}
-                </button>
-                <button
-                  type="button"
-                  className="button button--primary"
-                  disabled={saveState === 'saving' || uploadState === 'uploading'}
-                  onClick={() => void saveProject({ manual: true })}
-                >
-                  {saveState === 'saving' ? 'Saving…' : projectRecord ? 'Save issue' : 'Create stable URL'}
-                </button>
-              </div>
-            </section>
-          </div>
+              <span className="panel-tag">{selectedPagePositionLabel}</span>
+            </div>
+            <p className="panel-note">{statusText}</p>
+            <div className="editor-panel__actions editor-panel__actions--tight">
+              <button type="button" className="button button--ghost button--small" onClick={startNewDraft}>
+                New draft
+              </button>
+              <button type="button" className="button button--primary button--small" onClick={() => window.print()}>
+                Print / PDF
+              </button>
+              <button
+                type="button"
+                className="button button--primary button--small"
+                disabled={saveState === 'saving' || uploadState === 'uploading'}
+                onClick={() => void saveProject({ manual: true })}
+              >
+                {saveState === 'saving' ? 'Saving…' : projectRecord ? 'Save issue' : 'Create stable URL'}
+              </button>
+              <button
+                type="button"
+                className="button button--ghost button--small"
+                disabled={!projectRecord}
+                onClick={() => void handleCopyLink()}
+              >
+                {copyState === 'copied' ? 'Copied' : copyState === 'error' ? 'Copy failed' : 'Copy link'}
+              </button>
+            </div>
+            <input
+              aria-label="Project URL"
+              className="editor-project-bar__input"
+              readOnly
+              value={projectRecord ? shareUrl : 'Create a stable editor URL to save this issue on the server.'}
+            />
+          </section>
 
           <div className="editor-panel">
             <div className="editor-panel__heading">
@@ -1500,6 +1518,13 @@ export function EditorPage() {
             <div className="editor-panel__actions">
               <button
                 type="button"
+                className="button button--ghost button--small"
+                onClick={() => addPage()}
+              >
+                Add selected layout
+              </button>
+              <button
+                type="button"
                 className="button button--primary button--small"
                 disabled={templateChoice === selectedPage.template && templateChoice !== 'custom'}
                 onClick={applyTemplateChoice}
@@ -1514,78 +1539,6 @@ export function EditorPage() {
             </p>
           </div>
 
-          <div className="editor-panel">
-            <div className="editor-panel__heading">
-              <div>
-                <p className="eyebrow">Page surface</p>
-                <h2>{selectedThemeMeta.label}</h2>
-              </div>
-              <span className="panel-tag">{selectedThemeMeta.summary}</span>
-            </div>
-            <p className="panel-note">Theme changes affect the live preview and printed page background together.</p>
-            <div className="theme-grid" role="group" aria-label="Page theme">
-              {pageThemeOrder.map((themeId) => {
-                const meta = pageThemeMeta[themeId];
-                return (
-                  <button
-                    key={themeId}
-                    type="button"
-                    className={`theme-card ${selectedPage.theme === themeId ? 'is-active' : ''}`}
-                    onClick={() => updateSelectedPage((page) => ({ ...page, theme: themeId }))}
-                  >
-                    <span className={`theme-card__swatch theme-card__swatch--${themeId}`} aria-hidden="true" />
-                    <strong>{meta.label}</strong>
-                    <small>{meta.summary}</small>
-                  </button>
-                );
-              })}
-            </div>
-            <p className="panel-note">{selectedThemeMeta.description}</p>
-          </div>
-
-          <div className="editor-panel">
-            <div className="editor-panel__heading">
-              <div>
-                <p className="eyebrow">Starter packs</p>
-                <h2>Multi-page packs</h2>
-              </div>
-              <span className="panel-tag">{templatePacks[defaultTemplatePackId].label} default</span>
-            </div>
-            <p className="panel-note">One click can replace the issue sequence or insert a finished pack after the current page. Every inserted page still edits like a normal page afterwards.</p>
-            <div className="template-pack-grid">
-              {templatePackOrder.map((packId) => {
-                const pack = templatePacks[packId];
-                return (
-                  <article key={packId} className={`template-pack-card ${packId === defaultTemplatePackId ? 'is-featured' : ''}`}>
-                    <div className="template-pack-card__copy">
-                      <span>{pack.label}</span>
-                      <strong>{pack.summary}</strong>
-                      <p>{pack.description}</p>
-                    </div>
-                    <p className="template-pack-card__sequence">
-                      {pack.pages.map((page) => getTemplateLabel(page.template, page.customTemplate)).join(' / ')}
-                    </p>
-                    <div className="editor-panel__actions editor-panel__actions--tight">
-                      <button
-                        type="button"
-                        className="button button--primary button--small"
-                        onClick={() => applyTemplatePack(packId, 'replace')}
-                      >
-                        Replace sequence
-                      </button>
-                      <button
-                        type="button"
-                        className="button button--ghost button--small"
-                        onClick={() => applyTemplatePack(packId, 'insert')}
-                      >
-                        Insert after current
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </div>
         </aside>
       </div>
 

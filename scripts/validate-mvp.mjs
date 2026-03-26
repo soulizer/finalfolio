@@ -339,13 +339,12 @@ try {
     assert.match(styles, /\.segmented-control/);
     assert.match(styles, /\.editor-sidebar--navigation \.page-strip/);
     assert.match(styles, /\.editor-page-actions/);
-    assert.match(styles, /\.editor-sidebar__stack--sticky/);
-    assert.match(styles, /\.editor-sidebar--operations \.editor-project-bar__actions/);
     assert.match(styles, /height: calc\(100vh - 16px\)/);
     assert.match(styles, /min-height: auto !important;/);
     assert.match(styles, /margin: 0 !important;/);
     assert.match(editorPage, /Apply to page/);
     assert.match(editorPage, /Add selected layout/);
+    assert.match(editorPage, /editor-panel--project-actions/);
     assert.match(editorPage, /Clear from all pages/);
     assert.match(editorPage, /Page surface/);
     assert.match(editorPage, /Page theme/);

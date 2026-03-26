@@ -1,5 +1,21 @@
 # CrazyAlbum Devlog
 
+## 2026-03-26 Editor IA Cleanup Pass
+
+### What changed
+
+- Reorganized the four-column `/editor` shell around actual task flow instead of scattered panel placement. The far-left rail now owns sequence navigation, starter packs, and page-surface choices together so issue-level structure stays in one place.
+- Merged `New draft`, `Print / PDF`, `Create stable URL`, and `Copy link` into a single non-sticky project action card on the far-right rail. The old split topbar/project-bar treatment is gone, and the actions no longer fight the viewport with pinned chrome.
+- Moved `Add selected layout` next to the template chooser it depends on, instead of leaving the trigger on the opposite side of the editor. Page actions on the left rail now stay focused on duplicate / move / remove operations for the currently selected page.
+
+### Validation
+
+- `npm run validate:mvp`
+
+### Remaining limits
+
+- This sandbox still cannot provide a rendered browser usability proof, so final sign-off still depends on one real manual pass for panel flow and the 3-page PDF export behavior in the target browser.
+
 ## 2026-03-26 Live Preview Cleanup
 
 ### What changed
