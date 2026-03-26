@@ -43,8 +43,8 @@ try {
   let createdRecord;
   let updatedRecord;
 
-  await runCheck('server-backed project persistence works with uploaded assets', async () => {
-    const uploadFilename = 'validation-image.png';
+  await runCheck('server-backed project persistence works with uploaded assets and fit settings', async () => {
+    const uploadFilename = '1760000000000-validation-image.png';
     const uploadFile = {
       filename: uploadFilename,
       mimetype: 'image/png',
@@ -73,22 +73,24 @@ try {
             hero: uploadedAsset.id,
           },
           crops: {
-            hero: { x: 50, y: 46, scale: 1.08 },
+            hero: { x: 50, y: 46, scale: 1.08, fit: 'cover' },
           },
         },
         {
-          id: 'page-essay',
-          template: 'essay',
+          id: 'page-panorama',
+          template: 'panorama',
           kicker: 'Editorial note',
-          title: 'The cleaned MVP keeps the issue on the page.',
-          deck: 'One image, one column, and the saved URL stay aligned.',
-          body: 'This record confirms project creation, page persistence, and asset-backed composition.',
-          caption: 'The issue should reopen with the same sequence.',
+          title: 'The hardened editor keeps the page stable.',
+          deck: 'Wide frames stay fixed while crops and fit move independently.',
+          body: '',
+          caption: 'The issue should reopen with the same sequence and slot behavior.',
           slots: {
-            hero: uploadedAsset.id,
+            top: uploadedAsset.id,
+            bottom: null,
           },
           crops: {
-            hero: { x: 44, y: 40, scale: 1.12 },
+            top: { x: 44, y: 40, scale: 1.12, fit: 'contain' },
+            bottom: { x: 50, y: 50, scale: 1, fit: 'cover' },
           },
         },
       ],
@@ -96,12 +98,13 @@ try {
 
     createdRecord = await store.createProjectRecord({ project });
     assert.equal(createdRecord.id, 'projectval01');
-    assert.equal(createdRecord.project.assets[0].src, '/uploads/validation-image.png');
+    assert.equal(createdRecord.project.assets[0].src, '/uploads/1760000000000-validation-image.png');
+    assert.equal(createdRecord.project.pages[1].crops.top.fit, 'contain');
     assert.equal(createSharePath(createdRecord.id), '/editor/projectval01');
 
     const writtenRecord = await readProjectFile(store.projectsDir, createdRecord.id);
     assert.equal(writtenRecord.project.pages.length, 2);
-    assert.equal(writtenRecord.project.pages[0].template, 'cover');
+    assert.equal(writtenRecord.project.pages[1].template, 'panorama');
   });
 
   await runCheck('page order updates and survives reloads', async () => {
@@ -110,24 +113,22 @@ try {
       pages: [
         createdRecord.project.pages[1],
         {
-          id: 'page-grid',
-          template: 'grid',
+          id: 'page-mosaic',
+          template: 'mosaic',
           kicker: 'Sequence',
           title: 'Interior pacing',
-          deck: 'Flexible image ordering stays intact before export.',
+          deck: 'Template variety stays intact before export.',
           body: '',
-          caption: 'Grid layouts should preserve image order and page order.',
+          caption: 'Mosaic layouts preserve slot assignments and page order.',
           slots: {
-            a: uploadedAsset.id,
-            b: uploadedAsset.id,
-            c: null,
-            d: null,
+            lead: uploadedAsset.id,
+            top: uploadedAsset.id,
+            bottom: null,
           },
           crops: {
-            a: { x: 52, y: 48, scale: 1.03 },
-            b: { x: 48, y: 44, scale: 1.1 },
-            c: { x: 50, y: 50, scale: 1 },
-            d: { x: 50, y: 50, scale: 1 },
+            lead: { x: 52, y: 48, scale: 1.03, fit: 'cover' },
+            top: { x: 48, y: 44, scale: 1.1, fit: 'contain' },
+            bottom: { x: 50, y: 50, scale: 1, fit: 'cover' },
           },
         },
         createdRecord.project.pages[0],
@@ -138,13 +139,13 @@ try {
     assert.equal(updatedRecord.updatedAt, '2026-03-26T10:05:00.000Z');
     assert.deepEqual(
       updatedRecord.project.pages.map((page) => page.id),
-      ['page-essay', 'page-grid', 'page-cover'],
+      ['page-panorama', 'page-mosaic', 'page-cover'],
     );
 
     const reloadedRecord = await store.readProjectRecord(createdRecord.id);
     assert.deepEqual(
       reloadedRecord.project.pages.map((page) => page.id),
-      ['page-essay', 'page-grid', 'page-cover'],
+      ['page-panorama', 'page-mosaic', 'page-cover'],
     );
   });
 
@@ -171,10 +172,31 @@ try {
             pages: [
               {
                 ...updatedRecord.project.pages[0],
-                slots: { hero: 'missing-asset' },
+                slots: { top: 'missing-asset', bottom: null },
               },
               ...updatedRecord.project.pages.slice(1),
             ],
+          },
+        }),
+      /Project payload is invalid\./,
+    );
+
+    assert.throws(
+      () =>
+        store.sanitizeProjectState({
+          project: {
+            ...updatedRecord.project,
+            pages: updatedRecord.project.pages.map((page, index) =>
+              index === 0
+                ? {
+                    ...page,
+                    crops: {
+                      ...page.crops,
+                      top: { ...page.crops.top, fit: 'stretch' },
+                    },
+                  }
+                : page,
+            ),
           },
         }),
       /Project payload is invalid\./,
@@ -220,7 +242,7 @@ try {
               hero: 'legacyupload01',
             },
             crops: {
-              hero: { x: 50, y: 50, scale: 1 },
+              hero: { x: 50, y: 50, scale: 1, fit: 'cover' },
             },
           },
         ],
@@ -228,29 +250,84 @@ try {
     });
 
     assert.equal(legacyProject.assets[0].src, '/uploads/legacy-issue-cover.svg');
+    assert.equal(legacyProject.pages[0].crops.hero.fit, 'cover');
   });
 
-  await runCheck('print-only output and editorial layout hooks remain in source', async () => {
+  await runCheck('upload inventory lists referenced files and prunes old unreferenced uploads safely', async () => {
+    const orphanFilename = '1700000000000-unused-shot.webp';
+    const orphanFile = {
+      filename: orphanFilename,
+      mimetype: 'image/webp',
+      originalname: 'unused-shot.webp',
+    };
+
+    store.validateUploadFile(orphanFile);
+    await fs.writeFile(path.join(store.uploadsDir, orphanFilename), 'webp-fixture', 'utf8');
+    store.createStoredUpload(orphanFile);
+
+    const inventory = await store.collectUploadInventory({
+      nowMs: Date.parse('2026-03-27T12:00:00.000Z'),
+    });
+    assert.equal(inventory.totals.uploadCount, 2);
+    assert.equal(inventory.totals.referencedCount, 1);
+    assert.equal(inventory.totals.unreferencedCount, 1);
+    assert.deepEqual(
+      inventory.items.find((item) => item.filename === orphanFilename)?.referencedByProjectIds,
+      [],
+    );
+    assert.deepEqual(
+      inventory.items.find((item) => item.filename === '1760000000000-validation-image.png')?.referencedByProjectIds,
+      ['projectval01'],
+    );
+
+    const dryRun = await store.pruneUnreferencedUploads({
+      olderThanMs: 24 * 60 * 60 * 1000,
+      dryRun: true,
+      nowMs: Date.parse('2026-03-27T12:00:00.000Z'),
+    });
+    assert.equal(dryRun.deletedCount, 0);
+    assert.equal(dryRun.candidates.length, 1);
+    assert.equal(dryRun.candidates[0].filename, orphanFilename);
+
+    const pruned = await store.pruneUnreferencedUploads({
+      olderThanMs: 24 * 60 * 60 * 1000,
+      dryRun: false,
+      nowMs: Date.parse('2026-03-27T12:00:00.000Z'),
+    });
+    assert.equal(pruned.deletedCount, 1);
+    await assert.rejects(fs.access(path.join(store.uploadsDir, orphanFilename)));
+  });
+
+  await runCheck('print, template workflow, and admin cleanup hooks remain in source', async () => {
     const styles = await fs.readFile(path.join(rootDir, 'src/styles.css'), 'utf8');
     const editorPage = await fs.readFile(path.join(rootDir, 'src/routes/EditorPage.tsx'), 'utf8');
     const preview = await fs.readFile(path.join(rootDir, 'src/components/MagazinePreview.tsx'), 'utf8');
     const defaults = await fs.readFile(path.join(rootDir, 'src/editor/demoData.ts'), 'utf8');
+    const readme = await fs.readFile(path.join(rootDir, 'README.md'), 'utf8');
+    const manageUploads = await fs.readFile(path.join(rootDir, 'scripts/manage-uploads.mjs'), 'utf8');
     const distIndex = await fs.readFile(path.join(rootDir, 'dist/index.html'), 'utf8');
 
     assert.match(styles, /@media print/);
-    assert.match(styles, /\.editor-shell > :not\(\.editor-print-stack\)/);
-    assert.match(styles, /size: A4 portrait;/);
-    assert.match(styles, /width: var\(--sheet-width\);/);
-    assert.match(styles, /\.asset-frame__placeholder\s*\{\s*display: none;/);
+    assert.match(styles, /\.magazine-sheet--editor/);
+    assert.match(styles, /\.magazine-sheet--print/);
+    assert.match(styles, /\.asset-frame__media/);
+    assert.match(styles, /\.placement-chip/);
+    assert.match(styles, /\.segmented-control/);
+    assert.match(editorPage, /Apply to page/);
+    assert.match(editorPage, /Add after current/);
+    assert.match(editorPage, /Clear from all pages/);
+    assert.match(editorPage, /Remove .* unused/);
     assert.match(editorPage, /window\.print\(\)/);
-    assert.match(editorPage, /Move earlier/);
-    assert.match(editorPage, /Move later/);
-    assert.match(editorPage, /pageNumber=\{index \+ 1\}/);
-    assert.match(preview, /if \(!interactive\) \{/);
-    assert.match(preview, /Page \$\{String\(pageNumber\)\.padStart\(2, '0'\)\}/);
-    assert.match(preview, /\) : interactive \? \(/);
-    assert.match(defaults, /assets: \[\]/);
-    assert.match(defaults, /createPageDraft\('cover', 'page-cover'\)/);
+    assert.match(editorPage, /Keep full image/);
+    assert.match(preview, /objectFit: crop\?\.fit \?\? 'cover'/);
+    assert.match(preview, /page\.template === 'panorama'/);
+    assert.match(preview, /page\.template === 'mosaic'/);
+    assert.match(preview, /page\.template === 'triptych'/);
+    assert.match(defaults, /folio/);
+    assert.match(defaults, /panorama/);
+    assert.match(defaults, /triptych/);
+    assert.match(readme, /uploads:manage/);
+    assert.match(manageUploads, /Dry run only\./);
     assert.match(distIndex, /CrazyAlbum/);
   });
 

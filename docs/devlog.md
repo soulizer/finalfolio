@@ -1,5 +1,65 @@
 # CrazyAlbum Devlog
 
+## 2026-03-26 Hardening Follow-up
+
+### What changed
+
+- Made the live editor page less wasteful by scaling the sheet against both the available width and the available height in the stage, not width alone. The page now stays inside a predictable editing frame instead of expanding until it steals more room from the rest of the workflow.
+- Strengthened uploaded asset handling in the editor itself. The asset panel now exposes placed vs unused counts, lets editors remove unused uploads from the current issue without touching the server file, and keeps the saved project cleaner so later server-side pruning can work safely.
+- Added placement-aware asset operations around the selected frame. Editors can now see every page/slot where the current image is used, jump directly to those placements, and clear the same image from all pages in one action when a mistaken upload or repeated placement needs to be unwound quickly.
+- Extended source-level validation so the hardened asset controls are part of the guarded MVP surface, rather than an untracked UI tweak.
+
+### Validation
+
+- `npm run typecheck`
+- `npm run build`
+- `npm run validate:mvp`
+- `npm run uploads:manage -- list --data-root /tmp/crazyalbum-upload-audit-empty`
+
+### Still blocking final acceptance
+
+- Final acceptance still needs one browser-run pass with real uploaded images covering editor preview, preset switching, fit/crop changes, save/reopen, and Print / PDF output. This sandbox can build and validate, but it cannot produce the final rendered browser proof.
+- There is still no authenticated in-app operations surface for upload inventory or pruning. The safe path exists as an admin CLI, which is materially better than no path, but final product completeness would ideally expose the same operational visibility behind real admin controls.
+- Preview/export parity is materially closer because both use the same fixed sheet geometry, but final sign-off still depends on checking at least one real browser PDF against the editor preview with mixed aspect ratios and dense copy.
+
+## 2026-03-26 Release Hardening
+
+### Problem analysis
+
+- The editor shell spent too much of the viewport on chrome, verbose spacing, and fragmented controls, which reduced the actual page area while editing.
+- Page geometry was not isolated from uploaded image behavior. Different intrinsic image ratios could push slot heights around, and the crop model had no explicit fit mode.
+- Preview and print were rendered from the same component tree but with materially different page sizing, padding, and responsive rules, so exported PDF output could diverge from the live editor page.
+- Template workflow was too thin for a production editor. Only a small preset set existed, and switching templates did not provide a safe image-carryover path.
+- Uploaded images had no admin cleanup path. Server-stored test uploads could accumulate indefinitely if they were never referenced by a saved project.
+
+### Solutions
+
+- Tightened the editor shell by reducing panel chrome, shrinking gutters, moving template actions into a compact preset panel, surfacing asset placement counts, and giving the live page more room in the center column.
+- Made page geometry stable by turning image frames into fixed clipping surfaces with absolute-positioned media, adding explicit `cover` / `contain` fit state to crops, and resetting crop placement predictably when a new image is assigned.
+- Reworked preview/print parity so the editor now shows the same A4 page surface that print uses, scaled down in-place rather than redrawn with separate responsive page rules. The print stack now uses the same sheet geometry and page content classes.
+- Added useful preset templates beyond the original four: `folio`, `panorama`, `mosaic`, and `triptych`. Applying a template now preserves matching slots first and then carries remaining assigned images forward in slot order.
+- Implemented the first product-safe upload management path: `store.collectUploadInventory()` and `store.pruneUnreferencedUploads()` on the server plus `npm run uploads:manage` as an admin CLI. The cleanup flow is dry-run by default and only deletes explicitly requested unreferenced uploads older than a chosen threshold.
+
+### Validation
+
+- `npm run typecheck`
+- `npm run build`
+- `npm run validate:mvp`
+- `npm run uploads:manage -- list --data-root /tmp/crazyalbum-upload-audit-empty`
+
+### Remaining risks
+
+- This sandbox still cannot run a live browser/server session, so PDF parity is validated through build output, server tests, and source assertions rather than a rendered browser print capture.
+- Fixed geometry now wins over content expansion. That is the correct tradeoff for layout stability, but unusually dense page copy can still become cramped and should be checked in a browser with real content.
+- Upload cleanup is intentionally admin-triggered, not automatic. That keeps it product-safe, but teams need an operational habit or scheduled job to actually prune old unreferenced uploads.
+- Very old unsaved local drafts can still lose uploaded files if an admin intentionally prunes old unreferenced assets past the configured age threshold. That is safer than silent accumulation, but it should be documented operationally.
+
+### Next steps
+
+- Run one browser-level pass in a socket-enabled environment covering upload, preset switching, image fit/crop changes, save/reopen, and Print / PDF export against at least one real image set with mixed aspect ratios.
+- Add a browser E2E path for the same sequence so preview/export parity stops depending on manual inspection.
+- If product operations need an in-app control later, build it on top of the new inventory/prune store helpers with real admin authentication rather than exposing cleanup actions anonymously.
+
 ## 2026-03-26 MVP Cleanup
 
 ### What changed

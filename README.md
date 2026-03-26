@@ -14,6 +14,7 @@ Production site and editor for `crazyalbum.com`.
 npm install
 npm run build
 npm run validate:mvp
+npm run uploads:manage -- list
 ```
 
 ## Production Deployment
@@ -39,6 +40,8 @@ curl -I https://sometable.com
 ## Notes
 
 - `/` is the editorial homepage.
-- `/editor` is the live editor with uploads, page templates, crop controls, server saves, and print-to-PDF output.
+- `/editor` is the live editor with uploads, fixed page geometry, preset templates, fit + crop controls, server saves, and print-to-PDF output.
 - New drafts persist locally until you create a stable editor URL on the server.
 - `npm run validate:mvp` rebuilds the app and runs the in-process MVP validation checks used for this cleanup pass.
+- `npm run uploads:manage -- list --data-root /data` lists uploaded files, references, and stale candidates without deleting anything.
+- `npm run uploads:manage -- prune --older-than-hours 168 --delete --data-root /data` removes unreferenced uploads older than the chosen threshold after an explicit admin review pass.

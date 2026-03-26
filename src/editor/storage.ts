@@ -1,25 +1,19 @@
-import { createDefaultProject } from './demoData';
+import { createDefaultProject, normalizeProjectState } from './demoData';
 import { ProjectState } from './types';
 
 const DRAFT_STORAGE_KEY = 'crazyalbum-project-draft-v2';
 
 export function readDraftProject() {
-  const fresh = createDefaultProject();
   const stored = localStorage.getItem(DRAFT_STORAGE_KEY);
 
   if (!stored) {
-    return fresh;
+    return createDefaultProject();
   }
 
   try {
-    const parsed = JSON.parse(stored) as ProjectState;
-    if (!Array.isArray(parsed.pages) || parsed.pages.length === 0 || !Array.isArray(parsed.assets)) {
-      return fresh;
-    }
-
-    return parsed;
+    return normalizeProjectState(JSON.parse(stored) as ProjectState);
   } catch {
-    return fresh;
+    return createDefaultProject();
   }
 }
 

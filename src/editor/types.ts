@@ -1,4 +1,6 @@
-export type TemplateId = 'cover' | 'essay' | 'grid' | 'diptych';
+export type TemplateId = 'cover' | 'essay' | 'folio' | 'grid' | 'diptych' | 'panorama' | 'mosaic' | 'triptych';
+
+export type ImageFit = 'cover' | 'contain';
 
 export interface Asset {
   id: string;
@@ -12,6 +14,7 @@ export interface CropSettings {
   x: number;
   y: number;
   scale: number;
+  fit: ImageFit;
 }
 
 export interface PageData {

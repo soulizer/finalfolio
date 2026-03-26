@@ -32,9 +32,14 @@ export const defaultTextLimits = {
 export const templateSlots = {
   cover: ['hero'],
   essay: ['hero'],
+  folio: ['hero'],
   grid: ['a', 'b', 'c', 'd'],
   diptych: ['left', 'right'],
+  panorama: ['top', 'bottom'],
+  mosaic: ['lead', 'top', 'bottom'],
+  triptych: ['a', 'b', 'c'],
 };
+const allowedImageFits = new Set(['cover', 'contain']);
 
 const allowedUploadTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']);
 const allowedUploadExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif']);
@@ -148,12 +153,13 @@ function sanitizeCropSettings(template, crops) {
         crop.y < 0 ||
         crop.y > 100 ||
         crop.scale < 1 ||
-        crop.scale > 2
+        crop.scale > 2.2 ||
+        (crop.fit !== undefined && !allowedImageFits.has(crop.fit))
       ) {
         throwInvalidProject();
       }
 
-      return [slot, { x: crop.x, y: crop.y, scale: crop.scale }];
+      return [slot, { x: crop.x, y: crop.y, scale: crop.scale, fit: crop.fit === 'contain' ? 'contain' : 'cover' }];
     }),
   );
 }
@@ -259,6 +265,24 @@ export function createUploadFilename(originalName = '', { idFactory = createId }
   return `${Date.now()}-${idFactory(6)}${safeExtension}`;
 }
 
+function extractUploadFilename(assetPath) {
+  if (typeof assetPath !== 'string' || !assetPath.startsWith('/uploads/')) {
+    return null;
+  }
+
+  return decodeURIComponent(assetPath.slice('/uploads/'.length));
+}
+
+function resolveUploadTimestamp(filename, stats) {
+  const match = /^(\d{11,})-/.exec(filename);
+  if (match) {
+    return new Date(Number(match[1])).toISOString();
+  }
+
+  const fallbackMs = Number.isFinite(stats?.birthtimeMs) && stats.birthtimeMs > 0 ? stats.birthtimeMs : stats?.mtimeMs;
+  return new Date(fallbackMs || Date.now()).toISOString();
+}
+
 export function validateUploadFile(file) {
   const extension = path.extname(file?.originalname ?? '').toLowerCase();
   if (!allowedUploadTypes.has(file?.mimetype) || !allowedUploadExtensions.has(extension)) {
@@ -355,6 +379,105 @@ export function createProjectStore({
     return nextRecord;
   }
 
+  async function readProjectUploadReferences() {
+    const references = new Map();
+    const entries = await fs.readdir(projectsDir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith('.json')) {
+        continue;
+      }
+
+      const projectId = entry.name.slice(0, -'.json'.length);
+      const record = await readProjectRecord(projectId);
+
+      record.project.assets.forEach((asset) => {
+        const filename = extractUploadFilename(asset.src);
+        if (!filename) {
+          return;
+        }
+
+        if (!references.has(filename)) {
+          references.set(filename, new Set());
+        }
+
+        references.get(filename).add(record.id);
+      });
+    }
+
+    return references;
+  }
+
+  async function collectUploadInventory({ nowMs = Date.parse(now()) || Date.now() } = {}) {
+    await ensureDataDirectories();
+
+    const [entries, references] = await Promise.all([fs.readdir(uploadsDir, { withFileTypes: true }), readProjectUploadReferences()]);
+    const filenames = entries.filter((entry) => entry.isFile()).map((entry) => entry.name).sort();
+    const filenameSet = new Set(filenames);
+    const items = await Promise.all(
+      filenames.map(async (filename) => {
+        const filePath = path.join(uploadsDir, filename);
+        const stats = await fs.stat(filePath);
+        const uploadedAt = resolveUploadTimestamp(filename, stats);
+        const uploadedAtMs = Date.parse(uploadedAt) || nowMs;
+        const referencedByProjectIds = Array.from(references.get(filename) ?? []).sort();
+
+        return {
+          filename,
+          src: `/uploads/${filename}`,
+          bytes: stats.size,
+          uploadedAt,
+          ageHours: Math.max(0, (nowMs - uploadedAtMs) / 3_600_000),
+          ageMs: Math.max(0, nowMs - uploadedAtMs),
+          referencedByProjectIds,
+        };
+      }),
+    );
+
+    const missingReferencedFiles = Array.from(references.entries())
+      .filter(([filename]) => !filenameSet.has(filename))
+      .map(([filename, projectIds]) => ({
+        filename,
+        referencedByProjectIds: Array.from(projectIds).sort(),
+      }));
+
+    return {
+      items,
+      missingReferencedFiles,
+      totals: {
+        uploadCount: items.length,
+        referencedCount: items.filter((item) => item.referencedByProjectIds.length > 0).length,
+        unreferencedCount: items.filter((item) => item.referencedByProjectIds.length === 0).length,
+        missingReferencedCount: missingReferencedFiles.length,
+      },
+    };
+  }
+
+  async function pruneUnreferencedUploads({
+    olderThanMs = 72 * 60 * 60 * 1000,
+    dryRun = true,
+    limit = Number.POSITIVE_INFINITY,
+    nowMs = Date.parse(now()) || Date.now(),
+  } = {}) {
+    const inventory = await collectUploadInventory({ nowMs });
+    const candidates = inventory.items
+      .filter((item) => item.referencedByProjectIds.length === 0 && item.ageMs >= olderThanMs)
+      .slice(0, limit);
+
+    if (!dryRun) {
+      await Promise.all(candidates.map((item) => fs.rm(path.join(uploadsDir, item.filename), { force: true })));
+    }
+
+    return {
+      dryRun,
+      scannedCount: inventory.items.length,
+      deletedCount: dryRun ? 0 : candidates.length,
+      candidates,
+      missingReferencedFiles: inventory.missingReferencedFiles,
+      totals: inventory.totals,
+    };
+  }
+
   function createStoredUpload(file) {
     validateUploadFile(file);
 
@@ -379,6 +502,8 @@ export function createProjectStore({
     writeProjectRecord,
     createProjectRecord,
     updateProjectRecord,
+    collectUploadInventory,
+    pruneUnreferencedUploads,
     sanitizeProjectState: (payload) => sanitizeProjectState(payload, { maxPageCount, maxAssetCount }),
     validateUploadFile,
     createStoredUpload,

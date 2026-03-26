@@ -7,4 +7,5 @@ export const PAGE_DECK_LIMIT = 220;
 export const PAGE_BODY_LIMIT = 1200;
 export const PAGE_CAPTION_LIMIT = 220;
 
-export const UPLOAD_HELP_TEXT = 'Upload JPG, PNG, WebP, GIF, or AVIF images. They stay with this issue and print at page size.';
+export const UPLOAD_HELP_TEXT =
+  'Upload JPG, PNG, WebP, GIF, or AVIF images. Slot geometry stays fixed after you choose a preset; use fit and crop controls per frame.';

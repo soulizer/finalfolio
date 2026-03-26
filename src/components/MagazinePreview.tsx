@@ -14,6 +14,7 @@ interface MagazinePreviewProps {
 
 function frameStyle(crop?: CropSettings): CSSProperties {
   return {
+    objectFit: crop?.fit ?? 'cover',
     objectPosition: `${crop?.x ?? 50}% ${crop?.y ?? 50}%`,
     transform: `scale(${crop?.scale ?? 1})`,
   };
@@ -45,11 +46,13 @@ function AssetFrame({
 
   const content = (
     <>
-      {asset ? (
-        <img alt={asset.name} src={asset.src} className="asset-frame__image" style={frameStyle(page.crops[slot])} />
-      ) : interactive ? (
-        <span className="asset-frame__placeholder">Drop a photo here</span>
-      ) : null}
+      <div className="asset-frame__media">
+        {asset ? (
+          <img alt={asset.name} src={asset.src} className="asset-frame__image" style={frameStyle(page.crops[slot])} />
+        ) : interactive ? (
+          <span className="asset-frame__placeholder">Drop a photo here</span>
+        ) : null}
+      </div>
       {interactive ? <span className="asset-frame__hint">{slot}</span> : null}
     </>
   );
@@ -69,8 +72,10 @@ function AssetFrame({
       }}
       onDrop={(event) => {
         event.preventDefault();
-        const assetId = event.dataTransfer.getData('text/crazyalbum-asset');
-        if (assetId) onAssignDroppedAsset?.(slot, assetId);
+        const droppedAssetId = event.dataTransfer.getData('text/crazyalbum-asset');
+        if (droppedAssetId) {
+          onAssignDroppedAsset?.(slot, droppedAssetId);
+        }
       }}
     >
       {content}
@@ -114,6 +119,39 @@ export function MagazinePreview({
     right: (
       <AssetFrame
         slot="right"
+        page={page}
+        assets={assets}
+        selectedSlot={selectedSlot}
+        interactive={interactive}
+        onSelectSlot={onSelectSlot}
+        onAssignDroppedAsset={onAssignDroppedAsset}
+      />
+    ),
+    top: (
+      <AssetFrame
+        slot="top"
+        page={page}
+        assets={assets}
+        selectedSlot={selectedSlot}
+        interactive={interactive}
+        onSelectSlot={onSelectSlot}
+        onAssignDroppedAsset={onAssignDroppedAsset}
+      />
+    ),
+    bottom: (
+      <AssetFrame
+        slot="bottom"
+        page={page}
+        assets={assets}
+        selectedSlot={selectedSlot}
+        interactive={interactive}
+        onSelectSlot={onSelectSlot}
+        onAssignDroppedAsset={onAssignDroppedAsset}
+      />
+    ),
+    lead: (
+      <AssetFrame
+        slot="lead"
         page={page}
         assets={assets}
         selectedSlot={selectedSlot}
@@ -200,6 +238,20 @@ export function MagazinePreview({
         </div>
       ) : null}
 
+      {page.template === 'folio' ? (
+        <div className="magazine-folio">
+          <div className="magazine-folio__header">
+            <div>
+              <p className="magazine-kicker">{page.kicker}</p>
+              <h2>{page.title}</h2>
+            </div>
+            <p>{page.deck}</p>
+          </div>
+          <div className="magazine-folio__visual">{slots.hero}</div>
+          <footer>{page.caption}</footer>
+        </div>
+      ) : null}
+
       {page.template === 'grid' ? (
         <div className="magazine-grid">
           <div className="magazine-grid__copy">
@@ -229,6 +281,59 @@ export function MagazinePreview({
           <div className="magazine-diptych__frames">
             {slots.left}
             {slots.right}
+          </div>
+          <footer>{page.caption}</footer>
+        </div>
+      ) : null}
+
+      {page.template === 'panorama' ? (
+        <div className="magazine-panorama">
+          <div className="magazine-panorama__header">
+            <div>
+              <p className="magazine-kicker">{page.kicker}</p>
+              <h2>{page.title}</h2>
+            </div>
+            <p>{page.deck}</p>
+          </div>
+          <div className="magazine-panorama__frames">
+            {slots.top}
+            {slots.bottom}
+          </div>
+          <footer>{page.caption}</footer>
+        </div>
+      ) : null}
+
+      {page.template === 'mosaic' ? (
+        <div className="magazine-mosaic">
+          <div className="magazine-mosaic__copy">
+            <div>
+              <p className="magazine-kicker">{page.kicker}</p>
+              <h2>{page.title}</h2>
+            </div>
+            <p>{page.deck}</p>
+          </div>
+          <div className="magazine-mosaic__frames">
+            <div className="magazine-mosaic__lead">{slots.lead}</div>
+            <div className="magazine-mosaic__stack">
+              {slots.top}
+              {slots.bottom}
+            </div>
+          </div>
+          <footer>{page.caption}</footer>
+        </div>
+      ) : null}
+
+      {page.template === 'triptych' ? (
+        <div className="magazine-triptych">
+          <div className="magazine-triptych__copy">
+            <p className="magazine-kicker">{page.kicker}</p>
+            <h2>{page.title}</h2>
+            <p>{page.deck}</p>
+          </div>
+          <div className="magazine-triptych__frames">
+            {slots.a}
+            {slots.b}
+            {slots.c}
           </div>
           <footer>{page.caption}</footer>
         </div>

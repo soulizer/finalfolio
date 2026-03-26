@@ -7,7 +7,7 @@ const sections = [
   },
   {
     title: 'Quiet templates',
-    copy: 'Cover, essay, grid, and diptych layouts keep magazines consistent without feeling preset.',
+    copy: 'Cover, essay, folio, grid, panorama, mosaic, triptych, and diptych layouts keep magazines consistent without feeling canned.',
   },
   {
     title: 'Server-backed issues',
@@ -95,7 +95,7 @@ export function HomePage() {
             <h2>A quiet, credible publishing flow.</h2>
             <p>
               The editor focuses on sequencing and composition first. Upload your own images, pick a page structure,
-              and adjust crop positions while the page stays in view.
+              and adjust fit and crop positions while the page stays in view.
             </p>
             <ol className="workflow-list">
               {workflow.map((step) => (

@@ -9,7 +9,8 @@
     "start": "node server/index.js",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "validate:mvp": "npm run build && node scripts/validate-mvp.mjs"
+    "validate:mvp": "npm run build && node scripts/validate-mvp.mjs",
+    "uploads:manage": "node scripts/manage-uploads.mjs"
   },
   "devDependencies": {
     "@types/react": "^19.2.14",
