@@ -11,14 +11,14 @@ const sections = [
   },
   {
     title: 'Server-backed issues',
-    copy: 'Save an issue on the server, reopen it later, and share the editable URL with collaborators.',
+    copy: 'Keep an issue on the server, reopen it later from the same stable URL, and continue editing from there.',
   },
 ];
 
 const workflow = [
   'Upload photographs and keep them on the server.',
   'Shape the issue page-by-page while the final layout stays visible.',
-  'Save a shareable URL and print to PDF when the sequence is ready.',
+  'Save a stable editor URL and print to PDF when the sequence is ready.',
 ];
 
 export function HomePage() {
@@ -145,9 +145,9 @@ export function HomePage() {
 
         <section className="cta-panel" data-reveal>
           <div>
-            <p className="eyebrow">MVP</p>
+            <p className="eyebrow">Editor</p>
             <h2>Build an issue now.</h2>
-            <p>Start with sample assets or upload your own photographs, then save a shareable editor URL.</p>
+            <p>Upload your own photographs, shape the sequence, then save a stable editor URL.</p>
           </div>
           <Link className="button button--primary" to="/editor">
             Open /editor

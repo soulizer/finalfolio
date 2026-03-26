@@ -5,6 +5,7 @@ interface MagazinePreviewProps {
   issue: string;
   page: PageData;
   assets: Record<string, Asset>;
+  pageNumber?: number;
   selectedSlot?: string | null;
   interactive?: boolean;
   onSelectSlot?: (slot: string) => void;
@@ -40,29 +41,39 @@ function AssetFrame({
   const assetId = page.slots[slot];
   const asset = assetId ? assets[assetId] : null;
   const isSelected = selectedSlot === slot;
+  const frameClassName = `asset-frame ${className ?? ''} ${isSelected ? 'is-selected' : ''}`.trim();
+
+  const content = (
+    <>
+      {asset ? (
+        <img alt={asset.name} src={asset.src} className="asset-frame__image" style={frameStyle(page.crops[slot])} />
+      ) : interactive ? (
+        <span className="asset-frame__placeholder">Drop a photo here</span>
+      ) : null}
+      {interactive ? <span className="asset-frame__hint">{slot}</span> : null}
+    </>
+  );
+
+  if (!interactive) {
+    return <div className={frameClassName}>{content}</div>;
+  }
 
   return (
     <button
       type="button"
-      className={`asset-frame ${className ?? ''} ${isSelected ? 'is-selected' : ''}`}
+      className={frameClassName}
+      aria-label={`Select the ${slot} frame`}
       onClick={() => onSelectSlot?.(slot)}
       onDragOver={(event) => {
-        if (!interactive) return;
         event.preventDefault();
       }}
       onDrop={(event) => {
-        if (!interactive) return;
         event.preventDefault();
         const assetId = event.dataTransfer.getData('text/crazyalbum-asset');
         if (assetId) onAssignDroppedAsset?.(slot, assetId);
       }}
     >
-      {asset ? (
-        <img alt={asset.name} src={asset.src} className="asset-frame__image" style={frameStyle(page.crops[slot])} />
-      ) : (
-        <span className="asset-frame__placeholder">Drop a photo here</span>
-      )}
-      {interactive ? <span className="asset-frame__hint">{slot}</span> : null}
+      {content}
     </button>
   );
 }
@@ -71,6 +82,7 @@ export function MagazinePreview({
   issue,
   page,
   assets,
+  pageNumber,
   selectedSlot,
   interactive,
   onSelectSlot,
@@ -161,6 +173,7 @@ export function MagazinePreview({
       <header className="magazine-page__meta">
         <span>{page.kicker}</span>
         <span>{issue}</span>
+        {pageNumber ? <span>{`Page ${String(pageNumber).padStart(2, '0')}`}</span> : null}
       </header>
 
       {page.template === 'cover' ? (
@@ -223,4 +236,3 @@ export function MagazinePreview({
     </article>
   );
 }
-

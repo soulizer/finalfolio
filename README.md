@@ -1,6 +1,6 @@
 # CrazyAlbum
 
-Minimal production site and editor prototype for `crazyalbum.com`.
+Production site and editor for `crazyalbum.com`.
 
 ## Stack
 
@@ -13,6 +13,7 @@ Minimal production site and editor prototype for `crazyalbum.com`.
 ```bash
 npm install
 npm run build
+npm run validate:mvp
 ```
 
 ## Production Deployment
@@ -20,7 +21,7 @@ npm run build
 The live deployment is designed to run as a separate compose project so it does not modify the Seatable stack:
 
 ```bash
-rsync -a --delete --exclude node_modules --exclude dist /tmp/crazyalbum-codex/ /opt/crazyalbum/app/
+rsync -a --delete --exclude data --exclude node_modules --exclude dist /tmp/crazyalbum-codex/ /opt/crazyalbum/app/
 cd /opt/crazyalbum/app
 docker compose -f deploy/docker-compose.yml up -d --build
 ```
@@ -38,5 +39,6 @@ curl -I https://sometable.com
 ## Notes
 
 - `/` is the editorial homepage.
-- `/editor` is the interactive browser prototype with uploads, page templates, crop controls, and print-to-PDF output.
-- The editor persists the current issue in browser `localStorage`.
+- `/editor` is the live editor with uploads, page templates, crop controls, server saves, and print-to-PDF output.
+- New drafts persist locally until you create a stable editor URL on the server.
+- `npm run validate:mvp` rebuilds the app and runs the in-process MVP validation checks used for this cleanup pass.

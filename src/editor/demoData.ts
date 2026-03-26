@@ -1,114 +1,108 @@
-import { Asset, CropSettings, ProjectState, TemplateId } from './types';
+import {
+  PAGE_BODY_LIMIT,
+  PAGE_CAPTION_LIMIT,
+  PAGE_DECK_LIMIT,
+  PAGE_KICKER_LIMIT,
+  PAGE_TITLE_LIMIT,
+  PROJECT_ISSUE_LIMIT,
+  PROJECT_SUBTITLE_LIMIT,
+  PROJECT_TITLE_LIMIT,
+} from './limits';
+import { CropSettings, PageData, ProjectState, TemplateId } from './types';
 
 const defaultCrop = (): CropSettings => ({ x: 50, y: 50, scale: 1 });
 
 export const templateMeta: Record<TemplateId, { label: string; description: string; slots: string[] }> = {
   cover: {
     label: 'Cover',
-    description: 'Single-image cover with issue metadata and restrained text.',
+    description: 'One lead image with restrained copy for the opening page.',
     slots: ['hero'],
   },
   essay: {
     label: 'Essay',
-    description: 'One dominant frame with a text column for story and captions.',
+    description: 'A single image paired with a text column for opening notes, credits, or context.',
     slots: ['hero'],
   },
   grid: {
     label: 'Grid',
-    description: 'A quiet four-frame contact sheet for sequencing smaller moments.',
+    description: 'A quiet four-frame page for pacing, details, or contact-sheet style rhythm.',
     slots: ['a', 'b', 'c', 'd'],
   },
   diptych: {
     label: 'Diptych',
-    description: 'Two balanced images for before/after or paired scenes.',
+    description: 'Two balanced frames for comparison, transitions, or a calmer ending.',
     slots: ['left', 'right'],
   },
 };
 
-export const builtInAssets: Asset[] = [
-  { id: 'architecture', name: 'Architecture', src: '/builtins/architecture.svg', note: 'Steel, windows, and late shadows.', builtIn: true },
-  { id: 'landscape', name: 'Landscape', src: '/builtins/landscape.svg', note: 'A restrained horizon for open spreads.', builtIn: true },
-  { id: 'portrait', name: 'Portrait', src: '/builtins/portrait.svg', note: 'Soft portrait study with negative space.', builtIn: true },
-  { id: 'still-life', name: 'Still life', src: '/builtins/still-life.svg', note: 'Tabletop composition with quiet contrast.', builtIn: true },
-  { id: 'studio', name: 'Studio', src: '/builtins/studio.svg', note: 'Interior frame with shelving and daylight.', builtIn: true },
-];
+const pageStarters: Record<
+  TemplateId,
+  Omit<PageData, 'id' | 'slots' | 'crops' | 'template'>
+> = {
+  cover: {
+    kicker: 'Cover',
+    title: 'Untitled Issue',
+    deck: 'Issue 01',
+    body: '',
+    caption: 'Choose a lead image for the opening page.',
+  },
+  essay: {
+    kicker: 'Opening spread',
+    title: 'Add a feature page',
+    deck: 'Pair one image with a short deck and a block of copy.',
+    body: 'Write an opening note, editor statement, credits, or context for the sequence here.',
+    caption: 'This page prints exactly as composed in the editor.',
+  },
+  grid: {
+    kicker: 'Sequence',
+    title: 'Build the interior rhythm',
+    deck: 'Use smaller frames to control pacing before export.',
+    body: '',
+    caption: 'Upload your own photographs and drag them onto each frame.',
+  },
+  diptych: {
+    kicker: 'Pairing',
+    title: 'Use a two-image spread',
+    deck: 'Diptychs are useful for transitions, comparison, or a quieter ending.',
+    body: '',
+    caption: 'Reorder pages below to control the exported sequence.',
+  },
+};
+
+function trimToLimit(value: string, limit: number) {
+  return value.slice(0, limit);
+}
+
+export function createPageDraft(template: TemplateId, id: string, overrides: Partial<PageData> = {}): PageData {
+  const slots = templateMeta[template].slots;
+  const starter = pageStarters[template];
+
+  return {
+    id,
+    template,
+    kicker: trimToLimit(overrides.kicker ?? starter.kicker, PAGE_KICKER_LIMIT),
+    title: trimToLimit(overrides.title ?? starter.title, PAGE_TITLE_LIMIT),
+    deck: trimToLimit(overrides.deck ?? starter.deck, PAGE_DECK_LIMIT),
+    body: trimToLimit(overrides.body ?? starter.body, PAGE_BODY_LIMIT),
+    caption: trimToLimit(overrides.caption ?? starter.caption, PAGE_CAPTION_LIMIT),
+    slots: overrides.slots ?? Object.fromEntries(slots.map((slot) => [slot, null])),
+    crops: overrides.crops ?? Object.fromEntries(slots.map((slot) => [slot, defaultCrop()])),
+  };
+}
 
 export function createDefaultProject(): ProjectState {
   return {
-    title: 'Quiet Streets',
-    subtitle: 'A magazine assembled from one camera roll and a long walk home.',
-    issue: 'Issue 01',
-    assets: builtInAssets,
+    title: 'Untitled Issue'.slice(0, PROJECT_TITLE_LIMIT),
+    subtitle: 'Upload photographs, shape the sequence page by page, then print only the finished magazine pages.'.slice(
+      0,
+      PROJECT_SUBTITLE_LIMIT,
+    ),
+    issue: 'Issue 01'.slice(0, PROJECT_ISSUE_LIMIT),
+    assets: [],
     pages: [
-      {
-        id: 'page-cover',
-        template: 'cover',
-        kicker: 'CrazyAlbum prototype',
-        title: 'Quiet Streets',
-        deck: 'Issue 01',
-        body: '',
-        caption: 'A live, page-accurate cover preview.',
-        slots: {
-          hero: 'architecture',
-        },
-        crops: {
-          hero: { x: 50, y: 42, scale: 1.08 },
-        },
-      },
-      {
-        id: 'page-essay',
-        template: 'essay',
-        kicker: 'Opening note',
-        title: 'Late light settles the sequence.',
-        deck: 'Place one image, write a caption, and the page behaves like the final issue.',
-        body:
-          'The goal is not another gallery. It is pacing, contrast, and room for text to breathe. The editor keeps the sheet visible while you arrange images, swap templates, and tune crop positions.',
-        caption: 'Every field on the right updates the page immediately.',
-        slots: {
-          hero: 'studio',
-        },
-        crops: {
-          hero: { x: 52, y: 48, scale: 1.02 },
-        },
-      },
-      {
-        id: 'page-grid',
-        template: 'grid',
-        kicker: 'Contact sheet',
-        title: 'Twelve frames become four deliberate beats.',
-        deck: 'Drag photographs onto frames to shape rhythm without leaving the page.',
-        body: '',
-        caption: 'Grid layouts hold smaller details without turning noisy.',
-        slots: {
-          a: 'portrait',
-          b: 'still-life',
-          c: 'landscape',
-          d: 'architecture',
-        },
-        crops: {
-          a: defaultCrop(),
-          b: defaultCrop(),
-          c: { x: 50, y: 40, scale: 1.1 },
-          d: { x: 50, y: 50, scale: 1.08 },
-        },
-      },
-      {
-        id: 'page-diptych',
-        template: 'diptych',
-        kicker: 'Pairing',
-        title: 'Place two moments on one spread.',
-        deck: 'Diptychs are useful for comparison, sequence breaks, or a calmer ending.',
-        body: '',
-        caption: 'Print to PDF straight from the browser when the issue is ready.',
-        slots: {
-          left: 'landscape',
-          right: 'portrait',
-        },
-        crops: {
-          left: { x: 50, y: 44, scale: 1.06 },
-          right: { x: 50, y: 46, scale: 1.12 },
-        },
-      },
+      createPageDraft('cover', 'page-cover'),
+      createPageDraft('essay', 'page-essay'),
+      createPageDraft('grid', 'page-grid'),
     ],
   };
 }

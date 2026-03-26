@@ -13,7 +13,7 @@ export function readDraftProject() {
 
   try {
     const parsed = JSON.parse(stored) as ProjectState;
-    if (!parsed.pages?.length || !parsed.assets?.length) {
+    if (!Array.isArray(parsed.pages) || parsed.pages.length === 0 || !Array.isArray(parsed.assets)) {
       return fresh;
     }
 
