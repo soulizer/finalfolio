@@ -356,6 +356,8 @@ try {
     assert.match(editorPage, /editor-sidebar editor-sidebar--operations/);
     assert.match(editorPage, /window\.print\(\)/);
     assert.match(editorPage, /Keep full image/);
+    assert.doesNotMatch(styles, /\.editor-stage__meta/);
+    assert.doesNotMatch(editorPage, /editor-stage__meta/);
     assert.match(preview, /objectFit: crop\?\.fit \?\? 'cover'/);
     assert.match(preview, /page\.template === 'panorama'/);
     assert.match(preview, /page\.template === 'mosaic'/);

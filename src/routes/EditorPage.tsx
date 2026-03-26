@@ -945,14 +945,6 @@ export function EditorPage() {
         </aside>
 
         <main className="editor-stage" aria-label="Live page editor">
-          <div className="editor-stage__meta">
-            <div className="editor-stage__copy">
-              <p className="eyebrow">Live page</p>
-              <h2>{selectedPage.title}</h2>
-              <p>{`${selectedPagePositionLabel} · ${selectedPageTemplateLabel}`}</p>
-            </div>
-            <span className="panel-tag">{selectedThemeMeta.label}</span>
-          </div>
           <div className="editor-canvas" ref={canvasRef}>
             <div ref={sheetProbeRef} className="magazine-sheet-probe" aria-hidden="true" />
             <div className="magazine-sheet magazine-sheet--editor" style={previewStyle}>

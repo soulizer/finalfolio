@@ -303,7 +303,6 @@ img {
 .page-strip-panel,
 .page-chip,
 .editor-stage,
-.editor-stage__meta,
 .editor-topbar {
   background: rgba(250, 248, 243, 0.72);
   backdrop-filter: blur(16px);
@@ -792,38 +791,11 @@ img {
 
 .editor-stage {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: 12px;
+  grid-template-rows: minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
   padding: 10px;
   border-radius: 30px;
-}
-
-.editor-stage__meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: end;
-  gap: 16px;
-  padding: 14px 16px;
-  border-radius: 22px;
-}
-
-.editor-stage__copy {
-  min-width: 0;
-}
-
-.editor-stage__copy h2 {
-  margin: 4px 0 0;
-  font-family: 'Newsreader', serif;
-  font-size: clamp(1.8rem, 2.2vw, 2.4rem);
-  font-weight: 500;
-  line-height: 0.96;
-}
-
-.editor-stage__copy p:last-child {
-  margin: 6px 0 0;
-  color: var(--muted);
 }
 
 .editor-empty-state {
@@ -1795,11 +1767,6 @@ button.asset-frame {
   .page-strip,
   .theme-grid {
     grid-template-columns: 1fr;
-  }
-
-  .editor-stage__meta {
-    flex-direction: column;
-    align-items: stretch;
   }
 
   .template-grid {

@@ -1,5 +1,22 @@
 # CrazyAlbum Devlog
 
+## 2026-03-26 Live Preview Cleanup
+
+### What changed
+
+- Removed the duplicated `.editor-stage__meta` block from the center editor stage so the live preview column now renders only the printable page surface and no helper copy above it.
+- Kept the accepted four-column desktop direction intact. The left navigation rail, center preview stage, inner-right content controls, and outer-right operations rail are unchanged apart from the preview-only cleanup.
+- Extended `validate:mvp` with explicit source assertions that the stage metadata block stays absent, so the duplicate preview info does not creep back in while Page actions and the right-side panels continue to own that context.
+
+### Validation
+
+- `npm run typecheck`
+- `npm run validate:mvp`
+
+### Remaining limits
+
+- This sandbox still cannot capture a real browser print preview, so final visual confirmation of the preview-only center column still depends on one manual browser pass even though the source and build validation now protect the intended structure.
+
 ## 2026-03-26 Four-Column Editor And Print Pagination Follow-up
 
 ### What changed
