@@ -810,8 +810,10 @@ export function EditorPage() {
           : formatSavedAt(projectRecord.updatedAt);
   const statusText = uploadState === 'uploading' ? 'Uploading images to the server...' : message ?? fallbackStatus;
   const sequenceLabel = `${project.pages.length} page${project.pages.length === 1 ? '' : 's'} in print order`;
+  const selectedPagePositionLabel = `Page ${selectedPageIndex + 1} of ${project.pages.length}`;
   const selectedTemplateMeta = templateMeta[templateChoice];
   const selectedTemplateLabel = getTemplateLabel(templateChoice, templateChoice === 'custom' ? customTemplateDraft : null);
+  const selectedPageTemplateLabel = getTemplateLabel(selectedPage.template, selectedPage.customTemplate);
   const selectedThemeMeta = pageThemeMeta[selectedPage.theme];
   const assetsLabel = `${placedAssetCount} placed / ${unusedAssetCount} unused`;
 
@@ -868,45 +870,61 @@ export function EditorPage() {
     <div className="editor-shell">
       <div className="editor-layout">
         <aside className="editor-sidebar editor-sidebar--navigation">
+          <section className="editor-panel editor-panel--page-actions">
+            <div className="editor-panel__heading">
+              <div>
+                <p className="eyebrow">Page actions</p>
+                <h2>{selectedPagePositionLabel}</h2>
+              </div>
+              <span className="panel-tag">{selectedTemplateLabel}</span>
+            </div>
+            <p className="panel-note">New pages inherit the active layout choice from the preset rail on the right.</p>
+            <div className="editor-page-actions">
+              <button
+                type="button"
+                className="button button--primary button--small editor-page-actions__button editor-page-actions__button--wide"
+                onClick={() => addPage()}
+              >
+                Add selected layout
+              </button>
+              <button type="button" className="button button--ghost button--small editor-page-actions__button" onClick={duplicatePage}>
+                Duplicate page
+              </button>
+              <button
+                type="button"
+                className="button button--ghost button--small editor-page-actions__button"
+                disabled={selectedPageIndex <= 0}
+                onClick={() => moveSelectedPage(-1)}
+              >
+                Move earlier
+              </button>
+              <button
+                type="button"
+                className="button button--ghost button--small editor-page-actions__button"
+                disabled={selectedPageIndex >= project.pages.length - 1}
+                onClick={() => moveSelectedPage(1)}
+              >
+                Move later
+              </button>
+              <button
+                type="button"
+                className="button button--ghost button--small editor-page-actions__button editor-page-actions__button--danger"
+                disabled={project.pages.length === 1}
+                onClick={removeSelectedPage}
+              >
+                Remove page
+              </button>
+            </div>
+          </section>
+
           <section className="page-strip-panel">
             <div className="page-strip-panel__header">
               <div>
                 <p className="eyebrow">Sequence</p>
                 <h2>{sequenceLabel}</h2>
-                <p>Preview order and export order are the same page stack.</p>
+                <p>Preview order and export order stay locked to the same page stack.</p>
               </div>
-              <div className="page-strip-panel__actions">
-                <button type="button" className="button button--ghost button--small" onClick={() => addPage()}>
-                  Add preset page
-                </button>
-                <button type="button" className="button button--ghost button--small" onClick={duplicatePage}>
-                  Duplicate
-                </button>
-                <button
-                  type="button"
-                  className="button button--ghost button--small"
-                  disabled={selectedPageIndex <= 0}
-                  onClick={() => moveSelectedPage(-1)}
-                >
-                  Move earlier
-                </button>
-                <button
-                  type="button"
-                  className="button button--ghost button--small"
-                  disabled={selectedPageIndex >= project.pages.length - 1}
-                  onClick={() => moveSelectedPage(1)}
-                >
-                  Move later
-                </button>
-                <button
-                  type="button"
-                  className="button button--ghost button--small"
-                  disabled={project.pages.length === 1}
-                  onClick={removeSelectedPage}
-                >
-                  Remove page
-                </button>
-              </div>
+              <span className="panel-tag">{selectedPagePositionLabel}</span>
             </div>
 
             <div className="page-strip">
@@ -924,11 +942,243 @@ export function EditorPage() {
               ))}
             </div>
           </section>
+        </aside>
+
+        <main className="editor-stage" aria-label="Live page editor">
+          <div className="editor-stage__meta">
+            <div className="editor-stage__copy">
+              <p className="eyebrow">Live page</p>
+              <h2>{selectedPage.title}</h2>
+              <p>{`${selectedPagePositionLabel} · ${selectedPageTemplateLabel}`}</p>
+            </div>
+            <span className="panel-tag">{selectedThemeMeta.label}</span>
+          </div>
+          <div className="editor-canvas" ref={canvasRef}>
+            <div ref={sheetProbeRef} className="magazine-sheet-probe" aria-hidden="true" />
+            <div className="magazine-sheet magazine-sheet--editor" style={previewStyle}>
+              <MagazinePreview
+                issue={project.issue}
+                page={selectedPage}
+                assets={assetsById}
+                pageNumber={selectedPageIndex + 1}
+                selectedSlot={selectedSlot}
+                interactive
+                onSelectSlot={setSelectedSlot}
+                onAssignDroppedAsset={assignAsset}
+              />
+            </div>
+          </div>
+        </main>
+
+        <aside className="editor-sidebar editor-sidebar--content">
+          <div className="editor-panel">
+            <div className="editor-panel__heading">
+              <div>
+                <p className="eyebrow">Page content</p>
+                <h2>{selectedPage.title}</h2>
+              </div>
+              <span className="panel-tag">{selectedPagePositionLabel}</span>
+            </div>
+            <p className="panel-note">{`${selectedPageTemplateLabel} layout with ${selectedThemeMeta.label} surface.`}</p>
+            <label className="field">
+              <span>Kicker</span>
+              <input
+                maxLength={PAGE_KICKER_LIMIT}
+                value={selectedPage.kicker}
+                onChange={(event) => updateSelectedPage((page) => ({ ...page, kicker: event.target.value }))}
+              />
+            </label>
+            <label className="field">
+              <span>Title</span>
+              <textarea
+                rows={2}
+                maxLength={PAGE_TITLE_LIMIT}
+                value={selectedPage.title}
+                onChange={(event) => updateSelectedPage((page) => ({ ...page, title: event.target.value }))}
+              />
+            </label>
+            <label className="field">
+              <span>Deck</span>
+              <textarea
+                rows={2}
+                maxLength={PAGE_DECK_LIMIT}
+                value={selectedPage.deck}
+                onChange={(event) => updateSelectedPage((page) => ({ ...page, deck: event.target.value }))}
+              />
+            </label>
+            <label className="field">
+              <span>Body</span>
+              <textarea
+                rows={4}
+                maxLength={PAGE_BODY_LIMIT}
+                value={selectedPage.body}
+                onChange={(event) => updateSelectedPage((page) => ({ ...page, body: event.target.value }))}
+              />
+            </label>
+            <label className="field">
+              <span>Caption</span>
+              <textarea
+                rows={2}
+                maxLength={PAGE_CAPTION_LIMIT}
+                value={selectedPage.caption}
+                onChange={(event) => updateSelectedPage((page) => ({ ...page, caption: event.target.value }))}
+              />
+            </label>
+          </div>
 
           <div className="editor-panel">
             <div className="editor-panel__heading">
               <div>
-                <p className="eyebrow">Issue</p>
+                <p className="eyebrow">Selected frame</p>
+                <h2>{selectedFrameLabel ?? 'None'}</h2>
+              </div>
+              {selectedAsset ? <span className="panel-tag">{currentCrop?.fit === 'contain' ? 'Keep full image' : 'Fill frame'}</span> : null}
+            </div>
+            <p className="selected-frame-status">
+              {selectedAsset ? `Assigned image: ${selectedAsset.name}` : 'No image assigned to this frame yet.'}
+            </p>
+            <p className="panel-note">Template geometry stays fixed. Fit and crop only affect image placement inside the slot.</p>
+            {selectedAssetPlacements.length ? (
+              <div className="placement-list" aria-label="Asset placements">
+                {selectedAssetPlacements.map((placement) => {
+                  const isCurrentPlacement = placement.pageId === selectedPage.id && placement.slot === selectedSlot;
+                  const slotLabel = placement.slot.toUpperCase();
+                  return (
+                    <button
+                      key={`${placement.pageId}-${placement.slot}`}
+                      type="button"
+                      className={`placement-chip ${isCurrentPlacement ? 'is-active' : ''}`}
+                      title={`${placement.pageTitle} · ${slotLabel}`}
+                      onClick={() => focusAssetPlacement(placement)}
+                    >
+                      {`Page ${placement.pageIndex + 1} · ${slotLabel}`}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+            {selectedSlot && currentCrop && selectedAsset ? (
+              <>
+                <div className="editor-panel__actions editor-panel__actions--tight">
+                  <button type="button" className="button button--ghost button--small" onClick={clearSelectedSlot}>
+                    Clear image
+                  </button>
+                  <button
+                    type="button"
+                    className="button button--ghost button--small"
+                    onClick={() => clearAssetPlacements(selectedAsset.id)}
+                  >
+                    Clear from all pages
+                  </button>
+                  <button
+                    type="button"
+                    className="button button--ghost button--small"
+                    onClick={() =>
+                      updateSelectedCrop((crop) => ({
+                        ...crop,
+                        x: 50,
+                        y: 50,
+                      }))
+                    }
+                  >
+                    Recenter
+                  </button>
+                  <button
+                    type="button"
+                    className="button button--ghost button--small"
+                    onClick={() =>
+                      updateSelectedCrop((crop) =>
+                        createDefaultCrop({
+                          fit: crop.fit,
+                        }),
+                      )
+                    }
+                  >
+                    Reset crop
+                  </button>
+                </div>
+                <div className="segmented-control" role="group" aria-label="Frame fit">
+                  <button
+                    type="button"
+                    className={currentCrop.fit === 'cover' ? 'is-active' : ''}
+                    onClick={() =>
+                      updateSelectedCrop((crop) => ({
+                        ...crop,
+                        fit: 'cover',
+                      }))
+                    }
+                  >
+                    Fill frame
+                  </button>
+                  <button
+                    type="button"
+                    className={currentCrop.fit === 'contain' ? 'is-active' : ''}
+                    onClick={() =>
+                      updateSelectedCrop((crop) => ({
+                        ...crop,
+                        fit: 'contain',
+                      }))
+                    }
+                  >
+                    Keep full image
+                  </button>
+                </div>
+                <label className="field field--range">
+                  <span>{`Horizontal crop ${Math.round(currentCrop.x)}%`}</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={currentCrop.x}
+                    onChange={(event) =>
+                      updateSelectedCrop((crop) => ({
+                        ...crop,
+                        x: Number(event.target.value),
+                      }))
+                    }
+                  />
+                </label>
+                <label className="field field--range">
+                  <span>{`Vertical crop ${Math.round(currentCrop.y)}%`}</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={currentCrop.y}
+                    onChange={(event) =>
+                      updateSelectedCrop((crop) => ({
+                        ...crop,
+                        y: Number(event.target.value),
+                      }))
+                    }
+                  />
+                </label>
+                <label className="field field--range">
+                  <span>{`Scale ${currentCrop.scale.toFixed(2)}x`}</span>
+                  <input
+                    type="range"
+                    min="1"
+                    max="2.2"
+                    step="0.01"
+                    value={currentCrop.scale}
+                    onChange={(event) =>
+                      updateSelectedCrop((crop) => ({
+                        ...crop,
+                        scale: Number(event.target.value),
+                      }))
+                    }
+                  />
+                </label>
+              </>
+            ) : (
+              <p className="panel-note">Select a frame, then click or drag an uploaded image onto it to unlock fit and crop controls.</p>
+            )}
+          </div>
+
+          <div className="editor-panel">
+            <div className="editor-panel__heading">
+              <div>
+                <p className="eyebrow">Issue copy</p>
                 <h2>{project.issue}</h2>
               </div>
               <span className="panel-tag">{sequenceLabel}</span>
@@ -959,49 +1209,56 @@ export function EditorPage() {
               />
             </label>
           </div>
+        </aside>
 
-          <div className="editor-panel">
-            <div className="editor-panel__heading">
-              <div>
-                <p className="eyebrow">Starter packs</p>
-                <h2>Multi-page packs</h2>
+        <aside className="editor-sidebar editor-sidebar--operations">
+          <div className="editor-sidebar__stack editor-sidebar__stack--sticky">
+            <section className="editor-topbar">
+              <div className="editor-topbar__brand">
+                <Link to="/">CrazyAlbum</Link>
+                <span>{`${selectedPagePositionLabel} | ${selectedPageTemplateLabel}`}</span>
               </div>
-              <span className="panel-tag">{templatePacks[defaultTemplatePackId].label} default</span>
-            </div>
-            <p className="panel-note">One click can replace the issue sequence or insert a finished pack after the current page. Every inserted page still edits like a normal page afterwards.</p>
-            <div className="template-pack-grid">
-              {templatePackOrder.map((packId) => {
-                const pack = templatePacks[packId];
-                return (
-                  <article key={packId} className={`template-pack-card ${packId === defaultTemplatePackId ? 'is-featured' : ''}`}>
-                    <div className="template-pack-card__copy">
-                      <span>{pack.label}</span>
-                      <strong>{pack.summary}</strong>
-                      <p>{pack.description}</p>
-                    </div>
-                    <p className="template-pack-card__sequence">
-                      {pack.pages.map((page) => getTemplateLabel(page.template, page.customTemplate)).join(' / ')}
-                    </p>
-                    <div className="editor-panel__actions editor-panel__actions--tight">
-                      <button
-                        type="button"
-                        className="button button--primary button--small"
-                        onClick={() => applyTemplatePack(packId, 'replace')}
-                      >
-                        Replace sequence
-                      </button>
-                      <button
-                        type="button"
-                        className="button button--ghost button--small"
-                        onClick={() => applyTemplatePack(packId, 'insert')}
-                      >
-                        Insert after current
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
+              <div className="editor-topbar__actions">
+                <button type="button" className="button button--ghost" onClick={startNewDraft}>
+                  New draft
+                </button>
+                <button type="button" className="button button--primary" onClick={() => window.print()}>
+                  Print / PDF
+                </button>
+              </div>
+            </section>
+
+            <section className="editor-project-bar">
+              <div className="editor-project-bar__copy">
+                <p className="eyebrow">Project</p>
+                <h2>{projectRecord ? 'Stable editor URL' : 'Draft on this device'}</h2>
+                <p>{statusText}</p>
+              </div>
+              <div className="editor-project-bar__actions">
+                <input
+                  aria-label="Project URL"
+                  className="editor-project-bar__input"
+                  readOnly
+                  value={projectRecord ? shareUrl : 'Create a stable editor URL to save this issue on the server.'}
+                />
+                <button
+                  type="button"
+                  className="button button--ghost"
+                  disabled={!projectRecord}
+                  onClick={() => void handleCopyLink()}
+                >
+                  {copyState === 'copied' ? 'Copied' : copyState === 'error' ? 'Copy failed' : 'Copy link'}
+                </button>
+                <button
+                  type="button"
+                  className="button button--primary"
+                  disabled={saveState === 'saving' || uploadState === 'uploading'}
+                  onClick={() => void saveProject({ manual: true })}
+                >
+                  {saveState === 'saving' ? 'Saving…' : projectRecord ? 'Save issue' : 'Create stable URL'}
+                </button>
+              </div>
+            </section>
           </div>
 
           <div className="editor-panel">
@@ -1061,76 +1318,6 @@ export function EditorPage() {
               )}
             </div>
           </div>
-        </aside>
-
-        <main className="editor-stage" aria-label="Live page editor">
-          <div className="editor-canvas" ref={canvasRef}>
-            <div ref={sheetProbeRef} className="magazine-sheet-probe" aria-hidden="true" />
-            <div className="magazine-sheet magazine-sheet--editor" style={previewStyle}>
-              <MagazinePreview
-                issue={project.issue}
-                page={selectedPage}
-                assets={assetsById}
-                pageNumber={selectedPageIndex + 1}
-                selectedSlot={selectedSlot}
-                interactive
-                onSelectSlot={setSelectedSlot}
-                onAssignDroppedAsset={assignAsset}
-              />
-            </div>
-          </div>
-        </main>
-
-        <aside className="editor-sidebar editor-sidebar--controls">
-          <section className="editor-topbar">
-            <div className="editor-topbar__brand">
-              <Link to="/">CrazyAlbum</Link>
-              <span>{`Page ${selectedPageIndex + 1} of ${project.pages.length} | ${getTemplateLabel(
-                selectedPage.template,
-                selectedPage.customTemplate,
-              )}`}</span>
-            </div>
-            <div className="editor-topbar__actions">
-              <button type="button" className="button button--ghost" onClick={startNewDraft}>
-                New draft
-              </button>
-              <button type="button" className="button button--primary" onClick={() => window.print()}>
-                Print / PDF
-              </button>
-            </div>
-          </section>
-
-          <section className="editor-project-bar">
-            <div className="editor-project-bar__copy">
-              <p className="eyebrow">Project</p>
-              <h2>{projectRecord ? 'Stable editor URL' : 'Draft on this device'}</h2>
-              <p>{statusText}</p>
-            </div>
-            <div className="editor-project-bar__actions">
-              <input
-                aria-label="Project URL"
-                className="editor-project-bar__input"
-                readOnly
-                value={projectRecord ? shareUrl : 'Create a stable editor URL to save this issue on the server.'}
-              />
-              <button
-                type="button"
-                className="button button--ghost"
-                disabled={!projectRecord}
-                onClick={() => void handleCopyLink()}
-              >
-                {copyState === 'copied' ? 'Copied' : copyState === 'error' ? 'Copy failed' : 'Copy link'}
-              </button>
-              <button
-                type="button"
-                className="button button--primary"
-                disabled={saveState === 'saving' || uploadState === 'uploading'}
-                onClick={() => void saveProject({ manual: true })}
-              >
-                {saveState === 'saving' ? 'Saving…' : projectRecord ? 'Save issue' : 'Create stable URL'}
-              </button>
-            </div>
-          </section>
 
           <div className="editor-panel">
             <div className="editor-panel__heading">
@@ -1327,9 +1514,6 @@ export function EditorPage() {
               >
                 {templateChoice === selectedPage.template && templateChoice !== 'custom' ? 'Current preset' : 'Apply to page'}
               </button>
-              <button type="button" className="button button--ghost button--small" onClick={() => addPage(templateChoice)}>
-                Add after current
-              </button>
             </div>
             <p className="panel-note">
               {templateChoice === 'custom'
@@ -1368,200 +1552,47 @@ export function EditorPage() {
           </div>
 
           <div className="editor-panel">
-            <p className="eyebrow">Page copy</p>
-            <label className="field">
-              <span>Kicker</span>
-              <input
-                maxLength={PAGE_KICKER_LIMIT}
-                value={selectedPage.kicker}
-                onChange={(event) => updateSelectedPage((page) => ({ ...page, kicker: event.target.value }))}
-              />
-            </label>
-            <label className="field">
-              <span>Title</span>
-              <textarea
-                rows={2}
-                maxLength={PAGE_TITLE_LIMIT}
-                value={selectedPage.title}
-                onChange={(event) => updateSelectedPage((page) => ({ ...page, title: event.target.value }))}
-              />
-            </label>
-            <label className="field">
-              <span>Deck</span>
-              <textarea
-                rows={2}
-                maxLength={PAGE_DECK_LIMIT}
-                value={selectedPage.deck}
-                onChange={(event) => updateSelectedPage((page) => ({ ...page, deck: event.target.value }))}
-              />
-            </label>
-            <label className="field">
-              <span>Body</span>
-              <textarea
-                rows={4}
-                maxLength={PAGE_BODY_LIMIT}
-                value={selectedPage.body}
-                onChange={(event) => updateSelectedPage((page) => ({ ...page, body: event.target.value }))}
-              />
-            </label>
-            <label className="field">
-              <span>Caption</span>
-              <textarea
-                rows={2}
-                maxLength={PAGE_CAPTION_LIMIT}
-                value={selectedPage.caption}
-                onChange={(event) => updateSelectedPage((page) => ({ ...page, caption: event.target.value }))}
-              />
-            </label>
-          </div>
-
-          <div className="editor-panel">
             <div className="editor-panel__heading">
               <div>
-                <p className="eyebrow">Selected frame</p>
-                <h2>{selectedFrameLabel ?? 'None'}</h2>
+                <p className="eyebrow">Starter packs</p>
+                <h2>Multi-page packs</h2>
               </div>
-              {selectedAsset ? <span className="panel-tag">{currentCrop?.fit === 'contain' ? 'Keep full image' : 'Fill frame'}</span> : null}
+              <span className="panel-tag">{templatePacks[defaultTemplatePackId].label} default</span>
             </div>
-            <p className="selected-frame-status">
-              {selectedAsset ? `Assigned image: ${selectedAsset.name}` : 'No image assigned to this frame yet.'}
-            </p>
-            <p className="panel-note">Template geometry stays fixed. Fit and crop only affect image placement inside the slot.</p>
-            {selectedAssetPlacements.length ? (
-              <div className="placement-list" aria-label="Asset placements">
-                {selectedAssetPlacements.map((placement) => {
-                  const isCurrentPlacement = placement.pageId === selectedPage.id && placement.slot === selectedSlot;
-                  const slotLabel = placement.slot.toUpperCase();
-                  return (
-                    <button
-                      key={`${placement.pageId}-${placement.slot}`}
-                      type="button"
-                      className={`placement-chip ${isCurrentPlacement ? 'is-active' : ''}`}
-                      title={`${placement.pageTitle} · ${slotLabel}`}
-                      onClick={() => focusAssetPlacement(placement)}
-                    >
-                      {`Page ${placement.pageIndex + 1} · ${slotLabel}`}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : null}
-            {selectedSlot && currentCrop && selectedAsset ? (
-              <>
-                <div className="editor-panel__actions editor-panel__actions--tight">
-                  <button type="button" className="button button--ghost button--small" onClick={clearSelectedSlot}>
-                    Clear image
-                  </button>
-                  <button
-                    type="button"
-                    className="button button--ghost button--small"
-                    onClick={() => clearAssetPlacements(selectedAsset.id)}
-                  >
-                    Clear from all pages
-                  </button>
-                  <button
-                    type="button"
-                    className="button button--ghost button--small"
-                    onClick={() =>
-                      updateSelectedCrop((crop) => ({
-                        ...crop,
-                        x: 50,
-                        y: 50,
-                      }))
-                    }
-                  >
-                    Recenter
-                  </button>
-                  <button
-                    type="button"
-                    className="button button--ghost button--small"
-                    onClick={() =>
-                      updateSelectedCrop((crop) =>
-                        createDefaultCrop({
-                          fit: crop.fit,
-                        }),
-                      )
-                    }
-                  >
-                    Reset crop
-                  </button>
-                </div>
-                <div className="segmented-control" role="group" aria-label="Frame fit">
-                  <button
-                    type="button"
-                    className={currentCrop.fit === 'cover' ? 'is-active' : ''}
-                    onClick={() =>
-                      updateSelectedCrop((crop) => ({
-                        ...crop,
-                        fit: 'cover',
-                      }))
-                    }
-                  >
-                    Fill frame
-                  </button>
-                  <button
-                    type="button"
-                    className={currentCrop.fit === 'contain' ? 'is-active' : ''}
-                    onClick={() =>
-                      updateSelectedCrop((crop) => ({
-                        ...crop,
-                        fit: 'contain',
-                      }))
-                    }
-                  >
-                    Keep full image
-                  </button>
-                </div>
-                <label className="field field--range">
-                  <span>{`Horizontal crop ${Math.round(currentCrop.x)}%`}</span>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={currentCrop.x}
-                    onChange={(event) =>
-                      updateSelectedCrop((crop) => ({
-                        ...crop,
-                        x: Number(event.target.value),
-                      }))
-                    }
-                  />
-                </label>
-                <label className="field field--range">
-                  <span>{`Vertical crop ${Math.round(currentCrop.y)}%`}</span>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={currentCrop.y}
-                    onChange={(event) =>
-                      updateSelectedCrop((crop) => ({
-                        ...crop,
-                        y: Number(event.target.value),
-                      }))
-                    }
-                  />
-                </label>
-                <label className="field field--range">
-                  <span>{`Scale ${currentCrop.scale.toFixed(2)}x`}</span>
-                  <input
-                    type="range"
-                    min="1"
-                    max="2.2"
-                    step="0.01"
-                    value={currentCrop.scale}
-                    onChange={(event) =>
-                      updateSelectedCrop((crop) => ({
-                        ...crop,
-                        scale: Number(event.target.value),
-                      }))
-                    }
-                  />
-                </label>
-              </>
-            ) : (
-              <p className="panel-note">Select a frame, then click or drag an uploaded image onto it to unlock fit and crop controls.</p>
-            )}
+            <p className="panel-note">One click can replace the issue sequence or insert a finished pack after the current page. Every inserted page still edits like a normal page afterwards.</p>
+            <div className="template-pack-grid">
+              {templatePackOrder.map((packId) => {
+                const pack = templatePacks[packId];
+                return (
+                  <article key={packId} className={`template-pack-card ${packId === defaultTemplatePackId ? 'is-featured' : ''}`}>
+                    <div className="template-pack-card__copy">
+                      <span>{pack.label}</span>
+                      <strong>{pack.summary}</strong>
+                      <p>{pack.description}</p>
+                    </div>
+                    <p className="template-pack-card__sequence">
+                      {pack.pages.map((page) => getTemplateLabel(page.template, page.customTemplate)).join(' / ')}
+                    </p>
+                    <div className="editor-panel__actions editor-panel__actions--tight">
+                      <button
+                        type="button"
+                        className="button button--primary button--small"
+                        onClick={() => applyTemplatePack(packId, 'replace')}
+                      >
+                        Replace sequence
+                      </button>
+                      <button
+                        type="button"
+                        className="button button--ghost button--small"
+                        onClick={() => applyTemplatePack(packId, 'insert')}
+                      >
+                        Insert after current
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
           </div>
         </aside>
       </div>

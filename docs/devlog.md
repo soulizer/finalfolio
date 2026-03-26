@@ -1,5 +1,25 @@
 # CrazyAlbum Devlog
 
+## 2026-03-26 Four-Column Editor And Print Pagination Follow-up
+
+### What changed
+
+- Rebuilt `/editor` into the accepted four-column desktop shell. The left rail now keeps only sequence navigation plus page-level actions, the center column holds a slightly narrower but more stable live A4 page, and the former single right rail is split into a content column plus an operations column.
+- Moved the most important project controls to the top-right and pinned them with a sticky stack. Save/create-stable-URL, copy-link, New draft, and Print / PDF now stay anchored while longer controls like assets, templates, themes, starter packs, and custom layout editing scroll beneath them.
+- Reorganized editor controls around a more product-like flow instead of the earlier mixed rail. Page copy, frame crop/fit, and issue copy now live in the inner-right column beside the preview; assets, layout presets, page surface themes, and multi-page starter packs now live in the outer-right operations column.
+- Fixed the trailing blank-page export bug at the print-shell level instead of only relying on page-break placement. The print stylesheet now clears the desktop editor shell's padding, margin, and `min-height` so exact-height A4 print pages are not nudged into a phantom extra sheet.
+- Extended `validate:mvp` source assertions to cover the new four-column shell markers and the print-shell reset, so the accepted layout direction and the blank-page guard are both protected in this sandboxed environment.
+
+### Validation
+
+- `npm run typecheck`
+- `npm run validate:mvp`
+
+### Remaining limits
+
+- This sandbox still cannot render a real browser print preview or generated PDF, so the blank-fourth-page fix is validated by the corrected print-shell rules plus source assertions rather than a captured browser export.
+- Final sign-off should still include one manual desktop browser pass covering the four-column balance, sticky top-right actions, asset placement flow, and a real 3-page Print / PDF export to confirm the trailing blank page is gone in the target browser.
+
 ## 2026-03-26 Full-Height Editor Shell Pass
 
 ### What changed

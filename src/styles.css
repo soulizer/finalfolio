@@ -12,7 +12,7 @@
   --shadow: 0 24px 70px rgba(17, 17, 17, 0.08);
   --radius: 26px;
   --site-width: min(1240px, calc(100vw - 48px));
-  --editor-shell-width: min(1940px, calc(100vw - 16px));
+  --editor-shell-width: min(1880px, calc(100vw - 16px));
   --editor-layout-gap: 12px;
   --sheet-width: 210mm;
   --sheet-height: 297mm;
@@ -303,6 +303,7 @@ img {
 .page-strip-panel,
 .page-chip,
 .editor-stage,
+.editor-stage__meta,
 .editor-topbar {
   background: rgba(250, 248, 243, 0.72);
   backdrop-filter: blur(16px);
@@ -579,7 +580,7 @@ img {
 
 .editor-layout {
   display: grid;
-  grid-template-columns: minmax(240px, 310px) minmax(0, 1fr) minmax(300px, 360px);
+  grid-template-columns: minmax(240px, 1fr) minmax(0, 2fr) minmax(280px, 1fr) minmax(280px, 1fr);
   gap: var(--editor-layout-gap);
   align-items: stretch;
   height: calc(100vh - 16px);
@@ -791,10 +792,38 @@ img {
 
 .editor-stage {
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
   min-width: 0;
   min-height: 0;
   padding: 10px;
   border-radius: 30px;
+}
+
+.editor-stage__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 22px;
+}
+
+.editor-stage__copy {
+  min-width: 0;
+}
+
+.editor-stage__copy h2 {
+  margin: 4px 0 0;
+  font-family: 'Newsreader', serif;
+  font-size: clamp(1.8rem, 2.2vw, 2.4rem);
+  font-weight: 500;
+  line-height: 0.96;
+}
+
+.editor-stage__copy p:last-child {
+  margin: 6px 0 0;
+  color: var(--muted);
 }
 
 .editor-empty-state {
@@ -1264,16 +1293,28 @@ button.asset-frame {
   align-items: stretch;
 }
 
-.editor-sidebar--navigation .page-strip-panel__actions {
+.editor-page-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  justify-content: stretch;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.editor-page-actions__button {
   width: 100%;
 }
 
-.editor-sidebar--navigation .page-strip-panel__actions .button,
-.editor-sidebar--controls .editor-topbar__actions .button,
-.editor-sidebar--controls .editor-project-bar__actions .button {
+.editor-page-actions__button--wide {
+  grid-column: 1 / -1;
+}
+
+.editor-page-actions__button--danger {
+  border-color: rgba(122, 46, 46, 0.2);
+  color: #7a2e2e;
+}
+
+.editor-sidebar--operations .editor-topbar__actions .button,
+.editor-sidebar--operations .editor-project-bar__actions .button {
   width: 100%;
 }
 
@@ -1296,13 +1337,6 @@ button.asset-frame {
 .page-strip-panel__header p:last-child {
   margin: 4px 0 0;
   color: var(--muted);
-}
-
-.page-strip-panel__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: flex-end;
 }
 
 .page-strip {
@@ -1520,35 +1554,45 @@ button.asset-frame {
   gap: 10px;
 }
 
-.editor-sidebar--controls .template-grid,
-.editor-sidebar--controls .custom-layout-grid {
+.editor-sidebar__stack {
+  display: grid;
+  gap: 12px;
+}
+
+.editor-sidebar__stack--sticky {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.editor-sidebar--operations .template-grid,
+.editor-sidebar--operations .custom-layout-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.editor-sidebar--controls .editor-topbar,
-.editor-sidebar--controls .editor-project-bar {
+.editor-sidebar--operations .editor-topbar,
+.editor-sidebar--operations .editor-project-bar {
   width: 100%;
   margin: 0;
-  grid-column: 1 / -1;
 }
 
-.editor-sidebar--controls .editor-topbar {
+.editor-sidebar--operations .editor-topbar {
   flex-direction: column;
   align-items: stretch;
   gap: 12px;
 }
 
-.editor-sidebar--controls .editor-topbar__actions {
+.editor-sidebar--operations .editor-topbar__actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.editor-sidebar--controls .editor-project-bar {
+.editor-sidebar--operations .editor-project-bar {
   flex-direction: column;
   align-items: stretch;
 }
 
-.editor-sidebar--controls .editor-project-bar__actions {
+.editor-sidebar--operations .editor-project-bar__actions {
   grid-template-columns: 1fr;
   width: 100%;
 }
@@ -1616,7 +1660,8 @@ button.asset-frame {
     padding-right: 0;
   }
 
-  .editor-sidebar--controls {
+  .editor-sidebar--content,
+  .editor-sidebar--operations {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -1630,8 +1675,8 @@ button.asset-frame {
     align-items: stretch;
   }
 
-  .page-strip-panel__actions {
-    justify-content: start;
+  .editor-sidebar__stack--sticky {
+    position: static;
   }
 
   .editor-sidebar--navigation .page-strip {
@@ -1672,10 +1717,11 @@ button.asset-frame {
   .editor-project-bar,
   .editor-topbar__actions,
   .editor-project-bar__actions,
-  .page-strip-panel__actions,
+  .editor-page-actions,
   .site-nav,
   .editor-sidebar,
-  .editor-sidebar--controls {
+  .editor-sidebar--content,
+  .editor-sidebar--operations {
     grid-template-columns: 1fr;
     flex-direction: column;
     align-items: stretch;
@@ -1693,8 +1739,7 @@ button.asset-frame {
     grid-template-columns: 1fr;
   }
 
-  .editor-sidebar--controls .editor-topbar__actions,
-  .editor-sidebar--navigation .page-strip-panel__actions {
+  .editor-sidebar--operations .editor-topbar__actions {
     grid-template-columns: 1fr;
   }
 
@@ -1745,10 +1790,16 @@ button.asset-frame {
 
   .editor-layout,
   .editor-sidebar,
-  .editor-sidebar--controls,
+  .editor-sidebar--content,
+  .editor-sidebar--operations,
   .page-strip,
   .theme-grid {
     grid-template-columns: 1fr;
+  }
+
+  .editor-stage__meta {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .template-grid {
@@ -1776,12 +1827,25 @@ button.asset-frame {
     -webkit-print-color-adjust: exact;
   }
 
+  html,
+  body,
+  .editor-shell,
+  .editor-print-stack {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
   body {
     background: #fff;
   }
 
   body::before {
     display: none !important;
+  }
+
+  .editor-shell {
+    min-height: auto !important;
+    overflow: visible !important;
   }
 
   .site-shell,
@@ -1798,7 +1862,7 @@ button.asset-frame {
     width: var(--sheet-width);
     height: var(--sheet-height);
     padding: 0;
-    margin: 0 auto;
+    margin: 0;
     overflow: hidden;
     break-inside: avoid;
     page-break-inside: avoid;
