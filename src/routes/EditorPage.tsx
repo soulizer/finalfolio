@@ -866,55 +866,65 @@ export function EditorPage() {
 
   return (
     <div className="editor-shell">
-      <header className="editor-topbar">
-        <div className="editor-topbar__brand">
-          <Link to="/">CrazyAlbum</Link>
-          <span>Server-backed editorial builder</span>
-        </div>
-        <div className="editor-topbar__actions">
-          <button type="button" className="button button--ghost" onClick={startNewDraft}>
-            New draft
-          </button>
-          <button type="button" className="button button--primary" onClick={() => window.print()}>
-            Print / PDF
-          </button>
-        </div>
-      </header>
-
-      <section className="editor-project-bar">
-        <div className="editor-project-bar__copy">
-          <p className="eyebrow">Project</p>
-          <h2>{projectRecord ? 'Stable editor URL' : 'Draft on this device'}</h2>
-          <p>{statusText}</p>
-        </div>
-        <div className="editor-project-bar__actions">
-          <input
-            aria-label="Project URL"
-            className="editor-project-bar__input"
-            readOnly
-            value={projectRecord ? shareUrl : 'Create a stable editor URL to save this issue on the server.'}
-          />
-          <button
-            type="button"
-            className="button button--ghost"
-            disabled={!projectRecord}
-            onClick={() => void handleCopyLink()}
-          >
-            {copyState === 'copied' ? 'Copied' : copyState === 'error' ? 'Copy failed' : 'Copy link'}
-          </button>
-          <button
-            type="button"
-            className="button button--primary"
-            disabled={saveState === 'saving' || uploadState === 'uploading'}
-            onClick={() => void saveProject({ manual: true })}
-          >
-            {saveState === 'saving' ? 'Saving…' : projectRecord ? 'Save issue' : 'Create stable URL'}
-          </button>
-        </div>
-      </section>
-
       <div className="editor-layout">
-        <aside className="editor-sidebar editor-sidebar--assets">
+        <aside className="editor-sidebar editor-sidebar--navigation">
+          <section className="page-strip-panel">
+            <div className="page-strip-panel__header">
+              <div>
+                <p className="eyebrow">Sequence</p>
+                <h2>{sequenceLabel}</h2>
+                <p>Preview order and export order are the same page stack.</p>
+              </div>
+              <div className="page-strip-panel__actions">
+                <button type="button" className="button button--ghost button--small" onClick={() => addPage()}>
+                  Add preset page
+                </button>
+                <button type="button" className="button button--ghost button--small" onClick={duplicatePage}>
+                  Duplicate
+                </button>
+                <button
+                  type="button"
+                  className="button button--ghost button--small"
+                  disabled={selectedPageIndex <= 0}
+                  onClick={() => moveSelectedPage(-1)}
+                >
+                  Move earlier
+                </button>
+                <button
+                  type="button"
+                  className="button button--ghost button--small"
+                  disabled={selectedPageIndex >= project.pages.length - 1}
+                  onClick={() => moveSelectedPage(1)}
+                >
+                  Move later
+                </button>
+                <button
+                  type="button"
+                  className="button button--ghost button--small"
+                  disabled={project.pages.length === 1}
+                  onClick={removeSelectedPage}
+                >
+                  Remove page
+                </button>
+              </div>
+            </div>
+
+            <div className="page-strip">
+              {project.pages.map((page, index) => (
+                <button
+                  key={page.id}
+                  type="button"
+                  className={`page-chip ${page.id === selectedPage.id ? 'is-active' : ''}`}
+                  onClick={() => selectPage(page.id)}
+                >
+                  <span>{`Page ${index + 1}`}</span>
+                  <strong>{page.title}</strong>
+                  <em>{getTemplateLabel(page.template, page.customTemplate)}</em>
+                </button>
+              ))}
+            </div>
+          </section>
+
           <div className="editor-panel">
             <div className="editor-panel__heading">
               <div>
@@ -1053,97 +1063,75 @@ export function EditorPage() {
           </div>
         </aside>
 
-        <main className="editor-canvas-wrap">
-          <section className="editor-stage">
-            <div className="editor-stage__header">
-              <div className="editor-stage__intro">
-                <p className="eyebrow">Live page</p>
-                <h1>{project.title}</h1>
-                <p>{project.subtitle}</p>
-              </div>
-              <div className="editor-stage__meta">
-                <span>{project.issue}</span>
-                <span>{getTemplateLabel(selectedPage.template, selectedPage.customTemplate)}</span>
-                <span>{`Page ${selectedPageIndex + 1} of ${project.pages.length}`}</span>
-              </div>
+        <main className="editor-stage" aria-label="Live page editor">
+          <div className="editor-canvas" ref={canvasRef}>
+            <div ref={sheetProbeRef} className="magazine-sheet-probe" aria-hidden="true" />
+            <div className="magazine-sheet magazine-sheet--editor" style={previewStyle}>
+              <MagazinePreview
+                issue={project.issue}
+                page={selectedPage}
+                assets={assetsById}
+                pageNumber={selectedPageIndex + 1}
+                selectedSlot={selectedSlot}
+                interactive
+                onSelectSlot={setSelectedSlot}
+                onAssignDroppedAsset={assignAsset}
+              />
             </div>
-
-            <div className="editor-canvas" ref={canvasRef}>
-              <div ref={sheetProbeRef} className="magazine-sheet-probe" aria-hidden="true" />
-              <div className="magazine-sheet magazine-sheet--editor" style={previewStyle}>
-                <MagazinePreview
-                  issue={project.issue}
-                  page={selectedPage}
-                  assets={assetsById}
-                  pageNumber={selectedPageIndex + 1}
-                  selectedSlot={selectedSlot}
-                  interactive
-                  onSelectSlot={setSelectedSlot}
-                  onAssignDroppedAsset={assignAsset}
-                />
-              </div>
-            </div>
-          </section>
-
-          <section className="page-strip-panel">
-            <div className="page-strip-panel__header">
-              <div>
-                <p className="eyebrow">Sequence</p>
-                <h2>{sequenceLabel}</h2>
-                <p>Preview order and export order are the same page stack.</p>
-              </div>
-              <div className="page-strip-panel__actions">
-                <button type="button" className="button button--ghost button--small" onClick={() => addPage()}>
-                  Add preset page
-                </button>
-                <button type="button" className="button button--ghost button--small" onClick={duplicatePage}>
-                  Duplicate
-                </button>
-                <button
-                  type="button"
-                  className="button button--ghost button--small"
-                  disabled={selectedPageIndex <= 0}
-                  onClick={() => moveSelectedPage(-1)}
-                >
-                  Move earlier
-                </button>
-                <button
-                  type="button"
-                  className="button button--ghost button--small"
-                  disabled={selectedPageIndex >= project.pages.length - 1}
-                  onClick={() => moveSelectedPage(1)}
-                >
-                  Move later
-                </button>
-                <button
-                  type="button"
-                  className="button button--ghost button--small"
-                  disabled={project.pages.length === 1}
-                  onClick={removeSelectedPage}
-                >
-                  Remove page
-                </button>
-              </div>
-            </div>
-
-            <div className="page-strip">
-              {project.pages.map((page, index) => (
-                <button
-                  key={page.id}
-                  type="button"
-                  className={`page-chip ${page.id === selectedPage.id ? 'is-active' : ''}`}
-                  onClick={() => selectPage(page.id)}
-                >
-                  <span>{`Page ${index + 1}`}</span>
-                  <strong>{page.title}</strong>
-                  <em>{getTemplateLabel(page.template, page.customTemplate)}</em>
-                </button>
-              ))}
-            </div>
-          </section>
+          </div>
         </main>
 
         <aside className="editor-sidebar editor-sidebar--controls">
+          <section className="editor-topbar">
+            <div className="editor-topbar__brand">
+              <Link to="/">CrazyAlbum</Link>
+              <span>{`Page ${selectedPageIndex + 1} of ${project.pages.length} | ${getTemplateLabel(
+                selectedPage.template,
+                selectedPage.customTemplate,
+              )}`}</span>
+            </div>
+            <div className="editor-topbar__actions">
+              <button type="button" className="button button--ghost" onClick={startNewDraft}>
+                New draft
+              </button>
+              <button type="button" className="button button--primary" onClick={() => window.print()}>
+                Print / PDF
+              </button>
+            </div>
+          </section>
+
+          <section className="editor-project-bar">
+            <div className="editor-project-bar__copy">
+              <p className="eyebrow">Project</p>
+              <h2>{projectRecord ? 'Stable editor URL' : 'Draft on this device'}</h2>
+              <p>{statusText}</p>
+            </div>
+            <div className="editor-project-bar__actions">
+              <input
+                aria-label="Project URL"
+                className="editor-project-bar__input"
+                readOnly
+                value={projectRecord ? shareUrl : 'Create a stable editor URL to save this issue on the server.'}
+              />
+              <button
+                type="button"
+                className="button button--ghost"
+                disabled={!projectRecord}
+                onClick={() => void handleCopyLink()}
+              >
+                {copyState === 'copied' ? 'Copied' : copyState === 'error' ? 'Copy failed' : 'Copy link'}
+              </button>
+              <button
+                type="button"
+                className="button button--primary"
+                disabled={saveState === 'saving' || uploadState === 'uploading'}
+                onClick={() => void saveProject({ manual: true })}
+              >
+                {saveState === 'saving' ? 'Saving…' : projectRecord ? 'Save issue' : 'Create stable URL'}
+              </button>
+            </div>
+          </section>
+
           <div className="editor-panel">
             <div className="editor-panel__heading">
               <div>

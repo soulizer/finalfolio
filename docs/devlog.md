@@ -1,5 +1,25 @@
 # CrazyAlbum Devlog
 
+## 2026-03-26 Full-Height Editor Shell Pass
+
+### What changed
+
+- Rebuilt `/editor` so the desktop shell is now a true three-column workspace: page sequence/navigation moved into the left rail, the center column is reserved for the live page surface, and the former top/project bars now live inside the right-side controls instead of burning viewport height above the preview.
+- Increased the usable live-page area by widening the overall editor shell, trimming desktop padding/gaps, and letting the main layout run at practical viewport height. The A4 preview scale still measures real canvas padding, so the existing fit logic remains intact while the center stage gets materially closer to full-screen use.
+- Retuned sidebar behavior around the new layout. The left rail now presents the page strip as a vertical navigation list on desktop, while the right rail stacks project actions and page controls in a narrower panel format without reintroducing horizontal spill.
+- Extended `validate:mvp` with source assertions for the new navigation/stage/control rail structure because this sandbox still cannot render a browser proof of the final shell.
+
+### Validation
+
+- `npm run typecheck`
+- `npm run build`
+- `npm run validate:mvp`
+
+### Remaining limits
+
+- This sandbox still cannot produce a browser-rendered proof of the new fullscreen-oriented shell, so final sign-off should still include one real desktop browser pass covering page navigation, edit controls, crop controls, and Print / PDF from the revised rail layout.
+- The source assertions protect the intended shell structure, but they do not replace checking actual perceived balance on large monitors and smaller laptops with real project content.
+
 ## 2026-03-26 Acceptance Fix Pass
 
 ### What changed

@@ -337,12 +337,18 @@ try {
     assert.match(styles, /\.asset-frame__media/);
     assert.match(styles, /\.placement-chip/);
     assert.match(styles, /\.segmented-control/);
+    assert.match(styles, /\.editor-sidebar--navigation \.page-strip/);
+    assert.match(styles, /\.editor-sidebar--controls \.editor-project-bar__actions/);
+    assert.match(styles, /height: calc\(100vh - 16px\)/);
     assert.match(editorPage, /Apply to page/);
     assert.match(editorPage, /Add after current/);
     assert.match(editorPage, /Clear from all pages/);
     assert.match(editorPage, /Page surface/);
     assert.match(editorPage, /Page theme/);
     assert.match(editorPage, /Remove .* unused/);
+    assert.match(editorPage, /editor-sidebar editor-sidebar--navigation/);
+    assert.match(editorPage, /aria-label="Live page editor"/);
+    assert.match(editorPage, /editor-sidebar editor-sidebar--controls/);
     assert.match(editorPage, /window\.print\(\)/);
     assert.match(editorPage, /Keep full image/);
     assert.match(preview, /objectFit: crop\?\.fit \?\? 'cover'/);

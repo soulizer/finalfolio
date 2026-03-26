@@ -12,8 +12,8 @@
   --shadow: 0 24px 70px rgba(17, 17, 17, 0.08);
   --radius: 26px;
   --site-width: min(1240px, calc(100vw - 48px));
-  --editor-shell-width: min(1820px, calc(100vw - 24px));
-  --editor-layout-gap: 18px;
+  --editor-shell-width: min(1940px, calc(100vw - 16px));
+  --editor-layout-gap: 12px;
   --sheet-width: 210mm;
   --sheet-height: 297mm;
   color: var(--ink);
@@ -143,7 +143,6 @@ img {
 .split-panel h2,
 .quote-panel h2,
 .cta-panel h2,
-.editor-stage h1,
 .feature-card h2,
 .magazine-page h2 {
   font-family: 'Newsreader', serif;
@@ -470,7 +469,7 @@ img {
 
 .editor-shell {
   min-height: 100vh;
-  padding: 12px;
+  padding: 8px;
   overflow-x: hidden;
 }
 
@@ -481,14 +480,18 @@ img {
   gap: 16px;
   padding: 14px 16px;
   border-radius: 20px;
-  margin-bottom: 12px;
 }
 
-.editor-topbar,
-.editor-project-bar,
+.editor-shell > .editor-topbar,
+.editor-shell > .editor-project-bar,
 .editor-layout {
   width: var(--editor-shell-width);
   margin-inline: auto;
+}
+
+.editor-shell > .editor-topbar,
+.editor-shell > .editor-project-bar {
+  margin-bottom: 12px;
 }
 
 .editor-project-bar {
@@ -498,7 +501,6 @@ img {
   align-items: center;
   padding: 14px 16px;
   border-radius: 20px;
-  margin-bottom: 12px;
 }
 
 .editor-project-bar__copy {
@@ -522,10 +524,11 @@ img {
 
 .editor-project-bar__actions {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 10px;
   align-items: center;
-  min-width: min(100%, 620px);
+  width: min(100%, 620px);
+  min-width: 0;
 }
 
 .editor-project-bar__input {
@@ -554,7 +557,6 @@ img {
 .panel-note,
 .panel-tag,
 .page-chip em,
-.editor-stage__meta,
 .magazine-page__meta,
 .asset-frame__hint,
 .asset-frame__placeholder,
@@ -577,19 +579,10 @@ img {
 
 .editor-layout {
   display: grid;
-  grid-template-columns: minmax(280px, 340px) minmax(0, 1.65fr) minmax(280px, 340px);
+  grid-template-columns: minmax(240px, 310px) minmax(0, 1fr) minmax(300px, 360px);
   gap: var(--editor-layout-gap);
   align-items: stretch;
-  height: min(1120px, calc(100vh - 186px));
-  min-height: 0;
-}
-
-.editor-canvas-wrap {
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  gap: 14px;
-  min-height: 0;
-  min-width: 0;
+  height: calc(100vh - 16px);
 }
 
 .editor-sidebar {
@@ -605,13 +598,12 @@ img {
 
 .editor-layout > *,
 .editor-sidebar > *,
-.editor-canvas-wrap > * {
+.editor-stage > * {
   min-width: 0;
 }
 
 .editor-panel,
-.page-strip-panel,
-.editor-stage {
+.page-strip-panel {
   padding: 16px;
   border-radius: 22px;
 }
@@ -636,7 +628,6 @@ img {
 }
 
 .editor-panel__heading > *,
-.editor-stage__header > *,
 .page-strip-panel__header > * {
   min-width: 0;
 }
@@ -800,9 +791,10 @@ img {
 
 .editor-stage {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: 12px;
+  min-width: 0;
   min-height: 0;
+  padding: 10px;
+  border-radius: 30px;
 }
 
 .editor-empty-state {
@@ -838,60 +830,15 @@ img {
   margin-top: 8px;
 }
 
-.editor-stage__header {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.editor-stage__intro {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.editor-stage h1 {
-  margin: 0;
-  font-size: clamp(1.8rem, 2.2vw, 2.6rem);
-}
-
-.editor-stage__intro .eyebrow {
-  margin-bottom: 2px;
-}
-
-.editor-stage__intro p:last-child {
-  margin: 0;
-  max-width: 34rem;
-  color: var(--muted);
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-}
-
-.editor-stage__meta {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  text-align: right;
-  min-width: max-content;
-  padding: 10px 12px;
-  border-radius: 18px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.52);
-}
-
 .editor-canvas {
   position: relative;
   display: grid;
   place-items: center;
   min-height: 0;
   height: 100%;
-  padding: 0;
+  padding: 8px;
   overflow: hidden;
-  border-radius: 26px;
+  border-radius: 24px;
   background:
     radial-gradient(circle at top, rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0) 48%),
     linear-gradient(180deg, rgba(250, 248, 243, 0.78), rgba(228, 223, 214, 0.58));
@@ -900,10 +847,10 @@ img {
 .editor-canvas::before {
   content: '';
   position: absolute;
-  inset: 20px 26px;
-  border-radius: 28px;
+  inset: 10px;
+  border-radius: 22px;
   border: 1px solid rgba(255, 255, 255, 0.38);
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.16);
   pointer-events: none;
 }
 
@@ -1313,6 +1260,23 @@ button.asset-frame {
   gap: 12px;
 }
 
+.editor-sidebar--navigation .page-strip-panel__header {
+  align-items: stretch;
+}
+
+.editor-sidebar--navigation .page-strip-panel__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  justify-content: stretch;
+  width: 100%;
+}
+
+.editor-sidebar--navigation .page-strip-panel__actions .button,
+.editor-sidebar--controls .editor-topbar__actions .button,
+.editor-sidebar--controls .editor-project-bar__actions .button {
+  width: 100%;
+}
+
 .page-strip-panel__header {
   display: flex;
   justify-content: space-between;
@@ -1350,6 +1314,14 @@ button.asset-frame {
   overflow-x: auto;
   overflow-y: hidden;
   padding-bottom: 4px;
+}
+
+.editor-sidebar--navigation .page-strip {
+  grid-template-columns: 1fr;
+  grid-auto-flow: row;
+  grid-auto-columns: initial;
+  overflow: visible;
+  padding-bottom: 0;
 }
 
 .page-chip {
@@ -1553,6 +1525,34 @@ button.asset-frame {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.editor-sidebar--controls .editor-topbar,
+.editor-sidebar--controls .editor-project-bar {
+  width: 100%;
+  margin: 0;
+  grid-column: 1 / -1;
+}
+
+.editor-sidebar--controls .editor-topbar {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.editor-sidebar--controls .editor-topbar__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.editor-sidebar--controls .editor-project-bar {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.editor-sidebar--controls .editor-project-bar__actions {
+  grid-template-columns: 1fr;
+  width: 100%;
+}
+
 .segmented-control {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1591,6 +1591,10 @@ button.asset-frame {
     min-height: 540px;
   }
 
+  .editor-shell {
+    padding: 10px;
+  }
+
   .editor-project-bar {
     flex-direction: column;
     align-items: stretch;
@@ -1603,6 +1607,7 @@ button.asset-frame {
   .editor-layout {
     grid-template-columns: 1fr;
     height: auto;
+    min-height: 0;
   }
 
   .editor-sidebar {
@@ -1615,6 +1620,11 @@ button.asset-frame {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .editor-stage {
+    order: -1;
+    min-height: 0;
+  }
+
   .page-strip-panel__header {
     flex-direction: column;
     align-items: stretch;
@@ -1624,7 +1634,7 @@ button.asset-frame {
     justify-content: start;
   }
 
-  .page-strip {
+  .editor-sidebar--navigation .page-strip {
     grid-template-columns: repeat(auto-fit, minmax(172px, 1fr));
     grid-auto-flow: row;
     grid-auto-columns: initial;
@@ -1632,12 +1642,12 @@ button.asset-frame {
   }
 
   .editor-canvas {
-    height: clamp(460px, 72vh, 820px);
+    height: clamp(520px, 78vh, 980px);
     padding: 8px;
   }
 
   .editor-canvas::before {
-    inset: 16px;
+    inset: 8px;
   }
 }
 
@@ -1663,7 +1673,6 @@ button.asset-frame {
   .editor-topbar__actions,
   .editor-project-bar__actions,
   .page-strip-panel__actions,
-  .editor-stage__header,
   .site-nav,
   .editor-sidebar,
   .editor-sidebar--controls {
@@ -1681,6 +1690,11 @@ button.asset-frame {
   }
 
   .editor-project-bar__actions {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-sidebar--controls .editor-topbar__actions,
+  .editor-sidebar--navigation .page-strip-panel__actions {
     grid-template-columns: 1fr;
   }
 
@@ -1729,10 +1743,6 @@ button.asset-frame {
     padding: 10px;
   }
 
-  .editor-stage h1 {
-    font-size: 2rem;
-  }
-
   .editor-layout,
   .editor-sidebar,
   .editor-sidebar--controls,
@@ -1746,11 +1756,11 @@ button.asset-frame {
   }
 
   .editor-canvas {
-    height: clamp(300px, 58vh, 560px);
+    height: clamp(320px, 62vh, 620px);
   }
 
   .editor-canvas::before {
-    inset: 10px;
+    inset: 6px;
   }
 }
 
