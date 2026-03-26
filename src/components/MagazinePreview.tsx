@@ -107,6 +107,7 @@ export function MagazinePreview({
 }: MagazinePreviewProps) {
   const customTemplate = page.customTemplate;
   const pageClassName = `magazine-page magazine-page--${page.template} magazine-page--theme-${page.theme}`;
+  const showsDeck = page.template !== 'grid' && page.template !== 'triptych';
   const renderSlot = (slot: string, options: { className?: string; hintLabel?: string } = {}) => (
     <AssetFrame
       slot={slot}
@@ -133,9 +134,9 @@ export function MagazinePreview({
         <div className="magazine-cover">
           <div className="magazine-cover__image">{renderSlot('hero')}</div>
           <div className="magazine-cover__copy">
-            <p className="magazine-kicker">{page.deck}</p>
+            {showsDeck && page.deck ? <p className="magazine-kicker">{page.deck}</p> : null}
             <h2>{page.title}</h2>
-            <p>{page.caption}</p>
+            {page.caption ? <p>{page.caption}</p> : null}
           </div>
         </div>
       ) : null}
@@ -146,9 +147,9 @@ export function MagazinePreview({
           <div className="magazine-essay__copy">
             <p className="magazine-kicker">{page.kicker}</p>
             <h2>{page.title}</h2>
-            <p className="magazine-essay__deck">{page.deck}</p>
-            <p className="magazine-essay__body">{page.body}</p>
-            <footer>{page.caption}</footer>
+            {showsDeck && page.deck ? <p className="magazine-essay__deck">{page.deck}</p> : null}
+            {page.body ? <p className="magazine-essay__body">{page.body}</p> : null}
+            {page.caption ? <footer>{page.caption}</footer> : null}
           </div>
         </div>
       ) : null}
@@ -160,10 +161,10 @@ export function MagazinePreview({
               <p className="magazine-kicker">{page.kicker}</p>
               <h2>{page.title}</h2>
             </div>
-            <p>{page.deck}</p>
+            {showsDeck && page.deck ? <p>{page.deck}</p> : null}
           </div>
           <div className="magazine-folio__visual">{renderSlot('hero')}</div>
-          <footer>{page.caption}</footer>
+          {page.caption ? <footer>{page.caption}</footer> : null}
         </div>
       ) : null}
 
@@ -172,7 +173,6 @@ export function MagazinePreview({
           <div className="magazine-grid__copy">
             <p className="magazine-kicker">{page.kicker}</p>
             <h2>{page.title}</h2>
-            <p>{page.deck}</p>
           </div>
           <div className="magazine-grid__frames">
             {renderSlot('a', { hintLabel: 'Frame A' })}
@@ -180,7 +180,7 @@ export function MagazinePreview({
             {renderSlot('c', { hintLabel: 'Frame C' })}
             {renderSlot('d', { hintLabel: 'Frame D' })}
           </div>
-          <footer>{page.caption}</footer>
+          {page.caption ? <footer>{page.caption}</footer> : null}
         </div>
       ) : null}
 
@@ -191,13 +191,13 @@ export function MagazinePreview({
               <p className="magazine-kicker">{page.kicker}</p>
               <h2>{page.title}</h2>
             </div>
-            <p>{page.deck}</p>
+            {showsDeck && page.deck ? <p>{page.deck}</p> : null}
           </div>
           <div className="magazine-diptych__frames">
             {renderSlot('left', { hintLabel: 'Left frame' })}
             {renderSlot('right', { hintLabel: 'Right frame' })}
           </div>
-          <footer>{page.caption}</footer>
+          {page.caption ? <footer>{page.caption}</footer> : null}
         </div>
       ) : null}
 
@@ -208,13 +208,13 @@ export function MagazinePreview({
               <p className="magazine-kicker">{page.kicker}</p>
               <h2>{page.title}</h2>
             </div>
-            <p>{page.deck}</p>
+            {showsDeck && page.deck ? <p>{page.deck}</p> : null}
           </div>
           <div className="magazine-panorama__frames">
             {renderSlot('top', { hintLabel: 'Top frame' })}
             {renderSlot('bottom', { hintLabel: 'Bottom frame' })}
           </div>
-          <footer>{page.caption}</footer>
+          {page.caption ? <footer>{page.caption}</footer> : null}
         </div>
       ) : null}
 
@@ -233,8 +233,8 @@ export function MagazinePreview({
               <h2>{page.title}</h2>
             </div>
             <div className="magazine-mosaic__notes">
-              <p>{page.deck}</p>
-              <footer>{page.caption}</footer>
+              {showsDeck && page.deck ? <p>{page.deck}</p> : null}
+              {page.caption ? <footer>{page.caption}</footer> : null}
             </div>
           </div>
         </div>
@@ -246,9 +246,8 @@ export function MagazinePreview({
             <div>
               <p className="magazine-kicker">{page.kicker}</p>
               <h2>{page.title}</h2>
-              <p className="magazine-triptych__deck">{page.deck}</p>
             </div>
-            <footer>{page.caption}</footer>
+            {page.caption ? <footer>{page.caption}</footer> : null}
           </div>
           <div className="magazine-triptych__frames">
             {renderSlot('a', { hintLabel: 'Frame A' })}

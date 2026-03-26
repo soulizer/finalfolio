@@ -65,6 +65,14 @@ function getInitialSlot(page?: PageData) {
   return page ? (getPageSlotOrder(page)[0] ?? null) : null;
 }
 
+function templateUsesDeck(template: TemplateId) {
+  return template !== 'grid' && template !== 'triptych';
+}
+
+function templateUsesBody(template: TemplateId) {
+  return template === 'essay' || template === 'custom';
+}
+
 function formatSavedAt(timestamp?: string) {
   if (!timestamp) {
     return 'Saved on the server.';
@@ -816,6 +824,10 @@ export function EditorPage() {
   const selectedPageTemplateLabel = getTemplateLabel(selectedPage.template, selectedPage.customTemplate);
   const selectedThemeMeta = pageThemeMeta[selectedPage.theme];
   const assetsLabel = `${placedAssetCount} placed / ${unusedAssetCount} unused`;
+  const selectedPageUsesDeck = templateUsesDeck(selectedPage.template);
+  const selectedPageUsesBody = templateUsesBody(selectedPage.template);
+  const projectModeTag = projectRecord ? 'Server-backed' : 'Local draft';
+  const copyButtonLabel = copyState === 'copied' ? 'Copied' : copyState === 'error' ? 'Copy failed' : 'Copy link';
 
   if (loadState === 'loading') {
     return (
@@ -894,6 +906,36 @@ export function EditorPage() {
                 </button>
               ))}
             </div>
+
+            <div className="editor-page-actions" aria-label="Current page actions">
+              <button type="button" className="button button--ghost button--small editor-page-actions__button" onClick={duplicatePage}>
+                Duplicate
+              </button>
+              <button
+                type="button"
+                className="button button--ghost button--small editor-page-actions__button"
+                disabled={selectedPageIndex <= 0}
+                onClick={() => moveSelectedPage(-1)}
+              >
+                Move earlier
+              </button>
+              <button
+                type="button"
+                className="button button--ghost button--small editor-page-actions__button"
+                disabled={selectedPageIndex >= project.pages.length - 1}
+                onClick={() => moveSelectedPage(1)}
+              >
+                Move later
+              </button>
+              <button
+                type="button"
+                className="button button--ghost button--small editor-page-actions__button editor-page-actions__button--danger"
+                disabled={project.pages.length === 1}
+                onClick={removeSelectedPage}
+              >
+                {project.pages.length === 1 ? 'Last page' : 'Remove page'}
+              </button>
+            </div>
           </section>
 
           <section className="editor-panel">
@@ -904,7 +946,7 @@ export function EditorPage() {
               </div>
               <span className="panel-tag">{templatePacks[defaultTemplatePackId].label} default</span>
             </div>
-            <p className="panel-note">One click can replace the issue sequence or insert a finished pack after the current page. Every inserted page still edits like a normal page afterwards.</p>
+            <p className="panel-note">Replace the full stack or drop a finished pack after the current page without leaving the editor.</p>
             <div className="template-pack-grid">
               {templatePackOrder.map((packId) => {
                 const pack = templatePacks[packId];
@@ -918,55 +960,26 @@ export function EditorPage() {
                     <p className="template-pack-card__sequence">
                       {pack.pages.map((page) => getTemplateLabel(page.template, page.customTemplate)).join(' / ')}
                     </p>
-                    <div className="editor-panel__actions editor-panel__actions--tight">
+                    <div className="template-pack-card__actions">
                       <button
                         type="button"
                         className="button button--primary button--small"
                         onClick={() => applyTemplatePack(packId, 'replace')}
                       >
-                        Replace sequence
+                        Replace issue
                       </button>
                       <button
                         type="button"
                         className="button button--ghost button--small"
                         onClick={() => applyTemplatePack(packId, 'insert')}
                       >
-                        Insert after current
+                        Insert after
                       </button>
                     </div>
                   </article>
                 );
               })}
             </div>
-          </section>
-
-          <section className="editor-panel">
-            <div className="editor-panel__heading">
-              <div>
-                <p className="eyebrow">Page surface</p>
-                <h2>{selectedThemeMeta.label}</h2>
-              </div>
-              <span className="panel-tag">{selectedThemeMeta.summary}</span>
-            </div>
-            <p className="panel-note">Theme changes affect the live preview and printed page background together.</p>
-            <div className="theme-grid" role="group" aria-label="Page theme">
-              {pageThemeOrder.map((themeId) => {
-                const meta = pageThemeMeta[themeId];
-                return (
-                  <button
-                    key={themeId}
-                    type="button"
-                    className={`theme-card ${selectedPage.theme === themeId ? 'is-active' : ''}`}
-                    onClick={() => updateSelectedPage((page) => ({ ...page, theme: themeId }))}
-                  >
-                    <span className={`theme-card__swatch theme-card__swatch--${themeId}`} aria-hidden="true" />
-                    <strong>{meta.label}</strong>
-                    <small>{meta.summary}</small>
-                  </button>
-                );
-              })}
-            </div>
-            <p className="panel-note">{selectedThemeMeta.description}</p>
           </section>
         </aside>
 
@@ -989,7 +1002,7 @@ export function EditorPage() {
         </main>
 
         <aside className="editor-sidebar editor-sidebar--content">
-          <div className="editor-panel">
+          <section className="editor-panel editor-panel--content-work">
             <div className="editor-panel__heading">
               <div>
                 <p className="eyebrow">Page content</p>
@@ -997,255 +1010,288 @@ export function EditorPage() {
               </div>
               <span className="panel-tag">{selectedPagePositionLabel}</span>
             </div>
-            <p className="panel-note">{`${selectedPageTemplateLabel} layout with ${selectedThemeMeta.label} surface.`}</p>
-            <label className="field">
-              <span>Kicker</span>
-              <input
-                maxLength={PAGE_KICKER_LIMIT}
-                value={selectedPage.kicker}
-                onChange={(event) => updateSelectedPage((page) => ({ ...page, kicker: event.target.value }))}
-              />
-            </label>
-            <label className="field">
-              <span>Title</span>
-              <textarea
-                rows={2}
-                maxLength={PAGE_TITLE_LIMIT}
-                value={selectedPage.title}
-                onChange={(event) => updateSelectedPage((page) => ({ ...page, title: event.target.value }))}
-              />
-            </label>
-            <label className="field">
-              <span>Deck</span>
-              <textarea
-                rows={2}
-                maxLength={PAGE_DECK_LIMIT}
-                value={selectedPage.deck}
-                onChange={(event) => updateSelectedPage((page) => ({ ...page, deck: event.target.value }))}
-              />
-            </label>
-            <label className="field">
-              <span>Body</span>
-              <textarea
-                rows={4}
-                maxLength={PAGE_BODY_LIMIT}
-                value={selectedPage.body}
-                onChange={(event) => updateSelectedPage((page) => ({ ...page, body: event.target.value }))}
-              />
-            </label>
-            <label className="field">
-              <span>Caption</span>
-              <textarea
-                rows={2}
-                maxLength={PAGE_CAPTION_LIMIT}
-                value={selectedPage.caption}
-                onChange={(event) => updateSelectedPage((page) => ({ ...page, caption: event.target.value }))}
-              />
-            </label>
-          </div>
+            <p className="panel-note">{`${selectedPageTemplateLabel} layout on ${selectedThemeMeta.label} paper. Copy, frame edits, and photos stay together in this rail.`}</p>
 
-          <div className="editor-panel">
-            <div className="editor-panel__heading">
-              <div>
-                <p className="eyebrow">Selected frame</p>
-                <h2>{selectedFrameLabel ?? 'None'}</h2>
+            <section className="editor-panel__section">
+              <div className="editor-section-heading">
+                <div>
+                  <p className="eyebrow">Copy</p>
+                  <h3>Editorial text</h3>
+                </div>
               </div>
-              {selectedAsset ? <span className="panel-tag">{currentCrop?.fit === 'contain' ? 'Keep full image' : 'Fill frame'}</span> : null}
-            </div>
-            <p className="selected-frame-status">
-              {selectedAsset ? `Assigned image: ${selectedAsset.name}` : 'No image assigned to this frame yet.'}
-            </p>
-            <p className="panel-note">Template geometry stays fixed. Fit and crop only affect image placement inside the slot.</p>
-            {selectedAssetPlacements.length ? (
-              <div className="placement-list" aria-label="Asset placements">
-                {selectedAssetPlacements.map((placement) => {
-                  const isCurrentPlacement = placement.pageId === selectedPage.id && placement.slot === selectedSlot;
-                  const slotLabel = placement.slot.toUpperCase();
-                  return (
-                    <button
-                      key={`${placement.pageId}-${placement.slot}`}
-                      type="button"
-                      className={`placement-chip ${isCurrentPlacement ? 'is-active' : ''}`}
-                      title={`${placement.pageTitle} · ${slotLabel}`}
-                      onClick={() => focusAssetPlacement(placement)}
-                    >
-                      {`Page ${placement.pageIndex + 1} · ${slotLabel}`}
+              <label className="field">
+                <span>Kicker</span>
+                <input
+                  maxLength={PAGE_KICKER_LIMIT}
+                  value={selectedPage.kicker}
+                  onChange={(event) => updateSelectedPage((page) => ({ ...page, kicker: event.target.value }))}
+                />
+              </label>
+              <label className="field">
+                <span>Title</span>
+                <textarea
+                  rows={2}
+                  maxLength={PAGE_TITLE_LIMIT}
+                  value={selectedPage.title}
+                  onChange={(event) => updateSelectedPage((page) => ({ ...page, title: event.target.value }))}
+                />
+              </label>
+              {selectedPageUsesDeck ? (
+                <label className="field">
+                  <span>Deck</span>
+                  <textarea
+                    rows={2}
+                    maxLength={PAGE_DECK_LIMIT}
+                    value={selectedPage.deck}
+                    onChange={(event) => updateSelectedPage((page) => ({ ...page, deck: event.target.value }))}
+                  />
+                </label>
+              ) : null}
+              {selectedPageUsesBody ? (
+                <label className="field">
+                  <span>Body</span>
+                  <textarea
+                    rows={4}
+                    maxLength={PAGE_BODY_LIMIT}
+                    value={selectedPage.body}
+                    onChange={(event) => updateSelectedPage((page) => ({ ...page, body: event.target.value }))}
+                  />
+                </label>
+              ) : null}
+              <label className="field">
+                <span>Caption</span>
+                <textarea
+                  rows={2}
+                  maxLength={PAGE_CAPTION_LIMIT}
+                  value={selectedPage.caption}
+                  onChange={(event) => updateSelectedPage((page) => ({ ...page, caption: event.target.value }))}
+                />
+              </label>
+              {!selectedPageUsesDeck ? (
+                <p className="panel-note">Deck copy is suppressed on Grid and Triptych pages so the title rail has room to breathe.</p>
+              ) : null}
+            </section>
+
+            <section className="editor-panel__section">
+              <div className="editor-section-heading">
+                <div>
+                  <p className="eyebrow">Selected frame</p>
+                  <h3>{selectedFrameLabel ?? 'No frame selected'}</h3>
+                </div>
+                {selectedAsset ? <span className="panel-tag">{currentCrop?.fit === 'contain' ? 'Keep full image' : 'Fill frame'}</span> : null}
+              </div>
+              <p className="selected-frame-status">
+                {selectedAsset ? `Assigned image: ${selectedAsset.name}` : 'No image assigned to this frame yet.'}
+              </p>
+              <p className="panel-note">Template geometry stays fixed. Fit and crop only affect image placement inside the slot.</p>
+              {selectedAssetPlacements.length ? (
+                <div className="placement-list" aria-label="Asset placements">
+                  {selectedAssetPlacements.map((placement) => {
+                    const isCurrentPlacement = placement.pageId === selectedPage.id && placement.slot === selectedSlot;
+                    const slotLabel = placement.slot.toUpperCase();
+                    return (
+                      <button
+                        key={`${placement.pageId}-${placement.slot}`}
+                        type="button"
+                        className={`placement-chip ${isCurrentPlacement ? 'is-active' : ''}`}
+                        title={`${placement.pageTitle} · ${slotLabel}`}
+                        onClick={() => focusAssetPlacement(placement)}
+                      >
+                        {`Page ${placement.pageIndex + 1} · ${slotLabel}`}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+              {selectedSlot && currentCrop && selectedAsset ? (
+                <>
+                  <div className="editor-panel__actions editor-panel__actions--tight">
+                    <button type="button" className="button button--ghost button--small" onClick={clearSelectedSlot}>
+                      Clear image
                     </button>
-                  );
-                })}
-              </div>
-            ) : null}
-            {selectedSlot && currentCrop && selectedAsset ? (
-              <>
-                <div className="editor-panel__actions editor-panel__actions--tight">
-                  <button type="button" className="button button--ghost button--small" onClick={clearSelectedSlot}>
-                    Clear image
-                  </button>
-                  <button
-                    type="button"
-                    className="button button--ghost button--small"
-                    onClick={() => clearAssetPlacements(selectedAsset.id)}
-                  >
-                    Clear from all pages
-                  </button>
-                  <button
-                    type="button"
-                    className="button button--ghost button--small"
-                    onClick={() =>
-                      updateSelectedCrop((crop) => ({
-                        ...crop,
-                        x: 50,
-                        y: 50,
-                      }))
-                    }
-                  >
-                    Recenter
-                  </button>
-                  <button
-                    type="button"
-                    className="button button--ghost button--small"
-                    onClick={() =>
-                      updateSelectedCrop((crop) =>
-                        createDefaultCrop({
-                          fit: crop.fit,
-                        }),
-                      )
-                    }
-                  >
-                    Reset crop
-                  </button>
-                </div>
-                <div className="segmented-control" role="group" aria-label="Frame fit">
-                  <button
-                    type="button"
-                    className={currentCrop.fit === 'cover' ? 'is-active' : ''}
-                    onClick={() =>
-                      updateSelectedCrop((crop) => ({
-                        ...crop,
-                        fit: 'cover',
-                      }))
-                    }
-                  >
-                    Fill frame
-                  </button>
-                  <button
-                    type="button"
-                    className={currentCrop.fit === 'contain' ? 'is-active' : ''}
-                    onClick={() =>
-                      updateSelectedCrop((crop) => ({
-                        ...crop,
-                        fit: 'contain',
-                      }))
-                    }
-                  >
-                    Keep full image
-                  </button>
-                </div>
-                <label className="field field--range">
-                  <span>{`Horizontal crop ${Math.round(currentCrop.x)}%`}</span>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={currentCrop.x}
-                    onChange={(event) =>
-                      updateSelectedCrop((crop) => ({
-                        ...crop,
-                        x: Number(event.target.value),
-                      }))
-                    }
-                  />
-                </label>
-                <label className="field field--range">
-                  <span>{`Vertical crop ${Math.round(currentCrop.y)}%`}</span>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={currentCrop.y}
-                    onChange={(event) =>
-                      updateSelectedCrop((crop) => ({
-                        ...crop,
-                        y: Number(event.target.value),
-                      }))
-                    }
-                  />
-                </label>
-                <label className="field field--range">
-                  <span>{`Scale ${currentCrop.scale.toFixed(2)}x`}</span>
-                  <input
-                    type="range"
-                    min="1"
-                    max="2.2"
-                    step="0.01"
-                    value={currentCrop.scale}
-                    onChange={(event) =>
-                      updateSelectedCrop((crop) => ({
-                        ...crop,
-                        scale: Number(event.target.value),
-                      }))
-                    }
-                  />
-                </label>
-              </>
-            ) : (
-              <p className="panel-note">Select a frame, then click or drag an uploaded image onto it to unlock fit and crop controls.</p>
-            )}
-          </div>
+                    <button
+                      type="button"
+                      className="button button--ghost button--small"
+                      onClick={() => clearAssetPlacements(selectedAsset.id)}
+                    >
+                      Clear from all pages
+                    </button>
+                    <button
+                      type="button"
+                      className="button button--ghost button--small"
+                      onClick={() =>
+                        updateSelectedCrop((crop) => ({
+                          ...crop,
+                          x: 50,
+                          y: 50,
+                        }))
+                      }
+                    >
+                      Recenter
+                    </button>
+                    <button
+                      type="button"
+                      className="button button--ghost button--small"
+                      onClick={() =>
+                        updateSelectedCrop((crop) =>
+                          createDefaultCrop({
+                            fit: crop.fit,
+                          }),
+                        )
+                      }
+                    >
+                      Reset crop
+                    </button>
+                  </div>
+                  <div className="segmented-control" role="group" aria-label="Frame fit">
+                    <button
+                      type="button"
+                      className={currentCrop.fit === 'cover' ? 'is-active' : ''}
+                      onClick={() =>
+                        updateSelectedCrop((crop) => ({
+                          ...crop,
+                          fit: 'cover',
+                        }))
+                      }
+                    >
+                      Fill frame
+                    </button>
+                    <button
+                      type="button"
+                      className={currentCrop.fit === 'contain' ? 'is-active' : ''}
+                      onClick={() =>
+                        updateSelectedCrop((crop) => ({
+                          ...crop,
+                          fit: 'contain',
+                        }))
+                      }
+                    >
+                      Keep full image
+                    </button>
+                  </div>
+                  <label className="field field--range">
+                    <span>{`Horizontal crop ${Math.round(currentCrop.x)}%`}</span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={currentCrop.x}
+                      onChange={(event) =>
+                        updateSelectedCrop((crop) => ({
+                          ...crop,
+                          x: Number(event.target.value),
+                        }))
+                      }
+                    />
+                  </label>
+                  <label className="field field--range">
+                    <span>{`Vertical crop ${Math.round(currentCrop.y)}%`}</span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={currentCrop.y}
+                      onChange={(event) =>
+                        updateSelectedCrop((crop) => ({
+                          ...crop,
+                          y: Number(event.target.value),
+                        }))
+                      }
+                    />
+                  </label>
+                  <label className="field field--range">
+                    <span>{`Scale ${currentCrop.scale.toFixed(2)}x`}</span>
+                    <input
+                      type="range"
+                      min="1"
+                      max="2.2"
+                      step="0.01"
+                      value={currentCrop.scale}
+                      onChange={(event) =>
+                        updateSelectedCrop((crop) => ({
+                          ...crop,
+                          scale: Number(event.target.value),
+                        }))
+                      }
+                    />
+                  </label>
+                </>
+              ) : (
+                <p className="panel-note">Select a frame, then click or drag an uploaded image onto it to unlock fit and crop controls.</p>
+              )}
+            </section>
 
-          <div className="editor-panel">
-            <div className="editor-panel__heading">
-              <div>
-                <p className="eyebrow">Issue copy</p>
-                <h2>{project.issue}</h2>
+            <section className="editor-panel__section">
+              <div className="editor-section-heading">
+                <div>
+                  <p className="eyebrow">Photos</p>
+                  <h3>Asset library</h3>
+                </div>
+                <span className="panel-tag">{assetsLabel}</span>
               </div>
-              <span className="panel-tag">{sequenceLabel}</span>
-            </div>
-            <label className="field">
-              <span>Title</span>
-              <input
-                maxLength={PROJECT_TITLE_LIMIT}
-                value={project.title}
-                onChange={(event) => updateProject((current) => ({ ...current, title: event.target.value }))}
-              />
-            </label>
-            <label className="field">
-              <span>Subtitle</span>
-              <textarea
-                rows={2}
-                maxLength={PROJECT_SUBTITLE_LIMIT}
-                value={project.subtitle}
-                onChange={(event) => updateProject((current) => ({ ...current, subtitle: event.target.value }))}
-              />
-            </label>
-            <label className="field">
-              <span>Issue mark</span>
-              <input
-                maxLength={PROJECT_ISSUE_LIMIT}
-                value={project.issue}
-                onChange={(event) => updateProject((current) => ({ ...current, issue: event.target.value }))}
-              />
-            </label>
-          </div>
+              <div className="editor-panel__actions editor-panel__actions--tight">
+                <label className="upload-button">
+                  {uploadState === 'uploading' ? 'Uploading…' : 'Upload'}
+                  <input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" multiple onChange={handleUpload} />
+                </label>
+                <button
+                  type="button"
+                  className="button button--ghost button--small"
+                  disabled={unusedAssetCount === 0}
+                  onClick={removeUnusedAssetsFromIssue}
+                >
+                  {unusedAssetCount === 0 ? 'No unused uploads' : `Remove ${unusedAssetCount} unused`}
+                </button>
+              </div>
+              <p className="panel-note">{UPLOAD_HELP_TEXT}</p>
+              <div className="asset-rail">
+                {project.assets.length ? (
+                  project.assets.map((asset) => {
+                    const placements = assetUsageCounts[asset.id] ?? 0;
+                    return (
+                      <button
+                        key={asset.id}
+                        type="button"
+                        className="asset-tile"
+                        draggable
+                        onDragStart={(event) => event.dataTransfer.setData('text/crazyalbum-asset', asset.id)}
+                        onClick={() => {
+                          if (selectedSlot) {
+                            assignAsset(selectedSlot, asset.id);
+                          }
+                        }}
+                      >
+                        <img alt={asset.name} src={asset.src} />
+                        <div className="asset-tile__copy">
+                          <strong>{asset.name}</strong>
+                          <span>{placements ? `${placements} placement${placements === 1 ? '' : 's'}` : 'Not placed yet'}</span>
+                          <small>{asset.note}</small>
+                        </div>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="asset-rail__empty">
+                    <strong>No photos yet.</strong>
+                    <p>Upload a set of images, then click or drag them onto the selected frame.</p>
+                  </div>
+                )}
+              </div>
+            </section>
+          </section>
         </aside>
 
         <aside className="editor-sidebar editor-sidebar--operations">
           <section className="editor-panel editor-panel--project-actions">
             <div className="editor-panel__heading">
               <div>
-                <p className="eyebrow">Project actions</p>
-                <h2>{projectRecord ? 'Stable editor URL' : 'Draft on this device'}</h2>
+                <p className="eyebrow">Project</p>
+                <h2>{project.issue}</h2>
               </div>
-              <span className="panel-tag">{selectedPagePositionLabel}</span>
+              <span className="panel-tag">{projectModeTag}</span>
             </div>
             <p className="panel-note">{statusText}</p>
             <div className="editor-panel__actions editor-panel__actions--tight">
-              <button type="button" className="button button--ghost button--small" onClick={startNewDraft}>
-                New draft
-              </button>
-              <button type="button" className="button button--primary button--small" onClick={() => window.print()}>
-                Print / PDF
-              </button>
               <button
                 type="button"
                 className="button button--primary button--small"
@@ -1254,290 +1300,318 @@ export function EditorPage() {
               >
                 {saveState === 'saving' ? 'Saving…' : projectRecord ? 'Save issue' : 'Create stable URL'}
               </button>
+              <button type="button" className="button button--ghost button--small" onClick={() => window.print()}>
+                Print / PDF
+              </button>
+              <button type="button" className="button button--ghost button--small" onClick={startNewDraft}>
+                New draft
+              </button>
+            </div>
+            <div className="editor-project-url">
+              <input
+                aria-label="Project URL"
+                className="editor-project-bar__input"
+                readOnly
+                value={projectRecord ? shareUrl : 'Create a stable editor URL to save this issue on the server.'}
+              />
               <button
                 type="button"
-                className="button button--ghost button--small"
+                className={`editor-icon-button ${copyState === 'copied' ? 'is-active' : ''} ${copyState === 'error' ? 'is-error' : ''}`.trim()}
                 disabled={!projectRecord}
                 onClick={() => void handleCopyLink()}
+                aria-label={copyButtonLabel}
+                title={copyButtonLabel}
               >
-                {copyState === 'copied' ? 'Copied' : copyState === 'error' ? 'Copy failed' : 'Copy link'}
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                  <rect x="5" y="3" width="8" height="10" rx="1.5" />
+                  <path d="M3.5 11V5.5C3.5 4.67 4.17 4 5 4" />
+                </svg>
               </button>
             </div>
-            <input
-              aria-label="Project URL"
-              className="editor-project-bar__input"
-              readOnly
-              value={projectRecord ? shareUrl : 'Create a stable editor URL to save this issue on the server.'}
-            />
+
+            <section className="editor-panel__section">
+              <div className="editor-section-heading">
+                <div>
+                  <p className="eyebrow">Issue details</p>
+                  <h3>Project copy</h3>
+                </div>
+              </div>
+              <label className="field">
+                <span>Title</span>
+                <input
+                  maxLength={PROJECT_TITLE_LIMIT}
+                  value={project.title}
+                  onChange={(event) => updateProject((current) => ({ ...current, title: event.target.value }))}
+                />
+              </label>
+              <label className="field">
+                <span>Subtitle</span>
+                <textarea
+                  rows={2}
+                  maxLength={PROJECT_SUBTITLE_LIMIT}
+                  value={project.subtitle}
+                  onChange={(event) => updateProject((current) => ({ ...current, subtitle: event.target.value }))}
+                />
+              </label>
+              <label className="field">
+                <span>Issue mark</span>
+                <input
+                  maxLength={PROJECT_ISSUE_LIMIT}
+                  value={project.issue}
+                  onChange={(event) => updateProject((current) => ({ ...current, issue: event.target.value }))}
+                />
+              </label>
+            </section>
           </section>
 
-          <div className="editor-panel">
+          <section className="editor-panel editor-panel--layout">
             <div className="editor-panel__heading">
               <div>
-                <p className="eyebrow">Assets</p>
-                <h2>Photos</h2>
-              </div>
-              <span className="panel-tag">{assetsLabel}</span>
-            </div>
-            <div className="editor-panel__actions editor-panel__actions--tight">
-              <label className="upload-button">
-                {uploadState === 'uploading' ? 'Uploading…' : 'Upload'}
-                <input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" multiple onChange={handleUpload} />
-              </label>
-              <button
-                type="button"
-                className="button button--ghost button--small"
-                disabled={unusedAssetCount === 0}
-                onClick={removeUnusedAssetsFromIssue}
-              >
-                {unusedAssetCount === 0 ? 'No unused uploads' : `Remove ${unusedAssetCount} unused`}
-              </button>
-            </div>
-            <p className="panel-note">{UPLOAD_HELP_TEXT}</p>
-            <div className="asset-rail">
-              {project.assets.length ? (
-                project.assets.map((asset) => {
-                  const placements = assetUsageCounts[asset.id] ?? 0;
-                  return (
-                    <button
-                      key={asset.id}
-                      type="button"
-                      className="asset-tile"
-                      draggable
-                      onDragStart={(event) => event.dataTransfer.setData('text/crazyalbum-asset', asset.id)}
-                      onClick={() => {
-                        if (selectedSlot) {
-                          assignAsset(selectedSlot, asset.id);
-                        }
-                      }}
-                    >
-                      <img alt={asset.name} src={asset.src} />
-                      <div className="asset-tile__copy">
-                        <strong>{asset.name}</strong>
-                        <span>{placements ? `${placements} placement${placements === 1 ? '' : 's'}` : 'Not placed yet'}</span>
-                        <small>{asset.note}</small>
-                      </div>
-                    </button>
-                  );
-                })
-              ) : (
-                <div className="asset-rail__empty">
-                  <strong>No photos yet.</strong>
-                  <p>Upload a set of images, then click or drag them onto the selected frame.</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="editor-panel">
-            <div className="editor-panel__heading">
-              <div>
-                <p className="eyebrow">Templates</p>
+                <p className="eyebrow">Page layout</p>
                 <h2>{selectedTemplateLabel}</h2>
               </div>
-              <span className="panel-tag">{selectedTemplateMeta.summary}</span>
+              <span className="panel-tag">{selectedThemeMeta.label}</span>
             </div>
-            <p className="panel-note">{selectedTemplateMeta.description}</p>
-            <div className="template-grid">
-              {templateOrder.map((templateId) => {
-                const meta = templateMeta[templateId];
-                return (
-                  <button
-                    key={templateId}
-                    type="button"
-                    className={`template-card ${templateChoice === templateId ? 'is-active' : ''}`}
-                    onClick={() => setTemplateChoice(templateId)}
-                  >
-                    <span>{meta.label}</span>
-                    <strong>{meta.summary}</strong>
-                    <small>{meta.slots.length} image slot{meta.slots.length === 1 ? '' : 's'}</small>
-                  </button>
-                );
-              })}
-            </div>
-            {templateChoice === 'custom' ? (
-              <div className="custom-layout-builder">
-                <div className="editor-panel__heading">
-                  <div>
-                    <p className="eyebrow">Custom layout</p>
-                    <h2>{customTemplateDraft.name}</h2>
-                  </div>
-                  <span className="panel-tag">{`${customTemplateDraft.frames.length} frame${
-                    customTemplateDraft.frames.length === 1 ? '' : 's'
-                  }`}</span>
+            <p className="panel-note">Tone and template controls live together so page-level layout decisions stay in one place.</p>
+
+            <section className="editor-panel__section">
+              <div className="editor-section-heading">
+                <div>
+                  <p className="eyebrow">Tone</p>
+                  <h3>Surface</h3>
                 </div>
-                <p className="panel-note">Start from a scaffold, then edit the text box and frame coordinates. The selected page remains editable after the custom layout is applied.</p>
-                <div className="template-grid template-grid--compact">
-                  {customLayoutPresets.map((preset) => (
+                <span className="panel-tag">{selectedThemeMeta.summary}</span>
+              </div>
+              <div className="theme-grid" role="group" aria-label="Page theme">
+                {pageThemeOrder.map((themeId) => {
+                  const meta = pageThemeMeta[themeId];
+                  return (
                     <button
-                      key={preset.id}
+                      key={themeId}
                       type="button"
-                      className={`template-card ${customTemplateDraft.name === preset.template.name ? 'is-active' : ''}`}
-                      onClick={() => loadCustomLayoutPreset(preset.id)}
+                      className={`theme-card ${selectedPage.theme === themeId ? 'is-active' : ''}`}
+                      onClick={() => updateSelectedPage((page) => ({ ...page, theme: themeId }))}
                     >
-                      <span>{preset.label}</span>
-                      <strong>{preset.template.name}</strong>
-                      <small>{preset.summary}</small>
+                      <span className={`theme-card__swatch theme-card__swatch--${themeId}`} aria-hidden="true" />
+                      <strong>{meta.label}</strong>
+                      <small>{meta.summary}</small>
                     </button>
-                  ))}
+                  );
+                })}
+              </div>
+              <p className="panel-note">{selectedThemeMeta.description}</p>
+            </section>
+
+            <section className="editor-panel__section">
+              <div className="editor-section-heading">
+                <div>
+                  <p className="eyebrow">Template</p>
+                  <h3>{selectedTemplateLabel}</h3>
                 </div>
-                <label className="field">
-                  <span>Layout name</span>
-                  <input
-                    maxLength={CUSTOM_TEMPLATE_NAME_LIMIT}
-                    value={customTemplateDraft.name}
-                    onChange={(event) =>
-                      updateCustomTemplateDraft((current) => ({
-                        ...current,
-                        name: event.target.value,
-                      }))
-                    }
-                  />
-                </label>
-                <div className="custom-layout-section">
+                <span className="panel-tag">{selectedTemplateMeta.summary}</span>
+              </div>
+              <p className="panel-note">{selectedTemplateMeta.description}</p>
+              <div className="template-grid">
+                {templateOrder.map((templateId) => {
+                  const meta = templateMeta[templateId];
+                  return (
+                    <button
+                      key={templateId}
+                      type="button"
+                      className={`template-card ${templateChoice === templateId ? 'is-active' : ''}`}
+                      onClick={() => setTemplateChoice(templateId)}
+                    >
+                      <span>{meta.label}</span>
+                      <strong>{meta.summary}</strong>
+                      <small>{meta.slots.length} image slot{meta.slots.length === 1 ? '' : 's'}</small>
+                    </button>
+                  );
+                })}
+              </div>
+              {templateChoice === 'custom' ? (
+                <div className="custom-layout-builder">
                   <div className="editor-panel__heading">
                     <div>
-                      <p className="eyebrow">Text area</p>
-                      <h2>Copy block</h2>
+                      <p className="eyebrow">Custom layout</p>
+                      <h2>{customTemplateDraft.name}</h2>
+                    </div>
+                    <span className="panel-tag">{`${customTemplateDraft.frames.length} frame${
+                      customTemplateDraft.frames.length === 1 ? '' : 's'
+                    }`}</span>
+                  </div>
+                  <p className="panel-note">Start from a scaffold, then edit the text box and frame coordinates. The selected page remains editable after the custom layout is applied.</p>
+                  <div className="template-grid template-grid--compact">
+                    {customLayoutPresets.map((preset) => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        className={`template-card ${customTemplateDraft.name === preset.template.name ? 'is-active' : ''}`}
+                        onClick={() => loadCustomLayoutPreset(preset.id)}
+                      >
+                        <span>{preset.label}</span>
+                        <strong>{preset.template.name}</strong>
+                        <small>{preset.summary}</small>
+                      </button>
+                    ))}
+                  </div>
+                  <label className="field">
+                    <span>Layout name</span>
+                    <input
+                      maxLength={CUSTOM_TEMPLATE_NAME_LIMIT}
+                      value={customTemplateDraft.name}
+                      onChange={(event) =>
+                        updateCustomTemplateDraft((current) => ({
+                          ...current,
+                          name: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                  <div className="custom-layout-section">
+                    <div className="editor-panel__heading">
+                      <div>
+                        <p className="eyebrow">Text area</p>
+                        <h2>Copy block</h2>
+                      </div>
+                    </div>
+                    <div className="custom-layout-grid">
+                      {customAreaFields.map((field) => (
+                        <label className="field" key={`text-${field.key}`}>
+                          <span>{field.label}</span>
+                          <input
+                            type="number"
+                            min={field.min}
+                            max={field.max}
+                            step="1"
+                            value={Math.round(customTemplateDraft.text[field.key])}
+                            onChange={(event) =>
+                              updateCustomTemplateDraft((current) => ({
+                                ...current,
+                                text: updateCustomArea(current.text, field.key, Number(event.target.value)),
+                              }))
+                            }
+                          />
+                        </label>
+                      ))}
                     </div>
                   </div>
-                  <div className="custom-layout-grid">
-                    {customAreaFields.map((field) => (
-                      <label className="field" key={`text-${field.key}`}>
-                        <span>{field.label}</span>
-                        <input
-                          type="number"
-                          min={field.min}
-                          max={field.max}
-                          step="1"
-                          value={Math.round(customTemplateDraft.text[field.key])}
-                          onChange={(event) =>
-                            updateCustomTemplateDraft((current) => ({
-                              ...current,
-                              text: updateCustomArea(current.text, field.key, Number(event.target.value)),
-                            }))
-                          }
-                        />
-                      </label>
+                  <div className="editor-panel__actions editor-panel__actions--tight">
+                    <button
+                      type="button"
+                      className="button button--ghost button--small"
+                      onClick={() => loadCustomLayoutPreset(defaultCustomLayoutPresetId)}
+                    >
+                      Reset to default scaffold
+                    </button>
+                    <button
+                      type="button"
+                      className="button button--ghost button--small"
+                      disabled={customTemplateDraft.frames.length >= CUSTOM_TEMPLATE_FRAME_LIMIT}
+                      onClick={addCustomFrame}
+                    >
+                      {customTemplateDraft.frames.length >= CUSTOM_TEMPLATE_FRAME_LIMIT ? 'Frame limit reached' : 'Add frame'}
+                    </button>
+                  </div>
+                  <div className="custom-frame-list">
+                    {customTemplateDraft.frames.map((frame, frameIndex) => (
+                      <section key={frame.slot} className="custom-frame-card">
+                        <div className="editor-panel__heading">
+                          <div>
+                            <p className="eyebrow">Frame {frameIndex + 1}</p>
+                            <h2>{frame.label}</h2>
+                          </div>
+                          <span className="panel-tag">{frame.slot.toUpperCase()}</span>
+                        </div>
+                        <label className="field">
+                          <span>Label</span>
+                          <input
+                            maxLength={CUSTOM_TEMPLATE_FRAME_LABEL_LIMIT}
+                            value={frame.label}
+                            onChange={(event) =>
+                              updateCustomTemplateDraft((current) => ({
+                                ...current,
+                                frames: current.frames.map((entry) =>
+                                  entry.slot === frame.slot
+                                    ? {
+                                        ...entry,
+                                        label: event.target.value,
+                                      }
+                                    : entry,
+                                ),
+                              }))
+                            }
+                          />
+                        </label>
+                        <div className="custom-layout-grid">
+                          {customAreaFields.map((field) => (
+                            <label className="field" key={`${frame.slot}-${field.key}`}>
+                              <span>{field.label}</span>
+                              <input
+                                type="number"
+                                min={field.min}
+                                max={field.max}
+                                step="1"
+                                value={Math.round(frame[field.key])}
+                                onChange={(event) =>
+                                  updateCustomTemplateDraft((current) => ({
+                                    ...current,
+                                    frames: current.frames.map((entry) =>
+                                      entry.slot === frame.slot
+                                        ? updateCustomFrameArea(entry, field.key, Number(event.target.value))
+                                        : entry,
+                                    ),
+                                  }))
+                                }
+                              />
+                            </label>
+                          ))}
+                        </div>
+                        <div className="editor-panel__actions editor-panel__actions--tight">
+                          <button
+                            type="button"
+                            className="button button--ghost button--small"
+                            disabled={customTemplateDraft.frames.length === 1}
+                            onClick={() => removeCustomFrame(frame.slot)}
+                          >
+                            {customTemplateDraft.frames.length === 1 ? 'At least one frame required' : 'Remove frame'}
+                          </button>
+                          <button
+                            type="button"
+                            className="button button--ghost button--small"
+                            onClick={() => setSelectedSlot(frame.slot)}
+                          >
+                            Focus this frame
+                          </button>
+                        </div>
+                      </section>
                     ))}
                   </div>
                 </div>
-                <div className="editor-panel__actions editor-panel__actions--tight">
-                  <button
-                    type="button"
-                    className="button button--ghost button--small"
-                    onClick={() => loadCustomLayoutPreset(defaultCustomLayoutPresetId)}
-                  >
-                    Reset to default scaffold
-                  </button>
-                  <button
-                    type="button"
-                    className="button button--ghost button--small"
-                    disabled={customTemplateDraft.frames.length >= CUSTOM_TEMPLATE_FRAME_LIMIT}
-                    onClick={addCustomFrame}
-                  >
-                    {customTemplateDraft.frames.length >= CUSTOM_TEMPLATE_FRAME_LIMIT ? 'Frame limit reached' : 'Add frame'}
-                  </button>
-                </div>
-                <div className="custom-frame-list">
-                  {customTemplateDraft.frames.map((frame, frameIndex) => (
-                    <section key={frame.slot} className="custom-frame-card">
-                      <div className="editor-panel__heading">
-                        <div>
-                          <p className="eyebrow">Frame {frameIndex + 1}</p>
-                          <h2>{frame.label}</h2>
-                        </div>
-                        <span className="panel-tag">{frame.slot.toUpperCase()}</span>
-                      </div>
-                      <label className="field">
-                        <span>Label</span>
-                        <input
-                          maxLength={CUSTOM_TEMPLATE_FRAME_LABEL_LIMIT}
-                          value={frame.label}
-                          onChange={(event) =>
-                            updateCustomTemplateDraft((current) => ({
-                              ...current,
-                              frames: current.frames.map((entry) =>
-                                entry.slot === frame.slot
-                                  ? {
-                                      ...entry,
-                                      label: event.target.value,
-                                    }
-                                  : entry,
-                              ),
-                            }))
-                          }
-                        />
-                      </label>
-                      <div className="custom-layout-grid">
-                        {customAreaFields.map((field) => (
-                          <label className="field" key={`${frame.slot}-${field.key}`}>
-                            <span>{field.label}</span>
-                            <input
-                              type="number"
-                              min={field.min}
-                              max={field.max}
-                              step="1"
-                              value={Math.round(frame[field.key])}
-                              onChange={(event) =>
-                                updateCustomTemplateDraft((current) => ({
-                                  ...current,
-                                  frames: current.frames.map((entry) =>
-                                    entry.slot === frame.slot
-                                      ? updateCustomFrameArea(entry, field.key, Number(event.target.value))
-                                      : entry,
-                                  ),
-                                }))
-                              }
-                            />
-                          </label>
-                        ))}
-                      </div>
-                      <div className="editor-panel__actions editor-panel__actions--tight">
-                        <button
-                          type="button"
-                          className="button button--ghost button--small"
-                          disabled={customTemplateDraft.frames.length === 1}
-                          onClick={() => removeCustomFrame(frame.slot)}
-                        >
-                          {customTemplateDraft.frames.length === 1 ? 'At least one frame required' : 'Remove frame'}
-                        </button>
-                        <button
-                          type="button"
-                          className="button button--ghost button--small"
-                          onClick={() => setSelectedSlot(frame.slot)}
-                        >
-                          Focus this frame
-                        </button>
-                      </div>
-                    </section>
-                  ))}
-                </div>
+              ) : null}
+              <div className="editor-panel__actions">
+                <button
+                  type="button"
+                  className="button button--ghost button--small"
+                  onClick={() => addPage()}
+                >
+                  Add selected layout
+                </button>
+                <button
+                  type="button"
+                  className="button button--primary button--small"
+                  disabled={templateChoice === selectedPage.template && templateChoice !== 'custom'}
+                  onClick={applyTemplateChoice}
+                >
+                  {templateChoice === selectedPage.template && templateChoice !== 'custom' ? 'Current preset' : 'Apply to page'}
+                </button>
               </div>
-            ) : null}
-            <div className="editor-panel__actions">
-              <button
-                type="button"
-                className="button button--ghost button--small"
-                onClick={() => addPage()}
-              >
-                Add selected layout
-              </button>
-              <button
-                type="button"
-                className="button button--primary button--small"
-                disabled={templateChoice === selectedPage.template && templateChoice !== 'custom'}
-                onClick={applyTemplateChoice}
-              >
-                {templateChoice === selectedPage.template && templateChoice !== 'custom' ? 'Current preset' : 'Apply to page'}
-              </button>
-            </div>
-            <p className="panel-note">
-              {templateChoice === 'custom'
-                ? 'Applying the custom layout preserves matching frame names first, then carries remaining placed images into the open frames.'
-                : 'Applying a preset preserves matching slots first, then carries remaining placed images in order.'}
-            </p>
-          </div>
+              <p className="panel-note">
+                {templateChoice === 'custom'
+                  ? 'Applying the custom layout preserves matching frame names first, then carries remaining placed images into the open frames.'
+                  : 'Applying a preset preserves matching slots first, then carries remaining placed images in order.'}
+              </p>
+            </section>
+          </section>
 
         </aside>
       </div>

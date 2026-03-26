@@ -1,5 +1,25 @@
 # CrazyAlbum Devlog
 
+## 2026-03-26 Editor UX Cleanup Pass
+
+### What changed
+
+- Kept the accepted four-column editor shell and the center live page stage at the same `1 / 2 / 1 / 1` desktop balance. The preview still stands alone with no helper/meta block reintroduced above the live page.
+- Reworked the right-side information architecture into two clearer groups: `Page content` now keeps page copy, selected-frame crop controls, and the photo library together; `Page layout` now keeps page surface themes and template selection together so tone/layout choices stay in one place.
+- Folded project actions and issue-level copy into a tighter single project panel. The old oversized CTA behavior is gone, the save/create-stable-URL action now uses the same compact button density as the rest of the editor, and the standalone `Copy link` button was replaced with a compact copy icon attached to the project URL field.
+- Added compact page-order actions back into the sequence rail so duplicate / move / remove operations stay adjacent to the page stack instead of hiding behind disconnected controls.
+- Tightened starter-pack cards so the action buttons stay on one row with shorter labels and less vertical waste.
+- Simplified page copy controls so only fields rendered by the active template stay visible. `Grid` and `Triptych` now suppress deck copy in the preview and editor, which gives the title rail cleaner spacing instead of crowding deck text against the headline.
+- Updated source assertions in `validate:mvp` to lock in the new grouped panel structure, compact project URL copy affordance, and deck-suppression behavior.
+
+### Validation
+
+- `npm run validate:mvp`
+
+### Remaining limits
+
+- This sandbox still cannot capture a rendered browser session, so final visual sign-off still depends on one manual browser pass for panel balance, starter-pack density, and the revised Grid/Triptych typography.
+
 ## 2026-03-26 Editor IA Cleanup Pass
 
 ### What changed
