@@ -28,6 +28,8 @@ export const defaultTextLimits = {
   pageDeck: 220,
   pageBody: 1200,
   pageCaption: 220,
+  customTemplateName: 48,
+  customFrameLabel: 32,
 };
 export const templateSlots = {
   cover: ['hero'],
@@ -40,6 +42,7 @@ export const templateSlots = {
   triptych: ['a', 'b', 'c'],
 };
 const allowedImageFits = new Set(['cover', 'contain']);
+const CUSTOM_TEMPLATE_SLOT_LIMIT = 6;
 
 const allowedUploadTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']);
 const allowedUploadExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif']);
@@ -99,11 +102,99 @@ function validateLocalAssetPath(value) {
 
 function normalizeTemplate(template) {
   const nextValue = sanitizeText(template, 'Template', 32, { allowEmpty: false, trim: true });
-  if (!(nextValue in templateSlots)) {
+  if (nextValue !== 'custom' && !(nextValue in templateSlots)) {
     throwInvalidProject();
   }
 
   return nextValue;
+}
+
+function sanitizeLayoutArea(area) {
+  if (
+    !area ||
+    typeof area !== 'object' ||
+    typeof area.x !== 'number' ||
+    typeof area.y !== 'number' ||
+    typeof area.width !== 'number' ||
+    typeof area.height !== 'number'
+  ) {
+    throwInvalidProject();
+  }
+
+  const x = area.x;
+  const y = area.y;
+  const width = area.width;
+  const height = area.height;
+
+  if (
+    !Number.isFinite(x) ||
+    !Number.isFinite(y) ||
+    !Number.isFinite(width) ||
+    !Number.isFinite(height) ||
+    x < 0 ||
+    y < 0 ||
+    x > 100 ||
+    y > 100 ||
+    width < 12 ||
+    height < 12 ||
+    x + width > 100 ||
+    y + height > 100
+  ) {
+    throwInvalidProject();
+  }
+
+  return { x, y, width, height };
+}
+
+function sanitizeCustomTemplate(customTemplate) {
+  if (!customTemplate || typeof customTemplate !== 'object' || !Array.isArray(customTemplate.frames) || !customTemplate.frames.length) {
+    throwInvalidProject();
+  }
+
+  if (customTemplate.frames.length > CUSTOM_TEMPLATE_SLOT_LIMIT) {
+    throwInvalidProject();
+  }
+
+  const usedSlots = new Set();
+  const frames = customTemplate.frames.map((frame, index) => {
+    if (!frame || typeof frame !== 'object') {
+      throwInvalidProject();
+    }
+
+    const slot = sanitizeText(frame.slot, 'Custom frame slot', 32, { allowEmpty: false, trim: true }).toLowerCase();
+    if (!/^frame\d+$/.test(slot) || usedSlots.has(slot)) {
+      throwInvalidProject();
+    }
+
+    usedSlots.add(slot);
+
+    return {
+      slot,
+      label:
+        sanitizeText(frame.label, 'Custom frame label', defaultTextLimits.customFrameLabel, {
+          allowEmpty: false,
+          trim: true,
+        }) || `Frame ${index + 1}`,
+      ...sanitizeLayoutArea(frame),
+    };
+  });
+
+  return {
+    name: sanitizeText(customTemplate.name, 'Custom template name', defaultTextLimits.customTemplateName, {
+      allowEmpty: false,
+      trim: true,
+    }),
+    text: sanitizeLayoutArea(customTemplate.text),
+    frames,
+  };
+}
+
+function resolveTemplateSlots(template, customTemplate) {
+  if (template === 'custom') {
+    return customTemplate.frames.map((frame) => frame.slot);
+  }
+
+  return templateSlots[template];
 }
 
 export function sanitizeProjectId(projectId) {
@@ -128,12 +219,11 @@ function sanitizeAsset(asset) {
   };
 }
 
-function sanitizeCropSettings(template, crops) {
+function sanitizeCropSettings(expectedSlots, crops) {
   if (!crops || typeof crops !== 'object') {
     throwInvalidProject();
   }
 
-  const expectedSlots = templateSlots[template];
   const providedSlots = Object.keys(crops);
   if (providedSlots.length !== expectedSlots.length || !expectedSlots.every((slot) => providedSlots.includes(slot))) {
     throwInvalidProject();
@@ -164,12 +254,11 @@ function sanitizeCropSettings(template, crops) {
   );
 }
 
-function sanitizeSlots(template, slots, assetIds) {
+function sanitizeSlots(expectedSlots, slots, assetIds) {
   if (!slots || typeof slots !== 'object') {
     throwInvalidProject();
   }
 
-  const expectedSlots = templateSlots[template];
   const providedSlots = Object.keys(slots);
   if (providedSlots.length !== expectedSlots.length || !expectedSlots.every((slot) => providedSlots.includes(slot))) {
     throwInvalidProject();
@@ -193,6 +282,8 @@ function sanitizePage(page, assetIds, pageIds) {
   }
 
   const template = normalizeTemplate(page.template);
+  const customTemplate = template === 'custom' ? sanitizeCustomTemplate(page.customTemplate) : null;
+  const expectedSlots = resolveTemplateSlots(template, customTemplate);
   const pageId = validateIdentifier(page.id, 'Page identifier', defaultTextLimits.pageId);
   if (pageIds.has(pageId)) {
     throw createBadRequest('Page identifiers must be unique.');
@@ -207,8 +298,9 @@ function sanitizePage(page, assetIds, pageIds) {
     deck: sanitizeText(page.deck, 'Page deck', defaultTextLimits.pageDeck, { trim: true }),
     body: sanitizeText(page.body, 'Page body', defaultTextLimits.pageBody, { trim: true }),
     caption: sanitizeText(page.caption, 'Page caption', defaultTextLimits.pageCaption, { trim: true }),
-    slots: sanitizeSlots(template, page.slots, assetIds),
-    crops: sanitizeCropSettings(template, page.crops),
+    customTemplate,
+    slots: sanitizeSlots(expectedSlots, page.slots, assetIds),
+    crops: sanitizeCropSettings(expectedSlots, page.crops),
   };
 }
 

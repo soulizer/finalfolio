@@ -6,6 +6,9 @@ export const PAGE_TITLE_LIMIT = 120;
 export const PAGE_DECK_LIMIT = 220;
 export const PAGE_BODY_LIMIT = 1200;
 export const PAGE_CAPTION_LIMIT = 220;
+export const CUSTOM_TEMPLATE_NAME_LIMIT = 48;
+export const CUSTOM_TEMPLATE_FRAME_LABEL_LIMIT = 32;
+export const CUSTOM_TEMPLATE_FRAME_LIMIT = 6;
 
 export const UPLOAD_HELP_TEXT =
   'Upload JPG, PNG, WebP, GIF, or AVIF images. Slot geometry stays fixed after you choose a preset; use fit and crop controls per frame.';

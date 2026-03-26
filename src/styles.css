@@ -481,6 +481,13 @@ img {
   margin-bottom: 12px;
 }
 
+.editor-topbar,
+.editor-project-bar,
+.editor-layout {
+  width: min(1800px, 100%);
+  margin-inline: auto;
+}
+
 .editor-project-bar {
   display: flex;
   justify-content: space-between;
@@ -567,19 +574,23 @@ img {
 
 .editor-layout {
   display: grid;
-  grid-template-columns: 272px minmax(0, 1fr) 308px;
-  gap: 12px;
-  align-items: start;
+  grid-template-columns: minmax(320px, 1fr) minmax(0, 1.06fr) minmax(320px, 1fr);
+  gap: 14px;
+  align-items: stretch;
 }
 
 .editor-canvas-wrap {
   display: grid;
-  gap: 12px;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 14px;
+  min-height: 0;
 }
 
 .editor-sidebar {
   display: grid;
   gap: 12px;
+  min-height: 0;
+  grid-auto-rows: max-content;
 }
 
 .editor-panel,
@@ -764,6 +775,7 @@ img {
 .editor-stage {
   display: grid;
   gap: 14px;
+  min-height: 0;
 }
 
 .editor-empty-state {
@@ -804,6 +816,7 @@ img {
   justify-content: space-between;
   gap: 16px;
   align-items: start;
+  padding-bottom: 4px;
 }
 
 .editor-stage h1 {
@@ -828,8 +841,9 @@ img {
   position: relative;
   display: grid;
   place-items: center;
-  height: clamp(420px, calc(100vh - 20rem), 780px);
-  padding: 6px;
+  min-height: 0;
+  height: clamp(420px, calc(100vh - 23rem), 760px);
+  padding: 8px;
   overflow: hidden;
 }
 
@@ -1171,7 +1185,7 @@ button.asset-frame {
 
 .page-strip {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(172px, 1fr));
   gap: 10px;
   margin-top: 0;
 }
@@ -1204,9 +1218,13 @@ button.asset-frame {
 
 .template-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
   gap: 10px;
   margin-top: 12px;
+}
+
+.template-grid--compact {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
 }
 
 .template-card {
@@ -1230,6 +1248,68 @@ button.asset-frame {
   font-size: 1.12rem;
   font-weight: 500;
   line-height: 1;
+}
+
+.template-pack-grid,
+.custom-frame-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.template-pack-card,
+.custom-frame-card,
+.custom-layout-builder {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.44);
+}
+
+.template-pack-card.is-featured {
+  background: rgba(255, 255, 255, 0.68);
+  border-color: rgba(17, 17, 17, 0.16);
+}
+
+.template-pack-card__copy,
+.custom-layout-section {
+  display: grid;
+  gap: 6px;
+}
+
+.template-pack-card__copy span,
+.template-pack-card__sequence,
+.magazine-custom__label {
+  color: var(--muted);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.76rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.template-pack-card__copy strong {
+  font-family: 'Newsreader', serif;
+  font-size: 1.28rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.template-pack-card__copy p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.template-pack-card__sequence {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.custom-layout-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .segmented-control {

@@ -1,5 +1,5 @@
 import { CSSProperties } from 'react';
-import { Asset, CropSettings, PageData } from '../editor/types';
+import { Asset, CropSettings, LayoutArea, PageData } from '../editor/types';
 
 interface MagazinePreviewProps {
   issue: string;
@@ -20,6 +20,15 @@ function frameStyle(crop?: CropSettings): CSSProperties {
   };
 }
 
+function areaStyle(area: LayoutArea): CSSProperties {
+  return {
+    left: `${area.x}%`,
+    top: `${area.y}%`,
+    width: `${area.width}%`,
+    height: `${area.height}%`,
+  };
+}
+
 function AssetFrame({
   slot,
   page,
@@ -29,6 +38,7 @@ function AssetFrame({
   onSelectSlot,
   onAssignDroppedAsset,
   className,
+  hintLabel,
 }: {
   slot: string;
   page: PageData;
@@ -38,11 +48,13 @@ function AssetFrame({
   onSelectSlot?: (slot: string) => void;
   onAssignDroppedAsset?: (slot: string, assetId: string) => void;
   className?: string;
+  hintLabel?: string;
 }) {
   const assetId = page.slots[slot];
   const asset = assetId ? assets[assetId] : null;
   const isSelected = selectedSlot === slot;
   const frameClassName = `asset-frame ${className ?? ''} ${isSelected ? 'is-selected' : ''}`.trim();
+  const slotHint = hintLabel ?? slot;
 
   const content = (
     <>
@@ -53,7 +65,7 @@ function AssetFrame({
           <span className="asset-frame__placeholder">Drop a photo here</span>
         ) : null}
       </div>
-      {interactive ? <span className="asset-frame__hint">{slot}</span> : null}
+      {interactive ? <span className="asset-frame__hint">{slotHint}</span> : null}
     </>
   );
 
@@ -65,7 +77,7 @@ function AssetFrame({
     <button
       type="button"
       className={frameClassName}
-      aria-label={`Select the ${slot} frame`}
+      aria-label={`Select the ${slotHint} frame`}
       onClick={() => onSelectSlot?.(slot)}
       onDragOver={(event) => {
         event.preventDefault();
@@ -93,118 +105,20 @@ export function MagazinePreview({
   onSelectSlot,
   onAssignDroppedAsset,
 }: MagazinePreviewProps) {
-  const slots = {
-    hero: (
-      <AssetFrame
-        slot="hero"
-        page={page}
-        assets={assets}
-        selectedSlot={selectedSlot}
-        interactive={interactive}
-        onSelectSlot={onSelectSlot}
-        onAssignDroppedAsset={onAssignDroppedAsset}
-      />
-    ),
-    left: (
-      <AssetFrame
-        slot="left"
-        page={page}
-        assets={assets}
-        selectedSlot={selectedSlot}
-        interactive={interactive}
-        onSelectSlot={onSelectSlot}
-        onAssignDroppedAsset={onAssignDroppedAsset}
-      />
-    ),
-    right: (
-      <AssetFrame
-        slot="right"
-        page={page}
-        assets={assets}
-        selectedSlot={selectedSlot}
-        interactive={interactive}
-        onSelectSlot={onSelectSlot}
-        onAssignDroppedAsset={onAssignDroppedAsset}
-      />
-    ),
-    top: (
-      <AssetFrame
-        slot="top"
-        page={page}
-        assets={assets}
-        selectedSlot={selectedSlot}
-        interactive={interactive}
-        onSelectSlot={onSelectSlot}
-        onAssignDroppedAsset={onAssignDroppedAsset}
-      />
-    ),
-    bottom: (
-      <AssetFrame
-        slot="bottom"
-        page={page}
-        assets={assets}
-        selectedSlot={selectedSlot}
-        interactive={interactive}
-        onSelectSlot={onSelectSlot}
-        onAssignDroppedAsset={onAssignDroppedAsset}
-      />
-    ),
-    lead: (
-      <AssetFrame
-        slot="lead"
-        page={page}
-        assets={assets}
-        selectedSlot={selectedSlot}
-        interactive={interactive}
-        onSelectSlot={onSelectSlot}
-        onAssignDroppedAsset={onAssignDroppedAsset}
-      />
-    ),
-    a: (
-      <AssetFrame
-        slot="a"
-        page={page}
-        assets={assets}
-        selectedSlot={selectedSlot}
-        interactive={interactive}
-        onSelectSlot={onSelectSlot}
-        onAssignDroppedAsset={onAssignDroppedAsset}
-      />
-    ),
-    b: (
-      <AssetFrame
-        slot="b"
-        page={page}
-        assets={assets}
-        selectedSlot={selectedSlot}
-        interactive={interactive}
-        onSelectSlot={onSelectSlot}
-        onAssignDroppedAsset={onAssignDroppedAsset}
-      />
-    ),
-    c: (
-      <AssetFrame
-        slot="c"
-        page={page}
-        assets={assets}
-        selectedSlot={selectedSlot}
-        interactive={interactive}
-        onSelectSlot={onSelectSlot}
-        onAssignDroppedAsset={onAssignDroppedAsset}
-      />
-    ),
-    d: (
-      <AssetFrame
-        slot="d"
-        page={page}
-        assets={assets}
-        selectedSlot={selectedSlot}
-        interactive={interactive}
-        onSelectSlot={onSelectSlot}
-        onAssignDroppedAsset={onAssignDroppedAsset}
-      />
-    ),
-  };
+  const customTemplate = page.customTemplate;
+  const renderSlot = (slot: string, options: { className?: string; hintLabel?: string } = {}) => (
+    <AssetFrame
+      slot={slot}
+      page={page}
+      assets={assets}
+      selectedSlot={selectedSlot}
+      interactive={interactive}
+      onSelectSlot={onSelectSlot}
+      onAssignDroppedAsset={onAssignDroppedAsset}
+      className={options.className}
+      hintLabel={options.hintLabel}
+    />
+  );
 
   return (
     <article className={`magazine-page magazine-page--${page.template}`}>
@@ -216,7 +130,7 @@ export function MagazinePreview({
 
       {page.template === 'cover' ? (
         <div className="magazine-cover">
-          <div className="magazine-cover__image">{slots.hero}</div>
+          <div className="magazine-cover__image">{renderSlot('hero')}</div>
           <div className="magazine-cover__copy">
             <p className="magazine-kicker">{page.deck}</p>
             <h2>{page.title}</h2>
@@ -227,7 +141,7 @@ export function MagazinePreview({
 
       {page.template === 'essay' ? (
         <div className="magazine-essay">
-          <div className="magazine-essay__visual">{slots.hero}</div>
+          <div className="magazine-essay__visual">{renderSlot('hero')}</div>
           <div className="magazine-essay__copy">
             <p className="magazine-kicker">{page.kicker}</p>
             <h2>{page.title}</h2>
@@ -247,7 +161,7 @@ export function MagazinePreview({
             </div>
             <p>{page.deck}</p>
           </div>
-          <div className="magazine-folio__visual">{slots.hero}</div>
+          <div className="magazine-folio__visual">{renderSlot('hero')}</div>
           <footer>{page.caption}</footer>
         </div>
       ) : null}
@@ -260,10 +174,10 @@ export function MagazinePreview({
             <p>{page.deck}</p>
           </div>
           <div className="magazine-grid__frames">
-            {slots.a}
-            {slots.b}
-            {slots.c}
-            {slots.d}
+            {renderSlot('a', { hintLabel: 'Frame A' })}
+            {renderSlot('b', { hintLabel: 'Frame B' })}
+            {renderSlot('c', { hintLabel: 'Frame C' })}
+            {renderSlot('d', { hintLabel: 'Frame D' })}
           </div>
           <footer>{page.caption}</footer>
         </div>
@@ -279,8 +193,8 @@ export function MagazinePreview({
             <p>{page.deck}</p>
           </div>
           <div className="magazine-diptych__frames">
-            {slots.left}
-            {slots.right}
+            {renderSlot('left', { hintLabel: 'Left frame' })}
+            {renderSlot('right', { hintLabel: 'Right frame' })}
           </div>
           <footer>{page.caption}</footer>
         </div>
@@ -296,8 +210,8 @@ export function MagazinePreview({
             <p>{page.deck}</p>
           </div>
           <div className="magazine-panorama__frames">
-            {slots.top}
-            {slots.bottom}
+            {renderSlot('top', { hintLabel: 'Top frame' })}
+            {renderSlot('bottom', { hintLabel: 'Bottom frame' })}
           </div>
           <footer>{page.caption}</footer>
         </div>
@@ -305,37 +219,61 @@ export function MagazinePreview({
 
       {page.template === 'mosaic' ? (
         <div className="magazine-mosaic">
-          <div className="magazine-mosaic__copy">
-            <div>
+          <div className="magazine-mosaic__frames">
+            <div className="magazine-mosaic__lead">{renderSlot('lead', { hintLabel: 'Lead frame' })}</div>
+            <div className="magazine-mosaic__support">
+              {renderSlot('top', { hintLabel: 'Support frame A' })}
+              {renderSlot('bottom', { hintLabel: 'Support frame B' })}
+            </div>
+          </div>
+          <div className="magazine-mosaic__band">
+            <div className="magazine-mosaic__headline">
               <p className="magazine-kicker">{page.kicker}</p>
               <h2>{page.title}</h2>
             </div>
-            <p>{page.deck}</p>
-          </div>
-          <div className="magazine-mosaic__frames">
-            <div className="magazine-mosaic__lead">{slots.lead}</div>
-            <div className="magazine-mosaic__stack">
-              {slots.top}
-              {slots.bottom}
+            <div className="magazine-mosaic__notes">
+              <p>{page.deck}</p>
+              <footer>{page.caption}</footer>
             </div>
           </div>
-          <footer>{page.caption}</footer>
         </div>
       ) : null}
 
       {page.template === 'triptych' ? (
         <div className="magazine-triptych">
-          <div className="magazine-triptych__copy">
-            <p className="magazine-kicker">{page.kicker}</p>
-            <h2>{page.title}</h2>
-            <p>{page.deck}</p>
+          <div className="magazine-triptych__rail">
+            <div>
+              <p className="magazine-kicker">{page.kicker}</p>
+              <h2>{page.title}</h2>
+              <p className="magazine-triptych__deck">{page.deck}</p>
+            </div>
+            <footer>{page.caption}</footer>
           </div>
           <div className="magazine-triptych__frames">
-            {slots.a}
-            {slots.b}
-            {slots.c}
+            {renderSlot('a', { hintLabel: 'Frame A' })}
+            {renderSlot('b', { hintLabel: 'Frame B' })}
+            {renderSlot('c', { hintLabel: 'Frame C' })}
           </div>
-          <footer>{page.caption}</footer>
+        </div>
+      ) : null}
+
+      {page.template === 'custom' && customTemplate ? (
+        <div className="magazine-custom">
+          <div className="magazine-custom__canvas">
+            {customTemplate.frames.map((frame) => (
+              <div key={frame.slot} className="magazine-custom__frame" style={areaStyle(frame)}>
+                {renderSlot(frame.slot, { className: 'magazine-custom__asset-frame', hintLabel: frame.label })}
+              </div>
+            ))}
+            <section className="magazine-custom__text" style={areaStyle(customTemplate.text)}>
+              <span className="magazine-custom__label">{customTemplate.name}</span>
+              <p className="magazine-kicker">{page.kicker}</p>
+              <h2>{page.title}</h2>
+              {page.deck ? <p className="magazine-custom__deck">{page.deck}</p> : null}
+              {page.body ? <p className="magazine-custom__body">{page.body}</p> : null}
+              {page.caption ? <footer>{page.caption}</footer> : null}
+            </section>
+          </div>
         </div>
       ) : null}
     </article>

@@ -1,4 +1,7 @@
 import {
+  CUSTOM_TEMPLATE_FRAME_LABEL_LIMIT,
+  CUSTOM_TEMPLATE_FRAME_LIMIT,
+  CUSTOM_TEMPLATE_NAME_LIMIT,
   PAGE_BODY_LIMIT,
   PAGE_CAPTION_LIMIT,
   PAGE_DECK_LIMIT,
@@ -8,7 +11,17 @@ import {
   PROJECT_SUBTITLE_LIMIT,
   PROJECT_TITLE_LIMIT,
 } from './limits';
-import { Asset, CropSettings, ImageFit, PageData, ProjectState, TemplateId } from './types';
+import {
+  Asset,
+  CropSettings,
+  CustomTemplateDefinition,
+  CustomTemplateFrame,
+  ImageFit,
+  LayoutArea,
+  PageData,
+  ProjectState,
+  TemplateId,
+} from './types';
 
 export interface TemplateDefinition {
   label: string;
@@ -17,7 +30,201 @@ export interface TemplateDefinition {
   slots: string[];
 }
 
+export interface CustomLayoutPreset {
+  id: string;
+  label: string;
+  summary: string;
+  template: CustomTemplateDefinition;
+}
+
+export interface TemplatePackPageSpec {
+  template: TemplateId;
+  customTemplate?: CustomTemplateDefinition;
+  overrides?: Partial<Omit<PageData, 'id' | 'template' | 'slots' | 'crops' | 'customTemplate'>>;
+}
+
+export interface TemplatePackDefinition {
+  id: string;
+  label: string;
+  summary: string;
+  description: string;
+  pages: TemplatePackPageSpec[];
+}
+
 const defaultFit: ImageFit = 'cover';
+
+const defaultCustomTemplateSource: CustomTemplateDefinition = {
+  name: 'Editorial Split',
+  text: {
+    x: 0,
+    y: 0,
+    width: 32,
+    height: 100,
+  },
+  frames: [
+    {
+      slot: 'frame1',
+      label: 'Lead',
+      x: 36,
+      y: 0,
+      width: 64,
+      height: 58,
+    },
+    {
+      slot: 'frame2',
+      label: 'Detail A',
+      x: 36,
+      y: 62,
+      width: 30,
+      height: 38,
+    },
+    {
+      slot: 'frame3',
+      label: 'Detail B',
+      x: 70,
+      y: 62,
+      width: 30,
+      height: 38,
+    },
+  ],
+};
+
+const customLayoutPresetSource = [
+  {
+    id: 'editorial-split',
+    label: 'Editorial split',
+    summary: 'Text rail with a lead image and two supporting frames.',
+    template: defaultCustomTemplateSource,
+  },
+  {
+    id: 'ribbon-essay',
+    label: 'Ribbon essay',
+    summary: 'A wide text band above a lead image and two quiet details.',
+    template: {
+      name: 'Ribbon Essay',
+      text: {
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 24,
+      },
+      frames: [
+        {
+          slot: 'frame1',
+          label: 'Lead',
+          x: 0,
+          y: 28,
+          width: 62,
+          height: 72,
+        },
+        {
+          slot: 'frame2',
+          label: 'Inset A',
+          x: 66,
+          y: 28,
+          width: 34,
+          height: 34,
+        },
+        {
+          slot: 'frame3',
+          label: 'Inset B',
+          x: 66,
+          y: 66,
+          width: 34,
+          height: 34,
+        },
+      ],
+    },
+  },
+  {
+    id: 'caption-rail',
+    label: 'Caption rail',
+    summary: 'A left note rail with three tall vertical frames.',
+    template: {
+      name: 'Caption Rail',
+      text: {
+        x: 0,
+        y: 0,
+        width: 24,
+        height: 100,
+      },
+      frames: [
+        {
+          slot: 'frame1',
+          label: 'Frame A',
+          x: 28,
+          y: 0,
+          width: 22,
+          height: 100,
+        },
+        {
+          slot: 'frame2',
+          label: 'Frame B',
+          x: 53,
+          y: 0,
+          width: 22,
+          height: 100,
+        },
+        {
+          slot: 'frame3',
+          label: 'Frame C',
+          x: 78,
+          y: 0,
+          width: 22,
+          height: 100,
+        },
+      ],
+    },
+  },
+  {
+    id: 'contact-grid',
+    label: 'Contact grid',
+    summary: 'A four-frame grid with a bottom text band for notes and credits.',
+    template: {
+      name: 'Contact Grid',
+      text: {
+        x: 0,
+        y: 74,
+        width: 100,
+        height: 26,
+      },
+      frames: [
+        {
+          slot: 'frame1',
+          label: 'Frame A',
+          x: 0,
+          y: 0,
+          width: 48,
+          height: 34,
+        },
+        {
+          slot: 'frame2',
+          label: 'Frame B',
+          x: 52,
+          y: 0,
+          width: 48,
+          height: 34,
+        },
+        {
+          slot: 'frame3',
+          label: 'Frame C',
+          x: 0,
+          y: 38,
+          width: 48,
+          height: 32,
+        },
+        {
+          slot: 'frame4',
+          label: 'Frame D',
+          x: 52,
+          y: 38,
+          width: 48,
+          height: 32,
+        },
+      ],
+    },
+  },
+] as const;
 
 export const templateMeta: Record<TemplateId, TemplateDefinition> = {
   cover: {
@@ -59,23 +266,36 @@ export const templateMeta: Record<TemplateId, TemplateDefinition> = {
   mosaic: {
     label: 'Mosaic',
     summary: 'Lead + details',
-    description: 'One dominant frame with two supporting details for product, interior, or sequence work.',
+    description: 'A dominant image with two secondary frames and a compact editorial band.',
     slots: ['lead', 'top', 'bottom'],
   },
   triptych: {
     label: 'Triptych',
     summary: 'Three-up set',
-    description: 'Three vertical frames for portraits, process work, or steady mid-issue pacing.',
+    description: 'Three tall frames with a restrained editorial rail for portrait runs and repeated subjects.',
     slots: ['a', 'b', 'c'],
+  },
+  custom: {
+    label: 'Custom',
+    summary: 'User-defined',
+    description: 'Define your own image and text arrangement, then apply it as a page preset.',
+    slots: [],
   },
 };
 
-export const templateOrder: TemplateId[] = ['cover', 'essay', 'folio', 'grid', 'diptych', 'panorama', 'mosaic', 'triptych'];
+export const templateOrder: TemplateId[] = [
+  'cover',
+  'essay',
+  'folio',
+  'grid',
+  'diptych',
+  'panorama',
+  'mosaic',
+  'triptych',
+  'custom',
+];
 
-const pageStarters: Record<
-  TemplateId,
-  Omit<PageData, 'id' | 'slots' | 'crops' | 'template'>
-> = {
+const pageStarters: Record<TemplateId, Omit<PageData, 'id' | 'slots' | 'crops' | 'template' | 'customTemplate'>> = {
   cover: {
     kicker: 'Cover',
     title: 'Untitled Issue',
@@ -106,7 +326,7 @@ const pageStarters: Record<
   },
   diptych: {
     kicker: 'Pairing',
-    title: 'Use a two-image spread',
+    title: 'Use a two-image page',
     deck: 'Diptychs are useful for transitions, comparison, or a quieter ending.',
     body: '',
     caption: 'Reorder pages below to control the exported sequence.',
@@ -121,21 +341,103 @@ const pageStarters: Record<
   mosaic: {
     kicker: 'Composition',
     title: 'Lead image with two details',
-    deck: 'Use a dominant image and smaller secondary frames to hold context and close-ups together.',
+    deck: 'Use one dominant image and two supporting details to hold context and close-ups together.',
     body: '',
-    caption: 'Mosaic pages preserve a stable lead frame while supporting images stay secondary.',
+    caption: 'Mosaic pages keep the lead frame prominent while supporting images stay clearly secondary.',
   },
   triptych: {
     kicker: 'Series',
     title: 'Run a three-frame sequence',
-    deck: 'Triptychs keep repeated subjects or portrait runs evenly paced on a single page.',
+    deck: 'Triptychs keep repeated subjects or portrait runs evenly paced beside a narrow editorial rail.',
     body: '',
     caption: 'The first three assigned images stay in order when applying this preset.',
   },
+  custom: {
+    kicker: 'Custom layout',
+    title: 'Design your own page',
+    deck: 'Define the text block and image frames, then keep editing the page like any other preset.',
+    body: 'Use the custom layout builder to position the text area and frame geometry for this page.',
+    caption: 'Custom layouts stay editable after you apply them to the page.',
+  },
 };
+
+export const customLayoutPresets: CustomLayoutPreset[] = customLayoutPresetSource.map((preset) => ({
+  ...preset,
+  template: normalizeCustomTemplateDefinition(preset.template),
+}));
+
+export const defaultCustomLayoutPresetId = customLayoutPresets[0].id;
+
+const templatePackSource: TemplatePackDefinition[] = [
+  {
+    id: 'feature-story',
+    label: 'Feature Story',
+    summary: 'Balanced opener',
+    description: 'A cover-led sequence that opens with text, widens into detail rhythm, then closes quietly.',
+    pages: [
+      { template: 'cover' },
+      { template: 'essay' },
+      { template: 'mosaic' },
+      { template: 'triptych' },
+      { template: 'folio' },
+      { template: 'diptych' },
+    ],
+  },
+  {
+    id: 'lookbook-run',
+    label: 'Lookbook Run',
+    summary: 'Wide visual cadence',
+    description: 'Built for fashion, interiors, and product sets that alternate broad anchors with tighter supporting pages.',
+    pages: [
+      { template: 'cover' },
+      { template: 'panorama' },
+      { template: 'triptych' },
+      { template: 'grid' },
+      { template: 'folio' },
+      { template: 'essay' },
+    ],
+  },
+  {
+    id: 'process-journal',
+    label: 'Process Journal',
+    summary: 'Notes + details',
+    description: 'A sequence for behind-the-scenes work, making-of notes, and denser editorial pacing.',
+    pages: [
+      { template: 'cover' },
+      { template: 'essay' },
+      { template: 'custom', customTemplate: customLayoutPresetSource[1].template },
+      { template: 'mosaic' },
+      { template: 'grid' },
+      { template: 'diptych' },
+    ],
+  },
+];
+
+export type TemplatePackId = (typeof templatePackSource)[number]['id'];
+
+export const templatePackOrder: TemplatePackId[] = templatePackSource.map((pack) => pack.id);
+
+export const templatePacks: Record<TemplatePackId, TemplatePackDefinition> = Object.fromEntries(
+  templatePackSource.map((pack) => [
+    pack.id,
+    {
+      ...pack,
+      pages: pack.pages.map((page) => ({
+        ...page,
+        customTemplate: page.customTemplate ? normalizeCustomTemplateDefinition(page.customTemplate) : undefined,
+      })),
+    },
+  ]),
+) as Record<TemplatePackId, TemplatePackDefinition>;
+
+export const defaultTemplatePackId: TemplatePackId = 'feature-story';
 
 function trimToLimit(value: string, limit: number) {
   return value.slice(0, limit);
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
 }
 
 function isTemplateId(value: unknown): value is TemplateId {
@@ -151,6 +453,133 @@ function isAsset(value: unknown): value is Asset {
     typeof (value as Asset).src === 'string' &&
     typeof (value as Asset).note === 'string'
   );
+}
+
+function isValidFrameSlot(value: unknown): value is string {
+  return typeof value === 'string' && /^frame\d+$/i.test(value.trim());
+}
+
+function normalizeArea(value: unknown, fallback: LayoutArea): LayoutArea {
+  if (!value || typeof value !== 'object') {
+    return { ...fallback };
+  }
+
+  const nextArea = value as Partial<LayoutArea>;
+  const x = typeof nextArea.x === 'number' ? clamp(nextArea.x, 0, 100) : fallback.x;
+  const y = typeof nextArea.y === 'number' ? clamp(nextArea.y, 0, 100) : fallback.y;
+  const width = typeof nextArea.width === 'number' ? clamp(nextArea.width, 12, 100) : fallback.width;
+  const height = typeof nextArea.height === 'number' ? clamp(nextArea.height, 12, 100) : fallback.height;
+
+  return {
+    x,
+    y,
+    width: clamp(width, 12, 100 - x),
+    height: clamp(height, 12, 100 - y),
+  };
+}
+
+function defaultFrameArea(index: number): LayoutArea {
+  if (index === 1) {
+    return defaultCustomTemplateSource.frames[0];
+  }
+
+  if (index === 2) {
+    return defaultCustomTemplateSource.frames[1];
+  }
+
+  if (index === 3) {
+    return defaultCustomTemplateSource.frames[2];
+  }
+
+  const column = (index - 4) % 2;
+  const row = Math.floor((index - 4) / 2);
+
+  return {
+    x: 36 + column * 32,
+    y: 6 + row * 30,
+    width: 30,
+    height: 26,
+  };
+}
+
+function createDefaultFrame(index: number): CustomTemplateFrame {
+  const area = defaultFrameArea(index);
+
+  return {
+    slot: `frame${index}`,
+    label: `Frame ${index}`,
+    ...area,
+  };
+}
+
+function normalizeFrame(frame: unknown, index: number): CustomTemplateFrame {
+  const fallback = createDefaultFrame(index);
+
+  if (!frame || typeof frame !== 'object') {
+    return fallback;
+  }
+
+  const nextFrame = frame as Partial<CustomTemplateFrame>;
+  return {
+    slot: isValidFrameSlot(nextFrame.slot) ? nextFrame.slot.trim().toLowerCase() : fallback.slot,
+    label: trimToLimit(typeof nextFrame.label === 'string' ? nextFrame.label : fallback.label, CUSTOM_TEMPLATE_FRAME_LABEL_LIMIT) || fallback.label,
+    ...normalizeArea(nextFrame, fallback),
+  };
+}
+
+export function createCustomTemplateDefinition(overrides: Partial<CustomTemplateDefinition> = {}): CustomTemplateDefinition {
+  return normalizeCustomTemplateDefinition({
+    ...defaultCustomTemplateSource,
+    ...overrides,
+    text: overrides.text ?? defaultCustomTemplateSource.text,
+    frames: overrides.frames ?? defaultCustomTemplateSource.frames,
+  });
+}
+
+export function cloneCustomTemplateDefinition(template?: CustomTemplateDefinition | null) {
+  return normalizeCustomTemplateDefinition(template ?? defaultCustomTemplateSource);
+}
+
+export function normalizeCustomTemplateDefinition(value: unknown): CustomTemplateDefinition {
+  const fallback = defaultCustomTemplateSource;
+  if (!value || typeof value !== 'object') {
+    return {
+      name: fallback.name,
+      text: { ...fallback.text },
+      frames: fallback.frames.map((frame) => ({ ...frame })),
+    };
+  }
+
+  const nextTemplate = value as Partial<CustomTemplateDefinition>;
+  const rawFrames =
+    Array.isArray(nextTemplate.frames) && nextTemplate.frames.length
+      ? nextTemplate.frames.slice(0, CUSTOM_TEMPLATE_FRAME_LIMIT)
+      : fallback.frames;
+  const usedSlots = new Set<string>();
+  const frames = rawFrames.map((frame, index) => {
+    const normalizedFrame = normalizeFrame(frame, index + 1);
+    let slot = normalizedFrame.slot;
+
+    while (usedSlots.has(slot)) {
+      slot = `frame${usedSlots.size + 1}`;
+    }
+
+    usedSlots.add(slot);
+    return {
+      ...normalizedFrame,
+      slot,
+    };
+  });
+
+  return {
+    name:
+      trimToLimit(
+        typeof nextTemplate.name === 'string' ? nextTemplate.name : fallback.name,
+        CUSTOM_TEMPLATE_NAME_LIMIT,
+      ) || fallback.name,
+    text: normalizeArea(nextTemplate.text, fallback.text),
+    frames,
+  };
 }
 
 export function createDefaultCrop(overrides: Partial<CropSettings> = {}): CropSettings {
@@ -177,8 +606,29 @@ export function normalizeCropSettings(value: unknown): CropSettings {
   });
 }
 
-function createStarterPage(template: TemplateId, id: string) {
-  const slots = templateMeta[template].slots;
+export function getTemplateSlots(template: TemplateId, customTemplate?: CustomTemplateDefinition | null) {
+  if (template === 'custom') {
+    return (customTemplate ?? defaultCustomTemplateSource).frames.map((frame) => frame.slot);
+  }
+
+  return templateMeta[template].slots;
+}
+
+export function getPageSlotOrder(page: Pick<PageData, 'template' | 'customTemplate'>) {
+  return getTemplateSlots(page.template, page.customTemplate);
+}
+
+export function getTemplateLabel(template: TemplateId, customTemplate?: CustomTemplateDefinition | null) {
+  if (template === 'custom') {
+    return customTemplate?.name || templateMeta.custom.label;
+  }
+
+  return templateMeta[template].label;
+}
+
+function createStarterPage(template: TemplateId, id: string, customTemplate?: CustomTemplateDefinition | null) {
+  const normalizedCustomTemplate = template === 'custom' ? cloneCustomTemplateDefinition(customTemplate) : null;
+  const slots = getTemplateSlots(template, normalizedCustomTemplate);
   const starter = pageStarters[template];
 
   return {
@@ -189,13 +639,14 @@ function createStarterPage(template: TemplateId, id: string) {
     deck: starter.deck,
     body: starter.body,
     caption: starter.caption,
+    customTemplate: normalizedCustomTemplate,
     slots: Object.fromEntries(slots.map((slot) => [slot, null])),
     crops: Object.fromEntries(slots.map((slot) => [slot, createDefaultCrop()])),
   } satisfies PageData;
 }
 
-function normalizeSlots(template: TemplateId, slots: unknown) {
-  const expectedSlots = templateMeta[template].slots;
+function normalizeSlots(template: TemplateId, customTemplate: CustomTemplateDefinition | null, slots: unknown) {
+  const expectedSlots = getTemplateSlots(template, customTemplate);
   const nextSlots = slots && typeof slots === 'object' ? (slots as Record<string, unknown>) : {};
 
   return Object.fromEntries(
@@ -203,8 +654,8 @@ function normalizeSlots(template: TemplateId, slots: unknown) {
   );
 }
 
-function normalizeCrops(template: TemplateId, crops: unknown) {
-  const expectedSlots = templateMeta[template].slots;
+function normalizeCrops(template: TemplateId, customTemplate: CustomTemplateDefinition | null, crops: unknown) {
+  const expectedSlots = getTemplateSlots(template, customTemplate);
   const nextCrops = crops && typeof crops === 'object' ? (crops as Record<string, unknown>) : {};
 
   return Object.fromEntries(expectedSlots.map((slot) => [slot, normalizeCropSettings(nextCrops[slot])]));
@@ -212,13 +663,17 @@ function normalizeCrops(template: TemplateId, crops: unknown) {
 
 function normalizePageData(page: unknown, index: number): PageData {
   const template = isTemplateId((page as PageData | undefined)?.template) ? (page as PageData).template : 'essay';
-  const starter = createStarterPage(template, `page-${template}-${index + 1}`);
+  const normalizedCustomTemplate =
+    template === 'custom' ? normalizeCustomTemplateDefinition((page as Partial<PageData> | undefined)?.customTemplate) : null;
+  const starter = createStarterPage(template, `page-${template}-${index + 1}`, normalizedCustomTemplate);
 
   if (!page || typeof page !== 'object') {
     return starter;
   }
 
   const nextPage = page as Partial<PageData>;
+  const customTemplate = template === 'custom' ? normalizedCustomTemplate : null;
+
   return {
     id: typeof nextPage.id === 'string' && nextPage.id.trim().length ? nextPage.id : starter.id,
     template,
@@ -227,21 +682,23 @@ function normalizePageData(page: unknown, index: number): PageData {
     deck: trimToLimit(typeof nextPage.deck === 'string' ? nextPage.deck : starter.deck, PAGE_DECK_LIMIT),
     body: trimToLimit(typeof nextPage.body === 'string' ? nextPage.body : starter.body, PAGE_BODY_LIMIT),
     caption: trimToLimit(typeof nextPage.caption === 'string' ? nextPage.caption : starter.caption, PAGE_CAPTION_LIMIT),
-    slots: normalizeSlots(template, nextPage.slots),
-    crops: normalizeCrops(template, nextPage.crops),
+    customTemplate,
+    slots: normalizeSlots(template, customTemplate, nextPage.slots),
+    crops: normalizeCrops(template, customTemplate, nextPage.crops),
   };
 }
 
-function carryAssetsToTemplate(page: PageData, template: TemplateId) {
-  const currentSlots = templateMeta[page.template].slots;
-  const nextSlots = templateMeta[template].slots;
+function carryAssetsToTemplate(page: PageData, template: TemplateId, customTemplate?: CustomTemplateDefinition | null) {
+  const currentSlots = getPageSlotOrder(page);
   const nextPage = createPageDraft(template, page.id, {
     kicker: page.kicker,
     title: page.title,
     deck: page.deck,
     body: page.body,
     caption: page.caption,
+    customTemplate,
   });
+  const nextSlots = getPageSlotOrder(nextPage);
   const usedSourceSlots = new Set<string>();
   const carryQueue = currentSlots
     .map((slot) => ({
@@ -276,7 +733,8 @@ function carryAssetsToTemplate(page: PageData, template: TemplateId) {
 }
 
 export function createPageDraft(template: TemplateId, id: string, overrides: Partial<PageData> = {}): PageData {
-  const slots = templateMeta[template].slots;
+  const customTemplate = template === 'custom' ? cloneCustomTemplateDefinition(overrides.customTemplate) : null;
+  const slots = getTemplateSlots(template, customTemplate);
   const starter = pageStarters[template];
 
   return {
@@ -287,13 +745,38 @@ export function createPageDraft(template: TemplateId, id: string, overrides: Par
     deck: trimToLimit(overrides.deck ?? starter.deck, PAGE_DECK_LIMIT),
     body: trimToLimit(overrides.body ?? starter.body, PAGE_BODY_LIMIT),
     caption: trimToLimit(overrides.caption ?? starter.caption, PAGE_CAPTION_LIMIT),
-    slots: overrides.slots ?? Object.fromEntries(slots.map((slot) => [slot, null])),
-    crops: overrides.crops ?? Object.fromEntries(slots.map((slot) => [slot, createDefaultCrop()])),
+    customTemplate,
+    slots:
+      overrides.slots && typeof overrides.slots === 'object'
+        ? Object.fromEntries(slots.map((slot) => [slot, typeof overrides.slots?.[slot] === 'string' ? overrides.slots[slot] : null]))
+        : Object.fromEntries(slots.map((slot) => [slot, null])),
+    crops:
+      overrides.crops && typeof overrides.crops === 'object'
+        ? Object.fromEntries(slots.map((slot) => [slot, normalizeCropSettings(overrides.crops?.[slot])]))
+        : Object.fromEntries(slots.map((slot) => [slot, createDefaultCrop()])),
   };
 }
 
-export function remapPageToTemplate(page: PageData, template: TemplateId) {
-  return carryAssetsToTemplate(page, template);
+export function remapPageToTemplate(page: PageData, template: TemplateId, customTemplate?: CustomTemplateDefinition | null) {
+  return carryAssetsToTemplate(page, template, customTemplate);
+}
+
+export function createPagesFromTemplatePack(
+  packId: TemplatePackId,
+  {
+    idFactory,
+  }: {
+    idFactory?: (page: TemplatePackPageSpec, index: number) => string;
+  } = {},
+) {
+  const pack = templatePacks[packId];
+
+  return pack.pages.map((page, index) =>
+    createPageDraft(page.template, idFactory?.(page, index) ?? `page-${packId}-${index + 1}`, {
+      ...page.overrides,
+      customTemplate: page.customTemplate ? cloneCustomTemplateDefinition(page.customTemplate) : undefined,
+    }),
+  );
 }
 
 export function createDefaultProject(): ProjectState {
@@ -305,12 +788,7 @@ export function createDefaultProject(): ProjectState {
     ),
     issue: 'Issue 01'.slice(0, PROJECT_ISSUE_LIMIT),
     assets: [],
-    pages: [
-      createPageDraft('cover', 'page-cover'),
-      createPageDraft('essay', 'page-essay'),
-      createPageDraft('grid', 'page-grid'),
-      createPageDraft('diptych', 'page-diptych'),
-    ],
+    pages: createPagesFromTemplatePack(defaultTemplatePackId),
   };
 }
 

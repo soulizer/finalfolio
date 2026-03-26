@@ -3,15 +3,29 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { MagazinePreview } from '../components/MagazinePreview';
 import { createProject, fetchProject, updateProject as persistProject, uploadAssets } from '../editor/api';
 import {
+  cloneCustomTemplateDefinition,
   createDefaultCrop,
+  createCustomTemplateDefinition,
   createDefaultProject,
+  createPagesFromTemplatePack,
   createPageDraft,
+  customLayoutPresets,
+  defaultCustomLayoutPresetId,
+  defaultTemplatePackId,
+  getPageSlotOrder,
+  getTemplateLabel,
   normalizeProjectState,
   remapPageToTemplate,
+  templatePackOrder,
+  templatePacks,
   templateMeta,
   templateOrder,
+  TemplatePackId,
 } from '../editor/demoData';
 import {
+  CUSTOM_TEMPLATE_FRAME_LIMIT,
+  CUSTOM_TEMPLATE_FRAME_LABEL_LIMIT,
+  CUSTOM_TEMPLATE_NAME_LIMIT,
   PAGE_BODY_LIMIT,
   PAGE_CAPTION_LIMIT,
   PAGE_DECK_LIMIT,
@@ -23,7 +37,7 @@ import {
   UPLOAD_HELP_TEXT,
 } from '../editor/limits';
 import { clearDraftProject, readDraftProject, writeDraftProject } from '../editor/storage';
-import { Asset, CropSettings, PageData, ProjectRecord, ProjectState, TemplateId } from '../editor/types';
+import { Asset, CropSettings, CustomTemplateDefinition, CustomTemplateFrame, LayoutArea, PageData, ProjectRecord, ProjectState, TemplateId } from '../editor/types';
 
 type LoadState = 'loading' | 'ready' | 'error';
 type SaveState = 'draft' | 'dirty' | 'saving' | 'saved' | 'error';
@@ -34,12 +48,19 @@ type AssetPlacement = {
   slot: string;
 };
 
+const customAreaFields: Array<{ key: keyof LayoutArea; label: string; min: number; max: number }> = [
+  { key: 'x', label: 'X', min: 0, max: 88 },
+  { key: 'y', label: 'Y', min: 0, max: 88 },
+  { key: 'width', label: 'W', min: 12, max: 100 },
+  { key: 'height', label: 'H', min: 12, max: 100 },
+];
+
 function createPageId() {
   return `page-${crypto.randomUUID()}`;
 }
 
 function getInitialSlot(page?: PageData) {
-  return page ? (Object.keys(page.slots)[0] ?? null) : null;
+  return page ? (getPageSlotOrder(page)[0] ?? null) : null;
 }
 
 function formatSavedAt(timestamp?: string) {
@@ -58,8 +79,23 @@ function formatSavedAt(timestamp?: string) {
 function clonePage(page: PageData): PageData {
   return {
     ...page,
+    customTemplate: page.customTemplate ? cloneCustomTemplateDefinition(page.customTemplate) : null,
     slots: { ...page.slots },
     crops: Object.fromEntries(Object.entries(page.crops).map(([slot, crop]) => [slot, { ...crop }])),
+  };
+}
+
+function clampLayoutArea(area: LayoutArea): LayoutArea {
+  const x = Math.min(100, Math.max(0, area.x));
+  const y = Math.min(100, Math.max(0, area.y));
+  const width = Math.min(100 - x, Math.max(12, area.width));
+  const height = Math.min(100 - y, Math.max(12, area.height));
+
+  return {
+    x,
+    y,
+    width,
+    height,
   };
 }
 
@@ -87,6 +123,9 @@ export function EditorPage() {
   const [selectedPageId, setSelectedPageId] = useState(project.pages[0]?.id ?? '');
   const [selectedSlot, setSelectedSlot] = useState<string | null>(getInitialSlot(project.pages[0]));
   const [templateChoice, setTemplateChoice] = useState<TemplateId>(project.pages[0]?.template ?? 'cover');
+  const [customTemplateDraft, setCustomTemplateDraft] = useState<CustomTemplateDefinition>(() =>
+    project.pages[0]?.customTemplate ? cloneCustomTemplateDefinition(project.pages[0].customTemplate) : createCustomTemplateDefinition(),
+  );
   const [uploadState, setUploadState] = useState<'idle' | 'uploading'>('idle');
   const [message, setMessage] = useState<string | null>(null);
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
@@ -109,6 +148,9 @@ export function EditorPage() {
         setSelectedPageId(draft.pages[0]?.id ?? '');
         setSelectedSlot(getInitialSlot(draft.pages[0]));
         setTemplateChoice(draft.pages[0]?.template ?? 'cover');
+        setCustomTemplateDraft(
+          draft.pages[0]?.customTemplate ? cloneCustomTemplateDefinition(draft.pages[0].customTemplate) : createCustomTemplateDefinition(),
+        );
         setLoadError(null);
         setMessage('Draft only on this device. Create a stable editor URL when you want to reopen the issue later.');
         lastSavedSnapshotRef.current = '';
@@ -141,6 +183,11 @@ export function EditorPage() {
         setSelectedPageId(nextProject.pages[0]?.id ?? '');
         setSelectedSlot(getInitialSlot(nextProject.pages[0]));
         setTemplateChoice(nextProject.pages[0]?.template ?? 'cover');
+        setCustomTemplateDraft(
+          nextProject.pages[0]?.customTemplate
+            ? cloneCustomTemplateDefinition(nextProject.pages[0].customTemplate)
+            : createCustomTemplateDefinition(),
+        );
         setMessage('Stable editor URL. Reopen this issue from the same link whenever you need to edit or export again.');
       } catch (error) {
         if (cancelled) {
@@ -247,7 +294,10 @@ export function EditorPage() {
     }
 
     setTemplateChoice(selectedPage.template);
-  }, [selectedPage?.id, selectedPage?.template]);
+    if (selectedPage.customTemplate) {
+      setCustomTemplateDraft(cloneCustomTemplateDefinition(selectedPage.customTemplate));
+    }
+  }, [selectedPage?.id, selectedPage?.template, selectedPage?.customTemplate]);
 
   useEffect(() => {
     if (loadState !== 'ready') {
@@ -345,6 +395,28 @@ export function EditorPage() {
         [selectedSlot]: updater(page.crops[selectedSlot] ?? createDefaultCrop()),
       },
     }));
+  }
+
+  function updateCustomTemplateDraft(updater: (current: CustomTemplateDefinition) => CustomTemplateDefinition) {
+    setCustomTemplateDraft((current) => cloneCustomTemplateDefinition(updater(cloneCustomTemplateDefinition(current))));
+  }
+
+  function updateCustomArea(area: LayoutArea, field: keyof LayoutArea, value: number): LayoutArea {
+    return clampLayoutArea({
+      ...area,
+      [field]: value,
+    });
+  }
+
+  function updateCustomFrameArea(frame: CustomTemplateFrame, field: keyof LayoutArea, value: number): CustomTemplateFrame {
+    return {
+      ...frame,
+      ...updateCustomArea(frame, field, value),
+    };
+  }
+
+  function createPageFromTemplate(template: TemplateId) {
+    return createPageDraft(template, createPageId(), template === 'custom' ? { customTemplate: customTemplateDraft } : {});
   }
 
   function selectPage(pageId: string) {
@@ -513,12 +585,94 @@ export function EditorPage() {
     );
   }
 
+  function loadCustomLayoutPreset(presetId: string) {
+    const preset = customLayoutPresets.find((entry) => entry.id === presetId);
+    if (!preset) {
+      return;
+    }
+
+    setTemplateChoice('custom');
+    setCustomTemplateDraft(cloneCustomTemplateDefinition(preset.template));
+    setMessage(`Loaded the ${preset.label} custom layout. Apply it to the page when the arrangement looks right.`);
+  }
+
+  function addCustomFrame() {
+    updateCustomTemplateDraft((current) => {
+      if (current.frames.length >= CUSTOM_TEMPLATE_FRAME_LIMIT) {
+        return current;
+      }
+
+      const nextIndex = current.frames.length + 1;
+      const frame = {
+        slot: `frame${nextIndex}`,
+        label: `Frame ${nextIndex}`,
+        x: 36 + ((nextIndex - 1) % 2) * 32,
+        y: Math.min(70, 6 + Math.floor((nextIndex - 1) / 2) * 30),
+        width: 30,
+        height: 26,
+      };
+
+      return {
+        ...current,
+        frames: [...current.frames, frame],
+      };
+    });
+  }
+
+  function removeCustomFrame(slot: string) {
+    updateCustomTemplateDraft((current) => {
+      if (current.frames.length === 1) {
+        return current;
+      }
+
+      return {
+        ...current,
+        frames: current.frames.filter((frame) => frame.slot !== slot),
+      };
+    });
+  }
+
+  function applyTemplatePack(packId: TemplatePackId, mode: 'replace' | 'insert') {
+    const pack = templatePacks[packId];
+    const nextPages = createPagesFromTemplatePack(packId, {
+      idFactory: (page, index) => `${createPageId()}-${page.template}-${index + 1}`,
+    });
+    const firstPackPage = nextPages[0];
+
+    updateProject((current) => {
+      if (mode === 'replace') {
+        return {
+          ...current,
+          pages: nextPages,
+        };
+      }
+
+      const insertAt = selectedPageIndex >= 0 ? selectedPageIndex + 1 : current.pages.length;
+      return {
+        ...current,
+        pages: [...current.pages.slice(0, insertAt), ...nextPages, ...current.pages.slice(insertAt)],
+      };
+    });
+
+    setSelectedPageId(firstPackPage.id);
+    setSelectedSlot(getInitialSlot(firstPackPage));
+    setTemplateChoice(firstPackPage.template);
+    if (firstPackPage.customTemplate) {
+      setCustomTemplateDraft(cloneCustomTemplateDefinition(firstPackPage.customTemplate));
+    }
+    setMessage(
+      mode === 'replace'
+        ? `Replaced the page stack with the ${pack.label} pack. Uploaded photos stayed in the issue library.`
+        : `Inserted the ${pack.label} pack after the current page. Each inserted page stays editable on its own.`,
+    );
+  }
+
   function addPage(template = templateChoice) {
     if (!selectedPage) {
       return;
     }
 
-    const nextPage = createPageDraft(template, createPageId());
+    const nextPage = createPageFromTemplate(template);
     const insertAt = selectedPageIndex >= 0 ? selectedPageIndex + 1 : project.pages.length;
 
     updateProject((current) => ({
@@ -591,6 +745,9 @@ export function EditorPage() {
     setSelectedPageId(fresh.pages[0]?.id ?? '');
     setSelectedSlot(getInitialSlot(fresh.pages[0]));
     setTemplateChoice(fresh.pages[0]?.template ?? 'cover');
+    setCustomTemplateDraft(
+      fresh.pages[0]?.customTemplate ? cloneCustomTemplateDefinition(fresh.pages[0].customTemplate) : createCustomTemplateDefinition(),
+    );
     setLoadError(null);
     setMessage('Draft only on this device. Create a stable editor URL when you want to reopen the issue later.');
     setCopyState('idle');
@@ -598,13 +755,21 @@ export function EditorPage() {
   }
 
   function applyTemplateChoice() {
-    if (!selectedPage || templateChoice === selectedPage.template) {
+    if (!selectedPage || (templateChoice === selectedPage.template && templateChoice !== 'custom')) {
       return;
     }
 
-    updateSelectedPage((page) => remapPageToTemplate(page, templateChoice));
-    setSelectedSlot(getInitialSlot(remapPageToTemplate(selectedPage, templateChoice)));
-    setMessage('Preset applied. Existing placed images were carried into the new slot order.');
+    const nextPage = remapPageToTemplate(selectedPage, templateChoice, templateChoice === 'custom' ? customTemplateDraft : null);
+    updateSelectedPage(() => nextPage);
+    setSelectedSlot(getInitialSlot(nextPage));
+    if (nextPage.customTemplate) {
+      setCustomTemplateDraft(cloneCustomTemplateDefinition(nextPage.customTemplate));
+    }
+    setMessage(
+      templateChoice === 'custom'
+        ? 'Custom layout applied. Existing placed images were carried into the new frame order.'
+        : 'Preset applied. Existing placed images were carried into the new slot order.',
+    );
   }
 
   async function handleCopyLink() {
@@ -622,6 +787,10 @@ export function EditorPage() {
   }
 
   const currentCrop = selectedSlot && selectedPage ? selectedPage.crops[selectedSlot] : undefined;
+  const selectedFrameLabel =
+    selectedSlot && selectedPage?.template === 'custom'
+      ? selectedPage.customTemplate?.frames.find((frame) => frame.slot === selectedSlot)?.label ?? selectedSlot
+      : selectedSlot;
   const fallbackStatus = !projectRecord
     ? 'Draft only. Create a stable editor URL to save this issue on the server.'
     : saveState === 'saving'
@@ -634,6 +803,7 @@ export function EditorPage() {
   const statusText = uploadState === 'uploading' ? 'Uploading images to the server...' : message ?? fallbackStatus;
   const sequenceLabel = `${project.pages.length} page${project.pages.length === 1 ? '' : 's'} in print order`;
   const selectedTemplateMeta = templateMeta[templateChoice];
+  const selectedTemplateLabel = getTemplateLabel(templateChoice, templateChoice === 'custom' ? customTemplateDraft : null);
   const assetsLabel = `${placedAssetCount} placed / ${unusedAssetCount} unused`;
 
   if (loadState === 'loading') {
@@ -774,6 +944,50 @@ export function EditorPage() {
           <div className="editor-panel">
             <div className="editor-panel__heading">
               <div>
+                <p className="eyebrow">Starter packs</p>
+                <h2>Multi-page packs</h2>
+              </div>
+              <span className="panel-tag">{templatePacks[defaultTemplatePackId].label} default</span>
+            </div>
+            <p className="panel-note">One click can replace the issue sequence or insert a finished pack after the current page. Every inserted page still edits like a normal page afterwards.</p>
+            <div className="template-pack-grid">
+              {templatePackOrder.map((packId) => {
+                const pack = templatePacks[packId];
+                return (
+                  <article key={packId} className={`template-pack-card ${packId === defaultTemplatePackId ? 'is-featured' : ''}`}>
+                    <div className="template-pack-card__copy">
+                      <span>{pack.label}</span>
+                      <strong>{pack.summary}</strong>
+                      <p>{pack.description}</p>
+                    </div>
+                    <p className="template-pack-card__sequence">
+                      {pack.pages.map((page) => getTemplateLabel(page.template, page.customTemplate)).join(' / ')}
+                    </p>
+                    <div className="editor-panel__actions editor-panel__actions--tight">
+                      <button
+                        type="button"
+                        className="button button--primary button--small"
+                        onClick={() => applyTemplatePack(packId, 'replace')}
+                      >
+                        Replace sequence
+                      </button>
+                      <button
+                        type="button"
+                        className="button button--ghost button--small"
+                        onClick={() => applyTemplatePack(packId, 'insert')}
+                      >
+                        Insert after current
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="editor-panel">
+            <div className="editor-panel__heading">
+              <div>
                 <p className="eyebrow">Assets</p>
                 <h2>Photos</h2>
               </div>
@@ -840,7 +1054,7 @@ export function EditorPage() {
               </div>
               <div className="editor-stage__meta">
                 <span>{project.issue}</span>
-                <span>{templateMeta[selectedPage.template].label}</span>
+                <span>{getTemplateLabel(selectedPage.template, selectedPage.customTemplate)}</span>
                 <span>{`Page ${selectedPageIndex + 1} of ${project.pages.length}`}</span>
               </div>
             </div>
@@ -913,7 +1127,7 @@ export function EditorPage() {
                 >
                   <span>{`Page ${index + 1}`}</span>
                   <strong>{page.title}</strong>
-                  <em>{templateMeta[page.template].label}</em>
+                  <em>{getTemplateLabel(page.template, page.customTemplate)}</em>
                 </button>
               ))}
             </div>
@@ -925,7 +1139,7 @@ export function EditorPage() {
             <div className="editor-panel__heading">
               <div>
                 <p className="eyebrow">Templates</p>
-                <h2>{selectedTemplateMeta.label}</h2>
+                <h2>{selectedTemplateLabel}</h2>
               </div>
               <span className="panel-tag">{selectedTemplateMeta.summary}</span>
             </div>
@@ -947,20 +1161,184 @@ export function EditorPage() {
                 );
               })}
             </div>
+            {templateChoice === 'custom' ? (
+              <div className="custom-layout-builder">
+                <div className="editor-panel__heading">
+                  <div>
+                    <p className="eyebrow">Custom layout</p>
+                    <h2>{customTemplateDraft.name}</h2>
+                  </div>
+                  <span className="panel-tag">{`${customTemplateDraft.frames.length} frame${
+                    customTemplateDraft.frames.length === 1 ? '' : 's'
+                  }`}</span>
+                </div>
+                <p className="panel-note">Start from a scaffold, then edit the text box and frame coordinates. The selected page remains editable after the custom layout is applied.</p>
+                <div className="template-grid template-grid--compact">
+                  {customLayoutPresets.map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      className={`template-card ${customTemplateDraft.name === preset.template.name ? 'is-active' : ''}`}
+                      onClick={() => loadCustomLayoutPreset(preset.id)}
+                    >
+                      <span>{preset.label}</span>
+                      <strong>{preset.template.name}</strong>
+                      <small>{preset.summary}</small>
+                    </button>
+                  ))}
+                </div>
+                <label className="field">
+                  <span>Layout name</span>
+                  <input
+                    maxLength={CUSTOM_TEMPLATE_NAME_LIMIT}
+                    value={customTemplateDraft.name}
+                    onChange={(event) =>
+                      updateCustomTemplateDraft((current) => ({
+                        ...current,
+                        name: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <div className="custom-layout-section">
+                  <div className="editor-panel__heading">
+                    <div>
+                      <p className="eyebrow">Text area</p>
+                      <h2>Copy block</h2>
+                    </div>
+                  </div>
+                  <div className="custom-layout-grid">
+                    {customAreaFields.map((field) => (
+                      <label className="field" key={`text-${field.key}`}>
+                        <span>{field.label}</span>
+                        <input
+                          type="number"
+                          min={field.min}
+                          max={field.max}
+                          step="1"
+                          value={Math.round(customTemplateDraft.text[field.key])}
+                          onChange={(event) =>
+                            updateCustomTemplateDraft((current) => ({
+                              ...current,
+                              text: updateCustomArea(current.text, field.key, Number(event.target.value)),
+                            }))
+                          }
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="editor-panel__actions editor-panel__actions--tight">
+                  <button
+                    type="button"
+                    className="button button--ghost button--small"
+                    onClick={() => loadCustomLayoutPreset(defaultCustomLayoutPresetId)}
+                  >
+                    Reset to default scaffold
+                  </button>
+                  <button
+                    type="button"
+                    className="button button--ghost button--small"
+                    disabled={customTemplateDraft.frames.length >= CUSTOM_TEMPLATE_FRAME_LIMIT}
+                    onClick={addCustomFrame}
+                  >
+                    {customTemplateDraft.frames.length >= CUSTOM_TEMPLATE_FRAME_LIMIT ? 'Frame limit reached' : 'Add frame'}
+                  </button>
+                </div>
+                <div className="custom-frame-list">
+                  {customTemplateDraft.frames.map((frame, frameIndex) => (
+                    <section key={frame.slot} className="custom-frame-card">
+                      <div className="editor-panel__heading">
+                        <div>
+                          <p className="eyebrow">Frame {frameIndex + 1}</p>
+                          <h2>{frame.label}</h2>
+                        </div>
+                        <span className="panel-tag">{frame.slot.toUpperCase()}</span>
+                      </div>
+                      <label className="field">
+                        <span>Label</span>
+                        <input
+                          maxLength={CUSTOM_TEMPLATE_FRAME_LABEL_LIMIT}
+                          value={frame.label}
+                          onChange={(event) =>
+                            updateCustomTemplateDraft((current) => ({
+                              ...current,
+                              frames: current.frames.map((entry) =>
+                                entry.slot === frame.slot
+                                  ? {
+                                      ...entry,
+                                      label: event.target.value,
+                                    }
+                                  : entry,
+                              ),
+                            }))
+                          }
+                        />
+                      </label>
+                      <div className="custom-layout-grid">
+                        {customAreaFields.map((field) => (
+                          <label className="field" key={`${frame.slot}-${field.key}`}>
+                            <span>{field.label}</span>
+                            <input
+                              type="number"
+                              min={field.min}
+                              max={field.max}
+                              step="1"
+                              value={Math.round(frame[field.key])}
+                              onChange={(event) =>
+                                updateCustomTemplateDraft((current) => ({
+                                  ...current,
+                                  frames: current.frames.map((entry) =>
+                                    entry.slot === frame.slot
+                                      ? updateCustomFrameArea(entry, field.key, Number(event.target.value))
+                                      : entry,
+                                  ),
+                                }))
+                              }
+                            />
+                          </label>
+                        ))}
+                      </div>
+                      <div className="editor-panel__actions editor-panel__actions--tight">
+                        <button
+                          type="button"
+                          className="button button--ghost button--small"
+                          disabled={customTemplateDraft.frames.length === 1}
+                          onClick={() => removeCustomFrame(frame.slot)}
+                        >
+                          {customTemplateDraft.frames.length === 1 ? 'At least one frame required' : 'Remove frame'}
+                        </button>
+                        <button
+                          type="button"
+                          className="button button--ghost button--small"
+                          onClick={() => setSelectedSlot(frame.slot)}
+                        >
+                          Focus this frame
+                        </button>
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <div className="editor-panel__actions">
               <button
                 type="button"
                 className="button button--primary button--small"
-                disabled={templateChoice === selectedPage.template}
+                disabled={templateChoice === selectedPage.template && templateChoice !== 'custom'}
                 onClick={applyTemplateChoice}
               >
-                {templateChoice === selectedPage.template ? 'Current preset' : 'Apply to page'}
+                {templateChoice === selectedPage.template && templateChoice !== 'custom' ? 'Current preset' : 'Apply to page'}
               </button>
               <button type="button" className="button button--ghost button--small" onClick={() => addPage(templateChoice)}>
                 Add after current
               </button>
             </div>
-            <p className="panel-note">Applying a preset preserves matching slots first, then carries remaining placed images in order.</p>
+            <p className="panel-note">
+              {templateChoice === 'custom'
+                ? 'Applying the custom layout preserves matching frame names first, then carries remaining placed images into the open frames.'
+                : 'Applying a preset preserves matching slots first, then carries remaining placed images in order.'}
+            </p>
           </div>
 
           <div className="editor-panel">
@@ -1015,7 +1393,7 @@ export function EditorPage() {
             <div className="editor-panel__heading">
               <div>
                 <p className="eyebrow">Selected frame</p>
-                <h2>{selectedSlot ? selectedSlot.toUpperCase() : 'None'}</h2>
+                <h2>{selectedFrameLabel ?? 'None'}</h2>
               </div>
               {selectedAsset ? <span className="panel-tag">{currentCrop?.fit === 'contain' ? 'Keep full image' : 'Fill frame'}</span> : null}
             </div>

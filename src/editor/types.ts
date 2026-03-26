@@ -1,4 +1,5 @@
-export type TemplateId = 'cover' | 'essay' | 'folio' | 'grid' | 'diptych' | 'panorama' | 'mosaic' | 'triptych';
+export type BuiltInTemplateId = 'cover' | 'essay' | 'folio' | 'grid' | 'diptych' | 'panorama' | 'mosaic' | 'triptych';
+export type TemplateId = BuiltInTemplateId | 'custom';
 
 export type ImageFit = 'cover' | 'contain';
 
@@ -17,6 +18,24 @@ export interface CropSettings {
   fit: ImageFit;
 }
 
+export interface LayoutArea {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface CustomTemplateFrame extends LayoutArea {
+  slot: string;
+  label: string;
+}
+
+export interface CustomTemplateDefinition {
+  name: string;
+  text: LayoutArea;
+  frames: ReadonlyArray<CustomTemplateFrame>;
+}
+
 export interface PageData {
   id: string;
   template: TemplateId;
@@ -25,6 +44,7 @@ export interface PageData {
   deck: string;
   body: string;
   caption: string;
+  customTemplate: CustomTemplateDefinition | null;
   slots: Record<string, string | null>;
   crops: Record<string, CropSettings>;
 }
