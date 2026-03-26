@@ -1,5 +1,25 @@
 # CrazyAlbum Devlog
 
+## 2026-03-26 Editor Layout Balance Pass
+
+### What changed
+
+- Rebalanced the large-screen editor shell around a practical `1 / 2 / 1` column split so the Live page gets roughly half of the working width while the asset and controls sidebars each keep about a quarter.
+- Reduced the maximum editor shell width at desktop scale so the center preview no longer balloons back into the old over-wide state on very large monitors even with the restored emphasis.
+- Tightened sidebar resilience instead of undoing recent template work. The template chooser and custom-template coordinate grids now fit the right rail more predictably, and key editor headers/cards can wrap instead of forcing horizontal spill.
+- Updated live preview scaling to measure the editor canvas using its real padding rather than a hardcoded inset, which keeps the A4 page fit correct after layout spacing changes.
+
+### Validation
+
+- `npm run typecheck`
+- `npm run build`
+- `npm run validate:mvp`
+
+### Remaining limits
+
+- This sandbox still cannot produce a browser-rendered proof of the revised large-screen balance, so final visual sign-off should still include one manual desktop pass in a real browser.
+- The right sidebar is now materially less spill-prone, but the custom-template builder remains dense by design and should still be sanity-checked with unusually long frame labels or issue copy during that browser pass.
+
 ## 2026-03-26 Hardening Follow-up
 
 ### What changed

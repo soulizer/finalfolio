@@ -346,8 +346,11 @@ export function EditorPage() {
         return;
       }
 
-      const availableWidth = Math.max(container.clientWidth - 8, 320);
-      const availableHeight = Math.max(container.clientHeight - 8, 320);
+      const containerStyles = window.getComputedStyle(container);
+      const horizontalPadding = Number.parseFloat(containerStyles.paddingLeft) + Number.parseFloat(containerStyles.paddingRight);
+      const verticalPadding = Number.parseFloat(containerStyles.paddingTop) + Number.parseFloat(containerStyles.paddingBottom);
+      const availableWidth = Math.max(container.clientWidth - horizontalPadding, 320);
+      const availableHeight = Math.max(container.clientHeight - verticalPadding, 320);
       const nextScale = Math.min(1, availableWidth / baseWidth, availableHeight / baseHeight);
       setPreviewScale((current) => (Math.abs(current - nextScale) < 0.005 ? current : Number(nextScale.toFixed(4))));
     }

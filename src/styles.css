@@ -12,6 +12,8 @@
   --shadow: 0 24px 70px rgba(17, 17, 17, 0.08);
   --radius: 26px;
   --site-width: min(1240px, calc(100vw - 48px));
+  --editor-shell-width: min(1680px, calc(100vw - 32px));
+  --editor-layout-gap: 18px;
   --sheet-width: 210mm;
   --sheet-height: 297mm;
   color: var(--ink);
@@ -484,7 +486,7 @@ img {
 .editor-topbar,
 .editor-project-bar,
 .editor-layout {
-  width: min(1800px, 100%);
+  width: var(--editor-shell-width);
   margin-inline: auto;
 }
 
@@ -574,8 +576,8 @@ img {
 
 .editor-layout {
   display: grid;
-  grid-template-columns: minmax(320px, 1fr) minmax(0, 1.06fr) minmax(320px, 1fr);
-  gap: 14px;
+  grid-template-columns: minmax(320px, 1fr) minmax(0, 2fr) minmax(320px, 1fr);
+  gap: var(--editor-layout-gap);
   align-items: stretch;
 }
 
@@ -584,13 +586,21 @@ img {
   grid-template-rows: minmax(0, 1fr) auto;
   gap: 14px;
   min-height: 0;
+  min-width: 0;
 }
 
 .editor-sidebar {
   display: grid;
   gap: 12px;
   min-height: 0;
+  min-width: 0;
   grid-auto-rows: max-content;
+}
+
+.editor-layout > *,
+.editor-sidebar > *,
+.editor-canvas-wrap > * {
+  min-width: 0;
 }
 
 .editor-panel,
@@ -615,7 +625,14 @@ img {
   display: flex;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
   align-items: start;
+}
+
+.editor-panel__heading > *,
+.editor-stage__header > *,
+.page-strip-panel__header > * {
+  min-width: 0;
 }
 
 .editor-panel h2 {
@@ -634,6 +651,8 @@ img {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid var(--line);
+  max-width: min(100%, 16rem);
+  overflow-wrap: anywhere;
 }
 
 .upload-button {
@@ -760,6 +779,7 @@ img {
   display: grid;
   align-content: center;
   gap: 4px;
+  min-width: 0;
 }
 
 .asset-tile__copy span {
@@ -815,6 +835,7 @@ img {
   display: flex;
   justify-content: space-between;
   gap: 16px;
+  flex-wrap: wrap;
   align-items: start;
   padding-bottom: 4px;
 }
@@ -1160,6 +1181,7 @@ button.asset-frame {
   display: flex;
   justify-content: space-between;
   gap: 16px;
+  flex-wrap: wrap;
   align-items: end;
 }
 
@@ -1197,6 +1219,7 @@ button.asset-frame {
   border-radius: 18px;
   text-align: left;
   cursor: pointer;
+  min-width: 0;
 }
 
 .page-chip.is-active {
@@ -1236,6 +1259,7 @@ button.asset-frame {
   background: rgba(255, 255, 255, 0.46);
   text-align: left;
   cursor: pointer;
+  min-width: 0;
 }
 
 .template-card.is-active {
@@ -1279,6 +1303,10 @@ button.asset-frame {
   gap: 6px;
 }
 
+.template-pack-card__copy {
+  min-width: 0;
+}
+
 .template-pack-card__copy span,
 .template-pack-card__sequence,
 .magazine-custom__label {
@@ -1310,6 +1338,11 @@ button.asset-frame {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
+}
+
+.editor-sidebar--controls .template-grid,
+.editor-sidebar--controls .custom-layout-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .segmented-control {
