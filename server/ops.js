@@ -82,6 +82,7 @@ export function createOpsStore({
   const eventsDir = path.join(dataRoot, 'events');
   let cachedEvents = null;
   let cachedEventsAt = 0;
+  const recentDedupeKeys = new Map();
 
   function eventPath(eventId) {
     return path.join(eventsDir, `${eventId}.json`);
@@ -91,7 +92,23 @@ export function createOpsStore({
     await fs.mkdir(eventsDir, { recursive: true, mode: 0o700 });
   }
 
-  async function recordEvent({ type, status = 'ok', userId = null, projectId = null, detail = null } = {}) {
+  async function recordEvent({
+    type,
+    status = 'ok',
+    userId = null,
+    projectId = null,
+    detail = null,
+    dedupeKey = null,
+    dedupeWindowMs = 0,
+  } = {}) {
+    if (dedupeKey && dedupeWindowMs > 0) {
+      const lastAt = recentDedupeKeys.get(dedupeKey) ?? 0;
+      if (Date.now() - lastAt < dedupeWindowMs) {
+        return null;
+      }
+      recentDedupeKeys.set(dedupeKey, Date.now());
+    }
+
     const timestamp = now();
     const record = {
       id: `event-${createId()}`,

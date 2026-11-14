@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { CURRENT_TOS_VERSION, hasAcceptedCurrentTerms, normalizeTermsLanguage } from './legal.js';
 import { findReservedUsernameMatch, normalizeUsername } from './usernames.js';
+import { createBadRequest, createForbidden, createNotFound, createUnauthorized } from './lib/httpErrors.js';
 
 const USER_ID_BYTES = 9;
 const SESSION_ID_BYTES = 24;
@@ -24,29 +25,9 @@ function hashBearerToken(value) {
   return crypto.createHash('sha256').update(String(value)).digest('hex');
 }
 
-function createBadRequest(message) {
-  const error = new Error(message);
-  error.statusCode = 400;
-  return error;
-}
 
-function createUnauthorized(message = 'Authentication required.') {
-  const error = new Error(message);
-  error.statusCode = 401;
-  return error;
-}
 
-function createForbidden(message = 'Forbidden.') {
-  const error = new Error(message);
-  error.statusCode = 403;
-  return error;
-}
 
-function createNotFound(message) {
-  const error = new Error(message);
-  error.statusCode = 404;
-  return error;
-}
 
 function normalizeEmail(email) {
   if (typeof email !== 'string') {

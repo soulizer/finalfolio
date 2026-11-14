@@ -1,5 +1,6 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { createBadRequest } from './lib/httpErrors.js';
 
 const DEFAULT_CACHE_TTL_MS = 5_000;
 const DEFAULT_FILL_SCALE = 1.1;
@@ -8,11 +9,6 @@ const TEMPLATE_NAME_LIMIT = 80;
 const TEMPLATE_DESCRIPTION_LIMIT = 240;
 const TEMPLATE_KIND_VALUES = new Set(['page', 'project']);
 
-function createBadRequest(message) {
-  const error = new Error(message);
-  error.statusCode = 400;
-  return error;
-}
 
 function sanitizeText(value, fieldName, maxLength, { allowEmpty = false, trim = true } = {}) {
   if (typeof value !== 'string') {

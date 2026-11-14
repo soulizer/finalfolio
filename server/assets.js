@@ -1,13 +1,9 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { createBadRequest } from './lib/httpErrors.js';
 
 const DEFAULT_ASSET_CACHE_TTL_MS = 5_000;
 
-function createBadRequest(message) {
-  const error = new Error(message);
-  error.statusCode = 400;
-  return error;
-}
 
 function normalizeNumericField(value) {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? Math.round(value) : null;

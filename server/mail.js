@@ -1,10 +1,6 @@
 import nodemailer from 'nodemailer';
+import { createBadRequest } from './lib/httpErrors.js';
 
-function createBadRequest(message) {
-  const error = new Error(message);
-  error.statusCode = 400;
-  return error;
-}
 
 function normalizeSecureMode(value) {
   const nextValue = String(value ?? '').trim().toLowerCase();

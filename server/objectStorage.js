@@ -13,6 +13,7 @@ import {
 import { Hash } from '@smithy/hash-node';
 import { HttpRequest } from '@smithy/protocol-http';
 import { SignatureV4 } from '@smithy/signature-v4';
+import { createBadRequest } from './lib/httpErrors.js';
 
 const DEFAULT_OBJECT_STORAGE_CONFIG = {
   enabled: false,
@@ -31,11 +32,6 @@ const OBJECT_STORAGE_UPLOAD_RETRY_DELAY_MS = 1_500;
 const successfulUploadStatusCodes = new Set([200, 201, 204]);
 const allowedSyncStatuses = new Set(['pending', 'remote', 'failed']);
 
-function createBadRequest(message) {
-  const error = new Error(message);
-  error.statusCode = 400;
-  return error;
-}
 
 function normalizeBoolean(value, fallback = false) {
   return typeof value === 'boolean' ? value : fallback;

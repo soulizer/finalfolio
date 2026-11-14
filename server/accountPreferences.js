@@ -1,15 +1,11 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { createBadRequest } from './lib/httpErrors.js';
 
 const DEFAULT_EXPORT_FORMAT = 'pdf';
 const DEFAULT_EXPORT_QUALITY = 'standard';
 const DEFAULT_PAGE_SIZE = 'a4';
 
-function createBadRequest(message) {
-  const error = new Error(message);
-  error.statusCode = 400;
-  return error;
-}
 
 function sanitizeExportFormat(value) {
   return value === 'project' || value === 'jpg' ? value : DEFAULT_EXPORT_FORMAT;

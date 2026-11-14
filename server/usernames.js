@@ -1,4 +1,5 @@
 const USERNAME_PATTERN = /^[a-z0-9](?:[a-z0-9_-]{1,38}[a-z0-9])?$/;
+import { createBadRequest } from './lib/httpErrors.js';
 
 const RESERVED_USERNAME_TERMS = [
   // System and administrative identities
@@ -336,8 +337,3 @@ export function findReservedUsernameMatch(username) {
   return buildReservationCandidates(normalizedUsername).find((candidate) => RESERVED_USERNAME_CANONICALS.has(candidate)) ?? null;
 }
 
-function createBadRequest(message) {
-  const error = new Error(message);
-  error.statusCode = 400;
-  return error;
-}

@@ -1,5 +1,6 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { createBadRequest } from './lib/httpErrors.js';
 
 const DEFAULT_SITE_CONTENT = {
   hero: {
@@ -89,11 +90,6 @@ const DEFAULT_TEMPLATE_GOVERNANCE = {
   },
 };
 
-function createBadRequest(message) {
-  const error = new Error(message);
-  error.statusCode = 400;
-  return error;
-}
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));

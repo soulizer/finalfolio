@@ -15,6 +15,9 @@ import { createSecurityStore } from './security.js';
 import { createSiteStore } from './site.js';
 import { createUserTemplateStore } from './userTemplates.js';
 import { createAssetVariantService, getUploadFilenameFromPath } from './uploadVariants.js';
+import { createBadRequest, createForbidden } from './lib/httpErrors.js';
+
+export { createBadRequest };
 
 const DEFAULT_PORT = 3000;
 const DEFAULT_DATA_ROOT = '/data';
@@ -126,17 +129,6 @@ export function createPublicIssuePath(shareId) {
   return `/project/${shareId}`;
 }
 
-export function createBadRequest(message) {
-  const error = new Error(message);
-  error.statusCode = 400;
-  return error;
-}
-
-function createForbidden(message) {
-  const error = new Error(message);
-  error.statusCode = 403;
-  return error;
-}
 
 function getUserDisplayIdentity(user) {
   const username = typeof user?.username === 'string' ? user.username.trim() : '';
@@ -1616,6 +1608,10 @@ export function createApp({
             return 'Created a project';
           case 'update':
             return 'Updated a project';
+          case 'rename':
+            return 'Renamed a project';
+          case 'autosave':
+            return 'Auto-saved a project';
           case 'create-from-template':
             return 'Created a project from a template';
           case 'duplicate':
@@ -3007,12 +3003,15 @@ export function createApp({
         throw error;
       }
       const record = await updateProjectRecordPreservingAssets(request.params.projectId, request.body);
+      const isAutosave = request.body?.autosave === true;
       await opsStore.recordEvent({
         type: 'project',
         status: 'ok',
         userId: user.id,
         projectId: record.id,
-        detail: { action: 'update' },
+        detail: { action: isAutosave ? 'autosave' : 'update' },
+        dedupeKey: isAutosave ? `project-autosave:${record.id}` : null,
+        dedupeWindowMs: isAutosave ? 10 * 60 * 1000 : 0,
       });
       response.json({
         ...serializeProjectRecord(record),
@@ -3985,7 +3984,7 @@ export function createApp({
     }
     response.status(statusCode).json({
       error: message,
-      ...(typeof error?.code === 'string' ? { code: error.code } : {}),
+      ...(typeof error?.code === 'string' && !isMissingFile && statusCode < 500 ? { code: error.code } : {}),
       ...(typeof error?.termsVersion === 'string' ? { termsVersion: error.termsVersion } : {}),
       ...(error?.details && typeof error.details === 'object' ? { details: error.details } : {}),
     });

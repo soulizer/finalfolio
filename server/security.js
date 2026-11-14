@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { createBadRequest } from './lib/httpErrors.js';
 
 const CAPTCHA_ID_BYTES = 18;
 const CAPTCHA_TTL_MS = 10 * 60 * 1000;
@@ -14,11 +15,6 @@ function createId(bytes = 12) {
   return crypto.randomBytes(bytes).toString('base64url').replace(/[-_]/g, '').toLowerCase();
 }
 
-function createBadRequest(message) {
-  const error = new Error(message);
-  error.statusCode = 400;
-  return error;
-}
 
 function createTooManyRequests(message, retryAfterSeconds) {
   const error = new Error(message);
