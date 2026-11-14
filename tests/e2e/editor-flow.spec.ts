@@ -42,7 +42,7 @@ test('upload, save, reopen, share, and export the editor flow', async ({ page })
   await page.locator('.asset-tile__main').first().click();
   await expect(page.locator('main .asset-frame[data-has-asset="true"] img')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Create link' }).click();
+  await page.getByRole('button', { name: 'Save folio' }).click();
   await expect(page).toHaveURL(/\/editor\/[a-z0-9_-]+$/);
   await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeVisible();
 

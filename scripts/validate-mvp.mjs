@@ -1713,7 +1713,7 @@ try {
     assert.match(editorPage, /Advanced frame geometry/);
     assert.match(editorPage, /editor-sidebar editor-sidebar--navigation/);
     assert.match(editorPage, /aria-label="Live page editor"/);
-    assert.match(editorPage, /Create link/);
+    assert.match(editorPage, /Save folio/);
     assert.match(editorPage, /<EditorContentSidebar/);
     assert.match(editorPage, /<EditorOperationsSidebar/);
     assert.match(editorPage, /<EditorExportCenter/);
