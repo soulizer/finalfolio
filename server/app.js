@@ -1667,6 +1667,18 @@ export function createApp({
         }
       case 'auth':
         switch (action) {
+          case 'login':
+            return 'Signed in';
+          case 'logout':
+            return 'Signed out';
+          case 'register':
+            return 'Created an account';
+          case 'verify-email':
+            return 'Verified email';
+          case 'password-reset':
+            return 'Reset password';
+          case 'accept-terms':
+            return 'Accepted terms';
           case 'update-profile':
             return 'Updated account profile';
           case 'update-preferences':

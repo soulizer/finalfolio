@@ -32,6 +32,15 @@ docker compose -f deploy/docker-compose.yml up -d --build
 Secrets (SMTP password, public origin, cookie flags) come from `deploy/.env`, which is
 git-ignored. The container runs as UID 1000; `/data` must be writable by that user.
 
+Existing deployments created before the 2026-11 hardening pass keep their old file modes
+until touched. Tighten them once when upgrading, and rotate any credential that was
+previously committed or exposed through `docker inspect`:
+
+```bash
+sudo chown -R 1000:1000 data
+sudo chmod -R go-rwx data
+```
+
 ## Data and privacy
 
 - Session cookies and emailed action tokens are stored as SHA-256 hashes, never in plain text.
