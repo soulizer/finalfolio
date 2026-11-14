@@ -6,13 +6,17 @@ services:
     container_name: finalfolio-web
     restart: unless-stopped
     environment:
-      FINALFOLIO_SMTP_HOST: mail.finalfolio.com
-      FINALFOLIO_SMTP_PORT: 465
-      FINALFOLIO_SMTP_USER: noreply@finalfolio.com
-      FINALFOLIO_SMTP_PASS: EH90wIT9
-      FINALFOLIO_SMTP_SECURE: ssl
-      FINALFOLIO_MAIL_FROM: noreply@finalfolio.com
-      FINALFOLIO_MAIL_FROM_NAME: FinalFolio
+      # Values come from deploy/.env (see deploy/.env.example). Never commit secrets.
+      FINALFOLIO_SMTP_HOST: ${FINALFOLIO_SMTP_HOST:-mail.finalfolio.com}
+      FINALFOLIO_SMTP_PORT: ${FINALFOLIO_SMTP_PORT:-465}
+      FINALFOLIO_SMTP_USER: ${FINALFOLIO_SMTP_USER:-noreply@finalfolio.com}
+      FINALFOLIO_SMTP_PASS: ${FINALFOLIO_SMTP_PASS:?Set FINALFOLIO_SMTP_PASS in deploy/.env}
+      FINALFOLIO_SMTP_SECURE: ${FINALFOLIO_SMTP_SECURE:-ssl}
+      FINALFOLIO_MAIL_FROM: ${FINALFOLIO_MAIL_FROM:-noreply@finalfolio.com}
+      FINALFOLIO_MAIL_FROM_NAME: ${FINALFOLIO_MAIL_FROM_NAME:-FinalFolio}
+      FINALFOLIO_PUBLIC_ORIGIN: ${FINALFOLIO_PUBLIC_ORIGIN:-https://finalfolio.com}
+      FINALFOLIO_COOKIE_SECURE: ${FINALFOLIO_COOKIE_SECURE:-true}
+      FINALFOLIO_EVENT_RETENTION_DAYS: ${FINALFOLIO_EVENT_RETENTION_DAYS:-30}
     labels:
       caddy_0: https://finalfolio.com
       caddy_0.reverse_proxy: "{{upstreams 3000}}"

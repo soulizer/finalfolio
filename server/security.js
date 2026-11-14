@@ -23,6 +23,7 @@ function createBadRequest(message) {
 function createTooManyRequests(message, retryAfterSeconds) {
   const error = new Error(message);
   error.statusCode = 429;
+  error.code = 'rate_limited';
   if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
     error.retryAfterSeconds = retryAfterSeconds;
   }
@@ -194,8 +195,8 @@ export function createSecurityStore({
   }
 
   async function ensureSecurityDirectories() {
-    await fs.mkdir(captchasDir, { recursive: true });
-    await fs.mkdir(rateLimitsDir, { recursive: true });
+    await fs.mkdir(captchasDir, { recursive: true, mode: 0o700 });
+    await fs.mkdir(rateLimitsDir, { recursive: true, mode: 0o700 });
   }
 
   async function ensureConfigSecretKey() {
@@ -261,7 +262,7 @@ export function createSecurityStore({
 
   async function writeJsonRecord(filename, record) {
     const tempFile = `${filename}.${process.pid}.${createId(6)}.tmp`;
-    await fs.writeFile(tempFile, JSON.stringify(record, null, 2), 'utf8');
+    await fs.writeFile(tempFile, JSON.stringify(record, null, 2), { encoding: 'utf8', mode: 0o600 });
     await fs.rename(tempFile, filename);
   }
 

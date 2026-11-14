@@ -4,3 +4,5 @@ data
 .git
 .gitignore
 npm-debug.log
+.env
+deploy/.env

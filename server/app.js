@@ -93,6 +93,26 @@ const PASSWORD_RESET_IP_RATE_LIMIT = {
   windowMs: 60 * 60 * 1000,
   message: 'Too many password reset requests from this IP. Try again later.',
 };
+const LOGIN_IP_RATE_LIMIT = {
+  scope: 'auth-login-ip',
+  limit: 30,
+  windowMs: 15 * 60 * 1000,
+  message: 'Too many sign-in attempts from this network. Try again later.',
+};
+const LOGIN_IDENTIFIER_RATE_LIMIT = {
+  scope: 'auth-login-identifier',
+  limit: 10,
+  windowMs: 15 * 60 * 1000,
+  message: 'Too many sign-in attempts for this account. Try again later.',
+};
+const EXPORT_EVENT_IP_RATE_LIMIT = {
+  scope: 'export-event-ip',
+  limit: 60,
+  windowMs: 10 * 60 * 1000,
+  message: 'Too many export events. Try again later.',
+};
+const PUBLIC_ORIGIN_FALLBACK = 'https://finalfolio.com';
+const PUBLIC_HOST_ALLOWLIST = new Set(['finalfolio.com', 'www.finalfolio.com']);
 
 function createId(bytes = 9) {
   return crypto.randomBytes(bytes).toString('base64url').replace(/[-_]/g, '').toLowerCase();
@@ -270,19 +290,47 @@ function parseCookies(header = '') {
   );
 }
 
+function isSecureCookieEnabled() {
+  return process.env.NODE_ENV === 'production' || process.env.FINALFOLIO_COOKIE_SECURE === 'true';
+}
+
 function serializeSessionCookie(value) {
-  return `${SESSION_COOKIE_NAME}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 60 * 60}`;
+  const secure = isSecureCookieEnabled() ? '; Secure' : '';
+  return `${SESSION_COOKIE_NAME}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${
+    30 * 24 * 60 * 60
+  }${secure}`;
 }
 
 function serializeClearedSessionCookie() {
-  return `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+  const secure = isSecureCookieEnabled() ? '; Secure' : '';
+  return `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`;
 }
 
 function resolvePublicOrigin(request) {
+  const configuredOrigin = String(process.env.FINALFOLIO_PUBLIC_ORIGIN ?? '').trim();
+  if (configuredOrigin) {
+    try {
+      const url = new URL(configuredOrigin);
+      if (url.protocol === 'https:' || url.protocol === 'http:') {
+        return url.origin;
+      }
+    } catch {
+      // Fall through to the request-derived origin.
+    }
+  }
+
   const protocolHeader = String(request.headers['x-forwarded-proto'] ?? '').split(',')[0].trim();
   const hostHeader = String(request.headers['x-forwarded-host'] ?? request.headers.host ?? '').split(',')[0].trim();
-  const protocol = protocolHeader || 'https';
+  const protocol = protocolHeader === 'http' ? 'http' : 'https';
   const host = hostHeader || 'finalfolio.com';
+  const hostname = host.replace(/:\d+$/, '').toLowerCase();
+
+  // Never let a forged Host/X-Forwarded-Host turn an emailed reset link into a link to
+  // an attacker-controlled domain.
+  if (!PUBLIC_HOST_ALLOWLIST.has(hostname) && !hostname.endsWith('.localhost') && hostname !== 'localhost' && hostname !== '127.0.0.1') {
+    return PUBLIC_ORIGIN_FALLBACK;
+  }
+
   return `${protocol}://${host}`;
 }
 
@@ -631,6 +679,68 @@ function resolveUploadTimestamp(filename, stats) {
   return new Date(fallbackMs || Date.now()).toISOString();
 }
 
+const imageMagicMatchers = [
+  { mime: 'image/jpeg', test: (bytes) => bytes.length > 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff },
+  {
+    mime: 'image/png',
+    test: (bytes) =>
+      bytes.length > 8 &&
+      bytes[0] === 0x89 &&
+      bytes[1] === 0x50 &&
+      bytes[2] === 0x4e &&
+      bytes[3] === 0x47 &&
+      bytes[4] === 0x0d &&
+      bytes[5] === 0x0a &&
+      bytes[6] === 0x1a &&
+      bytes[7] === 0x0a,
+  },
+  { mime: 'image/gif', test: (bytes) => bytes.length > 4 && bytes.subarray(0, 4).toString('latin1') === 'GIF8' },
+  {
+    mime: 'image/webp',
+    test: (bytes) =>
+      bytes.length > 12 &&
+      bytes.subarray(0, 4).toString('latin1') === 'RIFF' &&
+      bytes.subarray(8, 12).toString('latin1') === 'WEBP',
+  },
+  {
+    mime: 'image/avif',
+    test: (bytes) =>
+      bytes.length > 16 &&
+      bytes.subarray(4, 8).toString('latin1') === 'ftyp' &&
+      ['avif', 'avis'].includes(bytes.subarray(8, 12).toString('latin1')),
+  },
+];
+
+async function assertReadableImageFile(file) {
+  const handle = await fs.open(file.path, 'r');
+  try {
+    const header = Buffer.alloc(32);
+    const { bytesRead } = await handle.read(header, 0, header.length, 0);
+    const bytes = header.subarray(0, bytesRead);
+    const matched = imageMagicMatchers.find((matcher) => matcher.test(bytes));
+    if (!matched || !allowedUploadTypes.has(matched.mime)) {
+      throw createBadRequest('This file is not a readable JPG, PNG, WebP, GIF, or AVIF image.');
+    }
+  } finally {
+    await handle.close();
+  }
+}
+
+function mapImageProcessingError(error) {
+  if (error?.statusCode) {
+    return error;
+  }
+
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  if (/ffmpeg|ffprobe|Invalid data|moov atom|decode/i.test(message)) {
+    const mapped = new Error('This image could not be processed. Try exporting it again as JPG or PNG.');
+    mapped.statusCode = 400;
+    return mapped;
+  }
+
+  return error;
+}
+
 export function validateUploadFile(file) {
   const extension = path.extname(file?.originalname ?? '').toLowerCase();
   if (!allowedUploadTypes.has(file?.mimetype) || !allowedUploadExtensions.has(extension)) {
@@ -656,7 +766,7 @@ export function createProjectStore({
   let cachedUploadInventoryExpiresAt = 0;
 
   function createProjectFilePath(projectId) {
-    return path.join(projectsDir, `${projectId}.json`);
+    return path.join(projectsDir, `${sanitizeProjectId(projectId)}.json`);
   }
 
   function invalidateProjectRecordCache() {
@@ -1878,6 +1988,36 @@ export function createApp({
     await store.deleteProjectRecord(record.id);
   }
 
+  // Deleting a folio should also remove the photos that no longer belong to any folio.
+  // Shared library assets stay, because other projects may still reference them.
+  async function cleanupUnreferencedAssetsFromProject(record) {
+    const candidateIds = Array.from(
+      new Set((record?.project?.assets ?? []).map((asset) => (typeof asset?.id === 'string' ? asset.id : null)).filter(Boolean)),
+    );
+
+    for (const assetId of candidateIds) {
+      try {
+        const assetRecord = await assetStore.readAssetRecord(assetId);
+        if (!assetRecord || assetRecord.deletedAt) {
+          continue;
+        }
+
+        if (record.ownerUserId && assetRecord.ownerUserId !== record.ownerUserId) {
+          continue;
+        }
+
+        const references = await collectAssetProjectReferences(assetId);
+        if (references.length === 0) {
+          await cleanupAssetIfUnused(assetId, assetRecord.src);
+        }
+      } catch {
+        // Asset cleanup is best-effort; the project deletion has already succeeded.
+      }
+    }
+
+    store.invalidateStoreCaches();
+  }
+
   async function deleteTemplatesOwnedByUser(userId) {
     const templates = (await userTemplateStore.listTemplateRecords()).filter((record) => record.ownerUserId === userId);
     await Promise.all(templates.map((record) => userTemplateStore.deleteTemplateRecord(record.id)));
@@ -2152,6 +2292,15 @@ export function createApp({
 
   app.post('/api/auth/login', async (request, response, next) => {
     try {
+      const clientIp = resolveClientIp(request);
+      const identifierKey =
+        String(request.body?.identifier ?? request.body?.email ?? '')
+          .trim()
+          .toLowerCase()
+          .slice(0, 160) || 'unknown';
+      await securityStore.consumeRateLimit({ ...LOGIN_IP_RATE_LIMIT, key: clientIp });
+      await securityStore.consumeRateLimit({ ...LOGIN_IDENTIFIER_RATE_LIMIT, key: identifierKey });
+
       const user = await authStore.authenticateUser(request.body ?? {});
       const session = await authStore.createSession(user.id);
       response.setHeader('Set-Cookie', serializeSessionCookie(session.id));
@@ -2619,6 +2768,8 @@ export function createApp({
         };
 
         try {
+          await Promise.all(files.map((file) => assertReadableImageFile(file)));
+
           for (const [index, file] of files.entries()) {
             const baseAsset = store.createStoredUpload(file, uploadMetadata[index]);
             let asset = await store.hydrateStoredUploadAsset(baseAsset, { ensureVariants: true });
@@ -2644,7 +2795,7 @@ export function createApp({
           }
         } catch (error) {
           await cleanupUploadedFiles();
-          throw error;
+          throw mapImageProcessingError(error);
         }
 
         try {
@@ -2910,6 +3061,7 @@ export function createApp({
       const record = await store.readProjectRecord(projectId);
       const user = requireProjectMutationAccess(request, record);
       await deleteProjectRecordPreservingAssets(record);
+      await cleanupUnreferencedAssetsFromProject(record);
       await opsStore.recordEvent({
         type: 'project',
         status: 'ok',
@@ -3048,6 +3200,12 @@ export function createApp({
 
   app.post('/api/exports', async (request, response, next) => {
     try {
+      await securityStore.consumeRateLimit({
+        ...EXPORT_EVENT_IP_RATE_LIMIT,
+        key: resolveClientIp(request),
+      });
+      const trimmedText = (value, maxLength) =>
+        typeof value === 'string' ? value.trim().slice(0, maxLength) : null;
       const status =
         request.body?.status === 'error'
           ? 'error'
@@ -3058,13 +3216,13 @@ export function createApp({
         type: 'export',
         status,
         userId: request.auth?.user?.id ?? null,
-        projectId: typeof request.body?.projectId === 'string' ? request.body.projectId : null,
+        projectId: typeof request.body?.projectId === 'string' ? request.body.projectId.slice(0, 80) : null,
         detail: {
-          reason: typeof request.body?.reason === 'string' ? request.body.reason : null,
-          format: typeof request.body?.format === 'string' ? request.body.format : null,
-          pageSize: typeof request.body?.pageSize === 'string' ? request.body.pageSize : null,
-          quality: typeof request.body?.quality === 'string' ? request.body.quality : null,
-          fileSizePreference: typeof request.body?.fileSizePreference === 'string' ? request.body.fileSizePreference : null,
+          reason: trimmedText(request.body?.reason, 200),
+          format: trimmedText(request.body?.format, 32),
+          pageSize: trimmedText(request.body?.pageSize, 32),
+          quality: trimmedText(request.body?.quality, 32),
+          fileSizePreference: trimmedText(request.body?.fileSizePreference, 32),
         },
       });
       response.status(201).json({ ok: true });
@@ -3471,6 +3629,7 @@ export function createApp({
       const projectId = sanitizeProjectId(request.params.projectId);
       const record = await store.readProjectRecord(projectId);
       await deleteProjectRecordPreservingAssets(record);
+      await cleanupUnreferencedAssetsFromProject(record);
       await opsStore.recordEvent({
         type: 'project',
         status: 'ok',
@@ -3719,6 +3878,10 @@ export function createApp({
     }
   });
 
+  app.use('/api', (request, response) => {
+    response.status(404).json({ error: 'Not found.' });
+  });
+
   app.use(
     '/uploads',
     express.static(store.uploadsDir, {
@@ -3782,15 +3945,28 @@ export function createApp({
       return;
     }
 
-    const statusCode = typeof error?.statusCode === 'number' ? error.statusCode : 500;
-    const message = statusCode >= 500 ? 'Internal server error.' : error.message;
+    const isMissingFile = error?.code === 'ENOENT';
+    const explicitStatus =
+      typeof error?.statusCode === 'number'
+        ? error.statusCode
+        : typeof error?.status === 'number'
+          ? error.status
+          : null;
+    const statusCode = explicitStatus ?? (isMissingFile ? 404 : 500);
+    const message = statusCode >= 500 ? 'Internal server error.' : isMissingFile ? 'Not found.' : error.message;
     if (typeof error?.retryAfterSeconds === 'number' && Number.isFinite(error.retryAfterSeconds) && error.retryAfterSeconds > 0) {
       response.setHeader('Retry-After', String(Math.ceil(error.retryAfterSeconds)));
     }
     if (statusCode >= 500) {
       console.error(error);
     }
-    if (statusCode >= 400 && error?.code !== 'revision_conflict') {
+    const isNoisyNotFound = statusCode === 404 && !request.path.startsWith('/api/');
+    if (
+      statusCode >= 400 &&
+      error?.code !== 'revision_conflict' &&
+      error?.code !== 'rate_limited' &&
+      !isNoisyNotFound
+    ) {
       const failureType = request.path.startsWith('/api/uploads')
         ? 'upload'
         : request.path.startsWith('/api/auth')
@@ -3821,6 +3997,7 @@ export function createApp({
     await authStore.ensureAuthDirectories();
     await opsStore.ensureOpsDirectory();
     await securityStore.ensureSecurityDirectories();
+    await opsStore.pruneOldEvents({ days: Number(process.env.FINALFOLIO_EVENT_RETENTION_DAYS ?? 30) }).catch(() => null);
 
     return await new Promise((resolve, reject) => {
       const server = app.listen(port, () => {

@@ -18,9 +18,17 @@ RUN apk add --no-cache ffmpeg
 
 COPY package*.json ./
 RUN npm ci --omit=dev
+
 COPY server ./server
 COPY scripts ./scripts
 COPY --from=build /app/dist ./dist
+
+# The app only needs to write inside /data (bind-mounted in compose). Running as the
+# unprivileged node user keeps uploaded photos and account records out of reach if the
+# process is compromised. On the host run:
+#   chown -R 1000:1000 /opt/finalfolio/app/data
+RUN mkdir -p /data && chown -R node:node /app /data
+USER node
 
 EXPOSE 3000
 

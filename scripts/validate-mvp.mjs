@@ -503,9 +503,11 @@ try {
       },
     });
     assert.equal(deleteProjectResponse.status, 204);
-    await fs.access(retainedUploadPath);
+    // Deleting a folio removes photos that no longer belong to any folio, so a deleted
+    // project cannot leave publicly reachable orphan uploads behind.
+    await assert.rejects(fs.access(retainedUploadPath));
     const retainedAfterProjectDelete = await apiApp.assetStore.readAssetRecord(retainedAsset.id);
-    assert.ok(!retainedAfterProjectDelete.deletedAt);
+    assert.ok(retainedAfterProjectDelete.deletedAt);
   });
 
   await runCheck('legacy ownerless projects remain readable while mutations require duplication or admin access', async () => {

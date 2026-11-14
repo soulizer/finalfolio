@@ -56,18 +56,39 @@ function populateTrendBuckets(events, { count, spanMs, nowMs, formatter }) {
   return buckets;
 }
 
+const EVENT_DETAIL_LIMIT = 4_000;
+const EVENT_CACHE_TTL_MS = 5_000;
+
+function capEventDetail(detail) {
+  if (!detail || typeof detail !== 'object') {
+    return null;
+  }
+
+  const serialized = JSON.stringify(detail);
+  if (serialized.length <= EVENT_DETAIL_LIMIT) {
+    return detail;
+  }
+
+  return {
+    truncated: true,
+    preview: serialized.slice(0, EVENT_DETAIL_LIMIT - 100),
+  };
+}
+
 export function createOpsStore({
   dataRoot,
   now = () => new Date().toISOString(),
 } = {}) {
   const eventsDir = path.join(dataRoot, 'events');
+  let cachedEvents = null;
+  let cachedEventsAt = 0;
 
   function eventPath(eventId) {
     return path.join(eventsDir, `${eventId}.json`);
   }
 
   async function ensureOpsDirectory() {
-    await fs.mkdir(eventsDir, { recursive: true });
+    await fs.mkdir(eventsDir, { recursive: true, mode: 0o700 });
   }
 
   async function recordEvent({ type, status = 'ok', userId = null, projectId = null, detail = null } = {}) {
@@ -78,19 +99,25 @@ export function createOpsStore({
       status,
       userId,
       projectId,
-      detail,
+      detail: capEventDetail(detail),
       createdAt: timestamp,
     };
 
     await ensureOpsDirectory();
     const filename = eventPath(record.id);
-    const tempFile = `${filename}.tmp`;
-    await fs.writeFile(tempFile, JSON.stringify(record, null, 2), 'utf8');
+    const tempFile = `${filename}.${process.pid}.${createId(4)}.tmp`;
+    await fs.writeFile(tempFile, JSON.stringify(record, null, 2), { encoding: 'utf8', mode: 0o600 });
     await fs.rename(tempFile, filename);
+    cachedEvents = null;
+    cachedEventsAt = 0;
     return record;
   }
 
   async function listEvents() {
+    if (cachedEvents && Date.now() - cachedEventsAt < EVENT_CACHE_TTL_MS) {
+      return cachedEvents;
+    }
+
     await ensureOpsDirectory();
     const entries = await fs.readdir(eventsDir, { withFileTypes: true });
     const events = await Promise.all(
@@ -99,7 +126,41 @@ export function createOpsStore({
         .map(async (entry) => JSON.parse(await fs.readFile(path.join(eventsDir, entry.name), 'utf8'))),
     );
 
-    return events.sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+    const sorted = events.sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+    cachedEvents = sorted;
+    cachedEventsAt = Date.now();
+    return sorted;
+  }
+
+  async function pruneOldEvents({ days = 30, nowMs = Date.now() } = {}) {
+    await ensureOpsDirectory();
+    const cutoff = nowMs - Math.max(1, days) * 24 * 60 * 60 * 1000;
+    const entries = await fs.readdir(eventsDir, { withFileTypes: true });
+    let removed = 0;
+
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith('.json')) {
+        continue;
+      }
+
+      const filePath = path.join(eventsDir, entry.name);
+      try {
+        const stats = await fs.stat(filePath);
+        if (stats.mtimeMs < cutoff) {
+          await fs.rm(filePath, { force: true });
+          removed += 1;
+        }
+      } catch {
+        // Ignore files that disappear while pruning.
+      }
+    }
+
+    if (removed > 0) {
+      cachedEvents = null;
+      cachedEventsAt = 0;
+    }
+
+    return { removed };
   }
 
   async function summarizeEvents() {
@@ -170,6 +231,7 @@ export function createOpsStore({
     ensureOpsDirectory,
     recordEvent,
     listEvents,
+    pruneOldEvents,
     summarizeEvents,
   };
 }

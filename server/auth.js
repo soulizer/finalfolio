@@ -18,6 +18,12 @@ function createId(bytes) {
   return crypto.randomBytes(bytes).toString('base64url').replace(/[-_]/g, '').toLowerCase();
 }
 
+// Session cookies and emailed action tokens are bearer credentials. Only their hash is
+// written to disk so a leaked data directory cannot be replayed as a live session.
+function hashBearerToken(value) {
+  return crypto.createHash('sha256').update(String(value)).digest('hex');
+}
+
 function createBadRequest(message) {
   const error = new Error(message);
   error.statusCode = 400;
@@ -214,22 +220,30 @@ export function createAuthStore({
   }
 
   function sessionPath(sessionId) {
+    return path.join(sessionsDir, `${hashBearerToken(sessionId)}.json`);
+  }
+
+  function legacySessionPath(sessionId) {
     return path.join(sessionsDir, `${sessionId}.json`);
   }
 
   function tokenPath(tokenId) {
+    return path.join(tokensDir, `${hashBearerToken(tokenId)}.json`);
+  }
+
+  function legacyTokenPath(tokenId) {
     return path.join(tokensDir, `${tokenId}.json`);
   }
 
   async function ensureAuthDirectories() {
-    await fs.mkdir(usersDir, { recursive: true });
-    await fs.mkdir(sessionsDir, { recursive: true });
-    await fs.mkdir(tokensDir, { recursive: true });
+    await fs.mkdir(usersDir, { recursive: true, mode: 0o700 });
+    await fs.mkdir(sessionsDir, { recursive: true, mode: 0o700 });
+    await fs.mkdir(tokensDir, { recursive: true, mode: 0o700 });
   }
 
   async function writeJsonRecord(filename, record) {
     const tempFile = `${filename}.${process.pid}.${createId(6)}.tmp`;
-    await fs.writeFile(tempFile, JSON.stringify(record, null, 2), 'utf8');
+    await fs.writeFile(tempFile, JSON.stringify(record, null, 2), { encoding: 'utf8', mode: 0o600 });
     await fs.rename(tempFile, filename);
   }
 
@@ -452,22 +466,35 @@ export function createAuthStore({
   }
 
   async function readSession(sessionId) {
+    let payload = null;
     try {
-      const payload = JSON.parse(await fs.readFile(sessionPath(sessionId), 'utf8'));
-      const session = sanitizeSessionRecord(payload);
-      if (Date.parse(session.expiresAt) <= Date.now()) {
-        await fs.rm(sessionPath(session.id), { force: true });
-        throw createUnauthorized('Session expired.');
-      }
-
-      return session;
+      payload = JSON.parse(await fs.readFile(sessionPath(sessionId), 'utf8'));
     } catch (error) {
-      if (error?.code === 'ENOENT') {
-        throw createUnauthorized('Session not found.');
+      if (error?.code !== 'ENOENT') {
+        throw error;
       }
 
-      throw error;
+      // Upgrade sessions written before token hashing was introduced.
+      try {
+        payload = JSON.parse(await fs.readFile(legacySessionPath(sessionId), 'utf8'));
+        await writeJsonRecord(sessionPath(sessionId), payload);
+        await fs.rm(legacySessionPath(sessionId), { force: true });
+      } catch (legacyError) {
+        if (legacyError?.code === 'ENOENT') {
+          throw createUnauthorized('Session not found.');
+        }
+
+        throw legacyError;
+      }
     }
+
+    const session = sanitizeSessionRecord(payload);
+    if (Date.parse(session.expiresAt) <= Date.now()) {
+      await fs.rm(sessionPath(session.id), { force: true });
+      throw createUnauthorized('Session expired.');
+    }
+
+    return session;
   }
 
   async function deleteSession(sessionId) {
@@ -475,7 +502,10 @@ export function createAuthStore({
       return;
     }
 
-    await fs.rm(sessionPath(sessionId), { force: true });
+    await Promise.all([
+      fs.rm(sessionPath(sessionId), { force: true }),
+      fs.rm(legacySessionPath(sessionId), { force: true }),
+    ]);
   }
 
   async function deleteSessionsForUser(userId) {
@@ -625,16 +655,28 @@ export function createAuthStore({
   }
 
   async function readActionToken(tokenId) {
+    let payload = null;
     try {
-      const payload = JSON.parse(await fs.readFile(tokenPath(tokenId), 'utf8'));
-      return sanitizeActionTokenRecord(payload);
+      payload = JSON.parse(await fs.readFile(tokenPath(tokenId), 'utf8'));
     } catch (error) {
-      if (error?.code === 'ENOENT') {
-        throw createUnauthorized('Token not found.');
+      if (error?.code !== 'ENOENT') {
+        throw error;
       }
 
-      throw error;
+      try {
+        payload = JSON.parse(await fs.readFile(legacyTokenPath(tokenId), 'utf8'));
+        await writeJsonRecord(tokenPath(tokenId), payload);
+        await fs.rm(legacyTokenPath(tokenId), { force: true });
+      } catch (legacyError) {
+        if (legacyError?.code === 'ENOENT') {
+          throw createUnauthorized('Token not found.');
+        }
+
+        throw legacyError;
+      }
     }
+
+    return sanitizeActionTokenRecord(payload);
   }
 
   async function consumeActionToken(tokenId, expectedType) {
