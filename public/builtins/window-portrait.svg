@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1600">
+  <defs>
+    <linearGradient id="window-portrait-bg-v2" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f7f2ea" />
+      <stop offset="100%" stop-color="#ddd2c4" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="1600" fill="url(#window-portrait-bg-v2)" />
+  <rect x="132" y="106" width="486" height="970" rx="34" fill="#ece0d1" />
+  <rect x="186" y="162" width="378" height="858" rx="20" fill="#faf6ee" />
+  <rect x="234" y="210" width="282" height="762" rx="14" fill="#d4dfe2" />
+  <line x1="375" x2="375" y1="210" y2="972" stroke="#f4f0e8" stroke-width="12" />
+  <line x1="234" x2="516" y1="592" y2="592" stroke="#f4f0e8" stroke-width="12" />
+  <path d="M520 244C576 360 620 548 634 800" fill="none" stroke="#ede5da" stroke-width="18" stroke-linecap="round" opacity="0.86" />
+  <ellipse cx="790" cy="1300" rx="256" ry="56" fill="#665c53" opacity="0.18" />
+  <path d="M632 1248C678 1086 754 984 836 948C908 916 984 936 1042 1002C1080 1046 1108 1110 1126 1190L1062 1396H714Z" fill="#47403a" />
+  <path d="M736 682C736 556 792 458 860 458C928 458 984 556 984 682V820C984 954 924 1044 856 1044C786 1044 736 954 736 832Z" fill="#e2cab2" />
+  <path d="M708 660C708 536 768 438 856 402C928 372 1010 398 1068 476C1036 456 1004 446 966 442C912 436 860 446 810 474C760 504 726 558 708 636Z" fill="#3d3733" />
+  <path d="M772 738C824 712 890 712 942 738" fill="none" stroke="#5b4f48" stroke-width="18" stroke-linecap="round" />
+  <ellipse cx="816" cy="770" rx="14" ry="10" fill="#584942" />
+  <ellipse cx="908" cy="770" rx="14" ry="10" fill="#584942" />
+  <path d="M822 884C850 904 888 904 916 880" fill="none" stroke="#a17763" stroke-width="14" stroke-linecap="round" />
+  <rect x="634" y="1042" width="300" height="30" rx="15" fill="#6b6058" />
+  <rect x="698" y="1070" width="186" height="154" rx="24" fill="#544a43" />
+  <rect x="652" y="1220" width="42" height="188" rx="21" fill="#433a35" />
+  <rect x="858" y="1220" width="42" height="188" rx="21" fill="#433a35" />
+</svg>

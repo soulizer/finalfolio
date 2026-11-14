@@ -1,18 +1,53 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200">
-  <rect width="1600" height="1200" fill="#e8e3da" />
-  <rect x="1080" y="0" width="520" height="1200" fill="#d2cabd" />
-  <rect x="190" y="150" width="420" height="820" fill="#7f786f" opacity="0.78" />
-  <rect x="680" y="180" width="300" height="720" fill="#a09689" />
-  <rect x="1140" y="140" width="250" height="540" fill="#f5f2eb" />
-  <g fill="#f7f3ec" opacity="0.78">
-    <rect x="244" y="220" width="312" height="24" />
-    <rect x="244" y="300" width="312" height="24" />
-    <rect x="244" y="380" width="312" height="24" />
-    <rect x="244" y="460" width="312" height="24" />
-    <rect x="244" y="540" width="312" height="24" />
-    <rect x="244" y="620" width="312" height="24" />
+  <defs>
+    <linearGradient id="studio-wall" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f4efe7" />
+      <stop offset="100%" stop-color="#ddd1c1" />
+    </linearGradient>
+    <linearGradient id="studio-floor" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#b1a28f" />
+      <stop offset="100%" stop-color="#8d7f71" />
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="1200" fill="url(#studio-wall)" />
+  <rect y="818" width="1600" height="382" fill="url(#studio-floor)" />
+  <rect x="1186" y="0" width="414" height="1200" fill="#e6ddd0" opacity="0.72" />
+  <rect x="416" y="108" width="476" height="646" rx="20" fill="#cfc4b4" />
+  <rect x="454" y="134" width="400" height="588" rx="16" fill="#faf6ef" />
+  <rect x="486" y="188" width="336" height="474" rx="10" fill="#efe8dc" />
+  <g fill="#111111" opacity="0.82">
+    <rect x="156" y="176" width="14" height="712" rx="7" />
+    <rect x="1368" y="176" width="14" height="712" rx="7" />
+    <rect x="252" y="190" width="12" height="612" rx="6" />
+    <rect x="1464" y="190" width="12" height="612" rx="6" />
   </g>
-  <rect x="1080" y="930" width="520" height="270" fill="#b1a89b" />
-  <ellipse cx="1250" cy="740" rx="130" ry="42" fill="#bab1a5" opacity="0.55" />
+  <g stroke="#111111" stroke-width="12" stroke-linecap="round" opacity="0.8">
+    <line x1="90" x2="236" y1="874" y2="874" />
+    <line x1="1294" x2="1440" y1="874" y2="874" />
+    <line x1="163" x2="110" y1="874" y2="1026" />
+    <line x1="163" x2="216" y1="874" y2="1026" />
+    <line x1="1375" x2="1322" y1="874" y2="1026" />
+    <line x1="1375" x2="1428" y1="874" y2="1026" />
+  </g>
+  <path d="M214 196L448 344L214 492Z" fill="#6b645d" opacity="0.9" />
+  <path d="M1266 196L1040 344L1266 492Z" fill="#6b645d" opacity="0.9" />
+  <ellipse cx="798" cy="836" rx="262" ry="56" fill="#695d52" opacity="0.2" />
+  <rect x="610" y="744" width="378" height="34" rx="17" fill="#6a6056" />
+  <rect x="664" y="776" width="268" height="34" rx="17" fill="#5a5148" />
+  <rect x="716" y="808" width="168" height="90" rx="18" fill="#4d453f" />
+  <rect x="930" y="756" width="222" height="18" rx="9" fill="#4a443e" />
+  <path d="M980 632C1036 570 1124 566 1182 628C1226 674 1236 746 1214 804H954C934 742 940 684 980 632Z" fill="#baae9e" />
+  <rect x="988" y="568" width="178" height="64" rx="18" fill="#5d554d" />
+  <circle cx="1076" cy="558" r="48" fill="#3e3934" />
+  <circle cx="1076" cy="558" r="22" fill="#d4ccbf" />
+  <g>
+    <rect x="522" y="858" width="110" height="152" rx="10" fill="#f6f1e8" transform="rotate(-10 522 858)" />
+    <rect x="650" y="844" width="110" height="152" rx="10" fill="#f6f1e8" transform="rotate(4 650 844)" />
+    <rect x="778" y="868" width="110" height="152" rx="10" fill="#f6f1e8" transform="rotate(-2 778 868)" />
+  </g>
+  <g fill="#938677" opacity="0.9">
+    <rect x="548" y="892" width="58" height="8" rx="4" transform="rotate(-10 548 892)" />
+    <rect x="676" y="894" width="58" height="8" rx="4" transform="rotate(4 676 894)" />
+    <rect x="804" y="922" width="58" height="8" rx="4" transform="rotate(-2 804 922)" />
+  </g>
 </svg>
-

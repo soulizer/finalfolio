@@ -1,4 +1,8 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createProjectStore } from '../server/app.js';
+import { createObjectStorageStore } from '../server/objectStorage.js';
+import { createSecurityStore } from '../server/security.js';
 
 function readOption(args, name, fallback) {
   const index = args.indexOf(name);
@@ -15,13 +19,22 @@ function formatHours(hours) {
 
 const args = process.argv.slice(2);
 const mode = args[0] === 'prune' ? 'prune' : 'list';
-const dataRoot = readOption(args, '--data-root', process.env.CRAZYALBUM_DATA_ROOT);
+const defaultDataRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'data');
+const dataRoot = readOption(args, '--data-root', process.env.FINALFOLIO_DATA_ROOT ?? defaultDataRoot);
 const limit = Math.max(1, Number(readOption(args, '--limit', '50')) || 50);
 const olderThanHours = Math.max(1, Number(readOption(args, '--older-than-hours', '168')) || 168);
 const destructive = args.includes('--delete');
 
+const securityStore = createSecurityStore({
+  ...(dataRoot ? { dataRoot } : {}),
+});
+const objectStorageStore = createObjectStorageStore({
+  ...(dataRoot ? { dataRoot } : {}),
+  securityStore,
+});
 const store = createProjectStore({
   ...(dataRoot ? { dataRoot } : {}),
+  objectStorageStore,
 });
 
 await store.ensureDataDirectories();

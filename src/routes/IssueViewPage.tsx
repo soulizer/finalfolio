@@ -1,0 +1,1 @@
+export { IssueViewPage } from './IssueViewPageTurnJs';

@@ -1,12 +1,30 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200">
-  <rect width="1600" height="1200" fill="#ece7df" />
-  <rect y="790" width="1600" height="410" fill="#8f867a" opacity="0.65" />
-  <rect x="240" y="690" width="620" height="110" rx="12" fill="#5f5951" />
-  <ellipse cx="1010" cy="760" rx="250" ry="60" fill="#6c655c" opacity="0.28" />
-  <rect x="940" y="400" width="150" height="330" rx="70" fill="#534e47" />
-  <ellipse cx="1015" cy="382" rx="118" ry="44" fill="#716a61" />
-  <path d="M1140 510C1230 450 1310 470 1368 560C1408 622 1412 720 1390 786H1152C1114 690 1108 574 1140 510Z" fill="#b9b0a5" />
-  <circle cx="523" cy="640" r="46" fill="#e5ddd2" />
-  <circle cx="598" cy="626" r="34" fill="#d0c7bb" />
+  <defs>
+    <linearGradient id="still-bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f4efe7" />
+      <stop offset="100%" stop-color="#d6cbbd" />
+    </linearGradient>
+    <linearGradient id="still-table" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#a79480" />
+      <stop offset="100%" stop-color="#7c6b5d" />
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="1200" fill="url(#still-bg)" />
+  <path d="M0 770C164 730 340 716 548 732C748 748 948 806 1194 784C1364 768 1494 742 1600 716V1200H0Z" fill="#d9cfbf" />
+  <path d="M0 864C200 824 432 814 666 842C942 876 1206 948 1600 906V1200H0Z" fill="url(#still-table)" />
+  <rect x="274" y="728" width="1052" height="38" rx="18" fill="#5b534c" />
+  <rect x="336" y="760" width="930" height="92" rx="18" fill="#504943" />
+  <ellipse cx="820" cy="866" rx="390" ry="56" fill="#423d38" opacity="0.24" />
+  <path d="M872 442C936 386 1028 392 1094 456C1148 508 1166 602 1142 690H820C796 602 816 504 872 442Z" fill="#d7c4ac" />
+  <path d="M920 344H1046C1078 344 1104 370 1104 402V446H862V402C862 370 888 344 920 344Z" fill="#6f665e" />
+  <ellipse cx="984" cy="330" rx="138" ry="38" fill="#8a7d70" />
+  <path d="M414 650C464 592 538 584 590 640C628 680 638 742 616 794H394C374 742 382 688 414 650Z" fill="#efe8dc" />
+  <path d="M520 590C560 538 626 530 674 576C714 614 726 678 706 742H516C494 686 494 624 520 590Z" fill="#c8b29a" />
+  <ellipse cx="738" cy="710" rx="74" ry="88" fill="#6e5848" />
+  <ellipse cx="738" cy="690" rx="62" ry="68" fill="#846956" />
+  <rect x="1188" y="626" width="134" height="30" rx="15" fill="#443e39" />
+  <path d="M1214 446C1240 416 1282 414 1312 440C1338 462 1348 506 1336 554C1324 596 1282 666 1260 710H1206C1182 662 1148 592 1144 548C1140 506 1164 474 1214 446Z" fill="#efe7dc" />
+  <path d="M1264 508C1290 496 1318 508 1336 536" fill="none" stroke="#b9aa99" stroke-width="12" stroke-linecap="round" />
+  <rect x="1084" y="792" width="194" height="28" rx="14" fill="#f6f1e8" transform="rotate(-8 1084 792)" />
+  <rect x="1032" y="818" width="258" height="24" rx="12" fill="#e6ddd0" transform="rotate(-2 1032 818)" />
 </svg>
-

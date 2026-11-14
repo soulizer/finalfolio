@@ -1,8 +1,50 @@
 export type BuiltInTemplateId = 'cover' | 'essay' | 'folio' | 'grid' | 'diptych' | 'panorama' | 'mosaic' | 'triptych';
 export type TemplateId = BuiltInTemplateId | 'custom';
-export type PageThemeId = 'warm-beige' | 'pale-blue' | 'pure-white' | 'light-gray';
+export type UserTemplateKind = 'page' | 'project';
+export type PageThemeId =
+  | 'warm-beige'
+  | 'butter-cream'
+  | 'pale-blue'
+  | 'sea-glass'
+  | 'pure-white'
+  | 'light-gray'
+  | 'sandstone'
+  | 'sage-mist'
+  | 'dusty-rose'
+  | 'pearl-blush';
 
 export type ImageFit = 'cover' | 'contain';
+export type AssetVariantKind = 'original' | 'preview' | 'thumb';
+export type AssetDeliveryState = 'local' | 'pending' | 'remote' | 'failed';
+export type AssetOrientation = 'landscape' | 'portrait' | 'square' | 'unknown';
+export type ExportFormat = 'pdf' | 'project' | 'jpg';
+export type ExportQuality = 'draft' | 'standard' | 'print';
+export type ExportPageSize = 'a5' | 'a4' | 'a3';
+export type JpgExportMode = 'separate' | 'combined';
+
+export interface AssetDelivery {
+  state: AssetDeliveryState;
+  canRetry?: boolean;
+  queuedAt?: string | null;
+  lastAttemptAt?: string | null;
+  syncedAt?: string | null;
+  error?: string | null;
+  attempts?: number;
+}
+
+export interface AssetVariant {
+  src: string;
+  width?: number;
+  height?: number;
+  bytes?: number;
+  mimeType?: string;
+}
+
+export interface AssetVariants {
+  original?: AssetVariant;
+  preview?: AssetVariant | null;
+  thumb?: AssetVariant | null;
+}
 
 export interface Asset {
   id: string;
@@ -10,6 +52,13 @@ export interface Asset {
   src: string;
   note: string;
   builtIn?: boolean;
+  width?: number;
+  height?: number;
+  bytes?: number;
+  mimeType?: string;
+  variants?: AssetVariants;
+  delivery?: AssetDelivery;
+  lastUsedAt?: string | null;
 }
 
 export interface CropSettings {
@@ -55,14 +104,109 @@ export interface ProjectState {
   title: string;
   subtitle: string;
   issue: string;
+  frameRadius: number;
   assets: Asset[];
   pages: PageData[];
+}
+
+export interface ProjectShareMeta {
+  id: string | null;
+  enabled: boolean;
+  path: string | null;
+  sharedAt: string | null;
+  version: number;
 }
 
 export interface ProjectRecord {
   id: string;
   createdAt: string;
   updatedAt: string;
+  archivedAt?: string | null;
+  ownerUserId?: string | null;
   sharePath: string;
+  share: ProjectShareMeta;
   project: ProjectState;
+}
+
+export interface UserTemplatePage {
+  template: TemplateId;
+  theme: PageThemeId;
+  kicker: string;
+  title: string;
+  deck: string;
+  body: string;
+  caption: string;
+  customTemplate: CustomTemplateDefinition | null;
+}
+
+export interface UserTemplatePayload {
+  title: string;
+  subtitle: string;
+  issue: string;
+  frameRadius: number;
+  pages: UserTemplatePage[];
+}
+
+export interface UserTemplateRecord {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  ownerUserId?: string | null;
+  name: string;
+  description: string;
+  kind: UserTemplateKind;
+  sourceProjectId?: string | null;
+  includesCopy: boolean;
+  preserveCopy?: boolean;
+  previewPageIndex?: number | null;
+  templatePayload: UserTemplatePayload;
+}
+
+export interface ExportSettings {
+  format: ExportFormat;
+  pageSize: ExportPageSize;
+  quality: ExportQuality;
+  jpgMode: JpgExportMode;
+}
+
+export interface ExportPreflightIssue {
+  code: 'missing-image' | 'uncovered-frame' | 'low-resolution' | 'empty-page';
+  severity: 'warning';
+  pageId: string;
+  pageIndex: number;
+  pageTitle: string;
+  slot?: string;
+  message: string;
+}
+
+export interface AccountPreferences {
+  defaultExportFormat: ExportFormat;
+  defaultExportQuality: ExportQuality;
+  defaultPageSize: ExportPageSize;
+  defaultPageTheme: PageThemeId | null;
+  preserveCopyWhenSavingTemplate: boolean;
+}
+
+export interface AccountActivityItem {
+  id: string;
+  type: 'project' | 'export' | 'template' | 'upload' | 'share' | 'auth';
+  action: string;
+  label: string;
+  status: 'ok' | 'error' | 'requested';
+  createdAt: string;
+  projectId: string | null;
+  detail: Record<string, unknown> | null;
+}
+
+export interface PublicIssuePayload {
+  shareId: string;
+  projectId: string;
+  sharedAt: string | null;
+  updatedAt: string;
+  title: string;
+  subtitle: string;
+  issue: string;
+  frameRadius: number;
+  pages: PageData[];
+  assets: Asset[];
 }

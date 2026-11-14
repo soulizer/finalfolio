@@ -4,6 +4,17 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import multer from 'multer';
+import { createAccountPreferencesStore } from './accountPreferences.js';
+import { createAssetStore } from './assets.js';
+import { createAuthStore } from './auth.js';
+import { CURRENT_TOS_VERSION, hasAcceptedCurrentTerms } from './legal.js';
+import { createMailService } from './mail.js';
+import { createObjectStorageStore } from './objectStorage.js';
+import { createOpsStore } from './ops.js';
+import { createSecurityStore } from './security.js';
+import { createSiteStore } from './site.js';
+import { createUserTemplateStore } from './userTemplates.js';
+import { createAssetVariantService, getUploadFilenameFromPath } from './uploadVariants.js';
 
 const DEFAULT_PORT = 3000;
 const DEFAULT_DATA_ROOT = '/data';
@@ -11,6 +22,10 @@ const DEFAULT_MAX_UPLOAD_COUNT = 24;
 const DEFAULT_MAX_UPLOAD_SIZE_BYTES = 25 * 1024 * 1024;
 const DEFAULT_MAX_PAGE_COUNT = 48;
 const DEFAULT_MAX_ASSET_COUNT = 64;
+const DEFAULT_STORE_CACHE_TTL_MS = 5_000;
+const DEFAULT_FRAME_RADIUS = 18;
+const MIN_FRAME_RADIUS = 0;
+const MAX_FRAME_RADIUS = 28;
 const PROJECT_ID_PATTERN = /^[a-z0-9_-]{8,40}$/;
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -42,12 +57,42 @@ export const templateSlots = {
   triptych: ['a', 'b', 'c'],
 };
 const allowedImageFits = new Set(['cover', 'contain']);
-const allowedPageThemes = new Set(['warm-beige', 'pale-blue', 'pure-white', 'light-gray']);
+const allowedPageThemes = new Set([
+  'warm-beige',
+  'butter-cream',
+  'pale-blue',
+  'sea-glass',
+  'pure-white',
+  'light-gray',
+  'sandstone',
+  'sage-mist',
+  'dusty-rose',
+  'pearl-blush',
+]);
 const defaultPageTheme = 'warm-beige';
 const CUSTOM_TEMPLATE_SLOT_LIMIT = 6;
 
 const allowedUploadTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']);
 const allowedUploadExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif']);
+const SESSION_COOKIE_NAME = 'finalfolio_session';
+const REGISTER_IP_RATE_LIMIT = {
+  scope: 'auth-register-ip',
+  limit: 3,
+  windowMs: 60 * 60 * 1000,
+  message: 'Too many registration attempts from this IP. Try again later.',
+};
+const VERIFICATION_RESEND_IP_RATE_LIMIT = {
+  scope: 'auth-verification-resend-ip',
+  limit: 5,
+  windowMs: 60 * 60 * 1000,
+  message: 'Too many verification email requests from this IP. Try again later.',
+};
+const PASSWORD_RESET_IP_RATE_LIMIT = {
+  scope: 'auth-password-reset-ip',
+  limit: 5,
+  windowMs: 60 * 60 * 1000,
+  message: 'Too many password reset requests from this IP. Try again later.',
+};
 
 function createId(bytes = 9) {
   return crypto.randomBytes(bytes).toString('base64url').replace(/[-_]/g, '').toLowerCase();
@@ -57,10 +102,30 @@ export function createSharePath(projectId) {
   return `/editor/${projectId}`;
 }
 
+export function createPublicIssuePath(shareId) {
+  return `/project/${shareId}`;
+}
+
 export function createBadRequest(message) {
   const error = new Error(message);
   error.statusCode = 400;
   return error;
+}
+
+function createForbidden(message) {
+  const error = new Error(message);
+  error.statusCode = 403;
+  return error;
+}
+
+function getUserDisplayIdentity(user) {
+  const username = typeof user?.username === 'string' ? user.username.trim() : '';
+  if (username) {
+    return username;
+  }
+
+  const email = typeof user?.email === 'string' ? user.email.trim() : '';
+  return email || null;
 }
 
 function throwInvalidProject() {
@@ -100,6 +165,135 @@ function validateLocalAssetPath(value) {
   }
 
   return nextValue;
+}
+
+function validateAssetResourcePath(value) {
+  const nextValue = sanitizeText(value, 'Asset resource path', 400, { allowEmpty: false, trim: true });
+  if (nextValue.startsWith('/uploads/') || nextValue.startsWith('/builtins/')) {
+    if (nextValue.includes('..')) {
+      throw createBadRequest('Asset resource path is invalid.');
+    }
+    return nextValue;
+  }
+
+  try {
+    const url = new URL(nextValue);
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      throw new Error('invalid protocol');
+    }
+    return url.toString();
+  } catch {
+    throw createBadRequest('Asset resource path is invalid.');
+  }
+}
+
+function normalizeAssetDimensions(width, height, { strict = false } = {}) {
+  const hasWidth = width !== undefined;
+  const hasHeight = height !== undefined;
+
+  if (!hasWidth && !hasHeight) {
+    return {};
+  }
+
+  if (
+    typeof width !== 'number' ||
+    !Number.isFinite(width) ||
+    width <= 0 ||
+    typeof height !== 'number' ||
+    !Number.isFinite(height) ||
+    height <= 0
+  ) {
+    if (strict) {
+      throwInvalidProject();
+    }
+
+    return {};
+  }
+
+  return {
+    width: Math.round(width),
+    height: Math.round(height),
+  };
+}
+
+function normalizeAssetScalar(value) {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? Math.round(value) : undefined;
+}
+
+function sanitizeAssetVariantResource(resource) {
+  if (!resource || typeof resource !== 'object') {
+    return null;
+  }
+
+  if (typeof resource.src !== 'string') {
+    throwInvalidProject();
+  }
+
+  return {
+    src: validateAssetResourcePath(resource.src),
+    ...(normalizeAssetDimensions(resource.width, resource.height) ?? {}),
+    ...(normalizeAssetScalar(resource.bytes) !== undefined ? { bytes: normalizeAssetScalar(resource.bytes) } : {}),
+    ...(typeof resource.mimeType === 'string' && resource.mimeType.trim() ? { mimeType: resource.mimeType.trim() } : {}),
+  };
+}
+
+function sanitizeAssetVariants(variants) {
+  if (!variants || typeof variants !== 'object') {
+    return undefined;
+  }
+
+  return {
+    ...(sanitizeAssetVariantResource(variants.original) ? { original: sanitizeAssetVariantResource(variants.original) } : {}),
+    ...(variants.preview === null
+      ? { preview: null }
+      : sanitizeAssetVariantResource(variants.preview)
+        ? { preview: sanitizeAssetVariantResource(variants.preview) }
+        : {}),
+    ...(variants.thumb === null
+      ? { thumb: null }
+      : sanitizeAssetVariantResource(variants.thumb)
+        ? { thumb: sanitizeAssetVariantResource(variants.thumb) }
+        : {}),
+  };
+}
+
+function parseCookies(header = '') {
+  return Object.fromEntries(
+    header
+      .split(';')
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .map((part) => {
+        const [name, ...valueParts] = part.split('=');
+        return [name, decodeURIComponent(valueParts.join('='))];
+      }),
+  );
+}
+
+function serializeSessionCookie(value) {
+  return `${SESSION_COOKIE_NAME}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 60 * 60}`;
+}
+
+function serializeClearedSessionCookie() {
+  return `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+}
+
+function resolvePublicOrigin(request) {
+  const protocolHeader = String(request.headers['x-forwarded-proto'] ?? '').split(',')[0].trim();
+  const hostHeader = String(request.headers['x-forwarded-host'] ?? request.headers.host ?? '').split(',')[0].trim();
+  const protocol = protocolHeader || 'https';
+  const host = hostHeader || 'finalfolio.com';
+  return `${protocol}://${host}`;
+}
+
+function resolveClientIp(request) {
+  const forwardedFor = String(request.headers['x-forwarded-for'] ?? '')
+    .split(',')[0]
+    .trim();
+  const requestIp = typeof request.ip === 'string' ? request.ip.trim() : '';
+  const remoteAddress = typeof request.socket?.remoteAddress === 'string' ? request.socket.remoteAddress.trim() : '';
+  const value = forwardedFor || requestIp || remoteAddress || 'unknown';
+  return value.startsWith('::ffff:') ? value.slice(7) : value;
 }
 
 function normalizeTemplate(template) {
@@ -218,6 +412,11 @@ function sanitizeAsset(asset) {
     src: validateLocalAssetPath(asset.src),
     note: sanitizeText(asset.note, 'Asset note', defaultTextLimits.assetNote, { trim: true }),
     builtIn: asset.builtIn === true,
+    ...(normalizeAssetScalar(asset.bytes) !== undefined ? { bytes: normalizeAssetScalar(asset.bytes) } : {}),
+    ...(typeof asset.mimeType === 'string' && asset.mimeType.trim() ? { mimeType: asset.mimeType.trim() } : {}),
+    ...(sanitizeAssetVariants(asset.variants) ? { variants: sanitizeAssetVariants(asset.variants) } : {}),
+    ...(typeof asset.lastUsedAt === 'string' ? { lastUsedAt: asset.lastUsedAt } : {}),
+    ...normalizeAssetDimensions(asset.width, asset.height, { strict: true }),
   };
 }
 
@@ -266,6 +465,18 @@ function sanitizePageTheme(theme) {
   }
 
   return theme;
+}
+
+function sanitizeFrameRadius(frameRadius) {
+  if (frameRadius === undefined) {
+    return DEFAULT_FRAME_RADIUS;
+  }
+
+  if (typeof frameRadius !== 'number' || !Number.isFinite(frameRadius)) {
+    throwInvalidProject();
+  }
+
+  return Math.min(MAX_FRAME_RADIUS, Math.max(MIN_FRAME_RADIUS, Math.round(frameRadius)));
 }
 
 function sanitizeSlots(expectedSlots, slots, assetIds) {
@@ -330,11 +541,11 @@ export function sanitizeProjectState(payload, { maxPageCount = DEFAULT_MAX_PAGE_
   }
 
   if (project.assets.length > maxAssetCount) {
-    throw createBadRequest('Too many assets in one issue.');
+    throw createBadRequest('Too many assets in one project.');
   }
 
   if (project.pages.length > maxPageCount) {
-    throw createBadRequest('Too many pages in one issue.');
+    throw createBadRequest('Too many pages in one project.');
   }
 
   const pageIds = new Set();
@@ -350,9 +561,43 @@ export function sanitizeProjectState(payload, { maxPageCount = DEFAULT_MAX_PAGE_
   return {
     title: sanitizeText(project.title, 'Project title', defaultTextLimits.projectTitle, { allowEmpty: false, trim: true }),
     subtitle: sanitizeText(project.subtitle, 'Project subtitle', defaultTextLimits.projectSubtitle, { trim: true }),
-    issue: sanitizeText(project.issue, 'Issue mark', defaultTextLimits.projectIssue, { allowEmpty: false, trim: true }),
+    issue: sanitizeText(project.issue, 'Folio mark', defaultTextLimits.projectIssue, { allowEmpty: false, trim: true }),
+    frameRadius: sanitizeFrameRadius(project.frameRadius),
     assets,
     pages: project.pages.map((page) => sanitizePage(page, assetIds, pageIds)),
+  };
+}
+
+function sanitizeProjectShare(share) {
+  const shareId = typeof share?.shareId === 'string' && PROJECT_ID_PATTERN.test(share.shareId) ? share.shareId : null;
+  const shareEnabled = share?.shareEnabled === true && Boolean(shareId);
+  const shareVersion =
+    typeof share?.shareVersion === 'number' && Number.isFinite(share.shareVersion) && share.shareVersion >= 0
+      ? Math.round(share.shareVersion)
+      : shareId
+        ? 1
+        : 0;
+
+  return {
+    shareId,
+    shareEnabled,
+    sharedAt: typeof share?.sharedAt === 'string' ? share.sharedAt : null,
+    shareVersion,
+  };
+}
+
+function sanitizeArchivedAt(value) {
+  return typeof value === 'string' ? value : null;
+}
+
+function serializeProjectShare(share) {
+  const normalized = sanitizeProjectShare(share);
+  return {
+    id: normalized.shareId,
+    enabled: normalized.shareEnabled,
+    path: normalized.shareEnabled && normalized.shareId ? createPublicIssuePath(normalized.shareId) : null,
+    sharedAt: normalized.sharedAt,
+    version: normalized.shareVersion,
   };
 }
 
@@ -361,7 +606,10 @@ export function serializeProjectRecord(record) {
     id: record.id,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
+    archivedAt: sanitizeArchivedAt(record.archivedAt),
+    ownerUserId: typeof record.ownerUserId === 'string' ? record.ownerUserId : null,
     sharePath: createSharePath(record.id),
+    share: serializeProjectShare(record.share),
     project: record.project,
   };
 }
@@ -370,14 +618,6 @@ export function createUploadFilename(originalName = '', { idFactory = createId }
   const extension = path.extname(originalName).toLowerCase().replace(/[^.a-z0-9]/g, '');
   const safeExtension = extension.length > 1 ? extension : '.png';
   return `${Date.now()}-${idFactory(6)}${safeExtension}`;
-}
-
-function extractUploadFilename(assetPath) {
-  if (typeof assetPath !== 'string' || !assetPath.startsWith('/uploads/')) {
-    return null;
-  }
-
-  return decodeURIComponent(assetPath.slice('/uploads/'.length));
 }
 
 function resolveUploadTimestamp(filename, stats) {
@@ -398,17 +638,39 @@ export function validateUploadFile(file) {
 }
 
 export function createProjectStore({
-  dataRoot = process.env.CRAZYALBUM_DATA_ROOT ?? DEFAULT_DATA_ROOT,
-  maxPageCount = Number(process.env.CRAZYALBUM_MAX_PAGE_COUNT ?? DEFAULT_MAX_PAGE_COUNT),
-  maxAssetCount = Number(process.env.CRAZYALBUM_MAX_ASSET_COUNT ?? DEFAULT_MAX_ASSET_COUNT),
+  dataRoot = process.env.FINALFOLIO_DATA_ROOT ?? DEFAULT_DATA_ROOT,
+  maxPageCount = Number(process.env.FINALFOLIO_MAX_PAGE_COUNT ?? DEFAULT_MAX_PAGE_COUNT),
+  maxAssetCount = Number(process.env.FINALFOLIO_MAX_ASSET_COUNT ?? DEFAULT_MAX_ASSET_COUNT),
   idFactory = createId,
   now = () => new Date().toISOString(),
+  cacheTtlMs = DEFAULT_STORE_CACHE_TTL_MS,
+  objectStorageStore = null,
 } = {}) {
   const projectsDir = path.join(dataRoot, 'projects');
   const uploadsDir = path.join(dataRoot, 'uploads');
+  const assetVariantService = createAssetVariantService({ uploadsDir });
+  let cachedProjectRecords = null;
+  let cachedProjectRecordsExpiresAt = 0;
+  let cachedUploadInventory = null;
+  let cachedUploadInventoryExpiresAt = 0;
 
   function createProjectFilePath(projectId) {
     return path.join(projectsDir, `${projectId}.json`);
+  }
+
+  function invalidateProjectRecordCache() {
+    cachedProjectRecords = null;
+    cachedProjectRecordsExpiresAt = 0;
+  }
+
+  function invalidateUploadInventoryCache() {
+    cachedUploadInventory = null;
+    cachedUploadInventoryExpiresAt = 0;
+  }
+
+  function invalidateStoreCaches() {
+    invalidateProjectRecordCache();
+    invalidateUploadInventoryCache();
   }
 
   async function ensureDataDirectories() {
@@ -422,6 +684,7 @@ export function createProjectStore({
     const payload = JSON.stringify(record, null, 2);
     await fs.writeFile(tempFile, payload, 'utf8');
     await fs.rename(tempFile, filename);
+    invalidateStoreCaches();
   }
 
   async function readProjectRecord(projectId) {
@@ -445,6 +708,9 @@ export function createProjectStore({
         id: record.id,
         createdAt: record.createdAt,
         updatedAt: record.updatedAt,
+        archivedAt: sanitizeArchivedAt(record.archivedAt),
+        ownerUserId: typeof record.ownerUserId === 'string' ? record.ownerUserId : null,
+        share: sanitizeProjectShare(record.share),
         project: sanitizeProjectState(record.project, { maxPageCount, maxAssetCount }),
       };
     } catch (error) {
@@ -458,13 +724,16 @@ export function createProjectStore({
     }
   }
 
-  async function createProjectRecord(payload) {
+  async function createProjectRecord(payload, { ownerUserId = null } = {}) {
     const project = sanitizeProjectState(payload, { maxPageCount, maxAssetCount });
     const timestamp = now();
     const record = {
       id: idFactory(9),
       createdAt: timestamp,
       updatedAt: timestamp,
+      archivedAt: null,
+      ownerUserId: typeof ownerUserId === 'string' ? ownerUserId : null,
+      share: sanitizeProjectShare(null),
       project,
     };
 
@@ -480,26 +749,117 @@ export function createProjectStore({
       ...existingRecord,
       updatedAt: now(),
       project,
+      archivedAt: sanitizeArchivedAt(existingRecord.archivedAt),
     };
 
     await writeProjectRecord(nextRecord);
     return nextRecord;
   }
 
+  async function patchProjectRecord(projectId, patch = {}) {
+    const sanitizedProjectId = sanitizeProjectId(projectId);
+    const existingRecord = await readProjectRecord(sanitizedProjectId);
+    const timestamp = now();
+    const projectPatch = patch.project && typeof patch.project === 'object' ? patch.project : {};
+    const nextProject = {
+      ...existingRecord.project,
+      ...(projectPatch.title !== undefined ? { title: sanitizeText(projectPatch.title, 'Project title', defaultTextLimits.projectTitle, { allowEmpty: false, trim: true }) } : {}),
+      ...(projectPatch.subtitle !== undefined ? { subtitle: sanitizeText(projectPatch.subtitle, 'Project subtitle', defaultTextLimits.projectSubtitle, { trim: true }) } : {}),
+      ...(projectPatch.issue !== undefined ? { issue: sanitizeText(projectPatch.issue, 'Folio mark', defaultTextLimits.projectIssue, { allowEmpty: false, trim: true }) } : {}),
+      ...(projectPatch.frameRadius !== undefined ? { frameRadius: sanitizeFrameRadius(projectPatch.frameRadius) } : {}),
+    };
+    const nextRecord = {
+      ...existingRecord,
+      updatedAt: timestamp,
+      archivedAt:
+        patch.archivedAt === undefined
+          ? sanitizeArchivedAt(existingRecord.archivedAt)
+          : patch.archivedAt === null
+            ? null
+            : timestamp,
+      project: nextProject,
+    };
+
+    await writeProjectRecord(nextRecord);
+    return nextRecord;
+  }
+
+  async function listProjectRecords() {
+    if (cachedProjectRecords && cachedProjectRecordsExpiresAt > Date.now()) {
+      return cachedProjectRecords;
+    }
+
+    await ensureDataDirectories();
+    const entries = await fs.readdir(projectsDir, { withFileTypes: true });
+    const records = await Promise.all(
+      entries
+        .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
+        .map((entry) => readProjectRecord(entry.name.slice(0, -'.json'.length))),
+    );
+
+    cachedProjectRecords = records.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+    cachedProjectRecordsExpiresAt = Date.now() + cacheTtlMs;
+    return cachedProjectRecords;
+  }
+
+  async function deleteProjectRecord(projectId) {
+    const sanitizedProjectId = sanitizeProjectId(projectId);
+    await fs.rm(createProjectFilePath(sanitizedProjectId), { force: true });
+    invalidateStoreCaches();
+  }
+
+  async function updateProjectShareRecord(projectId, { enable = true, rotate = false } = {}) {
+    const sanitizedProjectId = sanitizeProjectId(projectId);
+    const existingRecord = await readProjectRecord(sanitizedProjectId);
+    const currentShare = sanitizeProjectShare(existingRecord.share);
+
+    if (enable && currentShare.shareEnabled && currentShare.shareId && !rotate) {
+      return existingRecord;
+    }
+
+    const timestamp = now();
+    const nextShare = enable
+      ? {
+          shareId: idFactory(12),
+          shareEnabled: true,
+          sharedAt: timestamp,
+          shareVersion: Math.max(0, currentShare.shareVersion) + 1,
+        }
+      : {
+          ...currentShare,
+          shareEnabled: false,
+        };
+    const nextRecord = {
+      ...existingRecord,
+      updatedAt: timestamp,
+      share: nextShare,
+    };
+
+    await writeProjectRecord(nextRecord);
+    return nextRecord;
+  }
+
+  async function readProjectRecordByShareId(shareId) {
+    const normalizedShareId = sanitizeProjectId(shareId);
+    const records = await listProjectRecords();
+    const record = records.find((entry) => sanitizeProjectShare(entry.share).shareId === normalizedShareId);
+
+    if (!record || !sanitizeProjectShare(record.share).shareEnabled) {
+      const notFound = new Error('Shared folio not found.');
+      notFound.statusCode = 404;
+      throw notFound;
+    }
+
+    return record;
+  }
+
   async function readProjectUploadReferences() {
     const references = new Map();
-    const entries = await fs.readdir(projectsDir, { withFileTypes: true });
+    const records = await listProjectRecords();
 
-    for (const entry of entries) {
-      if (!entry.isFile() || !entry.name.endsWith('.json')) {
-        continue;
-      }
-
-      const projectId = entry.name.slice(0, -'.json'.length);
-      const record = await readProjectRecord(projectId);
-
+    for (const record of records) {
       record.project.assets.forEach((asset) => {
-        const filename = extractUploadFilename(asset.src);
+        const filename = getUploadFilenameFromPath(asset.src);
         if (!filename) {
           return;
         }
@@ -515,10 +875,88 @@ export function createProjectStore({
     return references;
   }
 
+  async function getUploadArtifacts(filename, { ensureVariants = false, originalWidth, originalHeight } = {}) {
+    if (ensureVariants) {
+      await assetVariantService.ensureUploadVariants(filename);
+    }
+
+    const resources = await assetVariantService.readUploadResources(filename, {
+      originalWidth,
+      originalHeight,
+    });
+
+    return {
+      filename,
+      originalPath: path.join(uploadsDir, filename),
+      previewPath: path.join(uploadsDir, 'variants', filename, 'preview.webp'),
+      thumbPath: path.join(uploadsDir, 'variants', filename, 'thumb.webp'),
+      resources,
+    };
+  }
+
+  async function hydrateStoredUploadAsset(asset, { ensureVariants = false } = {}) {
+    const filename = getUploadFilenameFromPath(asset?.src);
+    if (!filename) {
+      return asset;
+    }
+
+    const originalPath = path.join(uploadsDir, filename);
+    const probedDimensions =
+      typeof asset.width === 'number' && typeof asset.height === 'number'
+        ? null
+        : await assetVariantService.probeImageDimensions(originalPath);
+
+    if (ensureVariants) {
+      await assetVariantService.ensureUploadVariants(filename);
+    }
+
+    const originalWidth = typeof asset.width === 'number' ? asset.width : probedDimensions?.width;
+    const originalHeight = typeof asset.height === 'number' ? asset.height : probedDimensions?.height;
+    const artifacts = await getUploadArtifacts(filename, {
+      ensureVariants,
+      originalWidth,
+      originalHeight,
+    });
+    if (!artifacts?.resources) {
+      return asset;
+    }
+
+    const syncEntry = objectStorageStore ? await objectStorageStore.readSyncEntry(filename) : null;
+    const objectStorageEnabled = objectStorageStore ? (await objectStorageStore.readConfig()).enabled === true : false;
+    const resources = syncEntry ? objectStorageStore.buildRemoteResources(syncEntry, artifacts.resources) : artifacts.resources;
+
+    return {
+      ...asset,
+      ...(originalWidth ? { width: originalWidth } : {}),
+      ...(originalHeight ? { height: originalHeight } : {}),
+      ...(typeof asset.bytes === 'number' ? { bytes: asset.bytes } : resources.original.bytes ? { bytes: resources.original.bytes } : {}),
+      ...(typeof asset.mimeType === 'string' ? { mimeType: asset.mimeType } : resources.original.mimeType ? { mimeType: resources.original.mimeType } : {}),
+      variants: {
+        original: resources.original,
+        preview: resources.preview,
+        thumb: resources.thumb,
+      },
+      ...(objectStorageStore
+        ? {
+            delivery: objectStorageStore.buildDeliveryStatus(syncEntry, {
+              enabled: objectStorageEnabled,
+            }),
+          }
+        : {}),
+    };
+  }
+
   async function collectUploadInventory({ nowMs = Date.parse(now()) || Date.now() } = {}) {
+    if (cachedUploadInventory && cachedUploadInventoryExpiresAt > Date.now()) {
+      return cachedUploadInventory;
+    }
+
     await ensureDataDirectories();
 
     const [entries, references] = await Promise.all([fs.readdir(uploadsDir, { withFileTypes: true }), readProjectUploadReferences()]);
+    const objectStorageConfig = objectStorageStore ? await objectStorageStore.readConfig().catch(() => null) : null;
+    const objectStorageEnabled = objectStorageConfig?.enabled === true;
+    const syncEntriesByFilename = objectStorageStore ? (await objectStorageStore.readSyncIndex()).uploads : {};
     const filenames = entries.filter((entry) => entry.isFile()).map((entry) => entry.name).sort();
     const filenameSet = new Set(filenames);
     const items = await Promise.all(
@@ -528,15 +966,41 @@ export function createProjectStore({
         const uploadedAt = resolveUploadTimestamp(filename, stats);
         const uploadedAtMs = Date.parse(uploadedAt) || nowMs;
         const referencedByProjectIds = Array.from(references.get(filename) ?? []).sort();
+        const artifacts = await getUploadArtifacts(filename);
+        const syncEntry = syncEntriesByFilename[filename] ?? null;
+        const resources =
+          syncEntry && artifacts?.resources ? objectStorageStore.buildRemoteResources(syncEntry, artifacts.resources) : artifacts?.resources ?? null;
+        const derivedBytes = [resources?.preview?.bytes ?? 0, resources?.thumb?.bytes ?? 0].reduce((sum, value) => sum + value, 0);
+        const delivery =
+          objectStorageStore
+            ? objectStorageStore.buildDeliveryStatus(syncEntry, {
+                enabled: objectStorageEnabled,
+              })
+            : {
+                state: 'local',
+                canRetry: false,
+                queuedAt: null,
+                lastAttemptAt: null,
+                syncedAt: null,
+                error: null,
+                attempts: 0,
+              };
 
         return {
           filename,
           src: `/uploads/${filename}`,
           bytes: stats.size,
+          derivedBytes,
+          totalBytes: stats.size + derivedBytes,
+          original: resources?.original ?? null,
+          preview: resources?.preview ?? null,
+          thumb: resources?.thumb ?? null,
           uploadedAt,
           ageHours: Math.max(0, (nowMs - uploadedAtMs) / 3_600_000),
           ageMs: Math.max(0, nowMs - uploadedAtMs),
           referencedByProjectIds,
+          delivery,
+          remoteSyncedAt: delivery.syncedAt,
         };
       }),
     );
@@ -548,7 +1012,7 @@ export function createProjectStore({
         referencedByProjectIds: Array.from(projectIds).sort(),
       }));
 
-    return {
+    cachedUploadInventory = {
       items,
       missingReferencedFiles,
       totals: {
@@ -556,8 +1020,13 @@ export function createProjectStore({
         referencedCount: items.filter((item) => item.referencedByProjectIds.length > 0).length,
         unreferencedCount: items.filter((item) => item.referencedByProjectIds.length === 0).length,
         missingReferencedCount: missingReferencedFiles.length,
+        originalBytes: items.reduce((total, item) => total + item.bytes, 0),
+        derivedBytes: items.reduce((total, item) => total + item.derivedBytes, 0),
+        totalBytes: items.reduce((total, item) => total + item.totalBytes, 0),
       },
     };
+    cachedUploadInventoryExpiresAt = Date.now() + cacheTtlMs;
+    return cachedUploadInventory;
   }
 
   async function pruneUnreferencedUploads({
@@ -572,7 +1041,8 @@ export function createProjectStore({
       .slice(0, limit);
 
     if (!dryRun) {
-      await Promise.all(candidates.map((item) => fs.rm(path.join(uploadsDir, item.filename), { force: true })));
+      await Promise.all(candidates.map((item) => assetVariantService.removeUploadArtifacts(item.filename)));
+      invalidateUploadInventoryCache();
     }
 
     return {
@@ -585,14 +1055,16 @@ export function createProjectStore({
     };
   }
 
-  function createStoredUpload(file) {
+  function createStoredUpload(file, metadata) {
     validateUploadFile(file);
 
     return {
       id: `upload-${idFactory(9)}`,
       name: path.basename(file.originalname, path.extname(file.originalname)) || 'Untitled upload',
       src: `/uploads/${file.filename}`,
-      note: 'Stored on the CrazyAlbum server.',
+      note: '',
+      mimeType: typeof file.mimetype === 'string' ? file.mimetype : undefined,
+      ...normalizeAssetDimensions(metadata?.width, metadata?.height),
     };
   }
 
@@ -609,54 +1081,909 @@ export function createProjectStore({
     writeProjectRecord,
     createProjectRecord,
     updateProjectRecord,
+    patchProjectRecord,
+    updateProjectShareRecord,
+    listProjectRecords,
+    deleteProjectRecord,
+    readProjectRecordByShareId,
     collectUploadInventory,
     pruneUnreferencedUploads,
+    hydrateStoredUploadAsset,
     sanitizeProjectState: (payload) => sanitizeProjectState(payload, { maxPageCount, maxAssetCount }),
     validateUploadFile,
     createStoredUpload,
+    getUploadArtifacts,
+    removeUploadArtifacts: async (filename) => {
+      await assetVariantService.removeUploadArtifacts(filename);
+      if (objectStorageStore) {
+        await objectStorageStore.removeRemoteUpload(filename);
+      }
+    },
+    invalidateStoreCaches,
   };
 }
 
 export function createApp({
   port = Number(process.env.PORT ?? DEFAULT_PORT),
-  dataRoot = process.env.CRAZYALBUM_DATA_ROOT ?? DEFAULT_DATA_ROOT,
+  dataRoot = process.env.FINALFOLIO_DATA_ROOT ?? DEFAULT_DATA_ROOT,
   distDir = defaultDistDir,
-  maxUploadCount = Number(process.env.CRAZYALBUM_MAX_UPLOAD_COUNT ?? DEFAULT_MAX_UPLOAD_COUNT),
-  maxUploadSizeBytes = Number(process.env.CRAZYALBUM_MAX_UPLOAD_SIZE_BYTES ?? DEFAULT_MAX_UPLOAD_SIZE_BYTES),
-  maxPageCount = Number(process.env.CRAZYALBUM_MAX_PAGE_COUNT ?? DEFAULT_MAX_PAGE_COUNT),
-  maxAssetCount = Number(process.env.CRAZYALBUM_MAX_ASSET_COUNT ?? DEFAULT_MAX_ASSET_COUNT),
+  maxUploadCount = Number(process.env.FINALFOLIO_MAX_UPLOAD_COUNT ?? DEFAULT_MAX_UPLOAD_COUNT),
+  maxUploadSizeBytes = Number(process.env.FINALFOLIO_MAX_UPLOAD_SIZE_BYTES ?? DEFAULT_MAX_UPLOAD_SIZE_BYTES),
+  maxPageCount = Number(process.env.FINALFOLIO_MAX_PAGE_COUNT ?? DEFAULT_MAX_PAGE_COUNT),
+  maxAssetCount = Number(process.env.FINALFOLIO_MAX_ASSET_COUNT ?? DEFAULT_MAX_ASSET_COUNT),
+  mailServiceFactory = () => createMailService(),
+  securityStoreFactory = (options) => createSecurityStore(options),
 } = {}) {
+  const securityStore = securityStoreFactory({ dataRoot });
+  const objectStorageStore = createObjectStorageStore({ dataRoot, securityStore });
   const store = createProjectStore({
     dataRoot,
     maxPageCount,
     maxAssetCount,
+    objectStorageStore,
+  });
+  const assetStore = createAssetStore({ dataRoot });
+  const authStore = createAuthStore({ dataRoot });
+  const opsStore = createOpsStore({ dataRoot });
+  const siteStore = createSiteStore({ dataRoot });
+  const accountPreferencesStore = createAccountPreferencesStore({
+    dataRoot,
+    allowedPageThemes,
+  });
+  const userTemplateStore = createUserTemplateStore({
+    dataRoot,
+    idFactory: createId,
+    maxPageCount,
+    templateSlots,
+    allowedPageThemes,
+    textLimits: defaultTextLimits,
+    frameRadiusRange: {
+      min: MIN_FRAME_RADIUS,
+      max: MAX_FRAME_RADIUS,
+      defaultValue: DEFAULT_FRAME_RADIUS,
+    },
   });
   const indexFile = path.join(distDir, 'index.html');
   const app = express();
+  app.set('trust proxy', true);
+  let mailService;
+
+  function requireAuthenticated(request) {
+    const user = request.auth?.user;
+    if (!user) {
+      const error = new Error('Sign in first.');
+      error.statusCode = 401;
+      throw error;
+    }
+
+    if (user.status !== 'active') {
+      const error = new Error('This account is disabled.');
+      error.statusCode = 403;
+      throw error;
+    }
+
+    if (!hasAcceptedCurrentTerms(user) && request.path !== '/api/legal/terms/accept') {
+      const error = new Error('Accept the Terms of Service to continue.');
+      error.statusCode = 403;
+      error.code = 'terms_required';
+      error.termsVersion = CURRENT_TOS_VERSION;
+      throw error;
+    }
+
+    return user;
+  }
+
+  function queueObjectStorageUploadSync(userId, syncCandidates) {
+    if (!objectStorageStore || !Array.isArray(syncCandidates) || syncCandidates.length === 0) {
+      return;
+    }
+
+    void (async () => {
+      const failures = [];
+      for (const candidate of syncCandidates) {
+        const { filename, artifacts } = candidate;
+        if (!artifacts?.resources?.original) {
+          continue;
+        }
+
+        try {
+          await objectStorageStore.syncLocalUpload(filename, artifacts);
+        } catch (error) {
+          failures.push({
+            filename,
+            message: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+      store.invalidateStoreCaches();
+
+      if (failures.length === 0) {
+        return;
+      }
+
+      console.error('Object storage sync failed for uploads:', failures);
+
+      await opsStore.recordEvent({
+        type: 'upload',
+        status: 'error',
+        userId,
+        detail: {
+          action: 'object-storage-sync',
+          failedCount: failures.length,
+          failures: failures.map(({ filename, message }) => ({
+            filename,
+            message,
+          })),
+        },
+      });
+    })().catch((error) => {
+      console.error('Unexpected object storage sync queue failure.', error);
+    });
+  }
+
+  function requireAdmin(request) {
+    const user = requireAuthenticated(request);
+    if (user.role !== 'admin') {
+      const error = new Error('Admin access required.');
+      error.statusCode = 403;
+      throw error;
+    }
+
+    return user;
+  }
+
+  function getMailService() {
+    mailService ??= mailServiceFactory();
+    return mailService;
+  }
+
+  function collectPlacedAssetIds(project) {
+    const placedAssetIds = new Set();
+    project.pages.forEach((page) => {
+      Object.values(page.slots).forEach((assetId) => {
+        if (typeof assetId === 'string') {
+          placedAssetIds.add(assetId);
+        }
+      });
+    });
+    return placedAssetIds;
+  }
+
+  function requireOwnedProjectAccess(request, record) {
+    const user = requireAuthenticated(request);
+    if (user.role !== 'admin' && user.id !== record.ownerUserId) {
+      throw createForbidden('This project belongs to another account.');
+    }
+
+    return user;
+  }
+
+  function requireProjectReadAccess(request, record) {
+    if (!record.ownerUserId) {
+      return request.auth?.user ?? null;
+    }
+
+    return requireOwnedProjectAccess(request, record);
+  }
+
+  function requireProjectMutationAccess(request, record) {
+    if (!record.ownerUserId) {
+      const user = requireAuthenticated(request);
+      if (user.role === 'admin') {
+        return user;
+      }
+
+      throw createForbidden('This legacy project is read-only. Duplicate it into your account before editing.');
+    }
+
+    return requireOwnedProjectAccess(request, record);
+  }
+
+  function requireProjectDuplicateAccess(request, record) {
+    const user = requireAuthenticated(request);
+    if (!record.ownerUserId) {
+      return user;
+    }
+
+    if (user.role !== 'admin' && user.id !== record.ownerUserId) {
+      throw createForbidden('This project belongs to another account.');
+    }
+
+    return user;
+  }
+
+  function requireAssetOwner(request, assetRecord) {
+    const user = requireAuthenticated(request);
+    if (!assetRecord.ownerUserId) {
+      if (user.role === 'admin') {
+        return user;
+      }
+
+      const error = new Error('Only admins can manage unowned legacy assets.');
+      error.statusCode = 403;
+      throw error;
+    }
+
+    if (user.role !== 'admin' && user.id !== assetRecord.ownerUserId) {
+      const error = new Error('This upload belongs to another account.');
+      error.statusCode = 403;
+      throw error;
+    }
+
+    return user;
+  }
+
+  function requireTemplateOwner(request, templateRecord) {
+    const user = requireAuthenticated(request);
+    if (!templateRecord.ownerUserId) {
+      if (user.role === 'admin') {
+        return user;
+      }
+
+      const error = new Error('This template is missing an owner.');
+      error.statusCode = 403;
+      throw error;
+    }
+
+    if (user.role !== 'admin' && user.id !== templateRecord.ownerUserId) {
+      const error = new Error('This template belongs to another account.');
+      error.statusCode = 403;
+      throw error;
+    }
+
+    return user;
+  }
+
+  function serializeUserTemplateRecord(record) {
+    return {
+      id: record.id,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+      ownerUserId: record.ownerUserId ?? null,
+      name: record.name,
+      description: record.description,
+      kind: record.kind ?? 'project',
+      sourceProjectId: record.sourceProjectId ?? null,
+      includesCopy: record.includesCopy === true,
+      preserveCopy: record.includesCopy === true,
+      previewPageIndex: typeof record.previewPageIndex === 'number' ? record.previewPageIndex : 0,
+      templatePayload: record.templatePayload,
+    };
+  }
+
+  async function collectAssetProjectReferences(assetId) {
+    const projects = await store.listProjectRecords();
+    return projects
+      .map((record) => {
+        const inLibrary = record.project.assets.some((asset) => asset.id === assetId);
+        const slotReferences = [];
+
+        record.project.pages.forEach((page, pageIndex) => {
+          Object.entries(page.slots).forEach(([slot, currentAssetId]) => {
+            if (currentAssetId === assetId) {
+              slotReferences.push({
+                pageId: page.id,
+                pageIndex,
+                pageTitle: page.title,
+                slot,
+              });
+            }
+          });
+        });
+
+        return inLibrary || slotReferences.length > 0
+          ? {
+              projectId: record.id,
+              projectTitle: record.project.title,
+              issue: record.project.issue,
+              inLibrary,
+              slotReferences,
+            }
+          : null;
+      })
+      .filter((entry) => entry !== null);
+  }
+
+  function buildUploadDetailIndex(projects) {
+    const referencesByFilename = new Map();
+
+    projects.forEach((record) => {
+      const assetById = Object.fromEntries(record.project.assets.map((asset) => [asset.id, asset]));
+
+      record.project.pages.forEach((page, pageIndex) => {
+        Object.entries(page.slots).forEach(([slot, currentAssetId]) => {
+          if (typeof currentAssetId !== 'string') {
+            return;
+          }
+
+          const asset = assetById[currentAssetId];
+          const filename = getUploadFilenameFromPath(asset?.src ?? null);
+          if (!filename) {
+            return;
+          }
+
+          if (!referencesByFilename.has(filename)) {
+            referencesByFilename.set(filename, []);
+          }
+
+          referencesByFilename.get(filename).push({
+            projectId: record.id,
+            projectTitle: record.project.title,
+            issue: record.project.issue,
+            pageId: page.id,
+            pageIndex,
+            pageTitle: page.title,
+            slot,
+            assetId: currentAssetId,
+          });
+        });
+      });
+    });
+
+    return referencesByFilename;
+  }
+
+  function buildUploadReferenceSummary(projects) {
+    const referencesByFilename = new Map();
+
+    projects.forEach((record) => {
+      const assetById = Object.fromEntries(record.project.assets.map((asset) => [asset.id, asset]));
+
+      record.project.pages.forEach((page) => {
+        Object.entries(page.slots).forEach(([, currentAssetId]) => {
+          if (typeof currentAssetId !== 'string') {
+            return;
+          }
+
+          const asset = assetById[currentAssetId];
+          const filename = getUploadFilenameFromPath(asset?.src ?? null);
+          if (!filename) {
+            return;
+          }
+
+          const currentSummary = referencesByFilename.get(filename) ?? {
+            referencedProjectIds: new Set(),
+            pageCount: 0,
+          };
+          currentSummary.referencedProjectIds.add(record.id);
+          currentSummary.pageCount += 1;
+          referencesByFilename.set(filename, currentSummary);
+        });
+      });
+    });
+
+    return referencesByFilename;
+  }
+
+  function buildAssetReferenceSummary(projects) {
+    const referencesByAssetId = new Map();
+
+    projects.forEach((record) => {
+      record.project.assets.forEach((asset) => {
+        if (!referencesByAssetId.has(asset.id)) {
+          referencesByAssetId.set(asset.id, {
+            projectIds: new Set(),
+            projectTitles: new Set(),
+            pageCount: 0,
+          });
+        }
+      });
+
+      record.project.pages.forEach((page) => {
+        Object.values(page.slots).forEach((currentAssetId) => {
+          if (typeof currentAssetId !== 'string') {
+            return;
+          }
+
+          const summary = referencesByAssetId.get(currentAssetId) ?? {
+            projectIds: new Set(),
+            projectTitles: new Set(),
+            pageCount: 0,
+          };
+          summary.projectIds.add(record.id);
+          summary.projectTitles.add(record.project.title);
+          summary.pageCount += 1;
+          referencesByAssetId.set(currentAssetId, summary);
+        });
+      });
+    });
+
+    return referencesByAssetId;
+  }
+
+  function summarizeActivityLabel(event) {
+    const action = typeof event?.detail?.action === 'string' ? event.detail.action : '';
+    switch (event.type) {
+      case 'project':
+        switch (action) {
+          case 'create':
+            return 'Created a project';
+          case 'update':
+            return 'Updated a project';
+          case 'create-from-template':
+            return 'Created a project from a template';
+          case 'duplicate':
+            return 'Duplicated a project';
+          case 'archive':
+            return 'Archived a project';
+          case 'unarchive':
+            return 'Restored a project';
+          case 'delete':
+            return 'Deleted a project';
+          default:
+            return 'Changed a project';
+        }
+      case 'template':
+        switch (action) {
+          case 'create':
+            return 'Saved a template';
+          case 'update':
+            return 'Updated a template';
+          case 'duplicate':
+            return 'Duplicated a template';
+          case 'delete':
+            return 'Deleted a template';
+          default:
+            return 'Changed a template';
+        }
+      case 'upload':
+        if (action === 'delete') {
+          return 'Deleted an uploaded asset';
+        }
+        if (action === 'retry-object-storage-sync') {
+          return 'Retried remote asset sync';
+        }
+        return 'Uploaded assets';
+      case 'export':
+        if (event.status === 'error') {
+          return 'Export failed';
+        }
+        if (event.status === 'requested') {
+          return 'Requested PDF export';
+        }
+        return 'Exported a project';
+      case 'share':
+        switch (action) {
+          case 'enable':
+            return 'Enabled public sharing';
+          case 'disable':
+            return 'Disabled public sharing';
+          case 'regenerate':
+            return 'Regenerated a share link';
+          default:
+            return 'Updated sharing';
+        }
+      case 'auth':
+        switch (action) {
+          case 'update-profile':
+            return 'Updated account profile';
+          case 'update-preferences':
+            return 'Updated account preferences';
+          case 'change-password':
+            return 'Changed password';
+          default:
+            return 'Updated account settings';
+        }
+      default:
+        return 'Updated workspace';
+    }
+  }
+
+  function serializeAccountActivity(event) {
+    const status = event.status === 'error' ? 'error' : event.status === 'requested' ? 'requested' : 'ok';
+    return {
+      id: event.id,
+      type: event.type,
+      action: typeof event?.detail?.action === 'string' ? event.detail.action : 'view',
+      label: summarizeActivityLabel(event),
+      status,
+      createdAt: event.createdAt,
+      projectId: typeof event.projectId === 'string' ? event.projectId : null,
+      detail: event.detail && typeof event.detail === 'object' ? event.detail : null,
+    };
+  }
+
+  function collectPageAssetIds(page) {
+    return Array.from(new Set(Object.values(page?.slots ?? {}).filter((assetId) => typeof assetId === 'string')));
+  }
+
+  function collectProjectAssetIds(pages) {
+    return new Set(
+      pages.flatMap((page) => Object.values(page?.slots ?? {}).filter((assetId) => typeof assetId === 'string')),
+    );
+  }
+
+  async function hydrateAssets(assets, { ensureVariants = false } = {}) {
+    return Promise.all(assets.map((asset) => store.hydrateStoredUploadAsset(asset, { ensureVariants })));
+  }
+
+  async function buildProjectPreview(record, { ensureVariants = false } = {}) {
+    const pages = record.project.pages;
+    if (pages.length === 0) {
+      return {
+        pages: [],
+        assets: [],
+      };
+    }
+
+    const previewAssetIds = collectProjectAssetIds(pages);
+    const previewAssets = await hydrateAssets(
+      record.project.assets.filter((asset) => previewAssetIds.has(asset.id)),
+      { ensureVariants },
+    );
+
+    return {
+      pages,
+      assets: previewAssets,
+    };
+  }
+
+  async function buildPublicIssuePayload(record) {
+    const share = serializeProjectShare(record.share);
+    if (!share.enabled || !share.id) {
+      const notFound = new Error('Shared folio not available.');
+      notFound.statusCode = 404;
+      throw notFound;
+    }
+
+    const usedAssetIds = collectProjectAssetIds(record.project.pages);
+    const assets = await hydrateAssets(record.project.assets.filter((asset) => usedAssetIds.has(asset.id)));
+
+    return {
+      shareId: share.id,
+      projectId: record.id,
+      sharedAt: share.sharedAt,
+      updatedAt: record.updatedAt,
+      title: record.project.title,
+      subtitle: record.project.subtitle,
+      issue: record.project.issue,
+      frameRadius: record.project.frameRadius,
+      pages: record.project.pages,
+      assets,
+    };
+  }
+
+  function buildProjectMetrics(record) {
+    const assetById = Object.fromEntries(record.project.assets.map((asset) => [asset.id, asset]));
+    const usedAssetIds = new Set();
+    const missingAssetIds = new Set();
+    const templateUsage = {};
+    let blankPages = 0;
+
+    record.project.pages.forEach((page) => {
+      templateUsage[page.template] = (templateUsage[page.template] ?? 0) + 1;
+      const assignedAssetIds = Object.values(page.slots).filter((assetId) => typeof assetId === 'string');
+      if (assignedAssetIds.length === 0) {
+        blankPages += 1;
+      }
+
+      assignedAssetIds.forEach((assetId) => {
+        usedAssetIds.add(assetId);
+        if (!assetById[assetId]) {
+          missingAssetIds.add(assetId);
+        }
+      });
+    });
+
+    return {
+      pageCount: record.project.pages.length,
+      assetCount: record.project.assets.length,
+      placedAssetCount: usedAssetIds.size,
+      unusedAssetCount: record.project.assets.filter((asset) => !usedAssetIds.has(asset.id)).length,
+      blankPages,
+      missingAssetCount: missingAssetIds.size,
+      templateUsage,
+    };
+  }
+
+  function getProjectHealth(metrics) {
+    if (metrics.missingAssetCount > 0) {
+      return `${metrics.missingAssetCount} missing`;
+    }
+
+    if (metrics.blankPages > 0) {
+      return `${metrics.blankPages} blank`;
+    }
+
+    if (metrics.unusedAssetCount > 0) {
+      return `${metrics.unusedAssetCount} unused`;
+    }
+
+    return 'healthy';
+  }
+
+  function selectHomepagePreviewPages(record, featuredIssue) {
+    const pageIds = Array.isArray(featuredIssue?.pageIds) ? featuredIssue.pageIds : [];
+    if (pageIds.length > 0) {
+      const pageById = Object.fromEntries(record.project.pages.map((page) => [page.id, page]));
+      const selectedPages = pageIds.map((pageId) => pageById[pageId]).filter(Boolean);
+      if (selectedPages.length > 0) {
+        return selectedPages.slice(0, 5);
+      }
+    }
+
+    return record.project.pages.slice(0, 5);
+  }
+
+  function selectHomepagePreviewAssets(pages, assets) {
+    const usedAssetIds = new Set();
+    pages.forEach((page) => {
+      Object.values(page.slots).forEach((assetId) => {
+        if (typeof assetId === 'string') {
+          usedAssetIds.add(assetId);
+        }
+      });
+    });
+
+    return assets.filter((asset) => usedAssetIds.has(asset.id));
+  }
+
+  async function buildHomepagePreviewPayload(siteContent) {
+    const projectId = siteContent?.featuredIssue?.projectId;
+    if (!projectId) {
+      return null;
+    }
+
+    try {
+      const record = await store.readProjectRecord(projectId);
+      const pages = selectHomepagePreviewPages(record, siteContent.featuredIssue);
+      if (pages.length === 0) {
+        return null;
+      }
+
+      return {
+        source: 'project',
+        projectId: record.id,
+        sharePath: createSharePath(record.id),
+        issue: record.project.issue,
+        title: record.project.title,
+        subtitle: record.project.subtitle,
+        frameRadius: record.project.frameRadius,
+        assets: await hydrateAssets(selectHomepagePreviewAssets(pages, record.project.assets)),
+        pages,
+        updatedAt: record.updatedAt,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  async function syncHistoricalUploadsToObjectStorage({ force = false, limit = Number.POSITIVE_INFINITY } = {}) {
+    const config = await objectStorageStore.readConfig();
+    if (!config.enabled) {
+      throw createBadRequest('Enable object storage before syncing historical uploads.');
+    }
+
+    const inventory = await store.collectUploadInventory();
+    const targets = inventory.items.slice(0, limit);
+    const result = {
+      scanned: targets.length,
+      synced: 0,
+      skipped: 0,
+      failed: [],
+    };
+
+    for (const item of targets) {
+      try {
+        const existingSyncEntry = await objectStorageStore.readSyncEntry(item.filename);
+        if (existingSyncEntry && !force) {
+          result.skipped += 1;
+          continue;
+        }
+
+        const artifacts = await store.getUploadArtifacts(item.filename, {
+          ensureVariants: true,
+          originalWidth: item.original?.width,
+          originalHeight: item.original?.height,
+        });
+        if (!artifacts?.resources) {
+          throw new Error('Local upload artifacts are missing.');
+        }
+
+        await objectStorageStore.syncLocalUpload(item.filename, artifacts);
+        result.synced += 1;
+      } catch (error) {
+        result.failed.push({
+          filename: item.filename,
+          message: error instanceof Error ? error.message : 'Unknown sync failure.',
+        });
+      }
+    }
+
+    store.invalidateStoreCaches();
+    return result;
+  }
+
+  async function restoreRemoteUploadsToLocal({ detach = true, limit = Number.POSITIVE_INFINITY } = {}) {
+    const syncIndex = await objectStorageStore.readSyncIndex();
+    const filenames = Object.keys(syncIndex.uploads).sort().slice(0, limit);
+    const result = {
+      scanned: filenames.length,
+      restoredFiles: 0,
+      detachedUploads: 0,
+      failed: [],
+    };
+
+    for (const filename of filenames) {
+      try {
+        const artifacts = await store.getUploadArtifacts(filename);
+        const restoreResult = await objectStorageStore.restoreRemoteUploadToLocal(filename, artifacts, { detach });
+        result.restoredFiles += restoreResult.restoredFiles;
+        result.detachedUploads += restoreResult.detached ? 1 : 0;
+        await store.hydrateStoredUploadAsset(
+          {
+            id: `restore-${filename}`,
+            name: filename,
+            src: `/uploads/${filename}`,
+            note: '',
+          },
+          { ensureVariants: true },
+        );
+      } catch (error) {
+        result.failed.push({
+          filename,
+          message: error instanceof Error ? error.message : 'Unknown restore failure.',
+        });
+      }
+    }
+
+    store.invalidateStoreCaches();
+    return result;
+  }
+
+  async function cleanupAssetIfUnused(assetId, assetSrc = null) {
+    const remainingReferences = await collectAssetProjectReferences(assetId);
+    if (remainingReferences.length > 0) {
+      return false;
+    }
+
+    let nextAssetSrc = assetSrc;
+    try {
+      const assetRecord = await assetStore.readAssetRecord(assetId);
+      nextAssetSrc = assetRecord.src;
+      await assetStore.markAssetDeleted(assetId);
+    } catch {
+      nextAssetSrc = assetSrc;
+    }
+
+    const filename = getUploadFilenameFromPath(nextAssetSrc);
+    if (filename) {
+      await store.removeUploadArtifacts(filename);
+      store.invalidateStoreCaches();
+    }
+
+    return true;
+  }
+  // Uploads are account-level assets. Project mutations must not physically delete
+  // upload records or files just because a project reference changed.
+  async function updateProjectRecordPreservingAssets(projectId, payload) {
+    const nextRecord = await store.updateProjectRecord(projectId, payload);
+    await assetStore.touchAssetUsage(collectPlacedAssetIds(nextRecord.project));
+    return nextRecord;
+  }
+
+  async function patchProjectRecordPreservingAssets(projectId, patch) {
+    const nextRecord = await store.patchProjectRecord(projectId, patch);
+    await assetStore.touchAssetUsage(collectPlacedAssetIds(nextRecord.project));
+    return nextRecord;
+  }
+
+  async function deleteProjectRecordPreservingAssets(record) {
+    await store.deleteProjectRecord(record.id);
+  }
+
+  async function deleteTemplatesOwnedByUser(userId) {
+    const templates = (await userTemplateStore.listTemplateRecords()).filter((record) => record.ownerUserId === userId);
+    await Promise.all(templates.map((record) => userTemplateStore.deleteTemplateRecord(record.id)));
+    return templates.length;
+  }
+
+  async function deleteOwnedContentForUser(userId) {
+    const ownedProjects = (await store.listProjectRecords()).filter((record) => record.ownerUserId === userId);
+    const ownedUploadCount = (await assetStore.listAssetRecords({ includeDeleted: false })).filter(
+      (record) => record.ownerUserId === userId && !record.deletedAt,
+    ).length;
+
+    for (const record of ownedProjects) {
+      await deleteProjectRecordPreservingAssets(record);
+    }
+
+    const deletedTemplateCount = await deleteTemplatesOwnedByUser(userId);
+    const remainingOwnedAssets = (await assetStore.listAssetRecords({ includeDeleted: false })).filter(
+      (record) => record.ownerUserId === userId && !record.deletedAt,
+    );
+
+    for (const record of remainingOwnedAssets) {
+      await cleanupAssetIfUnused(record.id, record.src);
+    }
+
+    const retainedUploadCount = (await assetStore.listAssetRecords({ includeDeleted: false })).filter(
+      (record) => record.ownerUserId === userId && !record.deletedAt,
+    ).length;
+
+    await accountPreferencesStore.deletePreferences(userId);
+
+    return {
+      deletedProjectCount: ownedProjects.length,
+      deletedTemplateCount,
+      deletedUploadCount: Math.max(0, ownedUploadCount - retainedUploadCount),
+      retainedUploadCount,
+    };
+  }
 
   app.disable('x-powered-by');
-  app.use((_, response, next) => {
-    response.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-    response.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-    response.setHeader('X-Content-Type-Options', 'nosniff');
-    response.setHeader(
-      'Content-Security-Policy',
-      [
-        "default-src 'self'",
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-        "font-src 'self' https://fonts.gstatic.com data:",
-        "img-src 'self' data: blob:",
-        "script-src 'self'",
-        "connect-src 'self'",
-        "object-src 'none'",
-        "base-uri 'self'",
-        "form-action 'self'",
-        "frame-ancestors 'none'",
-      ].join('; '),
-    );
-    next();
+  app.use(async (_, response, next) => {
+    try {
+      const remoteImageOrigins = new Set();
+      if (objectStorageStore) {
+        const configured = await objectStorageStore.readConfig().catch(() => null);
+        const candidateUrls = [objectStorageStore.defaults.publicBaseUrl, configured?.publicBaseUrl].filter(
+          (value) => typeof value === 'string' && value.trim(),
+        );
+
+        for (const candidateUrl of candidateUrls) {
+          try {
+            remoteImageOrigins.add(new URL(candidateUrl).origin);
+          } catch {
+            continue;
+          }
+        }
+      }
+
+      const remoteConnectOrigins = new Set(remoteImageOrigins);
+
+      response.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+      response.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+      response.setHeader('X-Content-Type-Options', 'nosniff');
+      response.setHeader(
+        'Content-Security-Policy',
+        [
+          "default-src 'self'",
+          "style-src 'self' 'unsafe-inline'",
+          "font-src 'self' data:",
+          `img-src 'self' data: blob:${remoteImageOrigins.size ? ` ${Array.from(remoteImageOrigins).join(' ')}` : ''}`,
+          "script-src 'self'",
+          `connect-src 'self'${remoteConnectOrigins.size ? ` ${Array.from(remoteConnectOrigins).join(' ')}` : ''}`,
+          "object-src 'none'",
+          "base-uri 'self'",
+          "form-action 'self'",
+          "frame-ancestors 'none'",
+        ].join('; '),
+      );
+      next();
+    } catch (error) {
+      next(error);
+    }
   });
   app.use(express.json({ limit: '5mb' }));
+  app.use(async (request, _response, next) => {
+    const cookies = parseCookies(request.headers.cookie ?? '');
+    const sessionId = cookies[SESSION_COOKIE_NAME] ?? null;
+    request.auth = null;
+
+    if (!sessionId) {
+      return next();
+    }
+
+    try {
+      request.auth = await authStore.resolveSessionUser(sessionId);
+      if (request.auth) {
+        void authStore.touchSessionUser(request.auth.session.id, request.auth.user.id).catch((error) => {
+          console.error('Failed to touch auth activity.', error);
+        });
+      }
+    } catch (error) {
+      if (error?.statusCode === 401 || error?.statusCode === 404) {
+        request.auth = null;
+        _response.setHeader('Set-Cookie', serializeClearedSessionCookie());
+        return next();
+      }
+
+      return next(error);
+    }
+
+    next();
+  });
 
   const upload = multer({
     storage: multer.diskStorage({
@@ -681,21 +2008,764 @@ export function createApp({
     response.json({ ok: true });
   });
 
-  app.post('/api/uploads', upload.array('files', maxUploadCount), (request, response) => {
-    const files = Array.isArray(request.files) ? request.files : [];
-    if (files.length === 0) {
-      throw createBadRequest('Choose at least one JPG, PNG, WebP, GIF, or AVIF image.');
+  app.get('/api/site-content', async (_request, response, next) => {
+    try {
+      const siteContent = await siteStore.readSiteContent();
+      const homepagePreview = await buildHomepagePreviewPayload(siteContent);
+      response.setHeader('Cache-Control', 'no-store');
+      response.json({
+        siteContent,
+        homepagePreview,
+      });
+    } catch (error) {
+      next(error);
     }
+  });
 
-    response.status(201).json({
-      assets: files.map((file) => store.createStoredUpload(file)),
+  app.get('/api/template-governance', async (_request, response, next) => {
+    try {
+      response.setHeader('Cache-Control', 'no-store');
+      response.json({
+        templateGovernance: await siteStore.readTemplateGovernance(),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get('/api/auth/session', (request, response) => {
+    response.json({
+      user: request.auth?.user ? authStore.serializeUserRecord(request.auth.user) : null,
     });
+  });
+
+  app.get('/api/auth/bootstrap-status', async (_request, response, next) => {
+    try {
+      const users = await authStore.listUsers();
+      response.json({
+        hasUsers: users.length > 0,
+        requiresBootstrap: users.length === 0,
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get('/api/auth/captcha', async (request, response, next) => {
+    try {
+      const purpose = typeof request.query.purpose === 'string' ? request.query.purpose : 'register';
+      const clientIp = resolveClientIp(request);
+      const challenge = await securityStore.issueCaptcha({
+        ip: clientIp,
+        purpose,
+      });
+      response.setHeader('Cache-Control', 'no-store');
+      response.json({
+        id: challenge.id,
+        purpose: challenge.purpose,
+        prompt: challenge.prompt,
+        imageDataUrl: challenge.imageDataUrl,
+        expiresAt: challenge.expiresAt,
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/auth/register', async (request, response, next) => {
+    try {
+      const clientIp = resolveClientIp(request);
+      if (request.body?.acceptTerms !== true) {
+        throw createBadRequest('You must agree to the Terms of Service before creating an account.');
+      }
+      await securityStore.verifyCaptcha({
+        id: request.body?.captchaId,
+        answer: request.body?.captchaAnswer,
+        ip: clientIp,
+        purpose: 'register',
+      });
+      await securityStore.consumeRateLimit({
+        ...REGISTER_IP_RATE_LIMIT,
+        key: clientIp,
+      });
+      const user = await authStore.createUser(request.body ?? {}, {
+        acceptCurrentTerms: true,
+        requireUsername: true,
+        termsAcceptedLanguage: request.body?.termsLanguage,
+      });
+      try {
+        const token = await authStore.issueVerificationToken(user.id);
+        const origin = resolvePublicOrigin(request);
+        const verificationUrl = new URL(`/auth?verify=${encodeURIComponent(token.id)}`, origin).toString();
+        await getMailService().sendVerificationEmail({
+          to: user.email,
+          actionUrl: verificationUrl,
+        });
+      } catch (error) {
+        await authStore.deleteUser(user.id);
+        throw error;
+      }
+      await opsStore.recordEvent({
+        type: 'auth',
+        status: 'ok',
+        userId: user.id,
+        detail: { action: 'register', verification: 'sent' },
+      });
+      response.status(201).json({
+        user: authStore.serializeUserRecord(user),
+        verificationRequired: true,
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/legal/terms/accept', async (request, response, next) => {
+    try {
+      const user = requireAuthenticated(request);
+      const acceptedUser = await authStore.acceptTerms(user.id, {
+        language: request.body?.language,
+      });
+      await opsStore.recordEvent({
+        type: 'auth',
+        status: 'ok',
+        userId: user.id,
+        detail: {
+          action: 'accept-terms',
+          version: CURRENT_TOS_VERSION,
+          language: acceptedUser.termsAcceptedLanguage,
+        },
+      });
+      response.json({
+        user: authStore.serializeUserRecord(acceptedUser),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/auth/login', async (request, response, next) => {
+    try {
+      const user = await authStore.authenticateUser(request.body ?? {});
+      const session = await authStore.createSession(user.id);
+      response.setHeader('Set-Cookie', serializeSessionCookie(session.id));
+      await opsStore.recordEvent({
+        type: 'auth',
+        status: 'ok',
+        userId: user.id,
+        detail: { action: 'login' },
+      });
+      response.json({ user: authStore.serializeUserRecord(user) });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/auth/verification/resend', async (request, response, next) => {
+    try {
+      const clientIp = resolveClientIp(request);
+      await securityStore.consumeRateLimit({
+        ...VERIFICATION_RESEND_IP_RATE_LIMIT,
+        key: clientIp,
+      });
+      const email = typeof request.body?.email === 'string' ? request.body.email : '';
+      const user = await authStore.findUserByEmail(email);
+      if (user && !user.emailVerifiedAt) {
+        const token = await authStore.issueVerificationToken(user.id);
+        const origin = resolvePublicOrigin(request);
+        const verificationUrl = new URL(`/auth?verify=${encodeURIComponent(token.id)}`, origin).toString();
+        await getMailService().sendVerificationEmail({
+          to: user.email,
+          actionUrl: verificationUrl,
+        });
+      }
+
+      response.status(204).end();
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/auth/verify', async (request, response, next) => {
+    try {
+      const token = typeof request.body?.token === 'string' ? request.body.token.trim() : '';
+      const user = await authStore.verifyUserWithToken(token);
+      const session = await authStore.createSession(user.id);
+      response.setHeader('Set-Cookie', serializeSessionCookie(session.id));
+      await opsStore.recordEvent({
+        type: 'auth',
+        status: 'ok',
+        userId: user.id,
+        detail: { action: 'verify-email' },
+      });
+      response.json({ user: authStore.serializeUserRecord(user) });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/auth/password-reset/request', async (request, response, next) => {
+    try {
+      const clientIp = resolveClientIp(request);
+      await securityStore.consumeRateLimit({
+        ...PASSWORD_RESET_IP_RATE_LIMIT,
+        key: clientIp,
+      });
+      const email = typeof request.body?.email === 'string' ? request.body.email : '';
+      const issued = await authStore.issuePasswordResetToken(email);
+      if (issued) {
+        const origin = resolvePublicOrigin(request);
+        const resetUrl = new URL(`/auth?reset=${encodeURIComponent(issued.token.id)}`, origin).toString();
+        await getMailService().sendPasswordResetEmail({
+          to: issued.user.email,
+          actionUrl: resetUrl,
+        });
+      }
+
+      response.status(204).end();
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/auth/password-reset/confirm', async (request, response, next) => {
+    try {
+      const token = typeof request.body?.token === 'string' ? request.body.token.trim() : '';
+      const password = typeof request.body?.password === 'string' ? request.body.password : '';
+      const user = await authStore.resetPasswordWithToken(token, password);
+      const session = await authStore.createSession(user.id);
+      response.setHeader('Set-Cookie', serializeSessionCookie(session.id));
+      await opsStore.recordEvent({
+        type: 'auth',
+        status: 'ok',
+        userId: user.id,
+        detail: { action: 'password-reset' },
+      });
+      response.json({ user: authStore.serializeUserRecord(user) });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/auth/logout', async (request, response, next) => {
+    try {
+      const cookies = parseCookies(request.headers.cookie ?? '');
+      await authStore.deleteSession(cookies[SESSION_COOKIE_NAME]);
+      response.setHeader('Set-Cookie', serializeClearedSessionCookie());
+      response.status(204).end();
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get('/api/account/summary', async (request, response, next) => {
+    try {
+      const user = requireAuthenticated(request);
+      const [projects, assetRecords] = await Promise.all([store.listProjectRecords(), assetStore.listAssetRecords({ includeDeleted: false })]);
+      const ownedProjects = projects.filter((record) => record.ownerUserId === user.id);
+      const activeOwnedProjects = ownedProjects.filter((record) => !record.archivedAt);
+      const ownedAssetRecords = assetRecords.filter((record) => record.ownerUserId === user.id && !record.deletedAt);
+      const assetReferenceSummary = buildAssetReferenceSummary(projects);
+
+      response.json({
+        account: authStore.serializeUserRecord(user),
+        counts: {
+          projects: activeOwnedProjects.length,
+          archivedProjects: ownedProjects.length - activeOwnedProjects.length,
+          uploads: ownedAssetRecords.length,
+          referencedUploads: ownedAssetRecords.filter((record) => (assetReferenceSummary.get(record.id)?.projectIds.size ?? 0) > 0).length,
+          unusedUploads: ownedAssetRecords.filter((record) => (assetReferenceSummary.get(record.id)?.projectIds.size ?? 0) === 0).length,
+        },
+        recentProjects: ownedProjects.slice(0, 6).map((record) => ({
+          id: record.id,
+          sharePath: createSharePath(record.id),
+          title: record.project.title,
+          issue: record.project.issue,
+          updatedAt: record.updatedAt,
+          archivedAt: record.archivedAt ?? null,
+        })),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get('/api/account/uploads', async (request, response, next) => {
+    try {
+      const user = requireAuthenticated(request);
+      const search = typeof request.query.search === 'string' ? request.query.search.trim().toLowerCase() : '';
+      const [projects, assetRecords] = await Promise.all([store.listProjectRecords(), assetStore.listAssetRecords({ includeDeleted: false })]);
+      const ownedRecords = assetRecords.filter((record) => record.ownerUserId === user.id && !record.deletedAt);
+      const assetReferenceSummary = buildAssetReferenceSummary(projects);
+      const uploads = await Promise.all(
+        ownedRecords.map(async (record) => {
+          const hydrated = await store.hydrateStoredUploadAsset(record);
+          const filename = getUploadFilenameFromPath(record.src) ?? record.src;
+          const referenceSummary = assetReferenceSummary.get(record.id) ?? {
+            projectIds: new Set(),
+            projectTitles: new Set(),
+            pageCount: 0,
+          };
+
+          return {
+            assetId: record.id,
+            filename,
+            name: record.name,
+            src: record.src,
+            delivery: hydrated.delivery ?? { state: 'local', canRetry: false },
+            original: hydrated.variants?.original ?? null,
+            preview: hydrated.variants?.preview ?? null,
+            thumb: hydrated.variants?.thumb ?? null,
+            bytes: hydrated.bytes ?? 0,
+            width: hydrated.width ?? null,
+            height: hydrated.height ?? null,
+            note: record.note,
+            createdAt: record.createdAt,
+            updatedAt: record.updatedAt,
+            lastUsedAt: record.lastUsedAt ?? null,
+            referencedProjectCount: referenceSummary.projectIds.size,
+            referencedPageCount: referenceSummary.pageCount,
+            referencedProjectTitles: Array.from(referenceSummary.projectTitles).sort(),
+          };
+        }),
+      );
+
+      response.json({
+        uploads: uploads.filter((upload) => {
+          if (!search) {
+            return true;
+          }
+
+          return (
+            upload.filename.toLowerCase().includes(search) ||
+            upload.name.toLowerCase().includes(search) ||
+            upload.referencedProjectTitles.some((title) => title.toLowerCase().includes(search))
+          );
+        }),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get('/api/account/preferences', async (request, response, next) => {
+    try {
+      const user = requireAuthenticated(request);
+      response.json({
+        preferences: await accountPreferencesStore.readPreferences(user.id),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch('/api/account/preferences', async (request, response, next) => {
+    try {
+      const user = requireAuthenticated(request);
+      const preferences = await accountPreferencesStore.updatePreferences(user.id, request.body ?? {});
+      await opsStore.recordEvent({
+        type: 'auth',
+        status: 'ok',
+        userId: user.id,
+        detail: {
+          action: 'update-preferences',
+        },
+      });
+      response.json({ preferences });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get('/api/account/activity', async (request, response, next) => {
+    try {
+      const user = requireAuthenticated(request);
+      const events = await opsStore.listEvents();
+      response.json({
+        activity: events
+          .filter((event) => event.userId === user.id)
+          .filter((event) => ['project', 'template', 'upload', 'export', 'share', 'auth'].includes(event.type))
+          .slice(-24)
+          .reverse()
+          .map(serializeAccountActivity),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get('/api/account/templates', async (request, response, next) => {
+    try {
+      const user = requireAuthenticated(request);
+      const search = typeof request.query.search === 'string' ? request.query.search.trim().toLowerCase() : '';
+      const templates = (await userTemplateStore.listTemplateRecords())
+        .filter((record) => record.ownerUserId === user.id)
+        .filter((record) => {
+          if (!search) {
+            return true;
+          }
+
+          return (
+            record.id.toLowerCase().includes(search) ||
+            record.name.toLowerCase().includes(search) ||
+            record.description.toLowerCase().includes(search) ||
+            (record.sourceProjectId ?? '').toLowerCase().includes(search)
+          );
+        });
+
+      response.json({
+        templates: templates.map(serializeUserTemplateRecord),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/account/templates', async (request, response, next) => {
+    try {
+      const user = requireAuthenticated(request);
+      const template = await userTemplateStore.createTemplateRecord(request.body ?? {}, {
+        ownerUserId: user.id,
+      });
+      await opsStore.recordEvent({
+        type: 'template',
+        status: 'ok',
+        userId: user.id,
+        detail: {
+          action: 'create',
+          templateId: template.id,
+          sourceProjectId: template.sourceProjectId ?? null,
+        },
+      });
+      response.status(201).json({ template: serializeUserTemplateRecord(template) });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch('/api/account/templates/:templateId', async (request, response, next) => {
+    try {
+      const template = await userTemplateStore.readTemplateRecord(request.params.templateId);
+      const user = requireTemplateOwner(request, template);
+      const updatedTemplate = await userTemplateStore.updateTemplateRecord(request.params.templateId, request.body ?? {});
+      await opsStore.recordEvent({
+        type: 'template',
+        status: 'ok',
+        userId: user.id,
+        detail: {
+          action: 'update',
+          templateId: updatedTemplate.id,
+        },
+      });
+      response.json({ template: serializeUserTemplateRecord(updatedTemplate) });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.delete('/api/account/templates/:templateId', async (request, response, next) => {
+    try {
+      const template = await userTemplateStore.readTemplateRecord(request.params.templateId);
+      const user = requireTemplateOwner(request, template);
+      await userTemplateStore.deleteTemplateRecord(request.params.templateId);
+      await opsStore.recordEvent({
+        type: 'template',
+        status: 'ok',
+        userId: user.id,
+        detail: {
+          action: 'delete',
+          templateId: template.id,
+        },
+      });
+      response.status(204).end();
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/account/templates/:templateId/duplicate', async (request, response, next) => {
+    try {
+      const template = await userTemplateStore.readTemplateRecord(request.params.templateId);
+      const user = requireTemplateOwner(request, template);
+      const duplicatedTemplate = await userTemplateStore.duplicateTemplateRecord(request.params.templateId, {
+        ownerUserId: user.id,
+      });
+      await opsStore.recordEvent({
+        type: 'template',
+        status: 'ok',
+        userId: user.id,
+        detail: {
+          action: 'duplicate',
+          templateId: duplicatedTemplate.id,
+          sourceTemplateId: template.id,
+        },
+      });
+      response.status(201).json({ template: serializeUserTemplateRecord(duplicatedTemplate) });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/account/templates/:templateId/projects', async (request, response, next) => {
+    try {
+      const template = await userTemplateStore.readTemplateRecord(request.params.templateId);
+      const user = requireTemplateOwner(request, template);
+      const record = await store.createProjectRecord(
+        {
+          project: userTemplateStore.materializeTemplateProject(template.templatePayload),
+        },
+        {
+          ownerUserId: user.id,
+        },
+      );
+      await opsStore.recordEvent({
+        type: 'project',
+        status: 'ok',
+        userId: user.id,
+        projectId: record.id,
+        detail: {
+          action: 'create-from-template',
+          templateId: template.id,
+        },
+      });
+      response.status(201).json(serializeProjectRecord(record));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch('/api/account/profile', async (request, response, next) => {
+    try {
+      const user = requireAuthenticated(request);
+      const updatedUser = await authStore.updateUserProfile(user.id, request.body ?? {});
+      await opsStore.recordEvent({
+        type: 'auth',
+        status: 'ok',
+        userId: updatedUser.id,
+        detail: { action: 'update-profile' },
+      });
+      response.json({ user: authStore.serializeUserRecord(updatedUser) });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/account/password', async (request, response, next) => {
+    try {
+      const user = requireAuthenticated(request);
+      const updatedUser = await authStore.changePassword(user.id, request.body?.currentPassword, request.body?.newPassword);
+      const session = await authStore.createSession(updatedUser.id);
+      response.setHeader('Set-Cookie', serializeSessionCookie(session.id));
+      await opsStore.recordEvent({
+        type: 'auth',
+        status: 'ok',
+        userId: updatedUser.id,
+        detail: { action: 'change-password' },
+      });
+      response.json({ user: authStore.serializeUserRecord(updatedUser) });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post(
+    '/api/uploads',
+    (request, _response, next) => {
+      try {
+        requireAuthenticated(request);
+        next();
+      } catch (error) {
+        next(error);
+      }
+    },
+    upload.array('files', maxUploadCount),
+    async (request, response, next) => {
+      try {
+        const user = requireAuthenticated(request);
+        const files = Array.isArray(request.files) ? request.files : [];
+        if (files.length === 0) {
+          throw createBadRequest('Choose at least one JPG, PNG, WebP, GIF, or AVIF image.');
+        }
+
+        let uploadMetadata = [];
+        if (typeof request.body?.assetMeta === 'string') {
+          try {
+            const parsed = JSON.parse(request.body.assetMeta);
+            if (Array.isArray(parsed)) {
+              uploadMetadata = parsed;
+            }
+          } catch {
+            uploadMetadata = [];
+          }
+        }
+
+        const createdAssets = [];
+        let completedRemoteSyncCount = 0;
+        const cleanupUploadedFiles = async () => {
+          await Promise.all(
+            files.map(async (file) => {
+              await store.removeUploadArtifacts(file.filename).catch(() => null);
+              if (objectStorageStore) {
+                await objectStorageStore.clearSyncEntry(file.filename).catch(() => null);
+              }
+            }),
+          );
+        };
+
+        try {
+          for (const [index, file] of files.entries()) {
+            const baseAsset = store.createStoredUpload(file, uploadMetadata[index]);
+            let asset = await store.hydrateStoredUploadAsset(baseAsset, { ensureVariants: true });
+            const artifacts = await store.getUploadArtifacts(file.filename, {
+              originalWidth: asset.width,
+              originalHeight: asset.height,
+            });
+
+            if (artifacts?.resources?.original && objectStorageStore) {
+              try {
+                await objectStorageStore.syncLocalUpload(file.filename, artifacts);
+              } catch (error) {
+                const failure = new Error(
+                  `Remote delivery did not complete. Upload was rolled back. ${error instanceof Error ? error.message : String(error)}`,
+                );
+                failure.statusCode = 424;
+                throw failure;
+              }
+              completedRemoteSyncCount += 1;
+              asset = await store.hydrateStoredUploadAsset(baseAsset, { ensureVariants: true });
+            }
+            createdAssets.push(asset);
+          }
+        } catch (error) {
+          await cleanupUploadedFiles();
+          throw error;
+        }
+
+        try {
+          await Promise.all(
+            createdAssets.map((asset) =>
+              assetStore.createAssetRecord(asset, {
+                ownerUserId: user.id,
+              }),
+            ),
+          );
+        } catch (error) {
+          await cleanupUploadedFiles();
+          throw error;
+        }
+        store.invalidateStoreCaches();
+
+        response.status(201).json({
+          assets: createdAssets,
+        });
+        await opsStore.recordEvent({
+          type: 'upload',
+          status: 'ok',
+          userId: user.id,
+          detail: {
+            count: files.length,
+            completedRemoteSyncs: completedRemoteSyncCount,
+          },
+        });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  app.get('/api/issues/:shareId', async (request, response, next) => {
+    try {
+      const record = await store.readProjectRecordByShareId(request.params.shareId);
+      response.json(await buildPublicIssuePayload(record));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get('/api/projects', async (request, response, next) => {
+    try {
+      const user = requireAuthenticated(request);
+      const search = typeof request.query.search === 'string' ? request.query.search.trim().toLowerCase() : '';
+      const visibility = typeof request.query.visibility === 'string' ? request.query.visibility : 'all';
+      const projects = (await store.listProjectRecords())
+        .filter((record) => record.ownerUserId === user.id)
+        .filter((record) => {
+          if (visibility === 'active') {
+            return !record.archivedAt;
+          }
+          if (visibility === 'archived') {
+            return Boolean(record.archivedAt);
+          }
+          return true;
+        })
+        .filter((record) => {
+          if (!search) {
+            return true;
+          }
+
+          return (
+            record.id.toLowerCase().includes(search) ||
+            record.project.title.toLowerCase().includes(search) ||
+            record.project.issue.toLowerCase().includes(search)
+          );
+        });
+
+      response.json({
+        projects: projects.map((record) => serializeProjectRecord(record)),
+      });
+    } catch (error) {
+      next(error);
+    }
   });
 
   app.post('/api/projects', async (request, response, next) => {
     try {
-      const record = await store.createProjectRecord(request.body);
+      const user = requireAuthenticated(request);
+      const record = await store.createProjectRecord(request.body, {
+        ownerUserId: user.id,
+      });
+      await assetStore.touchAssetUsage(collectPlacedAssetIds(record.project));
+      await opsStore.recordEvent({
+        type: 'project',
+        status: 'ok',
+        userId: user.id,
+        projectId: record.id,
+        detail: { action: 'create' },
+      });
       response.status(201).json(serializeProjectRecord(record));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/projects/:projectId/duplicate', async (request, response, next) => {
+    try {
+      const existingRecord = await store.readProjectRecord(request.params.projectId);
+      const user = requireProjectDuplicateAccess(request, existingRecord);
+      const clonedProject = {
+        ...existingRecord.project,
+        title: `${existingRecord.project.title} Copy`.slice(0, defaultTextLimits.projectTitle),
+      };
+      const duplicatedRecord = await store.createProjectRecord(
+        {
+          project: clonedProject,
+        },
+        {
+          ownerUserId: user.id,
+        },
+      );
+      await assetStore.touchAssetUsage(collectPlacedAssetIds(duplicatedRecord.project));
+      await opsStore.recordEvent({
+        type: 'project',
+        status: 'ok',
+        userId: user.id,
+        projectId: duplicatedRecord.id,
+        detail: {
+          action: 'duplicate',
+          sourceProjectId: existingRecord.id,
+        },
+      });
+      response.status(201).json(serializeProjectRecord(duplicatedRecord));
     } catch (error) {
       next(error);
     }
@@ -705,7 +2775,61 @@ export function createApp({
     try {
       const projectId = sanitizeProjectId(request.params.projectId);
       const record = await store.readProjectRecord(projectId);
-      response.json(serializeProjectRecord(record));
+      requireProjectReadAccess(request, record);
+      response.json({
+        ...serializeProjectRecord(record),
+        project: {
+          ...record.project,
+          assets: await hydrateAssets(record.project.assets),
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/projects/:projectId/share', async (request, response, next) => {
+    try {
+      const record = await store.readProjectRecord(request.params.projectId);
+      const user = requireProjectMutationAccess(request, record);
+      const sharedRecord = await store.updateProjectShareRecord(request.params.projectId, {
+        enable: true,
+        rotate: request.body?.rotate === true,
+      });
+      await opsStore.recordEvent({
+        type: 'share',
+        status: 'ok',
+        userId: user.id,
+        projectId: sharedRecord.id,
+        detail: {
+          action: request.body?.rotate === true ? 'regenerate' : 'enable',
+          shareId: sharedRecord.share?.shareId ?? null,
+        },
+      });
+      response.json(serializeProjectRecord(sharedRecord));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.delete('/api/projects/:projectId/share', async (request, response, next) => {
+    try {
+      const record = await store.readProjectRecord(request.params.projectId);
+      const user = requireProjectMutationAccess(request, record);
+      const sharedRecord = await store.updateProjectShareRecord(request.params.projectId, {
+        enable: false,
+      });
+      await opsStore.recordEvent({
+        type: 'share',
+        status: 'ok',
+        userId: user.id,
+        projectId: sharedRecord.id,
+        detail: {
+          action: 'disable',
+          shareId: sharedRecord.share?.shareId ?? null,
+        },
+      });
+      response.json(serializeProjectRecord(sharedRecord));
     } catch (error) {
       next(error);
     }
@@ -713,8 +2837,867 @@ export function createApp({
 
   app.put('/api/projects/:projectId', async (request, response, next) => {
     try {
-      const record = await store.updateProjectRecord(request.params.projectId, request.body);
+      const existingRecord = await store.readProjectRecord(request.params.projectId);
+      const user = requireProjectMutationAccess(request, existingRecord);
+      const record = await updateProjectRecordPreservingAssets(request.params.projectId, request.body);
+      await opsStore.recordEvent({
+        type: 'project',
+        status: 'ok',
+        userId: user.id,
+        projectId: record.id,
+        detail: { action: 'update' },
+      });
+      response.json({
+        ...serializeProjectRecord(record),
+        project: {
+          ...record.project,
+          assets: await hydrateAssets(record.project.assets),
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch('/api/projects/:projectId', async (request, response, next) => {
+    try {
+      const existingRecord = await store.readProjectRecord(request.params.projectId);
+      const user = requireProjectMutationAccess(request, existingRecord);
+      const nextArchivedAt =
+        request.body?.archive === true ? new Date().toISOString() : request.body?.unarchive === true ? null : undefined;
+      const record = await patchProjectRecordPreservingAssets(request.params.projectId, {
+        archivedAt: nextArchivedAt,
+        project: request.body?.project ?? {},
+      });
+      const action =
+        nextArchivedAt === undefined
+          ? 'rename'
+          : nextArchivedAt
+            ? 'archive'
+            : 'unarchive';
+      await opsStore.recordEvent({
+        type: 'project',
+        status: 'ok',
+        userId: user.id,
+        projectId: record.id,
+        detail: { action },
+      });
       response.json(serializeProjectRecord(record));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.delete('/api/projects/:projectId', async (request, response, next) => {
+    try {
+      const projectId = sanitizeProjectId(request.params.projectId);
+      const record = await store.readProjectRecord(projectId);
+      const user = requireProjectMutationAccess(request, record);
+      await deleteProjectRecordPreservingAssets(record);
+      await opsStore.recordEvent({
+        type: 'project',
+        status: 'ok',
+        userId: user.id,
+        projectId,
+        detail: { action: 'delete' },
+      });
+      response.status(204).end();
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.delete('/api/assets/:assetId', async (request, response, next) => {
+    try {
+      const assetId = String(request.params.assetId ?? '').trim();
+      const assetRecord = await assetStore.readAssetRecord(assetId);
+      const user = requireAssetOwner(request, assetRecord);
+      const references = await collectAssetProjectReferences(assetId);
+      if (references.length > 0) {
+        const error = new Error('Asset is still referenced by one or more projects.');
+        error.statusCode = 409;
+        error.details = references;
+        throw error;
+      }
+
+      await cleanupAssetIfUnused(assetId, assetRecord.src);
+      await opsStore.recordEvent({
+        type: 'upload',
+        status: 'ok',
+        userId: user.id,
+        detail: { action: 'delete', assetId },
+      });
+      response.status(204).end();
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/assets/:assetId/object-storage/retry', async (request, response, next) => {
+    try {
+      const assetId = String(request.params.assetId ?? '').trim();
+      const assetRecord = await assetStore.readAssetRecord(assetId);
+      const user = requireAssetOwner(request, assetRecord);
+      const filename = getUploadFilenameFromPath(assetRecord.src);
+      if (!filename) {
+        throw createBadRequest('This asset does not map to a stored upload file.');
+      }
+
+      const objectStorageConfig = await objectStorageStore.readConfig();
+      if (!objectStorageConfig.enabled) {
+        throw createBadRequest('Enable remote delivery before retrying upload mirroring.');
+      }
+
+      const artifacts = await store.getUploadArtifacts(filename, {
+        ensureVariants: true,
+        originalWidth: assetRecord.width ?? undefined,
+        originalHeight: assetRecord.height ?? undefined,
+      });
+      if (!artifacts?.resources?.original) {
+        throw createBadRequest('Upload artifacts are incomplete for object storage sync.');
+      }
+
+      await objectStorageStore.markUploadPending(filename);
+      queueObjectStorageUploadSync(user.id, [{ filename, artifacts }]);
+      store.invalidateStoreCaches();
+      await opsStore.recordEvent({
+        type: 'upload',
+        status: 'ok',
+        userId: user.id,
+        detail: {
+          action: 'retry-object-storage-sync',
+          assetId,
+          filename,
+        },
+      });
+      response.status(202).json({
+        asset: await store.hydrateStoredUploadAsset(assetRecord, { ensureVariants: true }),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.delete('/api/projects/:projectId/assets/:assetId', async (request, response, next) => {
+    try {
+      const projectId = sanitizeProjectId(request.params.projectId);
+      const assetId = String(request.params.assetId ?? '').trim();
+      const record = await store.readProjectRecord(projectId);
+      const user = requireProjectMutationAccess(request, record);
+      const asset = record.project.assets.find((entry) => entry.id === assetId);
+      if (!asset) {
+        const error = new Error('Asset not found in this project.');
+        error.statusCode = 404;
+        throw error;
+      }
+
+      const slotReferences = [];
+      record.project.pages.forEach((page, pageIndex) => {
+        Object.entries(page.slots).forEach(([slot, currentAssetId]) => {
+          if (currentAssetId === assetId) {
+            slotReferences.push({
+              pageId: page.id,
+              pageIndex,
+              pageTitle: page.title,
+              slot,
+            });
+          }
+        });
+      });
+
+      if (slotReferences.length > 0) {
+        const error = new Error('Asset is still placed on one or more pages.');
+        error.statusCode = 409;
+        error.details = slotReferences;
+        throw error;
+      }
+
+      const nextProject = {
+        ...record.project,
+        assets: record.project.assets.filter((entry) => entry.id !== assetId),
+      };
+      const updatedRecord = await updateProjectRecordPreservingAssets(projectId, { project: nextProject });
+      await opsStore.recordEvent({
+        type: 'project',
+        status: 'ok',
+        userId: user.id,
+        projectId,
+        detail: { action: 'delete-asset', assetId },
+      });
+      response.json(serializeProjectRecord(updatedRecord));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/exports', async (request, response, next) => {
+    try {
+      const status =
+        request.body?.status === 'error'
+          ? 'error'
+          : request.body?.status === 'requested'
+            ? 'requested'
+            : 'ok';
+      await opsStore.recordEvent({
+        type: 'export',
+        status,
+        userId: request.auth?.user?.id ?? null,
+        projectId: typeof request.body?.projectId === 'string' ? request.body.projectId : null,
+        detail: {
+          reason: typeof request.body?.reason === 'string' ? request.body.reason : null,
+          format: typeof request.body?.format === 'string' ? request.body.format : null,
+          pageSize: typeof request.body?.pageSize === 'string' ? request.body.pageSize : null,
+          quality: typeof request.body?.quality === 'string' ? request.body.quality : null,
+          fileSizePreference: typeof request.body?.fileSizePreference === 'string' ? request.body.fileSizePreference : null,
+        },
+      });
+      response.status(201).json({ ok: true });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get('/api/admin/product-config', async (request, response, next) => {
+    try {
+      requireAdmin(request);
+      const [siteContent, templateGovernance, uploadInventory] = await Promise.all([
+        siteStore.readSiteContent(),
+        siteStore.readTemplateGovernance(),
+        store.collectUploadInventory(),
+      ]);
+      const objectStorage = await objectStorageStore.readAdminConfig(uploadInventory);
+      const homepagePreview = await buildHomepagePreviewPayload(siteContent);
+      response.json({
+        siteContent,
+        templateGovernance,
+        homepagePreview,
+        objectStorage: {
+          ...objectStorage,
+          syncStats: {
+            mirroredUploads: objectStorage.syncStats.mirroredUploads,
+            pendingUploads: objectStorage.syncStats.pendingUploads,
+            failedUploads: objectStorage.syncStats.failedUploads,
+            localOnlyUploads: objectStorage.syncStats.localOnlyUploads,
+            latestSyncAt: objectStorage.syncStats.latestSyncAt,
+          },
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.put('/api/admin/product-config/site-content', async (request, response, next) => {
+    try {
+      const user = requireAdmin(request);
+      const draft = request.body?.siteContent ?? request.body;
+      if (draft?.featuredIssue?.projectId) {
+        await store.readProjectRecord(draft.featuredIssue.projectId);
+      }
+      const siteContent = await siteStore.updateSiteContent(draft);
+      await opsStore.recordEvent({
+        type: 'admin',
+        status: 'ok',
+        userId: user.id,
+        detail: { action: 'update-site-content' },
+      });
+      response.json({ siteContent });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.put('/api/admin/product-config/template-governance', async (request, response, next) => {
+    try {
+      const user = requireAdmin(request);
+      const templateGovernance = await siteStore.updateTemplateGovernance(request.body?.templateGovernance ?? request.body);
+      await opsStore.recordEvent({
+        type: 'admin',
+        status: 'ok',
+        userId: user.id,
+        detail: { action: 'update-template-governance' },
+      });
+      response.json({ templateGovernance });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/admin/product-config/object-storage/test', async (request, response, next) => {
+    try {
+      const user = requireAdmin(request);
+      const result = await objectStorageStore.testConfig(request.body?.objectStorage ?? request.body);
+      await opsStore.recordEvent({
+        type: 'admin',
+        status: 'ok',
+        userId: user.id,
+        detail: { action: 'test-object-storage' },
+      });
+      response.json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.put('/api/admin/product-config/object-storage', async (request, response, next) => {
+    try {
+      const user = requireAdmin(request);
+      await objectStorageStore.updateConfig(request.body?.objectStorage ?? request.body, {
+        userId: user.id,
+        confirmed: request.body?.confirmed === true,
+      });
+      const uploadInventory = await store.collectUploadInventory();
+      const objectStorage = await objectStorageStore.readAdminConfig(uploadInventory);
+      await opsStore.recordEvent({
+        type: 'admin',
+        status: 'ok',
+        userId: user.id,
+        detail: { action: 'update-object-storage' },
+      });
+      response.json({ objectStorage });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/admin/product-config/object-storage/sync', async (request, response, next) => {
+    try {
+      const user = requireAdmin(request);
+      const result = await syncHistoricalUploadsToObjectStorage({
+        force: request.body?.force === true,
+      });
+      await opsStore.recordEvent({
+        type: 'admin',
+        status: result.failed.length ? 'error' : 'ok',
+        userId: user.id,
+        detail: {
+          action: 'sync-object-storage',
+          synced: result.synced,
+          failed: result.failed.length,
+        },
+      });
+      response.json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/admin/product-config/object-storage/restore', async (request, response, next) => {
+    try {
+      const user = requireAdmin(request);
+      const result = await restoreRemoteUploadsToLocal({
+        detach: request.body?.detach !== false,
+      });
+      await opsStore.recordEvent({
+        type: 'admin',
+        status: result.failed.length ? 'error' : 'ok',
+        userId: user.id,
+        detail: {
+          action: 'restore-object-storage-local',
+          restoredFiles: result.restoredFiles,
+          detachedUploads: result.detachedUploads,
+          failed: result.failed.length,
+        },
+      });
+      response.json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get('/api/admin/summary', async (request, response, next) => {
+    try {
+      requireAdmin(request);
+      const [users, projects, uploadInventory, eventSummary] = await Promise.all([
+        authStore.listUsers(),
+        store.listProjectRecords(),
+        store.collectUploadInventory(),
+        opsStore.summarizeEvents(),
+      ]);
+
+      response.json({
+        counts: {
+          users: users.length,
+          projects: projects.length,
+          uploads: uploadInventory.totals.uploadCount,
+          exports: eventSummary.exportCount,
+        },
+        storage: {
+          uploadBytes: uploadInventory.totals.totalBytes,
+          originalBytes: uploadInventory.totals.originalBytes,
+          derivedBytes: uploadInventory.totals.derivedBytes,
+          totalBytes: uploadInventory.totals.totalBytes,
+        },
+        failureCounts: eventSummary.failureCounts,
+        eventTypeBreakdown: eventSummary.typeBreakdown,
+        recentActivity: users
+          .filter((user) => user.lastActiveAt)
+          .sort((left, right) => String(right.lastActiveAt).localeCompare(String(left.lastActiveAt)))
+          .slice(0, 10)
+          .map((user) => authStore.serializeUserRecord(user)),
+        failures: eventSummary.recentFailures,
+        events: eventSummary.recentEvents,
+        trends: eventSummary.trends,
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get('/api/admin/users', async (request, response, next) => {
+    try {
+      requireAdmin(request);
+      const search = typeof request.query.search === 'string' ? request.query.search.trim().toLowerCase() : '';
+      const users = await authStore.listUsers();
+      const filteredUsers = search
+        ? users.filter((user) => user.email.includes(search) || user.id.includes(search) || (user.username ?? '').includes(search))
+        : users;
+      response.json({
+        users: filteredUsers.map((user) => authStore.serializeUserRecord(user)),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/admin/users', async (request, response, next) => {
+    try {
+      const adminUser = requireAdmin(request);
+      const user = await authStore.createManagedUser(request.body ?? {});
+      await opsStore.recordEvent({
+        type: 'admin',
+        status: 'ok',
+        userId: adminUser.id,
+        detail: {
+          action: 'create-user',
+          createdUserId: user.id,
+          createdUserRole: user.role,
+        },
+      });
+      response.status(201).json({ user: authStore.serializeUserRecord(user) });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch('/api/admin/users/:userId', async (request, response, next) => {
+    try {
+      const adminUser = requireAdmin(request);
+      const targetUser = await authStore.readUser(request.params.userId);
+      const nextStatus = request.body?.status;
+
+      if (adminUser.id === targetUser.id && nextStatus === 'disabled') {
+        throw createBadRequest('The current administrator cannot disable the active session account.');
+      }
+
+      if (targetUser.role === 'admin' && targetUser.status === 'active' && nextStatus === 'disabled') {
+        const users = await authStore.listUsers();
+        const activeAdminCount = users.filter((user) => user.role === 'admin' && user.status === 'active').length;
+        if (activeAdminCount <= 1) {
+          throw createBadRequest('At least one active administrator must remain enabled.');
+        }
+      }
+
+      const user = await authStore.updateUserStatus(request.params.userId, nextStatus);
+      await opsStore.recordEvent({
+        type: 'admin',
+        status: 'ok',
+        userId: adminUser.id,
+        detail: {
+          action: 'update-user-status',
+          targetUserId: user.id,
+          status: user.status,
+        },
+      });
+      response.json({ user: authStore.serializeUserRecord(user) });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.delete('/api/admin/users/:userId', async (request, response, next) => {
+    try {
+      const adminUser = requireAdmin(request);
+      const targetUser = await authStore.readUser(request.params.userId);
+
+      if (adminUser.id === targetUser.id) {
+        throw createBadRequest('The current administrator cannot delete the active session account.');
+      }
+
+      if (targetUser.role === 'admin' && targetUser.status === 'active') {
+        const users = await authStore.listUsers();
+        const remainingActiveAdminCount = users.filter(
+          (user) => user.role === 'admin' && user.status === 'active' && user.id !== targetUser.id,
+        ).length;
+        if (remainingActiveAdminCount < 1) {
+          throw createBadRequest('At least one active administrator must remain enabled.');
+        }
+      }
+
+      const summary = await deleteOwnedContentForUser(targetUser.id);
+      await authStore.deleteUser(targetUser.id);
+      await opsStore.recordEvent({
+        type: 'admin',
+        status: 'ok',
+        userId: adminUser.id,
+        detail: {
+          action: 'delete-user',
+          targetUserId: targetUser.id,
+          deletedProjectCount: summary.deletedProjectCount,
+          deletedTemplateCount: summary.deletedTemplateCount,
+          deletedUploadCount: summary.deletedUploadCount,
+          retainedUploadCount: summary.retainedUploadCount,
+        },
+      });
+      response.json({ deleted: true, summary });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get('/api/admin/projects', async (request, response, next) => {
+    try {
+      requireAdmin(request);
+      const search = typeof request.query.search === 'string' ? request.query.search.trim().toLowerCase() : '';
+      const [projects, users] = await Promise.all([store.listProjectRecords(), authStore.listUsers()]);
+      const usersById = Object.fromEntries(users.map((user) => [user.id, user]));
+      const userEmailById = Object.fromEntries(users.map((user) => [user.id, user.email]));
+      const userDisplayById = Object.fromEntries(users.map((user) => [user.id, getUserDisplayIdentity(user)]));
+      const userUsernameById = Object.fromEntries(users.map((user) => [user.id, user.username ?? null]));
+      const filteredProjects = search
+        ? projects.filter((record) => {
+            const ownerEmail = record.ownerUserId ? userEmailById[record.ownerUserId] ?? '' : '';
+            const ownerDisplay = record.ownerUserId ? userDisplayById[record.ownerUserId] ?? '' : '';
+            return (
+              record.id.toLowerCase().includes(search) ||
+              record.project.title.toLowerCase().includes(search) ||
+              record.project.issue.toLowerCase().includes(search) ||
+              ownerEmail.toLowerCase().includes(search) ||
+              ownerDisplay.toLowerCase().includes(search)
+            );
+          })
+        : projects;
+
+      response.json({
+        projects: filteredProjects.map((record) => {
+          const metrics = buildProjectMetrics(record);
+          const share = serializeProjectShare(record.share);
+          const ownerUser = record.ownerUserId ? usersById[record.ownerUserId] ?? null : null;
+          return {
+            id: record.id,
+            createdAt: record.createdAt,
+            updatedAt: record.updatedAt,
+            sharePath: createSharePath(record.id),
+            publicSharePath: share.path,
+            title: record.project.title,
+            issue: record.project.issue,
+            ownerEmail: record.ownerUserId ? userEmailById[record.ownerUserId] ?? null : null,
+            ownerUsername: record.ownerUserId ? userUsernameById[record.ownerUserId] ?? null : null,
+            ownerDisplay: ownerUser ? getUserDisplayIdentity(ownerUser) : null,
+            ownerUserId: record.ownerUserId ?? null,
+            health: getProjectHealth(metrics),
+            metrics,
+          };
+        }),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get('/api/admin/projects/:projectId', async (request, response, next) => {
+    try {
+      requireAdmin(request);
+      const projectId = sanitizeProjectId(request.params.projectId);
+      const [record, users, eventSummary] = await Promise.all([
+        store.readProjectRecord(projectId),
+        authStore.listUsers(),
+        opsStore.summarizeEvents(),
+      ]);
+      const usersById = Object.fromEntries(users.map((user) => [user.id, user]));
+      const userEmailById = Object.fromEntries(users.map((user) => [user.id, user.email]));
+      const userUsernameById = Object.fromEntries(users.map((user) => [user.id, user.username ?? null]));
+      const metrics = buildProjectMetrics(record);
+      const preview = await buildProjectPreview(record);
+      const share = serializeProjectShare(record.share);
+      const ownerUser = record.ownerUserId ? usersById[record.ownerUserId] ?? null : null;
+
+      response.json({
+        project: {
+          id: record.id,
+          createdAt: record.createdAt,
+          updatedAt: record.updatedAt,
+          sharePath: createSharePath(record.id),
+          publicSharePath: share.path,
+          title: record.project.title,
+          subtitle: record.project.subtitle,
+          issue: record.project.issue,
+          frameRadius: record.project.frameRadius,
+          ownerEmail: record.ownerUserId ? userEmailById[record.ownerUserId] ?? null : null,
+          ownerUsername: record.ownerUserId ? userUsernameById[record.ownerUserId] ?? null : null,
+          ownerDisplay: ownerUser ? getUserDisplayIdentity(ownerUser) : null,
+          ownerUserId: record.ownerUserId ?? null,
+          health: getProjectHealth(metrics),
+          metrics,
+          preview,
+          recentEvents: eventSummary.recentEvents.filter((event) => event.projectId === record.id).slice(0, 6),
+          recentFailures: eventSummary.recentFailures.filter((failure) => failure.projectId === record.id).slice(0, 4),
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.delete('/api/admin/projects/:projectId', async (request, response, next) => {
+    try {
+      const user = requireAdmin(request);
+      const projectId = sanitizeProjectId(request.params.projectId);
+      const record = await store.readProjectRecord(projectId);
+      await deleteProjectRecordPreservingAssets(record);
+      await opsStore.recordEvent({
+        type: 'project',
+        status: 'ok',
+        userId: user.id,
+        projectId,
+        detail: { action: 'admin-delete' },
+      });
+      response.status(204).end();
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get('/api/admin/uploads', async (request, response, next) => {
+    try {
+      requireAdmin(request);
+      const search = typeof request.query.search === 'string' ? request.query.search.trim().toLowerCase() : '';
+      const [inventory, projects, assetRecords, users] = await Promise.all([
+        store.collectUploadInventory(),
+        store.listProjectRecords(),
+        assetStore.listAssetRecords({ includeDeleted: true }),
+        authStore.listUsers(),
+      ]);
+      const projectById = Object.fromEntries(
+        projects.map((record) => [
+          record.id,
+          {
+            id: record.id,
+            title: record.project.title,
+            issue: record.project.issue,
+            ownerUserId: record.ownerUserId,
+          },
+        ]),
+      );
+      const uploadReferenceSummary = buildUploadReferenceSummary(projects);
+      const userEmailById = Object.fromEntries(users.map((user) => [user.id, user.email]));
+      const userDisplayById = Object.fromEntries(users.map((user) => [user.id, getUserDisplayIdentity(user)]));
+      const assetRecordsByFilename = assetRecords.reduce((records, record) => {
+        const filename = getUploadFilenameFromPath(record.src);
+        if (!filename) {
+          return records;
+        }
+
+        if (!records[filename]) {
+          records[filename] = [];
+        }
+        records[filename].push(record);
+        return records;
+      }, {});
+      const items = inventory.items
+        .map((item) => {
+          const relatedRecords = assetRecordsByFilename[item.filename] ?? [];
+          const relatedOwners = Array.from(
+            new Set(relatedRecords.map((record) => record.ownerUserId).filter((value) => typeof value === 'string')),
+          );
+          const firstSizedRecord = relatedRecords.find((record) => typeof record.width === 'number' && typeof record.height === 'number') ?? null;
+          const referenceSummary = uploadReferenceSummary.get(item.filename) ?? {
+            referencedProjectIds: new Set(item.referencedByProjectIds),
+            pageCount: 0,
+          };
+          const referencedProjectTitles = item.referencedByProjectIds.map((projectId) => projectById[projectId]?.title ?? projectId);
+
+          return {
+            filename: item.filename,
+            src: item.src,
+            original: item.original,
+            preview: item.preview,
+            thumb: item.thumb,
+            delivery: item.delivery,
+            bytes: item.bytes,
+            width: firstSizedRecord?.width ?? item.original?.width ?? null,
+            height: firstSizedRecord?.height ?? item.original?.height ?? null,
+            ownerEmails: relatedOwners.map((userId) => userEmailById[userId] ?? userId),
+            ownerDisplayNames: relatedOwners.map((userId) => userDisplayById[userId] ?? userEmailById[userId] ?? userId),
+            referencedProjectCount: item.referencedByProjectIds.length,
+            referencedProjectTitles,
+          };
+        })
+        .filter((item) => {
+          if (!search) {
+            return true;
+          }
+
+          return (
+            item.filename.toLowerCase().includes(search) ||
+            item.src.toLowerCase().includes(search) ||
+            item.ownerEmails.some((email) => email.toLowerCase().includes(search)) ||
+            item.ownerDisplayNames.some((identity) => identity.toLowerCase().includes(search)) ||
+            item.referencedProjectTitles.some((title) => title.toLowerCase().includes(search))
+          );
+        });
+
+      response.json({
+        uploads: items,
+        totals: inventory.totals,
+        missingReferencedFiles: inventory.missingReferencedFiles,
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get('/api/admin/uploads/:filename', async (request, response, next) => {
+    try {
+      requireAdmin(request);
+      const filename = path.basename(request.params.filename);
+      const [inventory, projects, assetRecords, users] = await Promise.all([
+        store.collectUploadInventory(),
+        store.listProjectRecords(),
+        assetStore.listAssetRecords({ includeDeleted: true }),
+        authStore.listUsers(),
+      ]);
+      const item = inventory.items.find((entry) => entry.filename === filename);
+      if (!item) {
+        const error = new Error('Upload not found.');
+        error.statusCode = 404;
+        throw error;
+      }
+
+      const projectById = Object.fromEntries(
+        projects.map((record) => [
+          record.id,
+          {
+            id: record.id,
+            title: record.project.title,
+            issue: record.project.issue,
+            ownerUserId: record.ownerUserId,
+          },
+        ]),
+      );
+      const uploadDetailIndex = buildUploadDetailIndex(projects);
+      const userEmailById = Object.fromEntries(users.map((user) => [user.id, user.email]));
+      const userDisplayById = Object.fromEntries(users.map((user) => [user.id, getUserDisplayIdentity(user)]));
+      const relatedRecords = assetRecords.filter((record) => getUploadFilenameFromPath(record.src) === filename);
+      const relatedOwners = Array.from(
+        new Set(relatedRecords.map((record) => record.ownerUserId).filter((value) => typeof value === 'string')),
+      );
+      const referencedPages = uploadDetailIndex.get(filename) ?? [];
+      const firstSizedRecord = relatedRecords.find((record) => typeof record.width === 'number' && typeof record.height === 'number') ?? null;
+
+      response.json({
+        upload: {
+          filename: item.filename,
+          src: item.src,
+          original: item.original,
+          preview: item.preview,
+          thumb: item.thumb,
+          delivery: item.delivery,
+          bytes: item.bytes,
+          derivedBytes: item.derivedBytes,
+          totalBytes: item.totalBytes,
+          uploadedAt: item.uploadedAt,
+          ageHours: item.ageHours,
+          ageMs: item.ageMs,
+          width: firstSizedRecord?.width ?? item.original?.width ?? null,
+          height: firstSizedRecord?.height ?? item.original?.height ?? null,
+          assetIds: relatedRecords.map((record) => record.id),
+          assetRecordCount: relatedRecords.length,
+          ownerUserIds: relatedOwners,
+          ownerEmails: relatedOwners.map((userId) => userEmailById[userId] ?? userId),
+          ownerDisplayNames: relatedOwners.map((userId) => userDisplayById[userId] ?? userEmailById[userId] ?? userId),
+          referencedProjectIds: item.referencedByProjectIds,
+          referencedProjectCount: item.referencedByProjectIds.length,
+          referencedProjects: item.referencedByProjectIds.map((projectId) => projectById[projectId] ?? { id: projectId }),
+          referencedPages,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/admin/uploads/:filename/object-storage/retry', async (request, response, next) => {
+    try {
+      const user = requireAdmin(request);
+      const filename = path.basename(request.params.filename);
+      const objectStorageConfig = await objectStorageStore.readConfig();
+      if (!objectStorageConfig.enabled) {
+        throw createBadRequest('Enable remote delivery before retrying upload mirroring.');
+      }
+
+      const inventory = await store.collectUploadInventory();
+      const item = inventory.items.find((entry) => entry.filename === filename);
+      if (!item) {
+        const error = new Error('Upload not found.');
+        error.statusCode = 404;
+        throw error;
+      }
+
+      const artifacts = await store.getUploadArtifacts(filename, {
+        ensureVariants: true,
+        originalWidth: item.original?.width ?? undefined,
+        originalHeight: item.original?.height ?? undefined,
+      });
+      if (!artifacts?.resources?.original) {
+        throw createBadRequest('Upload artifacts are incomplete for object storage sync.');
+      }
+
+      await objectStorageStore.markUploadPending(filename);
+      queueObjectStorageUploadSync(user.id, [{ filename, artifacts }]);
+      store.invalidateStoreCaches();
+      await opsStore.recordEvent({
+        type: 'upload',
+        status: 'ok',
+        userId: user.id,
+        detail: {
+          action: 'admin-retry-object-storage-sync',
+          filename,
+        },
+      });
+      response.status(202).json({ queued: true });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.delete('/api/admin/uploads/:filename', async (request, response, next) => {
+    try {
+      requireAdmin(request);
+      const filename = path.basename(request.params.filename);
+      const inventory = await store.collectUploadInventory();
+      const item = inventory.items.find((entry) => entry.filename === filename);
+      if (!item) {
+        const error = new Error('Upload not found.');
+        error.statusCode = 404;
+        throw error;
+      }
+
+      if (item.referencedByProjectIds.length > 0) {
+        const error = new Error('Upload is still referenced by one or more projects.');
+        error.statusCode = 409;
+        throw error;
+      }
+
+      const assetRecords = await assetStore.listAssetRecords({ includeDeleted: true });
+      await Promise.all(
+        assetRecords
+          .filter((record) => getUploadFilenameFromPath(record.src) === filename)
+          .map((record) => assetStore.markAssetDeleted(record.id).catch(() => null)),
+      );
+      await store.removeUploadArtifacts(filename);
+      store.invalidateStoreCaches();
+      response.status(204).end();
     } catch (error) {
       next(error);
     }
@@ -733,7 +3716,17 @@ export function createApp({
     express.static(distDir, {
       index: false,
       setHeaders: (response, filePath) => {
-        if (filePath.endsWith('.html')) {
+        if (
+          filePath.endsWith('.html') ||
+          filePath.endsWith('favicon.svg') ||
+          filePath.endsWith('apple-touch-icon.png') ||
+          filePath.endsWith('site.webmanifest') ||
+          filePath.endsWith('icon-192.png') ||
+          filePath.endsWith('icon-512.png') ||
+          filePath.endsWith('app-icon-192.png') ||
+          filePath.endsWith('app-icon-512.png') ||
+          filePath.endsWith('app-icon.svg')
+        ) {
           response.setHeader('Cache-Control', 'no-cache');
           return;
         }
@@ -756,9 +3749,15 @@ export function createApp({
     }
   });
 
-  app.use((error, _request, response, _next) => {
+  app.use((error, request, response, _next) => {
     if (error instanceof multer.MulterError) {
       response.status(400).json({ error: error.message });
+      void opsStore.recordEvent({
+        type: 'upload',
+        status: 'error',
+        userId: request.auth?.user?.id ?? null,
+        detail: { path: request.path, message: error.message },
+      });
       return;
     }
 
@@ -769,18 +3768,46 @@ export function createApp({
 
     const statusCode = typeof error?.statusCode === 'number' ? error.statusCode : 500;
     const message = statusCode >= 500 ? 'Internal server error.' : error.message;
+    if (typeof error?.retryAfterSeconds === 'number' && Number.isFinite(error.retryAfterSeconds) && error.retryAfterSeconds > 0) {
+      response.setHeader('Retry-After', String(Math.ceil(error.retryAfterSeconds)));
+    }
     if (statusCode >= 500) {
       console.error(error);
     }
-    response.status(statusCode).json({ error: message });
+    if (statusCode >= 400) {
+      const failureType = request.path.startsWith('/api/uploads')
+        ? 'upload'
+        : request.path.startsWith('/api/auth')
+          ? 'auth'
+          : request.path.startsWith('/api/exports')
+            ? 'export'
+            : request.path.startsWith('/api/projects')
+              ? 'project'
+              : 'request';
+      void opsStore.recordEvent({
+        type: failureType,
+        status: 'error',
+        userId: request.auth?.user?.id ?? null,
+        detail: { path: request.path, message: error.message },
+      });
+    }
+    response.status(statusCode).json({
+      error: message,
+      ...(typeof error?.code === 'string' ? { code: error.code } : {}),
+      ...(typeof error?.termsVersion === 'string' ? { termsVersion: error.termsVersion } : {}),
+    });
   });
 
   async function start() {
     await store.ensureDataDirectories();
+    await assetStore.ensureAssetDirectory();
+    await authStore.ensureAuthDirectories();
+    await opsStore.ensureOpsDirectory();
+    await securityStore.ensureSecurityDirectories();
 
     return await new Promise((resolve, reject) => {
       const server = app.listen(port, () => {
-        console.log(`CrazyAlbum server listening on ${port}`);
+        console.log(`FinalFolio server listening on ${port}`);
         resolve(server);
       });
 
@@ -794,5 +3821,11 @@ export function createApp({
     port,
     start,
     store,
+    assetStore,
+    authStore,
+    opsStore,
+    securityStore,
+    objectStorageStore,
+    siteStore,
   };
 }

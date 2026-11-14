@@ -1,45 +1,72 @@
-import { CSSProperties, ChangeEvent, startTransition, useEffect, useMemo, useRef, useState } from 'react';
+import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { CustomLayoutMap } from '../components/CustomLayoutMap';
 import { MagazinePreview } from '../components/MagazinePreview';
-import { createProject, fetchProject, updateProject as persistProject, uploadAssets } from '../editor/api';
+import { TemplateIssuePreview } from '../components/TemplateIssuePreview';
+import { TemplateLayoutPreview } from '../components/TemplateLayoutPreview';
+import { AccountUploadListItem } from '../editor/api';
+import { getConfirmationMessage } from '../editor/confirmations';
+import { getAssetSource } from '../editor/assetResources';
 import {
-  cloneCustomTemplateDefinition,
-  createDefaultCrop,
-  createCustomTemplateDefinition,
   createDefaultProject,
-  createPagesFromTemplatePack,
-  createPageDraft,
   customLayoutPresets,
   defaultCustomLayoutPresetId,
   defaultTemplatePackId,
   getPageSlotOrder,
   getTemplateLabel,
-  normalizeProjectState,
   pageThemeMeta,
   pageThemeOrder,
-  remapPageToTemplate,
-  templatePackOrder,
+  templateUsesBody,
+  templateUsesDeck,
+  templateUsesKicker,
   templatePacks,
   templateMeta,
-  templateOrder,
   TemplatePackId,
 } from '../editor/demoData';
 import {
   CUSTOM_TEMPLATE_FRAME_LIMIT,
   CUSTOM_TEMPLATE_FRAME_LABEL_LIMIT,
   CUSTOM_TEMPLATE_NAME_LIMIT,
-  PAGE_BODY_LIMIT,
-  PAGE_CAPTION_LIMIT,
-  PAGE_DECK_LIMIT,
-  PAGE_KICKER_LIMIT,
-  PAGE_TITLE_LIMIT,
-  PROJECT_ISSUE_LIMIT,
-  PROJECT_SUBTITLE_LIMIT,
-  PROJECT_TITLE_LIMIT,
-  UPLOAD_HELP_TEXT,
 } from '../editor/limits';
-import { clearDraftProject, readDraftProject, writeDraftProject } from '../editor/storage';
-import { Asset, CropSettings, CustomTemplateDefinition, CustomTemplateFrame, LayoutArea, PageData, ProjectRecord, ProjectState, TemplateId } from '../editor/types';
+import { buildExportAdvisories } from '../editor/export';
+import { readDraftProject } from '../editor/storage';
+import {
+  Asset,
+  ExportSettings,
+  LayoutArea,
+  PageData,
+  ProjectRecord,
+  ProjectState,
+} from '../editor/types';
+import { getGovernedTemplateIds, getGovernedTemplatePackIds } from '../product/governance';
+import { buildTermsPath } from '../legal/terms';
+import { useSession } from '../session';
+import { useDelayedVisibility } from '../useDelayedVisibility';
+import { createEditorAssetActions } from './editor/assetActions';
+import { EditorContentSidebar } from './editor/EditorContentSidebar';
+import { EditorExportCenter } from './editor/EditorExportCenter';
+import { EditorOperationsSidebar } from './editor/EditorOperationsSidebar';
+import { EditorLoadingState, EditorLockedState, EditorUnavailableState } from './editor/EditorShellStates';
+import { createEditorExportActions } from './editor/exportFlow';
+import { createEditorProjectShellActions } from './editor/projectActions';
+import { createEditorPageActions } from './editor/pageActions';
+import { createEditorDesignActions } from './editor/designActions';
+import { createEditorProjectPersistenceActions } from './editor/projectPersistence';
+import { createIdleUploadState, type UploadState } from './editor/uploadState';
+import {
+  createAssetFromOwnedUpload,
+  createEditorUploadActions,
+  isGuestDraftUploadAsset,
+  isServerBackedUploadAsset,
+} from './editor/uploadOperations';
+import { createEditorTemplateActions } from './editor/templateOperations';
+import { useEditorExportState } from './editor/useEditorExportState';
+import { useEditorProjectLifecycle } from './editor/useEditorProjectLifecycle';
+import { useEditorProjectState } from './editor/useEditorProjectState';
+import { useEditorTemplateState } from './editor/useEditorTemplateState';
+import { useEditorAssetLifecycle } from './editor/useEditorAssetLifecycle';
+import { useEditorPreviewScale } from './editor/useEditorPreviewScale';
+import { useEditorUiState } from './editor/useEditorUiState';
 
 type LoadState = 'loading' | 'ready' | 'error';
 type SaveState = 'draft' | 'dirty' | 'saving' | 'saved' | 'error';
@@ -49,7 +76,15 @@ type AssetPlacement = {
   pageTitle: string;
   slot: string;
 };
-
+type PrintState =
+  | { phase: 'idle' }
+  | { phase: 'preparing'; totalAssets: number; completedAssets: number; originalBytes: number; optimizedBytes: number };
+const DEFAULT_EXPORT_SETTINGS: ExportSettings = {
+  format: 'pdf',
+  pageSize: 'a4',
+  quality: 'standard',
+  jpgMode: 'separate',
+};
 const customAreaFields: Array<{ key: keyof LayoutArea; label: string; min: number; max: number }> = [
   { key: 'x', label: 'X', min: 0, max: 88 },
   { key: 'y', label: 'Y', min: 0, max: 88 },
@@ -65,14 +100,6 @@ function getInitialSlot(page?: PageData) {
   return page ? (getPageSlotOrder(page)[0] ?? null) : null;
 }
 
-function templateUsesDeck(template: TemplateId) {
-  return template !== 'grid' && template !== 'triptych';
-}
-
-function templateUsesBody(template: TemplateId) {
-  return template === 'essay' || template === 'custom';
-}
-
 function formatSavedAt(timestamp?: string) {
   if (!timestamp) {
     return 'Saved on the server.';
@@ -86,151 +113,164 @@ function formatSavedAt(timestamp?: string) {
   }).format(new Date(timestamp))}.`;
 }
 
-function clonePage(page: PageData): PageData {
-  return {
-    ...page,
-    customTemplate: page.customTemplate ? cloneCustomTemplateDefinition(page.customTemplate) : null,
-    slots: { ...page.slots },
-    crops: Object.fromEntries(Object.entries(page.crops).map(([slot, crop]) => [slot, { ...crop }])),
-  };
+function formatBytes(bytes: number) {
+  if (bytes < 1024 * 1024) {
+    return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  }
+
+  return `${(bytes / (1024 * 1024)).toFixed(bytes >= 100 * 1024 * 1024 ? 0 : 1)} MB`;
 }
 
-function clampLayoutArea(area: LayoutArea): LayoutArea {
-  const x = Math.min(100, Math.max(0, area.x));
-  const y = Math.min(100, Math.max(0, area.y));
-  const width = Math.min(100 - x, Math.max(12, area.width));
-  const height = Math.min(100 - y, Math.max(12, area.height));
+function getAssetOrientation(asset: Asset) {
+  if (!asset.width || !asset.height) {
+    return 'unknown';
+  }
 
-  return {
-    x,
-    y,
-    width,
-    height,
-  };
+  if (asset.width > asset.height) {
+    return 'landscape';
+  }
+
+  if (asset.height > asset.width) {
+    return 'portrait';
+  }
+
+  return 'square';
 }
-
-function createFreshDraft() {
-  const fresh = createDefaultProject();
-  writeDraftProject(fresh);
-  return fresh;
-}
-
-function moveItem<T>(items: T[], fromIndex: number, toIndex: number) {
-  const nextItems = [...items];
-  const [item] = nextItems.splice(fromIndex, 1);
-  nextItems.splice(toIndex, 0, item);
-  return nextItems;
-}
-
 export function EditorPage() {
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId: string }>();
-
-  const [project, setProject] = useState<ProjectState>(() => (projectId ? createDefaultProject() : readDraftProject()));
+  const { user: session, ready: authReady, refreshFailed: authRefreshFailed } = useSession();
+  const initialDraftRef = useRef<ProjectState | null>(null);
+  if (!projectId && initialDraftRef.current === null) {
+    initialDraftRef.current = readDraftProject();
+  }
+  const initialDraft = initialDraftRef.current ?? createDefaultProject();
+  const initialDraftRequiresRestore = !projectId && initialDraft.assets.some((asset) => isGuestDraftUploadAsset(asset));
+  const initialProject = projectId ? createDefaultProject() : initialDraft;
   const [projectRecord, setProjectRecord] = useState<ProjectRecord | null>(null);
-  const [loadState, setLoadState] = useState<LoadState>(projectId ? 'loading' : 'ready');
+  const [loadState, setLoadState] = useState<LoadState>(projectId || initialDraftRequiresRestore ? 'loading' : 'ready');
   const [saveState, setSaveState] = useState<SaveState>(projectId ? 'saving' : 'draft');
-  const [selectedPageId, setSelectedPageId] = useState(project.pages[0]?.id ?? '');
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(getInitialSlot(project.pages[0]));
-  const [templateChoice, setTemplateChoice] = useState<TemplateId>(project.pages[0]?.template ?? 'cover');
-  const [customTemplateDraft, setCustomTemplateDraft] = useState<CustomTemplateDefinition>(() =>
-    project.pages[0]?.customTemplate ? cloneCustomTemplateDefinition(project.pages[0].customTemplate) : createCustomTemplateDefinition(),
-  );
-  const [uploadState, setUploadState] = useState<'idle' | 'uploading'>('idle');
   const [message, setMessage] = useState<string | null>(null);
+  const {
+    currentCrop,
+    customTemplateDraft,
+    project,
+    selectedPage,
+    selectedPageId,
+    selectedPageIndex,
+    selectedSlot,
+    selectPage,
+    setCustomTemplateDraft,
+    setProject,
+    setSelectedPageId,
+    setSelectedSlot,
+    setTemplateChoice,
+    setThemeChoice,
+    templateChoice,
+    themeChoice,
+    updateProject,
+    updateSelectedCrop,
+    updateSelectedPage,
+    updateSlotCrop,
+  } = useEditorProjectState({
+    initialProject,
+    getInitialSlot,
+    projectRecord,
+    saveState,
+    setSaveState,
+    setMessage,
+  });
+  const [uploadState, setUploadState] = useState<UploadState>(() => createIdleUploadState());
+  const [printState, setPrintState] = useState<PrintState>({ phase: 'idle' });
+  const {
+    applyAccountExportSettings,
+    applyDefaultExportSettings,
+    exportBusy,
+    exportCaptureActive,
+    exportCenterOpen,
+    exportDialogState,
+    exportPreflightIssues,
+    exportSettings,
+    setExportBusy,
+    setExportCaptureActive,
+    setExportCenterOpen,
+    setExportDialogMessage,
+    setExportPreflightIssues,
+    updateExportSettings,
+  } = useEditorExportState({
+    defaultExportSettings: DEFAULT_EXPORT_SETTINGS,
+    printPreparing: printState.phase === 'preparing',
+    project,
+  });
+  const [printAssetsById, setPrintAssetsById] = useState<Record<string, Asset> | null>(null);
+  const {
+    setTemplateActionBusyId,
+    setTemplateComposerOpen,
+    setTemplatePreserveCopy,
+    setTemplateSaveBusy,
+    setTemplateSaveDescription,
+    setTemplateSaveKind,
+    setTemplateSaveName,
+    setUserTemplates,
+    templateActionBusyId,
+    templateComposerOpen,
+    templateGovernance,
+    templateLibraryBusy,
+    templatePreserveCopy,
+    templateSaveBusy,
+    templateSaveDescription,
+    templateSaveKind,
+    templateSaveName,
+    toggleTemplateComposer,
+    userTemplates,
+  } = useEditorTemplateState({
+    authReady,
+    session,
+    project,
+    defaultExportSettings: DEFAULT_EXPORT_SETTINGS,
+    applyAccountExportSettings,
+    applyDefaultExportSettings,
+  });
+  const [projectActionBusy, setProjectActionBusy] = useState<'duplicate' | 'archive' | 'unarchive' | null>(null);
+  const [ownedUploads, setOwnedUploads] = useState<AccountUploadListItem[]>([]);
+  const [guestUploadTransferBusy, setGuestUploadTransferBusy] = useState(false);
+  const [assetDeleteBusy, setAssetDeleteBusy] = useState(false);
+  const [assetDeleteTargetId, setAssetDeleteTargetId] = useState<string | null>(null);
+  const [assetRetryTargetId, setAssetRetryTargetId] = useState<string | null>(null);
+  const [shareBusy, setShareBusy] = useState(false);
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
+  const [shareCopyState, setShareCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [previewScale, setPreviewScale] = useState(1);
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
+  const [starterPacksOpen, setStarterPacksOpen] = useState(false);
   const lastSavedSnapshotRef = useRef('');
+  const printAssetFingerprintRef = useRef('');
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const sheetProbeRef = useRef<HTMLDivElement | null>(null);
+  const printStackRef = useRef<HTMLElement | null>(null);
+  const printPageRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const customLayoutBuilderRef = useRef<HTMLDivElement | null>(null);
+  const editorStageRef = useRef<HTMLElement | null>(null);
+  const previewScale = useEditorPreviewScale({
+    loadState,
+    canvasRef,
+    sheetProbeRef,
+  });
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function loadServerProject() {
-      if (!projectId) {
-        const draft = readDraftProject();
-        setProject(draft);
-        setProjectRecord(null);
-        setLoadState('ready');
-        setSaveState('draft');
-        setSelectedPageId(draft.pages[0]?.id ?? '');
-        setSelectedSlot(getInitialSlot(draft.pages[0]));
-        setTemplateChoice(draft.pages[0]?.template ?? 'cover');
-        setCustomTemplateDraft(
-          draft.pages[0]?.customTemplate ? cloneCustomTemplateDefinition(draft.pages[0].customTemplate) : createCustomTemplateDefinition(),
-        );
-        setLoadError(null);
-        setMessage('Draft only on this device. Create a stable editor URL when you want to reopen the issue later.');
-        lastSavedSnapshotRef.current = '';
-        return;
-      }
-
-      setLoadState('loading');
-      setSaveState('saving');
-      setMessage('Loading the saved issue from the server...');
-      setLoadError(null);
-      setCopyState('idle');
-
-      try {
-        const record = await fetchProject(projectId);
-        if (cancelled) {
-          return;
-        }
-
-        const nextProject = normalizeProjectState(record.project);
-        const snapshot = JSON.stringify(nextProject);
-        lastSavedSnapshotRef.current = snapshot;
-        clearDraftProject();
-        setProject(nextProject);
-        setProjectRecord({
-          ...record,
-          project: nextProject,
-        });
-        setLoadState('ready');
-        setSaveState('saved');
-        setSelectedPageId(nextProject.pages[0]?.id ?? '');
-        setSelectedSlot(getInitialSlot(nextProject.pages[0]));
-        setTemplateChoice(nextProject.pages[0]?.template ?? 'cover');
-        setCustomTemplateDraft(
-          nextProject.pages[0]?.customTemplate
-            ? cloneCustomTemplateDefinition(nextProject.pages[0].customTemplate)
-            : createCustomTemplateDefinition(),
-        );
-        setMessage('Stable editor URL. Reopen this issue from the same link whenever you need to edit or export again.');
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
-
-        setProjectRecord(null);
-        setLoadState('error');
-        setSaveState('error');
-        setLoadError(error instanceof Error ? error.message : 'Unable to load this issue.');
-        setMessage(null);
-      }
+    if (!authReady || !session?.needsTermsAcceptance) {
+      return;
     }
 
-    void loadServerProject();
+    navigate(buildTermsPath(`${window.location.pathname}${window.location.search}${window.location.hash}`), { replace: true });
+  }, [authReady, navigate, session?.needsTermsAcceptance]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [projectId]);
 
-  useEffect(() => {
-    if (!project.pages.some((page) => page.id === selectedPageId)) {
-      setSelectedPageId(project.pages[0]?.id ?? '');
-    }
-  }, [project.pages, selectedPageId]);
-
-  const selectedPageIndex = project.pages.findIndex((page) => page.id === selectedPageId);
-  const selectedPage = project.pages[selectedPageIndex] ?? project.pages[0];
   const assetsById = useMemo<Record<string, Asset>>(
     () => Object.fromEntries(project.assets.map((asset) => [asset.id, asset])),
     [project.assets],
   );
+  const ownedLibraryAssets = useMemo(() => ownedUploads.map(createAssetFromOwnedUpload), [ownedUploads]);
   const assetUsageCounts = useMemo<Record<string, number>>(() => {
     const counts: Record<string, number> = {};
     project.pages.forEach((page) => {
@@ -272,6 +312,69 @@ export function EditorPage() {
   const selectedAssetPlacements = selectedAsset ? assetPlacementsById[selectedAsset.id] ?? [] : [];
   const placedAssetCount = Object.keys(assetUsageCounts).length;
   const unusedAssetCount = Math.max(project.assets.length - placedAssetCount, 0);
+  const libraryAssetsById = useMemo<Record<string, Asset>>(() => {
+    const merged = new Map<string, Asset>();
+
+    ownedLibraryAssets.forEach((asset) => {
+      merged.set(asset.id, asset);
+    });
+
+    project.assets.forEach((asset) => {
+      const existing = merged.get(asset.id);
+      if (!existing) {
+        merged.set(asset.id, asset);
+        return;
+      }
+
+      merged.set(asset.id, {
+        ...existing,
+        ...asset,
+        note: asset.note || existing.note,
+        variants: {
+          original: asset.variants?.original ?? existing.variants?.original,
+          preview: asset.variants?.preview ?? existing.variants?.preview ?? null,
+          thumb: asset.variants?.thumb ?? existing.variants?.thumb ?? null,
+        },
+        delivery: asset.delivery ?? existing.delivery,
+        lastUsedAt: asset.lastUsedAt ?? existing.lastUsedAt ?? null,
+      });
+    });
+
+    return Object.fromEntries(merged);
+  }, [ownedLibraryAssets, project.assets]);
+  const libraryAssetIdsInOrder = useMemo(() => {
+    const orderedIds: string[] = [];
+    const seenIds = new Set<string>();
+
+    [...project.assets.map((asset) => asset.id), ...ownedUploads.map((upload) => upload.assetId)].forEach((assetId) => {
+      if (seenIds.has(assetId)) {
+        return;
+      }
+
+      seenIds.add(assetId);
+      orderedIds.push(assetId);
+    });
+
+    return orderedIds;
+  }, [ownedUploads, project.assets]);
+  const libraryAssets = useMemo(
+    () => libraryAssetIdsInOrder.map((assetId) => libraryAssetsById[assetId]).filter((asset): asset is Asset => Boolean(asset)),
+    [libraryAssetIdsInOrder, libraryAssetsById],
+  );
+  const projectAssetIds = useMemo(() => new Set(project.assets.map((asset) => asset.id)), [project.assets]);
+  const usedAssets = useMemo(
+    () => project.assets.filter((asset) => (assetUsageCounts[asset.id] ?? 0) > 0),
+    [assetUsageCounts, project.assets],
+  );
+  const exportAdvisories = useMemo(() => buildExportAdvisories(exportSettings), [exportSettings]);
+  const usedAssetFingerprint = useMemo(
+    () => usedAssets.map((asset) => `${asset.id}:${getAssetSource(asset, 'original')}:${asset.delivery?.state ?? 'local'}`).sort().join('|'),
+    [usedAssets],
+  );
+  const serverBackedAssetFingerprint = useMemo(
+    () => project.assets.filter(isServerBackedUploadAsset).map((asset) => asset.id).sort().join('|'),
+    [project.assets],
+  );
   const shareUrl = useMemo(() => {
     if (!projectRecord) {
       return '';
@@ -287,703 +390,948 @@ export function EditorPage() {
     [previewScale],
   );
 
-  useEffect(() => {
-    if (!selectedPage) {
-      return;
-    }
+  const visibleTemplateIds = useMemo(
+    () => getGovernedTemplateIds(templateGovernance, selectedPage?.template ?? null),
+    [selectedPage?.template, templateGovernance],
+  );
+  const visibleTemplatePackIds = useMemo(() => getGovernedTemplatePackIds(templateGovernance), [templateGovernance]);
+  const uploadBusy = uploadState.phase !== 'idle';
+  const assetMutationBusy = assetDeleteBusy || Boolean(assetRetryTargetId);
+  const libraryBusy = assetMutationBusy;
+  const printBusy = printState.phase === 'preparing';
+  const hasGuestUploadAssets = project.assets.some(isGuestDraftUploadAsset);
+  const hasPendingProjectUploads = project.assets.some((asset) => asset.delivery?.state === 'pending');
+  const guestDraftAssetFingerprint = useMemo(
+    () => project.assets.filter(isGuestDraftUploadAsset).map((asset) => asset.id).sort().join('|'),
+    [project.assets],
+  );
+  const canUploadAssets = true;
+  const legacyProjectReadOnly = Boolean(projectRecord && !projectRecord.ownerUserId && session?.role !== 'admin');
+  const saveNeedsSession = !projectRecord || Boolean(projectRecord?.ownerUserId) || legacyProjectReadOnly;
+  const canSaveProject = !hasGuestUploadAssets && !legacyProjectReadOnly && (!saveNeedsSession || Boolean(session));
+  const currentUploadFraction =
+    uploadState.phase === 'uploading' && uploadState.currentFileTotalBytes > 0
+      ? uploadState.currentFileLoadedBytes / uploadState.currentFileTotalBytes
+      : 0;
+  const uploadProgressPercent = Math.round(
+    ((uploadState.completedFiles + currentUploadFraction) / Math.max(uploadState.totalFiles, 1)) * 100,
+  );
+  const uploadProgressLabel = uploadBusy ? `Photo ${Math.max(uploadState.currentFileIndex, 1)}/${Math.max(uploadState.totalFiles, 1)}` : 'Upload';
+  const uploadProgressDetail =
+    uploadState.phase === 'preparing'
+      ? `Optimizing ${uploadState.currentFileName} before ${session ? 'upload' : 'adding it locally'}.`
+      : uploadState.phase === 'uploading'
+        ? session
+          ? `${uploadState.currentFileName} · ${formatBytes(uploadState.currentFileLoadedBytes)} of ${formatBytes(
+              uploadState.currentFileTotalBytes,
+            )} sent.`
+          : `${uploadState.currentFileName} · finalizing for this local draft.`
+        : null;
 
-    const firstSlot = getInitialSlot(selectedPage);
-    if (!selectedSlot || !(selectedSlot in selectedPage.slots)) {
-      setSelectedSlot(firstSlot);
-    }
-  }, [selectedPage, selectedSlot]);
+  useEditorAssetLifecycle({
+    authReady,
+    authRefreshFailed,
+    guestDraftAssetFingerprint,
+    guestUploadTransferBusy,
+    hasPendingProjectUploads,
+    loadState,
+    printAssetFingerprintRef,
+    project,
+    projectRecord,
+    serverBackedAssetFingerprint,
+    session,
+    setGuestUploadTransferBusy,
+    setMessage,
+    setOwnedUploads,
+    setPrintAssetsById,
+    setProject,
+    setUploadState,
+    uploadBusy,
+    usedAssetFingerprint,
+  });
 
-  useEffect(() => {
-    if (!selectedPage) {
-      return;
-    }
-
-    setTemplateChoice(selectedPage.template);
-    if (selectedPage.customTemplate) {
-      setCustomTemplateDraft(cloneCustomTemplateDefinition(selectedPage.customTemplate));
-    }
-  }, [selectedPage?.id, selectedPage?.template, selectedPage?.customTemplate]);
-
-  useEffect(() => {
-    if (loadState !== 'ready') {
-      return;
-    }
-
-    if (!projectRecord) {
-      writeDraftProject(project);
-      setSaveState('draft');
-      return;
-    }
-
-    const snapshot = JSON.stringify(project);
-    if (snapshot === lastSavedSnapshotRef.current || saveState === 'saving') {
-      return;
-    }
-
-    setSaveState('dirty');
-    const timer = window.setTimeout(() => {
-      void saveProject({ manual: false });
-    }, 1200);
-
-    return () => window.clearTimeout(timer);
-  }, [loadState, project, projectRecord, saveState]);
-
-  useEffect(() => {
-    if (typeof ResizeObserver === 'undefined') {
-      return;
-    }
-
-    const container = canvasRef.current;
-    const probe = sheetProbeRef.current;
-    if (!container || !probe) {
-      return;
-    }
-
-    function updateScale() {
-      if (!container || !probe) {
-        return;
-      }
-
-      const probeRect = probe.getBoundingClientRect();
-      const baseWidth = probeRect.width;
-      const baseHeight = probeRect.height;
-      if (!baseWidth || !baseHeight) {
-        return;
-      }
-
-      const containerStyles = window.getComputedStyle(container);
-      const horizontalPadding = Number.parseFloat(containerStyles.paddingLeft) + Number.parseFloat(containerStyles.paddingRight);
-      const verticalPadding = Number.parseFloat(containerStyles.paddingTop) + Number.parseFloat(containerStyles.paddingBottom);
-      const availableWidth = Math.max(container.clientWidth - horizontalPadding, 320);
-      const availableHeight = Math.max(container.clientHeight - verticalPadding, 320);
-      const nextScale = Math.min(1, availableWidth / baseWidth, availableHeight / baseHeight);
-      setPreviewScale((current) => (Math.abs(current - nextScale) < 0.005 ? current : Number(nextScale.toFixed(4))));
-    }
-
-    updateScale();
-
-    const observer = new ResizeObserver(() => updateScale());
-    observer.observe(container);
-
-    return () => observer.disconnect();
-  }, [loadState]);
 
   if (!selectedPage && loadState === 'ready') {
     return null;
   }
 
-  function updateProject(updater: (current: ProjectState) => ProjectState) {
-    setMessage(null);
-    setProject((current) => updater(current));
-    if (saveState === 'error') {
-      setSaveState(projectRecord ? 'dirty' : 'draft');
-    }
-  }
+  const {
+    activateCustomLayoutPreview,
+    clearTemplateHoverPreview,
+    commitZoomInputValue,
+    customLayoutPreviewActive,
+    deactivateCustomLayoutPreview,
+    handleCropMetricsChange,
+    handleCustomLayoutPreviewBlur,
+    handleCustomLayoutPreviewFocus,
+    handleZoomInputChange,
+    nudgeSelectedCrop,
+    nudgeSelectedScale,
+    openTemplateHoverPreview,
+    pinnedCustomLayoutPreview,
+    resetZoomInputValue,
+    selectedCropMetrics,
+    templateHoverPreview,
+    zoomInputValue,
+  } = useEditorUiState({
+    selectedPageId: selectedPage?.id,
+    selectedSlot,
+    currentCrop,
+    templatePickerOpen,
+    templateChoice,
+    customLayoutBuilderRef,
+    editorStageRef,
+    updateSelectedCrop,
+  });
 
-  function updateSelectedPage(updater: (page: PageData) => PageData) {
-    if (!selectedPage) {
-      return;
-    }
+  const {
+    addCustomFrame,
+    applyTheme,
+    loadCustomLayoutPreset,
+    removeCustomFrame,
+    updateCustomArea,
+    updateCustomFrameArea,
+    updateCustomTemplateDraft,
+    updateFrameRadius,
+  } = createEditorDesignActions({
+    updateProject,
+    updateSelectedPage,
+    setCustomTemplateDraft,
+    setTemplateChoice,
+    setMessage,
+  });
 
-    updateProject((current) => ({
-      ...current,
-      pages: current.pages.map((page) => (page.id === selectedPage.id ? updater(page) : page)),
-    }));
-  }
+  const {
+    applyServerProjectRecord,
+    handleCopyPublicShareLink,
+    handleDisableProjectShare,
+    handleEnableProjectShare,
+    saveProject,
+    startNewDraft,
+  } = createEditorProjectPersistenceActions({
+    session,
+    project,
+    projectRecord,
+    ownedUploads,
+    getInitialSlot,
+    lastSavedSnapshotRef,
+    setProject,
+    setProjectRecord,
+    setSelectedPageId,
+    setSelectedSlot,
+    setTemplateChoice,
+    setThemeChoice,
+    setCustomTemplateDraft,
+    setLoadState,
+    setSaveState,
+    setLoadError,
+    setMessage,
+    setCopyState,
+    setShareBusy,
+    setShareCopyState,
+    navigate,
+    formatSavedAt,
+  });
 
-  function updateSelectedCrop(updater: (crop: CropSettings) => CropSettings) {
-    if (!selectedSlot || !selectedPage) {
-      return;
-    }
+  useEditorProjectLifecycle({
+    projectId,
+    project,
+    projectRecord,
+    loadState,
+    saveState,
+    getInitialSlot,
+    lastSavedSnapshotRef,
+    saveProject,
+    setProject,
+    setProjectRecord,
+    setSelectedPageId,
+    setSelectedSlot,
+    setTemplateChoice,
+    setThemeChoice,
+    setCustomTemplateDraft,
+    setLoadState,
+    setSaveState,
+    setLoadError,
+    setMessage,
+    setCopyState,
+    setShareCopyState,
+  });
 
-    updateSelectedPage((page) => ({
-      ...page,
-      crops: {
-        ...page.crops,
-        [selectedSlot]: updater(page.crops[selectedSlot] ?? createDefaultCrop()),
-      },
-    }));
-  }
+  const {
+    handleOpenUserTemplate,
+    handleSaveCurrentProjectAsTemplate,
+  } = createEditorTemplateActions({
+    session,
+    project,
+    projectRecord,
+    templateSaveName,
+    templateSaveDescription,
+    templateSaveKind,
+    templatePreserveCopy,
+    selectedPageIndex,
+    selectedPageId,
+    navigate,
+    setTemplateSaveBusy,
+    setTemplateComposerOpen,
+    setTemplateSaveName,
+    setUserTemplates,
+    setTemplateActionBusyId,
+    setMessage,
+  });
 
-  function updateCustomTemplateDraft(updater: (current: CustomTemplateDefinition) => CustomTemplateDefinition) {
-    setCustomTemplateDraft((current) => cloneCustomTemplateDefinition(updater(cloneCustomTemplateDefinition(current))));
-  }
+  const { handleRunExport } = createEditorExportActions({
+    project,
+    projectRecordId: projectRecord?.id,
+    exportSettings,
+    usedAssets,
+    assetsById,
+    printAssetsById,
+    usedAssetFingerprint,
+    printAssetFingerprintRef,
+    getPrintStackRoot: () => printStackRef.current,
+    getPrintPageRefs: () => printPageRefs.current,
+    setPrintState,
+    setMessage,
+    setPrintAssetsById,
+    setExportCaptureActive,
+    setExportBusy,
+    setExportCenterOpen,
+    setExportPreflightIssues,
+    setExportDialogMessage,
+    formatBytes,
+  });
 
-  function updateCustomArea(area: LayoutArea, field: keyof LayoutArea, value: number): LayoutArea {
-    return clampLayoutArea({
-      ...area,
-      [field]: value,
-    });
-  }
+  const {
+    handleArchiveToggle,
+    handleCopyLink,
+    handleDuplicateCurrentProject,
+    openAccountPage,
+    openAdminPage,
+  } = createEditorProjectShellActions({
+    session,
+    projectRecord,
+    shareUrl,
+    navigate,
+    setProjectActionBusy,
+    setMessage,
+    setProjectRecord,
+    setCopyState,
+  });
 
-  function updateCustomFrameArea(frame: CustomTemplateFrame, field: keyof LayoutArea, value: number): CustomTemplateFrame {
-    return {
-      ...frame,
-      ...updateCustomArea(frame, field, value),
-    };
-  }
+  const {
+    assignAsset,
+    clearAssetPlacements,
+    clearSelectedSlot,
+    focusAssetPlacement,
+    handleDeleteAsset,
+    handleRetryAssetMirror,
+    removeUnusedAssetsFromIssue,
+  } = createEditorAssetActions({
+    project,
+    projectRecord,
+    session,
+    selectedPageId: selectedPage?.id ?? null,
+    selectedSlot,
+    assetUsageCounts,
+    assetsById,
+    libraryAssetsById,
+    updateProject,
+    updateSelectedPage,
+    applyServerProjectRecord,
+    setMessage,
+    setAssetDeleteBusy,
+    setAssetDeleteTargetId,
+    setAssetRetryTargetId,
+    setSelectedPageId,
+    setSelectedSlot,
+    setTemplateChoice,
+  });
 
-  function createPageFromTemplate(template: TemplateId) {
-    return createPageDraft(template, createPageId(), {
-      theme: selectedPage?.theme,
-      ...(template === 'custom' ? { customTemplate: customTemplateDraft } : {}),
-    });
-  }
+  const {
+    addPage,
+    applyTemplateChoice,
+    applyTemplatePack,
+    duplicatePage,
+    moveSelectedPage,
+    removeSelectedPage,
+  } = createEditorPageActions({
+    project,
+    selectedPage,
+    selectedPageIndex,
+    templateChoice,
+    customTemplateDraft,
+    updateProject,
+    updateSelectedPage,
+    setSelectedPageId,
+    setSelectedSlot,
+    setTemplateChoice,
+    setCustomTemplateDraft,
+    setMessage,
+    createPageId,
+    getInitialSlot,
+  });
 
-  function selectPage(pageId: string) {
-    const nextPage = project.pages.find((page) => page.id === pageId);
-    setSelectedPageId(pageId);
-    setSelectedSlot(getInitialSlot(nextPage));
-    if (nextPage) {
-      setTemplateChoice(nextPage.template);
-    }
-  }
+  const { handleUploadFiles } = createEditorUploadActions({
+    navigate,
+    session,
+    setProject,
+    setMessage,
+    setUploadState,
+    updateProject,
+  });
 
-  async function saveProject({ manual }: { manual: boolean }) {
-    const snapshot = JSON.stringify(project);
-    if (projectRecord && snapshot === lastSavedSnapshotRef.current && !manual) {
-      return;
-    }
-
-    setSaveState('saving');
-    setMessage(projectRecord ? 'Saving changes to the server...' : 'Creating a stable editor URL on the server...');
-
-    try {
-      const record = projectRecord ? await persistProject(projectRecord.id, project) : await createProject(project);
-
-      lastSavedSnapshotRef.current = snapshot;
-      setProjectRecord(record);
-      setSaveState('saved');
-      setMessage(
-        projectRecord
-          ? formatSavedAt(record.updatedAt)
-          : 'Stable editor URL created. This link is now the canonical place to reopen the issue.',
-      );
-      clearDraftProject();
-
-      if (!projectRecord) {
-        startTransition(() => navigate(record.sharePath, { replace: true }));
-      }
-    } catch (error) {
-      setSaveState('error');
-      setMessage(error instanceof Error ? error.message : 'Save failed.');
-    }
-  }
-
-  async function handleUpload(event: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files ?? []);
-    if (!files.length) {
-      return;
-    }
-
-    setUploadState('uploading');
-    setMessage('Uploading images to the server...');
-
-    try {
-      const uploads = await uploadAssets(files);
-      updateProject((current) => ({
-        ...current,
-        assets: [...uploads, ...current.assets],
-      }));
-      setMessage(`${uploads.length} image${uploads.length === 1 ? '' : 's'} uploaded to the server.`);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Upload failed.');
-    } finally {
-      setUploadState('idle');
-      event.target.value = '';
-    }
-  }
-
-  function assignAsset(slot: string, assetId: string) {
-    updateSelectedPage((page) => {
-      const currentAssetId = page.slots[slot];
-      const currentCrop = page.crops[slot] ?? createDefaultCrop();
-
-      return {
-        ...page,
-        slots: {
-          ...page.slots,
-          [slot]: assetId,
-        },
-        crops: {
-          ...page.crops,
-          [slot]:
-            currentAssetId === assetId
-              ? currentCrop
-              : createDefaultCrop({
-                  fit: currentCrop.fit,
-                }),
-        },
-      };
-    });
-  }
-
-  function focusAssetPlacement(placement: AssetPlacement) {
-    const nextPage = project.pages.find((page) => page.id === placement.pageId);
-    if (!nextPage) {
-      return;
-    }
-
-    setSelectedPageId(placement.pageId);
-    setSelectedSlot(placement.slot);
-    setTemplateChoice(nextPage.template);
-  }
-
-  function clearAssetPlacements(assetId: string) {
-    const clearedCount = assetUsageCounts[assetId] ?? 0;
-    if (!clearedCount) {
-      setMessage('This image is not placed on any page.');
-      return;
-    }
-
-    updateProject((current) => ({
-      ...current,
-      pages: current.pages.map((page) => {
-        let didChange = false;
-        const nextSlots = Object.fromEntries(
-          Object.entries(page.slots).map(([slot, currentAssetId]) => {
-            if (currentAssetId !== assetId) {
-              return [slot, currentAssetId];
-            }
-
-            didChange = true;
-            return [slot, null];
-          }),
-        );
-
-        return didChange
-          ? {
-              ...page,
-              slots: nextSlots,
-            }
-          : page;
-      }),
-    }));
-    setMessage(`Image cleared from ${clearedCount} frame${clearedCount === 1 ? '' : 's'} across this issue.`);
-  }
-
-  function clearSelectedSlot() {
-    if (!selectedSlot) {
-      return;
-    }
-
-    updateSelectedPage((page) => ({
-      ...page,
-      slots: {
-        ...page.slots,
-        [selectedSlot]: null,
-      },
-    }));
-  }
-
-  function removeUnusedAssetsFromIssue() {
-    const removableIds = project.assets
-      .filter((asset) => (assetUsageCounts[asset.id] ?? 0) === 0)
-      .map((asset) => asset.id);
-
-    if (!removableIds.length) {
-      setMessage('No unused uploads to remove from this issue.');
-      return;
-    }
-
-    const removableIdSet = new Set(removableIds);
-    updateProject((current) => ({
-      ...current,
-      assets: current.assets.filter((asset) => !removableIdSet.has(asset.id)),
-    }));
-    setMessage(
-      `Removed ${removableIds.length} unused image${removableIds.length === 1 ? '' : 's'} from this issue. The server file stays available until an admin cleanup run removes it.`,
-    );
-  }
-
-  function loadCustomLayoutPreset(presetId: string) {
-    const preset = customLayoutPresets.find((entry) => entry.id === presetId);
-    if (!preset) {
-      return;
-    }
-
-    setTemplateChoice('custom');
-    setCustomTemplateDraft(cloneCustomTemplateDefinition(preset.template));
-    setMessage(`Loaded the ${preset.label} custom layout. Apply it to the page when the arrangement looks right.`);
-  }
-
-  function addCustomFrame() {
-    updateCustomTemplateDraft((current) => {
-      if (current.frames.length >= CUSTOM_TEMPLATE_FRAME_LIMIT) {
-        return current;
-      }
-
-      const nextIndex = current.frames.length + 1;
-      const frame = {
-        slot: `frame${nextIndex}`,
-        label: `Frame ${nextIndex}`,
-        x: 36 + ((nextIndex - 1) % 2) * 32,
-        y: Math.min(70, 6 + Math.floor((nextIndex - 1) / 2) * 30),
-        width: 30,
-        height: 26,
-      };
-
-      return {
-        ...current,
-        frames: [...current.frames, frame],
-      };
-    });
-  }
-
-  function removeCustomFrame(slot: string) {
-    updateCustomTemplateDraft((current) => {
-      if (current.frames.length === 1) {
-        return current;
-      }
-
-      return {
-        ...current,
-        frames: current.frames.filter((frame) => frame.slot !== slot),
-      };
-    });
-  }
-
-  function applyTemplatePack(packId: TemplatePackId, mode: 'replace' | 'insert') {
-    const pack = templatePacks[packId];
-    const nextPages = createPagesFromTemplatePack(packId, {
-      idFactory: (page, index) => `${createPageId()}-${page.template}-${index + 1}`,
-    });
-    const firstPackPage = nextPages[0];
-
-    updateProject((current) => {
-      if (mode === 'replace') {
-        return {
-          ...current,
-          pages: nextPages,
-        };
-      }
-
-      const insertAt = selectedPageIndex >= 0 ? selectedPageIndex + 1 : current.pages.length;
-      return {
-        ...current,
-        pages: [...current.pages.slice(0, insertAt), ...nextPages, ...current.pages.slice(insertAt)],
-      };
-    });
-
-    setSelectedPageId(firstPackPage.id);
-    setSelectedSlot(getInitialSlot(firstPackPage));
-    setTemplateChoice(firstPackPage.template);
-    if (firstPackPage.customTemplate) {
-      setCustomTemplateDraft(cloneCustomTemplateDefinition(firstPackPage.customTemplate));
-    }
-    setMessage(
-      mode === 'replace'
-        ? `Replaced the page stack with the ${pack.label} pack. Uploaded photos stayed in the issue library.`
-        : `Inserted the ${pack.label} pack after the current page. Each inserted page stays editable on its own.`,
-    );
-  }
-
-  function addPage(template = templateChoice) {
-    if (!selectedPage) {
-      return;
-    }
-
-    const nextPage = createPageFromTemplate(template);
-    const insertAt = selectedPageIndex >= 0 ? selectedPageIndex + 1 : project.pages.length;
-
-    updateProject((current) => ({
-      ...current,
-      pages: [...current.pages.slice(0, insertAt), nextPage, ...current.pages.slice(insertAt)],
-    }));
-    setSelectedPageId(nextPage.id);
-    setSelectedSlot(getInitialSlot(nextPage));
-    setTemplateChoice(nextPage.template);
-  }
-
-  function duplicatePage() {
-    if (!selectedPage) {
-      return;
-    }
-
-    const duplicate: PageData = {
-      ...clonePage(selectedPage),
-      id: createPageId(),
-      title: `${selectedPage.title} Copy`.slice(0, PAGE_TITLE_LIMIT),
-    };
-    const insertAt = selectedPageIndex >= 0 ? selectedPageIndex + 1 : project.pages.length;
-
-    updateProject((current) => ({
-      ...current,
-      pages: [...current.pages.slice(0, insertAt), duplicate, ...current.pages.slice(insertAt)],
-    }));
-    setSelectedPageId(duplicate.id);
-    setSelectedSlot(getInitialSlot(duplicate));
-  }
-
-  function moveSelectedPage(offset: -1 | 1) {
-    if (selectedPageIndex < 0) {
-      return;
-    }
-
-    const nextIndex = selectedPageIndex + offset;
-    if (nextIndex < 0 || nextIndex >= project.pages.length) {
-      return;
-    }
-
-    updateProject((current) => ({
-      ...current,
-      pages: moveItem(current.pages, selectedPageIndex, nextIndex),
-    }));
-  }
-
-  function removeSelectedPage() {
-    if (!selectedPage || project.pages.length === 1 || selectedPageIndex < 0) {
-      return;
-    }
-
-    const nextPage = project.pages[selectedPageIndex + 1] ?? project.pages[selectedPageIndex - 1];
-    updateProject((current) => ({
-      ...current,
-      pages: current.pages.filter((page) => page.id !== selectedPage.id),
-    }));
-    setSelectedPageId(nextPage.id);
-    setSelectedSlot(getInitialSlot(nextPage));
-    setTemplateChoice(nextPage.template);
-  }
-
-  function startNewDraft() {
-    const fresh = createFreshDraft();
-    lastSavedSnapshotRef.current = '';
-    setProject(fresh);
-    setProjectRecord(null);
-    setLoadState('ready');
-    setSaveState('draft');
-    setSelectedPageId(fresh.pages[0]?.id ?? '');
-    setSelectedSlot(getInitialSlot(fresh.pages[0]));
-    setTemplateChoice(fresh.pages[0]?.template ?? 'cover');
-    setCustomTemplateDraft(
-      fresh.pages[0]?.customTemplate ? cloneCustomTemplateDefinition(fresh.pages[0].customTemplate) : createCustomTemplateDefinition(),
-    );
-    setLoadError(null);
-    setMessage('Draft only on this device. Create a stable editor URL when you want to reopen the issue later.');
-    setCopyState('idle');
-    startTransition(() => navigate('/editor'));
-  }
-
-  function applyTemplateChoice() {
-    if (!selectedPage || (templateChoice === selectedPage.template && templateChoice !== 'custom')) {
-      return;
-    }
-
-    const nextPage = remapPageToTemplate(selectedPage, templateChoice, templateChoice === 'custom' ? customTemplateDraft : null);
-    updateSelectedPage(() => nextPage);
-    setSelectedSlot(getInitialSlot(nextPage));
-    if (nextPage.customTemplate) {
-      setCustomTemplateDraft(cloneCustomTemplateDefinition(nextPage.customTemplate));
-    }
-    setMessage(
-      templateChoice === 'custom'
-        ? 'Custom layout applied. Existing placed images were carried into the new frame order.'
-        : 'Preset applied. Existing placed images were carried into the new slot order.',
-    );
-  }
-
-  async function handleCopyLink() {
-    if (!shareUrl) {
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopyState('copied');
-      window.setTimeout(() => setCopyState('idle'), 1800);
-    } catch {
-      setCopyState('error');
-    }
-  }
-
-  const currentCrop = selectedSlot && selectedPage ? selectedPage.crops[selectedSlot] : undefined;
   const selectedFrameLabel =
     selectedSlot && selectedPage?.template === 'custom'
       ? selectedPage.customTemplate?.frames.find((frame) => frame.slot === selectedSlot)?.label ?? selectedSlot
       : selectedSlot;
   const fallbackStatus = !projectRecord
-    ? 'Draft only. Create a stable editor URL to save this issue on the server.'
-    : saveState === 'saving'
-      ? 'Saving changes to the server...'
-      : saveState === 'dirty'
-        ? 'Changes queued. Autosave will sync this issue shortly.'
-        : saveState === 'error'
-          ? 'Save failed. Retry to keep this URL current.'
-          : formatSavedAt(projectRecord.updatedAt);
-  const statusText = uploadState === 'uploading' ? 'Uploading images to the server...' : message ?? fallbackStatus;
-  const sequenceLabel = `${project.pages.length} page${project.pages.length === 1 ? '' : 's'} in print order`;
+    ? hasGuestUploadAssets
+      ? session
+        ? guestUploadTransferBusy
+          ? 'Attaching recovered local uploads to this account before saving.'
+          : 'Recovered local uploads are still pending account attachment before this folio can be saved.'
+        : 'Local uploads are kept on this device. Sign in to attach them to your account before creating a saved link.'
+      : 'Draft only. Create a stable editor URL to save this folio on the server.'
+    : legacyProjectReadOnly
+      ? session
+        ? 'Legacy read-only project. Duplicate it into your account before saving, sharing, or archiving.'
+        : 'Legacy read-only project. Sign in to duplicate it into your account before editing.'
+      : saveState === 'saving'
+        ? 'Saving changes to the server...'
+        : saveState === 'dirty'
+          ? 'Changes queued. Autosave will sync this folio shortly.'
+          : saveState === 'error'
+            ? 'Save failed. Retry to keep this URL current.'
+            : formatSavedAt(projectRecord.updatedAt);
+  const statusText =
+    printBusy
+      ? `Preparing print-ready pages ${printState.completedAssets}/${printState.totalAssets}...`
+      : assetMutationBusy
+        ? 'Updating the media library...'
+      : uploadState.phase === 'preparing'
+        ? `Preparing upload ${uploadState.completedFiles}/${uploadState.totalFiles}...`
+        : uploadState.phase === 'uploading'
+          ? `${session ? 'Uploading' : 'Adding'} images ${uploadProgressPercent}%...`
+          : message ?? fallbackStatus;
+  const sequenceLabel = `${project.pages.length} page${project.pages.length === 1 ? '' : 's'}`;
   const selectedPagePositionLabel = `Page ${selectedPageIndex + 1} of ${project.pages.length}`;
   const selectedTemplateMeta = templateMeta[templateChoice];
   const selectedTemplateLabel = getTemplateLabel(templateChoice, templateChoice === 'custom' ? customTemplateDraft : null);
-  const selectedPageTemplateLabel = getTemplateLabel(selectedPage.template, selectedPage.customTemplate);
-  const selectedThemeMeta = pageThemeMeta[selectedPage.theme];
-  const assetsLabel = `${placedAssetCount} placed / ${unusedAssetCount} unused`;
+  const chosenThemeMeta = pageThemeMeta[themeChoice];
+  const templatePanelTag =
+    templateChoice === 'custom'
+      ? `${customTemplateDraft.frames.length} frame${customTemplateDraft.frames.length === 1 ? '' : 's'}`
+      : selectedTemplateMeta.summary;
+  const selectedAssetId = selectedSlot ? selectedPage.slots[selectedSlot] : null;
+  const selectedPageUsesKicker = templateUsesKicker(selectedPage.template);
   const selectedPageUsesDeck = templateUsesDeck(selectedPage.template);
-  const selectedPageUsesBody = templateUsesBody(selectedPage.template);
-  const projectModeTag = projectRecord ? 'Server-backed' : 'Local draft';
+  const selectedPageUsesBody = templateUsesBody(selectedPage.template, selectedPage.customTemplate);
+  const projectModeTag = !projectRecord
+    ? session
+      ? 'Local draft'
+      : 'Guest draft'
+    : legacyProjectReadOnly
+      ? 'Legacy read-only'
+      : projectRecord.archivedAt
+        ? 'Archived'
+        : 'Saved link';
   const copyButtonLabel = copyState === 'copied' ? 'Copied' : copyState === 'error' ? 'Copy failed' : 'Copy link';
+  const publicShareUrl =
+    projectRecord?.share.path && typeof window !== 'undefined' ? new URL(projectRecord.share.path, window.location.origin).toString() : '';
+  const publicShareCopyLabel =
+    shareCopyState === 'copied' ? 'Copied' : shareCopyState === 'error' ? 'Copy failed' : 'Copy public link';
+  const saveActionLabel = saveState === 'saving'
+    ? 'Saving…'
+    : legacyProjectReadOnly
+      ? 'Duplicate to edit'
+      : hasGuestUploadAssets
+        ? session
+          ? 'Uploads pending'
+          : 'Sign in to save'
+        : projectRecord
+          ? 'Save'
+          : 'Create link';
+  const exportActionBusy = exportBusy || printBusy;
+  const exportActionLabel = exportActionBusy ? 'Preparing…' : exportCenterOpen ? 'Close export' : 'Export Center';
+  const themeChoiceMatchesAllPages = project.pages.every((page) => page.theme === themeChoice);
+  const pageStylePanel = (
+    <section className="editor-panel editor-panel--page-style">
+      <div className="editor-panel__heading">
+        <div>
+          <p className="eyebrow">Page style</p>
+          <h2>Paper color</h2>
+        </div>
+        <span className="panel-tag">{chosenThemeMeta.label}</span>
+      </div>
+      <div className="theme-grid" role="radiogroup" aria-label="Paper color">
+        {pageThemeOrder.map((themeId) => {
+          const meta = pageThemeMeta[themeId];
+          return (
+            <button
+              key={themeId}
+              type="button"
+              className={`theme-card ${themeChoice === themeId ? 'is-active' : ''}`}
+              onClick={() => {
+                setThemeChoice(themeId);
+                if (selectedPage.theme !== themeId) {
+                  applyTheme(themeId, 'page');
+                }
+              }}
+              aria-pressed={themeChoice === themeId}
+            >
+              <span className={`theme-card__swatch theme-card__swatch--${themeId}`} aria-hidden="true" />
+              <span className="theme-card__meta">
+                <strong>{meta.label}</strong>
+                <small>{meta.summary}</small>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="theme-apply-actions">
+        <button
+          type="button"
+          className="button button--ghost button--small"
+          disabled={themeChoiceMatchesAllPages}
+          onClick={() => applyTheme(themeChoice, 'all')}
+        >
+          {themeChoiceMatchesAllPages ? 'Already global' : 'Apply all'}
+        </button>
+      </div>
+    </section>
+  );
+  const exportSubmitDefaultLabel =
+    exportSettings.format === 'project'
+      ? 'Download project'
+      : exportSettings.format === 'pdf'
+        ? 'Export PDF'
+        : exportSettings.jpgMode === 'combined'
+          ? 'Export stitched JPG'
+          : 'Export JPG set';
+  const exportSubmitLabel =
+    exportDialogState?.text ??
+    (printBusy ? `Preparing ${printState.completedAssets}/${printState.totalAssets}...` : exportSubmitDefaultLabel);
+  const templateSaveActionLabel =
+    templateSaveBusy ? 'Saving…' : templateSaveKind === 'page' ? 'Save page template' : 'Save project template';
+  const archiveActionLabel =
+    projectActionBusy === 'archive'
+      ? 'Archiving…'
+      : projectActionBusy === 'unarchive'
+        ? 'Restoring…'
+        : projectRecord?.archivedAt
+          ? 'Unarchive'
+          : 'Archive';
+  const hoveredTemplateMeta = templateHoverPreview ? templateMeta[templateHoverPreview.templateId] : null;
+  const hoveredTemplateLabel = templateHoverPreview
+    ? getTemplateLabel(templateHoverPreview.templateId, templateHoverPreview.templateId === 'custom' ? customTemplateDraft : null)
+    : '';
+  const hoveredTemplateDescription = templateHoverPreview
+    ? templateHoverPreview.templateId === 'custom'
+      ? 'Current custom scaffold preview.'
+      : hoveredTemplateMeta?.description ?? ''
+    : '';
+  const hoveredTemplateSlotCount = templateHoverPreview
+    ? templateHoverPreview.templateId === 'custom'
+      ? customTemplateDraft.frames.length
+      : hoveredTemplateMeta?.slots.length ?? 0
+    : 0;
+  const showInlineCustomLayoutOverview = customLayoutPreviewActive && !pinnedCustomLayoutPreview;
+  const customLayoutOverview = showInlineCustomLayoutOverview ? (
+    <div className="custom-layout-overview">
+      <div className="custom-layout-overview__copy">
+        <p className="eyebrow">Layout map</p>
+        <h3>Start from a scaffold</h3>
+        <p className="panel-note">
+          Pick the closest structure first. Open the geometry controls only when the preset still needs fine tuning.
+        </p>
+      </div>
+      <CustomLayoutMap template={customTemplateDraft} highlightedSlot={selectedSlot} />
+    </div>
+  ) : null;
+  const protectedProjectLocked = authReady && !authRefreshFailed && !session && Boolean(projectRecord?.ownerUserId);
+  const projectTemplateSectionTag = `${visibleTemplatePackIds.length} ready`;
+  const showLoadingShell = useDelayedVisibility(loadState === 'loading');
 
   if (loadState === 'loading') {
-    return (
-      <div className="editor-shell">
-        <header className="editor-topbar">
-          <div className="editor-topbar__brand">
-            <Link to="/">CrazyAlbum</Link>
-            <span>Server-backed editorial builder</span>
-          </div>
-        </header>
-        <section className="editor-empty-state">
-          <p className="eyebrow">Loading</p>
-          <h1>Opening project…</h1>
-          <p>Loading the saved issue from the server.</p>
-        </section>
-      </div>
-    );
+    if (!showLoadingShell) {
+      return <div className="editor-shell" aria-hidden="true" />;
+    }
+
+    return <EditorLoadingState />;
   }
 
   if (loadState === 'error') {
-    return (
-      <div className="editor-shell">
-        <header className="editor-topbar">
-          <div className="editor-topbar__brand">
-            <Link to="/">CrazyAlbum</Link>
-            <span>Server-backed editorial builder</span>
-          </div>
-          <div className="editor-topbar__actions">
-            <button type="button" className="button button--ghost" onClick={startNewDraft}>
-              New draft
-            </button>
-          </div>
-        </header>
-        <section className="editor-empty-state">
-          <p className="eyebrow">Unavailable</p>
-          <h1>Project not available.</h1>
-          <p>{loadError ?? 'The link is invalid or the project file could not be read.'}</p>
-          <div className="editor-empty-state__actions">
-            <button type="button" className="button button--primary" onClick={startNewDraft}>
-              Start a new draft
-            </button>
-            <Link to="/" className="button button--ghost">
-              Back home
-            </Link>
-          </div>
-        </section>
-      </div>
-    );
+    return <EditorUnavailableState loadError={loadError} startNewDraft={startNewDraft} />;
   }
+
+  if (protectedProjectLocked) {
+    return <EditorLockedState openAccountPage={openAccountPage} startNewDraft={startNewDraft} />;
+  }
+
 
   return (
     <div className="editor-shell">
       <div className="editor-layout">
         <aside className="editor-sidebar editor-sidebar--navigation">
           <section className="page-strip-panel">
-            <div className="page-strip-panel__header">
+            <div className="page-strip-panel__header page-strip-panel__header--compact">
               <div>
                 <p className="eyebrow">Sequence</p>
-                <h2>{sequenceLabel}</h2>
-                <p>Preview order and export order stay locked to the same page stack.</p>
               </div>
-              <span className="panel-tag">{selectedPagePositionLabel}</span>
+              <span className="panel-tag">{sequenceLabel}</span>
             </div>
 
             <div className="page-strip">
-              {project.pages.map((page, index) => (
-                <button
-                  key={page.id}
-                  type="button"
-                  className={`page-chip ${page.id === selectedPage.id ? 'is-active' : ''}`}
-                  onClick={() => selectPage(page.id)}
-                >
-                  <span>{`Page ${index + 1}`}</span>
-                  <strong>{page.title}</strong>
-                  <em>{getTemplateLabel(page.template, page.customTemplate)}</em>
-                </button>
-              ))}
-            </div>
+              {project.pages.map((page, index) => {
+                const isActive = page.id === selectedPage.id;
+                const pagePositionLabel = `Page ${index + 1}`;
 
-            <div className="editor-page-actions" aria-label="Current page actions">
-              <button type="button" className="button button--ghost button--small editor-page-actions__button" onClick={duplicatePage}>
-                Duplicate
-              </button>
-              <button
-                type="button"
-                className="button button--ghost button--small editor-page-actions__button"
-                disabled={selectedPageIndex <= 0}
-                onClick={() => moveSelectedPage(-1)}
-              >
-                Move earlier
-              </button>
-              <button
-                type="button"
-                className="button button--ghost button--small editor-page-actions__button"
-                disabled={selectedPageIndex >= project.pages.length - 1}
-                onClick={() => moveSelectedPage(1)}
-              >
-                Move later
-              </button>
-              <button
-                type="button"
-                className="button button--ghost button--small editor-page-actions__button editor-page-actions__button--danger"
-                disabled={project.pages.length === 1}
-                onClick={removeSelectedPage}
-              >
-                {project.pages.length === 1 ? 'Last page' : 'Remove page'}
-              </button>
-            </div>
-          </section>
-
-          <section className="editor-panel">
-            <div className="editor-panel__heading">
-              <div>
-                <p className="eyebrow">Starter packs</p>
-                <h2>Multi-page packs</h2>
-              </div>
-              <span className="panel-tag">{templatePacks[defaultTemplatePackId].label} default</span>
-            </div>
-            <p className="panel-note">Replace the full stack or drop a finished pack after the current page without leaving the editor.</p>
-            <div className="template-pack-grid">
-              {templatePackOrder.map((packId) => {
-                const pack = templatePacks[packId];
                 return (
-                  <article key={packId} className={`template-pack-card ${packId === defaultTemplatePackId ? 'is-featured' : ''}`}>
-                    <div className="template-pack-card__copy">
-                      <span>{pack.label}</span>
-                      <strong>{pack.summary}</strong>
-                      <p>{pack.description}</p>
-                    </div>
-                    <p className="template-pack-card__sequence">
-                      {pack.pages.map((page) => getTemplateLabel(page.template, page.customTemplate)).join(' / ')}
-                    </p>
-                    <div className="template-pack-card__actions">
-                      <button
-                        type="button"
-                        className="button button--primary button--small"
-                        onClick={() => applyTemplatePack(packId, 'replace')}
-                      >
-                        Replace issue
-                      </button>
-                      <button
-                        type="button"
-                        className="button button--ghost button--small"
-                        onClick={() => applyTemplatePack(packId, 'insert')}
-                      >
-                        Insert after
-                      </button>
-                    </div>
+                  <article
+                    key={page.id}
+                    className={`page-chip page-chip--theme-${page.theme} ${isActive ? 'is-active' : ''}`.trim()}
+                  >
+                    <button type="button" className="page-chip__main" onClick={() => selectPage(page.id)}>
+                      <span>{pagePositionLabel}</span>
+                      <strong>{page.title}</strong>
+                      <em>{getTemplateLabel(page.template, page.customTemplate)}</em>
+                    </button>
+                    {isActive ? (
+                      <div className="page-chip__actions" aria-label={`Actions for ${pagePositionLabel}`}>
+                        <button
+                          type="button"
+                          className="page-chip__action"
+                          title="Copy page"
+                          aria-label="Copy page"
+                          onClick={duplicatePage}
+                        >
+                          ⧉
+                        </button>
+                        <button
+                          type="button"
+                          className="page-chip__action"
+                          title="Move page up"
+                          aria-label="Move page up"
+                          disabled={selectedPageIndex <= 0}
+                          onClick={() => moveSelectedPage(-1)}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          className="page-chip__action"
+                          title="Move page down"
+                          aria-label="Move page down"
+                          disabled={selectedPageIndex >= project.pages.length - 1}
+                          onClick={() => moveSelectedPage(1)}
+                        >
+                          ↓
+                        </button>
+                        <button
+                          type="button"
+                          className="page-chip__action page-chip__action--danger"
+                          title={project.pages.length === 1 ? 'Keep at least one page' : 'Delete page'}
+                          aria-label={project.pages.length === 1 ? 'Keep at least one page' : 'Delete page'}
+                          disabled={project.pages.length === 1}
+                          onClick={removeSelectedPage}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ) : null}
                   </article>
                 );
               })}
             </div>
           </section>
+          {pageStylePanel}
+
+          <section className="editor-panel editor-panel--layout">
+            <div className="editor-panel__heading">
+              <div>
+                <p className="eyebrow">Page templates</p>
+                <h2>{selectedTemplateLabel}</h2>
+              </div>
+              <div className="editor-collapsible-meta">
+                <span className="panel-tag">{templatePanelTag}</span>
+                <button
+                  type="button"
+                  className="button button--ghost button--small editor-toggle-button"
+                  onClick={() => setTemplatePickerOpen((current) => !current)}
+                  aria-expanded={templatePickerOpen}
+                >
+                  {templatePickerOpen ? 'Hide' : 'Show'}
+                </button>
+              </div>
+            </div>
+            {templatePickerOpen ? (
+              <>
+                <div className="template-grid">
+                  {visibleTemplateIds.map((templateId) => {
+                    const meta = templateMeta[templateId];
+                    return (
+                      <button
+                        key={templateId}
+                        type="button"
+                        className={`template-card ${templateChoice === templateId ? 'is-active' : ''}`}
+                        onClick={() => setTemplateChoice(templateId)}
+                        onMouseEnter={(event) => openTemplateHoverPreview(templateId, event.currentTarget)}
+                        onMouseLeave={clearTemplateHoverPreview}
+                        onFocus={(event) => openTemplateHoverPreview(templateId, event.currentTarget)}
+                        onBlur={clearTemplateHoverPreview}
+                      >
+                        <span>{meta.label}</span>
+                        <strong>{meta.summary}</strong>
+                        <small>{meta.slots.length} image slot{meta.slots.length === 1 ? '' : 's'}</small>
+                      </button>
+                    );
+                  })}
+                </div>
+                {templateChoice === 'custom' ? (
+                  <div
+                    ref={customLayoutBuilderRef}
+                    className="custom-layout-builder"
+                    onMouseEnter={activateCustomLayoutPreview}
+                    onMouseLeave={deactivateCustomLayoutPreview}
+                    onFocus={handleCustomLayoutPreviewFocus}
+                    onBlur={handleCustomLayoutPreviewBlur}
+                  >
+                    <div className="editor-panel__heading">
+                      <div>
+                        <p className="eyebrow">Custom layout</p>
+                        <h2>{customTemplateDraft.name}</h2>
+                      </div>
+                      <span className="panel-tag">{`${customTemplateDraft.frames.length} frame${
+                        customTemplateDraft.frames.length === 1 ? '' : 's'
+                      }`}</span>
+                    </div>
+                    {customLayoutOverview}
+                    <div className="template-grid template-grid--compact">
+                      {customLayoutPresets.map((preset) => (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          className={`template-card ${customTemplateDraft.name === preset.template.name ? 'is-active' : ''}`}
+                          onClick={() => loadCustomLayoutPreset(preset.id)}
+                        >
+                          <CustomLayoutMap template={preset.template} className="custom-layout-map--card" />
+                          <span>{preset.label}</span>
+                          <strong>{preset.template.name}</strong>
+                          <small>{preset.summary}</small>
+                        </button>
+                      ))}
+                    </div>
+                    <label className="field">
+                      <span>Layout name</span>
+                      <input
+                        maxLength={CUSTOM_TEMPLATE_NAME_LIMIT}
+                        value={customTemplateDraft.name}
+                        onChange={(event) =>
+                          updateCustomTemplateDraft((current) => ({
+                            ...current,
+                            name: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                    <div className="editor-panel__actions editor-panel__actions--tight">
+                      <button
+                        type="button"
+                        className="button button--ghost button--small"
+                        onClick={() => loadCustomLayoutPreset(defaultCustomLayoutPresetId)}
+                      >
+                        Reset base
+                      </button>
+                      <button
+                        type="button"
+                        className="button button--ghost button--small"
+                        disabled={customTemplateDraft.frames.length >= CUSTOM_TEMPLATE_FRAME_LIMIT}
+                        onClick={addCustomFrame}
+                      >
+                        {customTemplateDraft.frames.length >= CUSTOM_TEMPLATE_FRAME_LIMIT ? 'Frame limit' : 'Add frame'}
+                      </button>
+                    </div>
+                    <details className="custom-layout-details">
+                      <summary>Text block geometry</summary>
+                      <div className="custom-layout-grid">
+                        {customAreaFields.map((field) => (
+                          <label className="field" key={`text-${field.key}`}>
+                            <span>{field.label}</span>
+                            <input
+                              type="number"
+                              min={field.min}
+                              max={field.max}
+                              step="1"
+                              value={Math.round(customTemplateDraft.text[field.key])}
+                              onChange={(event) =>
+                                updateCustomTemplateDraft((current) => ({
+                                  ...current,
+                                  text: updateCustomArea(current.text, field.key, Number(event.target.value)),
+                                }))
+                              }
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    </details>
+                    <div className="custom-frame-list">
+                      {customTemplateDraft.frames.map((frame, frameIndex) => (
+                        <section key={frame.slot} className="custom-frame-card">
+                          <div className="editor-panel__heading">
+                            <div>
+                              <p className="eyebrow">Frame {frameIndex + 1}</p>
+                              <h2>{frame.label}</h2>
+                            </div>
+                            <span className="panel-tag">{frame.slot.toUpperCase()}</span>
+                          </div>
+                          <label className="field">
+                            <span>Label</span>
+                            <input
+                              maxLength={CUSTOM_TEMPLATE_FRAME_LABEL_LIMIT}
+                              value={frame.label}
+                              onChange={(event) =>
+                                updateCustomTemplateDraft((current) => ({
+                                  ...current,
+                                  frames: current.frames.map((entry) =>
+                                    entry.slot === frame.slot
+                                      ? {
+                                          ...entry,
+                                          label: event.target.value,
+                                        }
+                                      : entry,
+                                  ),
+                                }))
+                              }
+                            />
+                          </label>
+                          <div className="editor-panel__actions editor-panel__actions--tight">
+                            <button
+                              type="button"
+                              className="button button--ghost button--small"
+                              disabled={customTemplateDraft.frames.length === 1}
+                              onClick={() => removeCustomFrame(frame.slot)}
+                            >
+                              {customTemplateDraft.frames.length === 1 ? 'Keep one' : 'Remove'}
+                            </button>
+                            <button
+                              type="button"
+                              className="button button--ghost button--small"
+                              onClick={() => setSelectedSlot(frame.slot)}
+                            >
+                              Focus
+                            </button>
+                          </div>
+                          <details className="custom-layout-details">
+                            <summary>Advanced frame geometry</summary>
+                            <div className="custom-layout-grid">
+                              {customAreaFields.map((field) => (
+                                <label className="field" key={`${frame.slot}-${field.key}`}>
+                                  <span>{field.label}</span>
+                                  <input
+                                    type="number"
+                                    min={field.min}
+                                    max={field.max}
+                                    step="1"
+                                    value={Math.round(frame[field.key])}
+                                    onChange={(event) =>
+                                      updateCustomTemplateDraft((current) => ({
+                                        ...current,
+                                        frames: current.frames.map((entry) =>
+                                          entry.slot === frame.slot
+                                            ? updateCustomFrameArea(entry, field.key, Number(event.target.value))
+                                            : entry,
+                                        ),
+                                      }))
+                                    }
+                                  />
+                                </label>
+                              ))}
+                            </div>
+                          </details>
+                        </section>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                <div className="editor-panel__actions editor-panel__actions--end">
+                  <button
+                    type="button"
+                    className="button button--ghost button--small"
+                    onClick={() => addPage()}
+                  >
+                    Add page
+                  </button>
+                  <button
+                    type="button"
+                    className="button button--primary button--small"
+                    disabled={templateChoice === selectedPage.template && templateChoice !== 'custom'}
+                    onClick={applyTemplateChoice}
+                  >
+                    {templateChoice === selectedPage.template && templateChoice !== 'custom' ? 'Current' : 'Apply'}
+                  </button>
+                </div>
+              </>
+            ) : null}
+          </section>
+          {templateHoverPreview ? (
+            <div
+              className="template-hover-preview"
+              style={{
+                left: `${templateHoverPreview.left}px`,
+                top: `${templateHoverPreview.top}px`,
+              }}
+              aria-hidden="true"
+            >
+              <TemplateLayoutPreview
+                templateId={templateHoverPreview.templateId}
+                customTemplate={templateHoverPreview.templateId === 'custom' ? customTemplateDraft : null}
+                className="template-hover-preview__map"
+              />
+              <div className="template-hover-preview__meta">
+                <span>{hoveredTemplateLabel}</span>
+                <strong>{hoveredTemplateMeta?.summary ?? 'User-defined'}</strong>
+                <p>{hoveredTemplateDescription}</p>
+                <small>{`${hoveredTemplateSlotCount} image slot${hoveredTemplateSlotCount === 1 ? '' : 's'}`}</small>
+              </div>
+            </div>
+          ) : null}
+          {!templateHoverPreview && pinnedCustomLayoutPreview ? (
+            <div
+              className="template-hover-preview template-hover-preview--pinned-custom"
+              style={{
+                left: `${pinnedCustomLayoutPreview.left}px`,
+                top: `${pinnedCustomLayoutPreview.top}px`,
+              }}
+              aria-hidden="true"
+            >
+              <div className="custom-layout-overview custom-layout-overview--floating">
+                <div className="custom-layout-overview__copy">
+                  <p className="eyebrow">Layout map</p>
+                  <h3>Start from a scaffold</h3>
+                  <p className="panel-note">
+                    Pick the closest structure first. Open the geometry controls only when the preset still needs fine tuning.
+                  </p>
+                </div>
+                <CustomLayoutMap
+                  template={customTemplateDraft}
+                  highlightedSlot={selectedSlot}
+                  className="template-hover-preview__map"
+                />
+              </div>
+            </div>
+          ) : null}
+
+          <section className="editor-panel editor-panel--starter-packs">
+            <div className="editor-panel__heading">
+              <div>
+                <p className="eyebrow">Project templates</p>
+                <h2>Built-in folio starters</h2>
+              </div>
+              <div className="editor-collapsible-meta">
+                <span className="panel-tag">{projectTemplateSectionTag}</span>
+                <button
+                  type="button"
+                  className="button button--ghost button--small editor-toggle-button"
+                  onClick={() => setStarterPacksOpen((current) => !current)}
+                  aria-expanded={starterPacksOpen}
+                >
+                  {starterPacksOpen ? 'Hide' : 'Show'}
+                </button>
+              </div>
+            </div>
+            {starterPacksOpen ? (
+              <div className="template-pack-grid">
+                {visibleTemplatePackIds.map((packId) => {
+                  const pack = templatePacks[packId];
+                  return (
+                    <article key={packId} className={`template-pack-card ${packId === defaultTemplatePackId ? 'is-featured' : ''}`}>
+                      <div className="template-pack-card__copy">
+                        <span>{packId === defaultTemplatePackId ? `${pack.label} default` : pack.label}</span>
+                        <strong>{pack.summary}</strong>
+                        <p>{pack.description}</p>
+                      </div>
+                      <p className="template-pack-card__sequence">
+                        {pack.pages.map((page) => getTemplateLabel(page.template, page.customTemplate)).join(' / ')}
+                      </p>
+                      <div className="template-pack-card__actions">
+                        <button
+                          type="button"
+                          className="button button--primary button--small"
+                          onClick={() => applyTemplatePack(packId, 'replace')}
+                        >
+                          Use as project
+                        </button>
+                        <button
+                          type="button"
+                          className="button button--ghost button--small"
+                          onClick={() => applyTemplatePack(packId, 'insert')}
+                        >
+                          Insert
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : null}
+          </section>
+
+          <section className="editor-panel editor-panel--user-templates">
+            <div className="editor-panel__heading">
+              <div>
+                <p className="eyebrow">My templates</p>
+                <h2>Reusable folios</h2>
+              </div>
+              <div className="editor-collapsible-meta">
+                <span className="panel-tag">{session ? `${userTemplates.length} saved` : 'Sign in'}</span>
+                {session ? (
+                  <Link to="/account?section=templates" className="button button--ghost button--small editor-toggle-button">
+                    Manage
+                  </Link>
+                ) : null}
+              </div>
+            </div>
+            {!session ? (
+              <p className="panel-note">Sign in to save reusable templates and reopen them as new folios.</p>
+            ) : templateLibraryBusy ? (
+              <p className="panel-note">Loading saved templates...</p>
+            ) : userTemplates.length ? (
+              <div className="template-library-grid template-library-grid--editor">
+                {userTemplates.map((template) => (
+                  <article key={template.id} className="template-library-card">
+                    <TemplateIssuePreview templatePayload={template.templatePayload} className="template-library-card__preview" />
+                    <div className="template-library-card__body">
+                      <div className="template-library-card__header">
+                        <strong>{template.name}</strong>
+                        <span className="admin-pill admin-pill--strong">{`${template.templatePayload.pages.length} pages`}</span>
+                      </div>
+                      <p className="template-library-card__description">
+                        {template.description || 'Reusable folio structure saved from your editor.'}
+                      </p>
+                      <p className="template-library-card__meta">
+                        {template.preserveCopy ? 'Includes saved copy' : 'Structure and style only'}
+                      </p>
+                    </div>
+                    <div className="template-library-card__actions">
+                      <button
+                        type="button"
+                        className="button button--primary button--small"
+                        disabled={templateActionBusyId === template.id}
+                        onClick={() => void handleOpenUserTemplate(template)}
+                      >
+                        {templateActionBusyId === template.id ? 'Opening…' : 'Start new'}
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="panel-note">Save the current folio as a template to reuse it across future projects.</p>
+            )}
+          </section>
         </aside>
 
-        <main className="editor-stage" aria-label="Live page editor">
+        <main ref={editorStageRef} className="editor-stage" aria-label="Live page editor">
           <div className="editor-canvas" ref={canvasRef}>
             <div ref={sheetProbeRef} className="magazine-sheet-probe" aria-hidden="true" />
             <div className="magazine-sheet magazine-sheet--editor" style={previewStyle}>
@@ -991,636 +1339,171 @@ export function EditorPage() {
                 issue={project.issue}
                 page={selectedPage}
                 assets={assetsById}
+                frameRadius={project.frameRadius}
                 pageNumber={selectedPageIndex + 1}
                 selectedSlot={selectedSlot}
                 interactive
                 onSelectSlot={setSelectedSlot}
                 onAssignDroppedAsset={assignAsset}
+                onUpdateCrop={updateSlotCrop}
+                onCropMetricsChange={handleCropMetricsChange}
               />
             </div>
           </div>
         </main>
 
-        <aside className="editor-sidebar editor-sidebar--content">
-          <section className="editor-panel editor-panel--content-work">
-            <div className="editor-panel__heading">
-              <div>
-                <p className="eyebrow">Page content</p>
-                <h2>{selectedPage.title}</h2>
-              </div>
-              <span className="panel-tag">{selectedPagePositionLabel}</span>
-            </div>
-            <p className="panel-note">{`${selectedPageTemplateLabel} layout on ${selectedThemeMeta.label} paper. Copy, frame edits, and photos stay together in this rail.`}</p>
+        <EditorContentSidebar
+          assetDeleteBusy={assetDeleteBusy}
+          assetDeleteTargetId={assetDeleteTargetId}
+          assetMutationBusy={assetMutationBusy}
+          assetRetryTargetId={assetRetryTargetId}
+          assetUsageCounts={assetUsageCounts}
+          assignAsset={assignAsset}
+          canUploadAssets={canUploadAssets}
+          clearAssetPlacements={clearAssetPlacements}
+          clearSelectedSlot={clearSelectedSlot}
+          commitZoomInputValue={commitZoomInputValue}
+          currentCrop={currentCrop}
+          focusAssetPlacement={focusAssetPlacement}
+          handleDeleteAsset={handleDeleteAsset}
+          handleRetryAssetMirror={handleRetryAssetMirror}
+          handleUploadFiles={handleUploadFiles}
+          handleZoomInputChange={handleZoomInputChange}
+          libraryAssets={libraryAssets}
+          nudgeSelectedCrop={nudgeSelectedCrop}
+          nudgeSelectedScale={nudgeSelectedScale}
+          projectAssetIds={projectAssetIds}
+          removeUnusedAssetsFromIssue={removeUnusedAssetsFromIssue}
+          resetZoomInputValue={resetZoomInputValue}
+          selectedAsset={selectedAsset}
+          selectedAssetId={selectedAssetId}
+          selectedAssetPlacements={selectedAssetPlacements}
+          selectedFrameLabel={selectedFrameLabel}
+          selectedPage={selectedPage}
+          selectedPagePositionLabel={selectedPagePositionLabel}
+          selectedPageUsesBody={selectedPageUsesBody}
+          selectedPageUsesDeck={selectedPageUsesDeck}
+          selectedPageUsesKicker={selectedPageUsesKicker}
+          selectedSlot={selectedSlot}
+          unusedAssetCount={unusedAssetCount}
+          updateSelectedCrop={updateSelectedCrop}
+          updateSelectedPage={updateSelectedPage}
+          uploadBusy={uploadBusy}
+          uploadProgressDetail={uploadProgressDetail}
+          uploadProgressLabel={uploadProgressLabel}
+          uploadProgressPercent={uploadProgressPercent}
+          uploadState={uploadState}
+          zoomInputValue={zoomInputValue}
+        />
 
-            <section className="editor-panel__section">
-              <div className="editor-section-heading">
-                <div>
-                  <p className="eyebrow">Copy</p>
-                  <h3>Editorial text</h3>
-                </div>
-              </div>
-              <label className="field">
-                <span>Kicker</span>
-                <input
-                  maxLength={PAGE_KICKER_LIMIT}
-                  value={selectedPage.kicker}
-                  onChange={(event) => updateSelectedPage((page) => ({ ...page, kicker: event.target.value }))}
-                />
-              </label>
-              <label className="field">
-                <span>Title</span>
-                <textarea
-                  rows={2}
-                  maxLength={PAGE_TITLE_LIMIT}
-                  value={selectedPage.title}
-                  onChange={(event) => updateSelectedPage((page) => ({ ...page, title: event.target.value }))}
-                />
-              </label>
-              {selectedPageUsesDeck ? (
-                <label className="field">
-                  <span>Deck</span>
-                  <textarea
-                    rows={2}
-                    maxLength={PAGE_DECK_LIMIT}
-                    value={selectedPage.deck}
-                    onChange={(event) => updateSelectedPage((page) => ({ ...page, deck: event.target.value }))}
-                  />
-                </label>
-              ) : null}
-              {selectedPageUsesBody ? (
-                <label className="field">
-                  <span>Body</span>
-                  <textarea
-                    rows={4}
-                    maxLength={PAGE_BODY_LIMIT}
-                    value={selectedPage.body}
-                    onChange={(event) => updateSelectedPage((page) => ({ ...page, body: event.target.value }))}
-                  />
-                </label>
-              ) : null}
-              <label className="field">
-                <span>Caption</span>
-                <textarea
-                  rows={2}
-                  maxLength={PAGE_CAPTION_LIMIT}
-                  value={selectedPage.caption}
-                  onChange={(event) => updateSelectedPage((page) => ({ ...page, caption: event.target.value }))}
-                />
-              </label>
-              {!selectedPageUsesDeck ? (
-                <p className="panel-note">Deck copy is suppressed on Grid and Triptych pages so the title rail has room to breathe.</p>
-              ) : null}
-            </section>
 
-            <section className="editor-panel__section">
-              <div className="editor-section-heading">
-                <div>
-                  <p className="eyebrow">Selected frame</p>
-                  <h3>{selectedFrameLabel ?? 'No frame selected'}</h3>
-                </div>
-                {selectedAsset ? <span className="panel-tag">{currentCrop?.fit === 'contain' ? 'Keep full image' : 'Fill frame'}</span> : null}
-              </div>
-              <p className="selected-frame-status">
-                {selectedAsset ? `Assigned image: ${selectedAsset.name}` : 'No image assigned to this frame yet.'}
-              </p>
-              <p className="panel-note">Template geometry stays fixed. Fit and crop only affect image placement inside the slot.</p>
-              {selectedAssetPlacements.length ? (
-                <div className="placement-list" aria-label="Asset placements">
-                  {selectedAssetPlacements.map((placement) => {
-                    const isCurrentPlacement = placement.pageId === selectedPage.id && placement.slot === selectedSlot;
-                    const slotLabel = placement.slot.toUpperCase();
-                    return (
-                      <button
-                        key={`${placement.pageId}-${placement.slot}`}
-                        type="button"
-                        className={`placement-chip ${isCurrentPlacement ? 'is-active' : ''}`}
-                        title={`${placement.pageTitle} · ${slotLabel}`}
-                        onClick={() => focusAssetPlacement(placement)}
-                      >
-                        {`Page ${placement.pageIndex + 1} · ${slotLabel}`}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null}
-              {selectedSlot && currentCrop && selectedAsset ? (
-                <>
-                  <div className="editor-panel__actions editor-panel__actions--tight">
-                    <button type="button" className="button button--ghost button--small" onClick={clearSelectedSlot}>
-                      Clear image
-                    </button>
-                    <button
-                      type="button"
-                      className="button button--ghost button--small"
-                      onClick={() => clearAssetPlacements(selectedAsset.id)}
-                    >
-                      Clear from all pages
-                    </button>
-                    <button
-                      type="button"
-                      className="button button--ghost button--small"
-                      onClick={() =>
-                        updateSelectedCrop((crop) => ({
-                          ...crop,
-                          x: 50,
-                          y: 50,
-                        }))
-                      }
-                    >
-                      Recenter
-                    </button>
-                    <button
-                      type="button"
-                      className="button button--ghost button--small"
-                      onClick={() =>
-                        updateSelectedCrop((crop) =>
-                          createDefaultCrop({
-                            fit: crop.fit,
-                          }),
-                        )
-                      }
-                    >
-                      Reset crop
-                    </button>
-                  </div>
-                  <div className="segmented-control" role="group" aria-label="Frame fit">
-                    <button
-                      type="button"
-                      className={currentCrop.fit === 'cover' ? 'is-active' : ''}
-                      onClick={() =>
-                        updateSelectedCrop((crop) => ({
-                          ...crop,
-                          fit: 'cover',
-                        }))
-                      }
-                    >
-                      Fill frame
-                    </button>
-                    <button
-                      type="button"
-                      className={currentCrop.fit === 'contain' ? 'is-active' : ''}
-                      onClick={() =>
-                        updateSelectedCrop((crop) => ({
-                          ...crop,
-                          fit: 'contain',
-                        }))
-                      }
-                    >
-                      Keep full image
-                    </button>
-                  </div>
-                  <label className="field field--range">
-                    <span>{`Horizontal crop ${Math.round(currentCrop.x)}%`}</span>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={currentCrop.x}
-                      onChange={(event) =>
-                        updateSelectedCrop((crop) => ({
-                          ...crop,
-                          x: Number(event.target.value),
-                        }))
-                      }
-                    />
-                  </label>
-                  <label className="field field--range">
-                    <span>{`Vertical crop ${Math.round(currentCrop.y)}%`}</span>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={currentCrop.y}
-                      onChange={(event) =>
-                        updateSelectedCrop((crop) => ({
-                          ...crop,
-                          y: Number(event.target.value),
-                        }))
-                      }
-                    />
-                  </label>
-                  <label className="field field--range">
-                    <span>{`Scale ${currentCrop.scale.toFixed(2)}x`}</span>
-                    <input
-                      type="range"
-                      min="1"
-                      max="2.2"
-                      step="0.01"
-                      value={currentCrop.scale}
-                      onChange={(event) =>
-                        updateSelectedCrop((crop) => ({
-                          ...crop,
-                          scale: Number(event.target.value),
-                        }))
-                      }
-                    />
-                  </label>
-                </>
-              ) : (
-                <p className="panel-note">Select a frame, then click or drag an uploaded image onto it to unlock fit and crop controls.</p>
-              )}
-            </section>
-
-            <section className="editor-panel__section">
-              <div className="editor-section-heading">
-                <div>
-                  <p className="eyebrow">Photos</p>
-                  <h3>Asset library</h3>
-                </div>
-                <span className="panel-tag">{assetsLabel}</span>
-              </div>
-              <div className="editor-panel__actions editor-panel__actions--tight">
-                <label className="upload-button">
-                  {uploadState === 'uploading' ? 'Uploading…' : 'Upload'}
-                  <input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" multiple onChange={handleUpload} />
-                </label>
-                <button
-                  type="button"
-                  className="button button--ghost button--small"
-                  disabled={unusedAssetCount === 0}
-                  onClick={removeUnusedAssetsFromIssue}
-                >
-                  {unusedAssetCount === 0 ? 'No unused uploads' : `Remove ${unusedAssetCount} unused`}
-                </button>
-              </div>
-              <p className="panel-note">{UPLOAD_HELP_TEXT}</p>
-              <div className="asset-rail">
-                {project.assets.length ? (
-                  project.assets.map((asset) => {
-                    const placements = assetUsageCounts[asset.id] ?? 0;
-                    return (
-                      <button
-                        key={asset.id}
-                        type="button"
-                        className="asset-tile"
-                        draggable
-                        onDragStart={(event) => event.dataTransfer.setData('text/crazyalbum-asset', asset.id)}
-                        onClick={() => {
-                          if (selectedSlot) {
-                            assignAsset(selectedSlot, asset.id);
-                          }
-                        }}
-                      >
-                        <img alt={asset.name} src={asset.src} />
-                        <div className="asset-tile__copy">
-                          <strong>{asset.name}</strong>
-                          <span>{placements ? `${placements} placement${placements === 1 ? '' : 's'}` : 'Not placed yet'}</span>
-                          <small>{asset.note}</small>
-                        </div>
-                      </button>
-                    );
-                  })
-                ) : (
-                  <div className="asset-rail__empty">
-                    <strong>No photos yet.</strong>
-                    <p>Upload a set of images, then click or drag them onto the selected frame.</p>
-                  </div>
-                )}
-              </div>
-            </section>
-          </section>
-        </aside>
-
-        <aside className="editor-sidebar editor-sidebar--operations">
-          <section className="editor-panel editor-panel--project-actions">
-            <div className="editor-panel__heading">
-              <div>
-                <p className="eyebrow">Project</p>
-                <h2>{project.issue}</h2>
-              </div>
-              <span className="panel-tag">{projectModeTag}</span>
-            </div>
-            <p className="panel-note">{statusText}</p>
-            <div className="editor-panel__actions editor-panel__actions--tight">
-              <button
-                type="button"
-                className="button button--primary button--small"
-                disabled={saveState === 'saving' || uploadState === 'uploading'}
-                onClick={() => void saveProject({ manual: true })}
-              >
-                {saveState === 'saving' ? 'Saving…' : projectRecord ? 'Save issue' : 'Create stable URL'}
-              </button>
-              <button type="button" className="button button--ghost button--small" onClick={() => window.print()}>
-                Print / PDF
-              </button>
-              <button type="button" className="button button--ghost button--small" onClick={startNewDraft}>
-                New draft
-              </button>
-            </div>
-            <div className="editor-project-url">
-              <input
-                aria-label="Project URL"
-                className="editor-project-bar__input"
-                readOnly
-                value={projectRecord ? shareUrl : 'Create a stable editor URL to save this issue on the server.'}
-              />
-              <button
-                type="button"
-                className={`editor-icon-button ${copyState === 'copied' ? 'is-active' : ''} ${copyState === 'error' ? 'is-error' : ''}`.trim()}
-                disabled={!projectRecord}
-                onClick={() => void handleCopyLink()}
-                aria-label={copyButtonLabel}
-                title={copyButtonLabel}
-              >
-                <svg viewBox="0 0 16 16" aria-hidden="true">
-                  <rect x="5" y="3" width="8" height="10" rx="1.5" />
-                  <path d="M3.5 11V5.5C3.5 4.67 4.17 4 5 4" />
-                </svg>
-              </button>
-            </div>
-
-            <section className="editor-panel__section">
-              <div className="editor-section-heading">
-                <div>
-                  <p className="eyebrow">Issue details</p>
-                  <h3>Project copy</h3>
-                </div>
-              </div>
-              <label className="field">
-                <span>Title</span>
-                <input
-                  maxLength={PROJECT_TITLE_LIMIT}
-                  value={project.title}
-                  onChange={(event) => updateProject((current) => ({ ...current, title: event.target.value }))}
-                />
-              </label>
-              <label className="field">
-                <span>Subtitle</span>
-                <textarea
-                  rows={2}
-                  maxLength={PROJECT_SUBTITLE_LIMIT}
-                  value={project.subtitle}
-                  onChange={(event) => updateProject((current) => ({ ...current, subtitle: event.target.value }))}
-                />
-              </label>
-              <label className="field">
-                <span>Issue mark</span>
-                <input
-                  maxLength={PROJECT_ISSUE_LIMIT}
-                  value={project.issue}
-                  onChange={(event) => updateProject((current) => ({ ...current, issue: event.target.value }))}
-                />
-              </label>
-            </section>
-          </section>
-
-          <section className="editor-panel editor-panel--layout">
-            <div className="editor-panel__heading">
-              <div>
-                <p className="eyebrow">Page layout</p>
-                <h2>{selectedTemplateLabel}</h2>
-              </div>
-              <span className="panel-tag">{selectedThemeMeta.label}</span>
-            </div>
-            <p className="panel-note">Tone and template controls live together so page-level layout decisions stay in one place.</p>
-
-            <section className="editor-panel__section">
-              <div className="editor-section-heading">
-                <div>
-                  <p className="eyebrow">Tone</p>
-                  <h3>Surface</h3>
-                </div>
-                <span className="panel-tag">{selectedThemeMeta.summary}</span>
-              </div>
-              <div className="theme-grid" role="group" aria-label="Page theme">
-                {pageThemeOrder.map((themeId) => {
-                  const meta = pageThemeMeta[themeId];
-                  return (
-                    <button
-                      key={themeId}
-                      type="button"
-                      className={`theme-card ${selectedPage.theme === themeId ? 'is-active' : ''}`}
-                      onClick={() => updateSelectedPage((page) => ({ ...page, theme: themeId }))}
-                    >
-                      <span className={`theme-card__swatch theme-card__swatch--${themeId}`} aria-hidden="true" />
-                      <strong>{meta.label}</strong>
-                      <small>{meta.summary}</small>
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="panel-note">{selectedThemeMeta.description}</p>
-            </section>
-
-            <section className="editor-panel__section">
-              <div className="editor-section-heading">
-                <div>
-                  <p className="eyebrow">Template</p>
-                  <h3>{selectedTemplateLabel}</h3>
-                </div>
-                <span className="panel-tag">{selectedTemplateMeta.summary}</span>
-              </div>
-              <p className="panel-note">{selectedTemplateMeta.description}</p>
-              <div className="template-grid">
-                {templateOrder.map((templateId) => {
-                  const meta = templateMeta[templateId];
-                  return (
-                    <button
-                      key={templateId}
-                      type="button"
-                      className={`template-card ${templateChoice === templateId ? 'is-active' : ''}`}
-                      onClick={() => setTemplateChoice(templateId)}
-                    >
-                      <span>{meta.label}</span>
-                      <strong>{meta.summary}</strong>
-                      <small>{meta.slots.length} image slot{meta.slots.length === 1 ? '' : 's'}</small>
-                    </button>
-                  );
-                })}
-              </div>
-              {templateChoice === 'custom' ? (
-                <div className="custom-layout-builder">
-                  <div className="editor-panel__heading">
-                    <div>
-                      <p className="eyebrow">Custom layout</p>
-                      <h2>{customTemplateDraft.name}</h2>
-                    </div>
-                    <span className="panel-tag">{`${customTemplateDraft.frames.length} frame${
-                      customTemplateDraft.frames.length === 1 ? '' : 's'
-                    }`}</span>
-                  </div>
-                  <p className="panel-note">Start from a scaffold, then edit the text box and frame coordinates. The selected page remains editable after the custom layout is applied.</p>
-                  <div className="template-grid template-grid--compact">
-                    {customLayoutPresets.map((preset) => (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        className={`template-card ${customTemplateDraft.name === preset.template.name ? 'is-active' : ''}`}
-                        onClick={() => loadCustomLayoutPreset(preset.id)}
-                      >
-                        <span>{preset.label}</span>
-                        <strong>{preset.template.name}</strong>
-                        <small>{preset.summary}</small>
-                      </button>
-                    ))}
-                  </div>
-                  <label className="field">
-                    <span>Layout name</span>
-                    <input
-                      maxLength={CUSTOM_TEMPLATE_NAME_LIMIT}
-                      value={customTemplateDraft.name}
-                      onChange={(event) =>
-                        updateCustomTemplateDraft((current) => ({
-                          ...current,
-                          name: event.target.value,
-                        }))
-                      }
-                    />
-                  </label>
-                  <div className="custom-layout-section">
-                    <div className="editor-panel__heading">
-                      <div>
-                        <p className="eyebrow">Text area</p>
-                        <h2>Copy block</h2>
-                      </div>
-                    </div>
-                    <div className="custom-layout-grid">
-                      {customAreaFields.map((field) => (
-                        <label className="field" key={`text-${field.key}`}>
-                          <span>{field.label}</span>
-                          <input
-                            type="number"
-                            min={field.min}
-                            max={field.max}
-                            step="1"
-                            value={Math.round(customTemplateDraft.text[field.key])}
-                            onChange={(event) =>
-                              updateCustomTemplateDraft((current) => ({
-                                ...current,
-                                text: updateCustomArea(current.text, field.key, Number(event.target.value)),
-                              }))
-                            }
-                          />
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="editor-panel__actions editor-panel__actions--tight">
-                    <button
-                      type="button"
-                      className="button button--ghost button--small"
-                      onClick={() => loadCustomLayoutPreset(defaultCustomLayoutPresetId)}
-                    >
-                      Reset to default scaffold
-                    </button>
-                    <button
-                      type="button"
-                      className="button button--ghost button--small"
-                      disabled={customTemplateDraft.frames.length >= CUSTOM_TEMPLATE_FRAME_LIMIT}
-                      onClick={addCustomFrame}
-                    >
-                      {customTemplateDraft.frames.length >= CUSTOM_TEMPLATE_FRAME_LIMIT ? 'Frame limit reached' : 'Add frame'}
-                    </button>
-                  </div>
-                  <div className="custom-frame-list">
-                    {customTemplateDraft.frames.map((frame, frameIndex) => (
-                      <section key={frame.slot} className="custom-frame-card">
-                        <div className="editor-panel__heading">
-                          <div>
-                            <p className="eyebrow">Frame {frameIndex + 1}</p>
-                            <h2>{frame.label}</h2>
-                          </div>
-                          <span className="panel-tag">{frame.slot.toUpperCase()}</span>
-                        </div>
-                        <label className="field">
-                          <span>Label</span>
-                          <input
-                            maxLength={CUSTOM_TEMPLATE_FRAME_LABEL_LIMIT}
-                            value={frame.label}
-                            onChange={(event) =>
-                              updateCustomTemplateDraft((current) => ({
-                                ...current,
-                                frames: current.frames.map((entry) =>
-                                  entry.slot === frame.slot
-                                    ? {
-                                        ...entry,
-                                        label: event.target.value,
-                                      }
-                                    : entry,
-                                ),
-                              }))
-                            }
-                          />
-                        </label>
-                        <div className="custom-layout-grid">
-                          {customAreaFields.map((field) => (
-                            <label className="field" key={`${frame.slot}-${field.key}`}>
-                              <span>{field.label}</span>
-                              <input
-                                type="number"
-                                min={field.min}
-                                max={field.max}
-                                step="1"
-                                value={Math.round(frame[field.key])}
-                                onChange={(event) =>
-                                  updateCustomTemplateDraft((current) => ({
-                                    ...current,
-                                    frames: current.frames.map((entry) =>
-                                      entry.slot === frame.slot
-                                        ? updateCustomFrameArea(entry, field.key, Number(event.target.value))
-                                        : entry,
-                                    ),
-                                  }))
-                                }
-                              />
-                            </label>
-                          ))}
-                        </div>
-                        <div className="editor-panel__actions editor-panel__actions--tight">
-                          <button
-                            type="button"
-                            className="button button--ghost button--small"
-                            disabled={customTemplateDraft.frames.length === 1}
-                            onClick={() => removeCustomFrame(frame.slot)}
-                          >
-                            {customTemplateDraft.frames.length === 1 ? 'At least one frame required' : 'Remove frame'}
-                          </button>
-                          <button
-                            type="button"
-                            className="button button--ghost button--small"
-                            onClick={() => setSelectedSlot(frame.slot)}
-                          >
-                            Focus this frame
-                          </button>
-                        </div>
-                      </section>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              <div className="editor-panel__actions">
-                <button
-                  type="button"
-                  className="button button--ghost button--small"
-                  onClick={() => addPage()}
-                >
-                  Add selected layout
-                </button>
-                <button
-                  type="button"
-                  className="button button--primary button--small"
-                  disabled={templateChoice === selectedPage.template && templateChoice !== 'custom'}
-                  onClick={applyTemplateChoice}
-                >
-                  {templateChoice === selectedPage.template && templateChoice !== 'custom' ? 'Current preset' : 'Apply to page'}
-                </button>
-              </div>
-              <p className="panel-note">
-                {templateChoice === 'custom'
-                  ? 'Applying the custom layout preserves matching frame names first, then carries remaining placed images into the open frames.'
-                  : 'Applying a preset preserves matching slots first, then carries remaining placed images in order.'}
-              </p>
-            </section>
-          </section>
-
-        </aside>
+        <EditorOperationsSidebar
+          archiveActionLabel={archiveActionLabel}
+          authReady={authReady}
+          canSaveProject={canSaveProject}
+          copyButtonLabel={copyButtonLabel}
+          copyState={copyState}
+          exportActionBusy={exportActionBusy}
+          exportActionLabel={exportActionLabel}
+          guestUploadTransferBusy={guestUploadTransferBusy}
+          hasGuestUploadAssets={hasGuestUploadAssets}
+          libraryBusy={libraryBusy}
+          onArchiveToggle={() => void handleArchiveToggle(!projectRecord?.archivedAt)}
+          onCloseTemplateComposer={() => setTemplateComposerOpen(false)}
+          onCopyLink={() => void handleCopyLink()}
+          onCopyPublicShareLink={() => void handleCopyPublicShareLink()}
+          onDisableShare={() => void handleDisableProjectShare()}
+          onDuplicateProject={() => void handleDuplicateCurrentProject()}
+          onEnableShare={() => void handleEnableProjectShare()}
+          onOpenAccountPage={openAccountPage}
+          onOpenAdminPage={openAdminPage}
+          onOpenSharedProject={() => {
+            if (projectRecord?.share.path) {
+              navigate(projectRecord.share.path);
+            }
+          }}
+          onRegenerateShare={() => void handleEnableProjectShare({ rotate: true })}
+          onSaveCurrentProjectAsTemplate={() => void handleSaveCurrentProjectAsTemplate()}
+          onSaveProject={() => void saveProject({ manual: true })}
+          onStartNewDraft={startNewDraft}
+          onTemplatePreserveCopyChange={(value) => setTemplatePreserveCopy(value)}
+          onTemplateSaveDescriptionChange={(value) => setTemplateSaveDescription(value)}
+          onTemplateSaveKindChange={(kind) => setTemplateSaveKind(kind)}
+          onTemplateSaveNameChange={(value) => setTemplateSaveName(value)}
+          onToggleExportCenter={() => setExportCenterOpen((current) => !current)}
+          onToggleTemplateComposer={toggleTemplateComposer}
+          project={project}
+          projectActionBusy={projectActionBusy}
+          projectModeTag={projectModeTag}
+          projectMutationLocked={legacyProjectReadOnly}
+          projectRecord={projectRecord}
+          publicShareCopyLabel={publicShareCopyLabel}
+          publicShareUrl={publicShareUrl}
+          saveActionLabel={saveActionLabel}
+          saveState={saveState}
+          selectedPagePositionLabel={selectedPagePositionLabel}
+          sequenceLabel={sequenceLabel}
+          session={session}
+          shareBusy={shareBusy}
+          shareUrl={shareUrl}
+          statusText={statusText}
+          templateComposerOpen={templateComposerOpen}
+          templatePreserveCopy={templatePreserveCopy}
+          templateSaveActionLabel={templateSaveActionLabel}
+          templateSaveBusy={templateSaveBusy}
+          templateSaveDescription={templateSaveDescription}
+          templateSaveKind={templateSaveKind}
+          templateSaveName={templateSaveName}
+          updateFrameRadius={updateFrameRadius}
+          updateProject={updateProject}
+        />
       </div>
 
-      <section className="editor-print-stack" aria-hidden="true">
+      {exportCenterOpen ? (
+        <EditorExportCenter
+          exportActionBusy={exportActionBusy}
+          exportAdvisories={exportAdvisories}
+          exportDialogState={exportDialogState}
+          exportPreflightIssues={exportPreflightIssues}
+          exportSettings={exportSettings}
+          exportSubmitLabel={exportSubmitLabel}
+          onClose={() => setExportCenterOpen(false)}
+          onRequestCloseIfIdle={() => {
+            if (!exportActionBusy) {
+              setExportCenterOpen(false);
+            }
+          }}
+          onRunExport={() => void handleRunExport()}
+          onSelectPreflightIssue={(issue) => {
+            setExportCenterOpen(false);
+            setSelectedPageId(issue.pageId);
+            setSelectedSlot(issue.slot ?? getInitialSlot(project.pages[issue.pageIndex]));
+          }}
+          updateExportSettings={updateExportSettings}
+        />
+      ) : null}
+
+      <section
+        ref={printStackRef}
+        className={`editor-print-stack ${exportCaptureActive ? 'is-export-capture-active' : ''}`.trim()}
+        aria-hidden="true"
+      >
         {project.pages.map((page, index) => (
-          <div className="editor-print-page" key={page.id}>
+          <div
+            className="editor-print-page"
+            key={page.id}
+            ref={(node) => {
+              printPageRefs.current[page.id] = node;
+            }}
+          >
             <div className="magazine-sheet magazine-sheet--print">
-              <MagazinePreview issue={project.issue} page={page} assets={assetsById} pageNumber={index + 1} />
+              <MagazinePreview
+                issue={project.issue}
+                page={page}
+                assets={printAssetsById ?? assetsById}
+                frameRadius={project.frameRadius}
+                pageNumber={index + 1}
+              />
             </div>
           </div>
         ))}

@@ -1,14 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200">
   <defs>
-    <linearGradient id="sky" x1="0" x2="0" y1="0" y2="1">
-      <stop offset="0%" stop-color="#efebe5" />
-      <stop offset="100%" stop-color="#d7d0c4" />
+    <linearGradient id="landscape-sky" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f3efe8" />
+      <stop offset="50%" stop-color="#ddd4c8" />
+      <stop offset="100%" stop-color="#c2b6a8" />
+    </linearGradient>
+    <linearGradient id="landscape-water" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#b7c0bf" />
+      <stop offset="100%" stop-color="#8f9796" />
     </linearGradient>
   </defs>
-  <rect width="1600" height="1200" fill="url(#sky)" />
-  <path d="M0 650C220 600 360 560 520 580C690 602 790 680 980 676C1170 670 1310 590 1600 520V1200H0Z" fill="#bcb3a6" />
-  <path d="M0 760C230 700 360 716 520 760C660 798 800 890 1010 870C1200 852 1330 760 1600 690V1200H0Z" fill="#91887c" />
-  <path d="M0 870C240 840 400 870 610 960C790 1036 950 1080 1140 1050C1320 1020 1460 930 1600 890V1200H0Z" fill="#6a645c" />
-  <circle cx="1230" cy="210" r="84" fill="#f8f5ef" opacity="0.75" />
+  <rect width="1600" height="1200" fill="url(#landscape-sky)" />
+  <circle cx="1228" cy="208" r="94" fill="#faf6ef" opacity="0.78" />
+  <path d="M0 648C138 602 282 592 452 620C594 644 720 706 906 694C1090 684 1262 594 1600 508V1200H0Z" fill="#c5bbad" />
+  <path d="M0 758C148 706 308 698 474 742C628 782 760 856 962 842C1142 830 1292 748 1600 674V1200H0Z" fill="#9d9285" />
+  <path d="M0 842C176 810 340 828 516 912C676 988 844 1040 1048 1012C1248 984 1430 908 1600 862V1200H0Z" fill="#71685f" />
+  <path d="M0 930C234 908 426 922 618 968C834 1020 1030 1038 1244 1008C1380 990 1502 958 1600 930V1200H0Z" fill="url(#landscape-water)" opacity="0.72" />
+  <path d="M114 842C186 754 246 706 304 684C338 730 374 796 386 860C310 876 220 874 114 842Z" fill="#5c534b" />
+  <path d="M1328 786C1398 734 1460 714 1516 720C1540 762 1548 810 1542 868C1468 864 1396 838 1328 786Z" fill="#665d55" />
+  <g stroke="#eef2f2" stroke-width="6" stroke-linecap="round" opacity="0.45">
+    <line x1="210" x2="468" y1="978" y2="1002" />
+    <line x1="588" x2="854" y1="1002" y2="1030" />
+    <line x1="962" x2="1268" y1="994" y2="1022" />
+  </g>
 </svg>
-

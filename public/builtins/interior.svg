@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200">
+  <defs>
+    <linearGradient id="interior-wall-v2" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f7f1e8" />
+      <stop offset="100%" stop-color="#ddd0c2" />
+    </linearGradient>
+    <linearGradient id="interior-floor-v2" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#b69b82" />
+      <stop offset="100%" stop-color="#816855" />
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="1200" fill="url(#interior-wall-v2)" />
+  <rect y="810" width="1600" height="390" fill="url(#interior-floor-v2)" />
+  <rect x="1026" y="118" width="410" height="452" rx="28" fill="#eadfce" />
+  <rect x="1072" y="164" width="318" height="360" rx="18" fill="#fbf7ef" />
+  <rect x="1112" y="206" width="238" height="276" rx="12" fill="#d5dee0" />
+  <line x1="1230" x2="1230" y1="206" y2="482" stroke="#f4efe6" stroke-width="12" />
+  <line x1="1112" x2="1350" y1="344" y2="344" stroke="#f4efe6" stroke-width="12" />
+  <rect x="154" y="166" width="248" height="348" rx="22" fill="#e7dacb" />
+  <rect x="188" y="208" width="176" height="18" rx="9" fill="#b6a08b" />
+  <rect x="188" y="252" width="138" height="18" rx="9" fill="#b6a08b" />
+  <rect x="188" y="296" width="156" height="18" rx="9" fill="#b6a08b" />
+  <rect x="188" y="340" width="122" height="18" rx="9" fill="#b6a08b" />
+  <ellipse cx="760" cy="998" rx="312" ry="62" fill="#675c53" opacity="0.18" />
+  <path d="M500 930C556 808 666 736 790 736C914 736 1014 808 1060 930L984 1086H566Z" fill="#6b5d52" />
+  <path d="M582 898C632 826 694 792 770 792C846 792 910 826 958 898L894 1034H646Z" fill="#84766a" />
+  <rect x="442" y="1034" width="422" height="28" rx="14" fill="#5b5148" />
+  <rect x="468" y="1060" width="52" height="162" rx="26" fill="#514740" />
+  <rect x="784" y="1060" width="52" height="162" rx="26" fill="#514740" />
+  <rect x="998" y="694" width="248" height="28" rx="14" fill="#b8aa95" />
+  <rect x="1022" y="722" width="28" height="164" rx="14" fill="#8d7967" />
+  <ellipse cx="1036" cy="668" rx="82" ry="72" fill="#8fa17a" />
+  <ellipse cx="1094" cy="596" rx="70" ry="58" fill="#aab891" />
+  <ellipse cx="1176" cy="668" rx="78" ry="64" fill="#7f9069" />
+  <rect x="714" y="888" width="152" height="76" rx="20" fill="#e8ddcf" />
+  <rect x="748" y="914" width="82" height="18" rx="9" fill="#b99f88" />
+  <circle cx="1482" cy="184" r="78" fill="#fff9f0" opacity="0.32" />
+</svg>

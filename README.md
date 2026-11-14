@@ -1,6 +1,6 @@
-# CrazyAlbum
+# FinalFolio
 
-Production site and editor for `crazyalbum.com`.
+Production site and editor for `finalfolio.com`.
 
 ## Stack
 
@@ -22,17 +22,17 @@ npm run uploads:manage -- list
 The live deployment is designed to run as a separate compose project so it does not modify the Seatable stack:
 
 ```bash
-rsync -a --delete --exclude data --exclude node_modules --exclude dist /tmp/crazyalbum-codex/ /opt/crazyalbum/app/
-cd /opt/crazyalbum/app
+rsync -a --delete --exclude data --exclude node_modules --exclude dist /tmp/finalfolio-codex/ /opt/finalfolio/app/
+cd /opt/finalfolio/app
 docker compose -f deploy/docker-compose.yml up -d --build
 ```
 
 ## Verification
 
 ```bash
-docker ps --filter name=crazyalbum-web
-curl -I https://crazyalbum.com
-curl -I https://www.crazyalbum.com
+docker ps --filter name=finalfolio-web
+curl -I https://finalfolio.com
+curl -I https://www.finalfolio.com
 curl -I https://hyphenless.com
 curl -I https://sometable.com
 ```

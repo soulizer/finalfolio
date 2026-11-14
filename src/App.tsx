@@ -1,15 +1,21 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useDeferredValue, useEffect } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
-import { HomePage } from './routes/HomePage';
-import { EditorPage } from './routes/EditorPage';
+import { SessionProvider } from './session';
 
-function useRevealObserver() {
-  const location = useLocation();
+const HomePage = lazy(() => import('./routes/HomePage').then((module) => ({ default: module.HomePage })));
+const AuthPage = lazy(() => import('./routes/AuthPage').then((module) => ({ default: module.AuthPage })));
+const TermsPage = lazy(() => import('./routes/TermsPage').then((module) => ({ default: module.TermsPage })));
+const PrivacyPage = lazy(() => import('./routes/PrivacyPage').then((module) => ({ default: module.PrivacyPage })));
+const AccountPage = lazy(() => import('./routes/AccountPage').then((module) => ({ default: module.AccountPage })));
+const AdminPage = lazy(() => import('./routes/AdminPage').then((module) => ({ default: module.AdminPage })));
+const IssueViewPage = lazy(() => import('./routes/IssueViewPage').then((module) => ({ default: module.IssueViewPage })));
+const EditorPage = lazy(() => import('./routes/EditorPage').then((module) => ({ default: module.EditorPage })));
 
+function useRevealObserver(pathname: string) {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' });
 
-    const revealNodes = Array.from(document.querySelectorAll<HTMLElement>('[data-reveal]'));
+    const observedNodes = new WeakSet<HTMLElement>();
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -22,20 +28,58 @@ function useRevealObserver() {
       { threshold: 0.14 },
     );
 
-    revealNodes.forEach((node) => observer.observe(node));
+    const observeRevealNodes = () => {
+      const revealNodes = Array.from(document.querySelectorAll<HTMLElement>('[data-reveal]'));
+      revealNodes.forEach((node) => {
+        if (observedNodes.has(node) || node.classList.contains('is-visible')) {
+          return;
+        }
 
-    return () => observer.disconnect();
-  }, [location.pathname]);
+        observedNodes.add(node);
+        observer.observe(node);
+      });
+    };
+
+    observeRevealNodes();
+
+    const mutationObserver = new MutationObserver(() => {
+      observeRevealNodes();
+    });
+    mutationObserver.observe(document.body, { childList: true, subtree: true });
+
+    const frameId = window.requestAnimationFrame(() => {
+      observeRevealNodes();
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      mutationObserver.disconnect();
+      observer.disconnect();
+    };
+  }, [pathname]);
 }
 
 export default function App() {
-  useRevealObserver();
+  const location = useLocation();
+  const deferredLocation = useDeferredValue(location);
+
+  useRevealObserver(deferredLocation.pathname);
 
   return (
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/editor" element={<EditorPage />} />
-      <Route path="/editor/:projectId" element={<EditorPage />} />
-    </Routes>
+    <SessionProvider>
+      <Suspense fallback={null}>
+        <Routes location={deferredLocation}>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/auth" element={<AuthPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/account" element={<AccountPage />} />
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/project/:shareId" element={<IssueViewPage />} />
+          <Route path="/editor" element={<EditorPage />} />
+          <Route path="/editor/:projectId" element={<EditorPage />} />
+        </Routes>
+      </Suspense>
+    </SessionProvider>
   );
 }

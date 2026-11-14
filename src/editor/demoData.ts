@@ -7,6 +7,9 @@ import {
   PAGE_DECK_LIMIT,
   PAGE_KICKER_LIMIT,
   PAGE_TITLE_LIMIT,
+  PROJECT_FRAME_RADIUS_DEFAULT,
+  PROJECT_FRAME_RADIUS_MAX,
+  PROJECT_FRAME_RADIUS_MIN,
   PROJECT_ISSUE_LIMIT,
   PROJECT_SUBTITLE_LIMIT,
   PROJECT_TITLE_LIMIT,
@@ -22,6 +25,9 @@ import {
   PageThemeId,
   ProjectState,
   TemplateId,
+  UserTemplateKind,
+  UserTemplatePage,
+  UserTemplatePayload,
 } from './types';
 
 export interface TemplateDefinition {
@@ -59,7 +65,16 @@ export interface TemplatePackDefinition {
 }
 
 const defaultFit: ImageFit = 'cover';
+export const DEFAULT_FILL_SCALE = 1.1;
 export const defaultPageTheme: PageThemeId = 'warm-beige';
+
+function normalizeFrameRadius(value: unknown) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return PROJECT_FRAME_RADIUS_DEFAULT;
+  }
+
+  return clamp(Math.round(value), PROJECT_FRAME_RADIUS_MIN, PROJECT_FRAME_RADIUS_MAX);
+}
 
 export const pageThemeMeta: Record<PageThemeId, PageThemeDefinition> = {
   'warm-beige': {
@@ -67,10 +82,20 @@ export const pageThemeMeta: Record<PageThemeId, PageThemeDefinition> = {
     summary: 'Editorial paper',
     description: 'The current signature paper tone with warm contrast for classic magazine pages.',
   },
+  'butter-cream': {
+    label: 'Butter cream',
+    summary: 'Soft warmth',
+    description: 'A mellow cream sheet that lifts skin tones and travel imagery without looking yellow.',
+  },
   'pale-blue': {
     label: 'Pale blue',
     summary: 'Cool daylight',
     description: 'A quiet blue paper tone that keeps the page airy without flattening photographs.',
+  },
+  'sea-glass': {
+    label: 'Sea glass',
+    summary: 'Cool green',
+    description: 'A pale blue-green paper for calmer spreads, coastal sets, and softer documentary pages.',
   },
   'pure-white': {
     label: 'Pure white',
@@ -82,9 +107,40 @@ export const pageThemeMeta: Record<PageThemeId, PageThemeDefinition> = {
     summary: 'Soft neutral',
     description: 'A restrained gray sheet when you want a quieter page without a warm cast.',
   },
+  sandstone: {
+    label: 'Sand stone',
+    summary: 'Muted sand',
+    description: 'A dry sand-toned paper that adds body to product, interior, and desert work without going dark.',
+  },
+  'sage-mist': {
+    label: 'Sage mist',
+    summary: 'Muted green',
+    description: 'A soft green-gray paper tone for calmer spreads and quieter product or landscape work.',
+  },
+  'dusty-rose': {
+    label: 'Dusty rose',
+    summary: 'Warm tint',
+    description: 'A restrained rose paper tone that adds warmth without turning the page sugary.',
+  },
+  'pearl-blush': {
+    label: 'Pearl blush',
+    summary: 'Light blush',
+    description: 'A pale blush sheet for wedding, portrait, and softer lifestyle stories that still need editorial restraint.',
+  },
 };
 
-export const pageThemeOrder: PageThemeId[] = ['warm-beige', 'pale-blue', 'pure-white', 'light-gray'];
+export const pageThemeOrder: PageThemeId[] = [
+  'warm-beige',
+  'butter-cream',
+  'pale-blue',
+  'sea-glass',
+  'pure-white',
+  'light-gray',
+  'sandstone',
+  'sage-mist',
+  'dusty-rose',
+  'pearl-blush',
+];
 
 const defaultCustomTemplateSource: CustomTemplateDefinition = {
   name: 'Editorial Split',
@@ -328,11 +384,90 @@ export const templateOrder: TemplateId[] = [
   'custom',
 ];
 
+const templateFieldSupport: Record<
+  TemplateId,
+  {
+    kicker: boolean;
+    deck: boolean;
+    body: boolean;
+  }
+> = {
+  cover: {
+    kicker: false,
+    deck: true,
+    body: false,
+  },
+  essay: {
+    kicker: true,
+    deck: true,
+    body: true,
+  },
+  folio: {
+    kicker: true,
+    deck: true,
+    body: false,
+  },
+  grid: {
+    kicker: true,
+    deck: false,
+    body: true,
+  },
+  diptych: {
+    kicker: true,
+    deck: true,
+    body: true,
+  },
+  panorama: {
+    kicker: true,
+    deck: true,
+    body: false,
+  },
+  mosaic: {
+    kicker: true,
+    deck: true,
+    body: true,
+  },
+  triptych: {
+    kicker: true,
+    deck: true,
+    body: true,
+  },
+  custom: {
+    kicker: true,
+    deck: true,
+    body: true,
+  },
+};
+
+export function templateUsesKicker(template: TemplateId) {
+  return templateFieldSupport[template].kicker;
+}
+
+export function templateUsesDeck(template: TemplateId) {
+  return templateFieldSupport[template].deck;
+}
+
+function customTemplateSupportsBody(customTemplate?: CustomTemplateDefinition | null) {
+  if (!customTemplate) {
+    return true;
+  }
+
+  return customTemplate.text.width >= 28 && customTemplate.text.height >= 30;
+}
+
+export function templateUsesBody(template: TemplateId, customTemplate?: CustomTemplateDefinition | null) {
+  if (template === 'custom') {
+    return templateFieldSupport[template].body && customTemplateSupportsBody(customTemplate);
+  }
+
+  return templateFieldSupport[template].body;
+}
+
 const pageStarters: Record<TemplateId, Omit<PageData, 'id' | 'slots' | 'crops' | 'template' | 'customTemplate' | 'theme'>> = {
   cover: {
     kicker: 'Cover',
-    title: 'Untitled Issue',
-    deck: 'Issue 01',
+    title: 'Untitled Project',
+    deck: 'Folio 01',
     body: '',
     caption: 'Choose a lead image for the opening page.',
   },
@@ -462,6 +597,7 @@ export const templatePacks: Record<TemplatePackId, TemplatePackDefinition> = Obj
     },
   ]),
 ) as Record<TemplatePackId, TemplatePackDefinition>;
+export const projectTemplateMeta = templatePacks;
 
 export const defaultTemplatePackId: TemplatePackId = 'feature-story';
 
@@ -490,6 +626,77 @@ function isAsset(value: unknown): value is Asset {
     typeof (value as Asset).src === 'string' &&
     typeof (value as Asset).note === 'string'
   );
+}
+
+function normalizeAssetRecord(value: unknown): Asset | null {
+  if (!isAsset(value)) {
+    return null;
+  }
+
+  const asset = value as Asset;
+  const hasIntrinsicSize =
+    typeof asset.width === 'number' &&
+    Number.isFinite(asset.width) &&
+    asset.width > 0 &&
+    typeof asset.height === 'number' &&
+    Number.isFinite(asset.height) &&
+    asset.height > 0;
+  const deliveryState =
+    asset.delivery?.state === 'pending' ||
+    asset.delivery?.state === 'remote' ||
+    asset.delivery?.state === 'failed' ||
+    asset.delivery?.state === 'local'
+      ? asset.delivery.state
+      : null;
+
+  return {
+    id: asset.id,
+    name: asset.name,
+    src: asset.src,
+    note: asset.note,
+    builtIn: asset.builtIn === true,
+    ...(typeof asset.bytes === 'number' && Number.isFinite(asset.bytes) && asset.bytes >= 0 ? { bytes: Math.round(asset.bytes) } : {}),
+    ...(typeof asset.mimeType === 'string' && asset.mimeType.trim() ? { mimeType: asset.mimeType.trim() } : {}),
+    ...(asset.variants && typeof asset.variants === 'object'
+      ? {
+          variants: {
+            ...(asset.variants.original && typeof asset.variants.original === 'object' ? { original: { ...asset.variants.original } } : {}),
+            ...(asset.variants.preview !== undefined ? { preview: asset.variants.preview ? { ...asset.variants.preview } : null } : {}),
+            ...(asset.variants.thumb !== undefined ? { thumb: asset.variants.thumb ? { ...asset.variants.thumb } : null } : {}),
+          },
+        }
+      : {}),
+    ...(hasIntrinsicSize
+      ? {
+          width: Math.round(asset.width as number),
+          height: Math.round(asset.height as number),
+        }
+      : {}),
+    ...(deliveryState
+      ? {
+          delivery: {
+            state: deliveryState,
+            ...(typeof asset.delivery?.canRetry === 'boolean' ? { canRetry: asset.delivery.canRetry } : {}),
+            ...(typeof asset.delivery?.queuedAt === 'string' || asset.delivery?.queuedAt === null
+              ? { queuedAt: asset.delivery?.queuedAt ?? null }
+              : {}),
+            ...(typeof asset.delivery?.lastAttemptAt === 'string' || asset.delivery?.lastAttemptAt === null
+              ? { lastAttemptAt: asset.delivery?.lastAttemptAt ?? null }
+              : {}),
+            ...(typeof asset.delivery?.syncedAt === 'string' || asset.delivery?.syncedAt === null
+              ? { syncedAt: asset.delivery?.syncedAt ?? null }
+              : {}),
+            ...(typeof asset.delivery?.error === 'string' || asset.delivery?.error === null
+              ? { error: asset.delivery?.error ?? null }
+              : {}),
+            ...(typeof asset.delivery?.attempts === 'number' && Number.isFinite(asset.delivery.attempts)
+              ? { attempts: Math.max(0, Math.round(asset.delivery.attempts)) }
+              : {}),
+          },
+        }
+      : {}),
+    ...(typeof asset.lastUsedAt === 'string' || asset.lastUsedAt === null ? { lastUsedAt: asset.lastUsedAt ?? null } : {}),
+  };
 }
 
 function isValidFrameSlot(value: unknown): value is string {
@@ -620,11 +827,12 @@ export function normalizeCustomTemplateDefinition(value: unknown): CustomTemplat
 }
 
 export function createDefaultCrop(overrides: Partial<CropSettings> = {}): CropSettings {
+  const fit = overrides.fit === 'contain' ? 'contain' : defaultFit;
   return {
     x: 50,
     y: 50,
-    scale: 1,
-    fit: defaultFit,
+    scale: fit === 'contain' ? 1 : DEFAULT_FILL_SCALE,
+    fit,
     ...overrides,
   };
 }
@@ -635,11 +843,13 @@ export function normalizeCropSettings(value: unknown): CropSettings {
   }
 
   const crop = value as Partial<CropSettings>;
+  const fit = crop.fit === 'contain' ? 'contain' : defaultFit;
+  const minimumScale = fit === 'contain' ? 1 : DEFAULT_FILL_SCALE;
   return createDefaultCrop({
     x: typeof crop.x === 'number' ? Math.min(100, Math.max(0, crop.x)) : 50,
     y: typeof crop.y === 'number' ? Math.min(100, Math.max(0, crop.y)) : 50,
-    scale: typeof crop.scale === 'number' ? Math.min(2.2, Math.max(1, crop.scale)) : 1,
-    fit: crop.fit === 'contain' ? 'contain' : defaultFit,
+    scale: typeof crop.scale === 'number' ? Math.min(2.2, Math.max(minimumScale, crop.scale)) : minimumScale,
+    fit,
   });
 }
 
@@ -822,15 +1032,117 @@ export function createPagesFromTemplatePack(
 
 export function createDefaultProject(): ProjectState {
   return {
-    title: 'Untitled Issue'.slice(0, PROJECT_TITLE_LIMIT),
+    title: 'Untitled Project'.slice(0, PROJECT_TITLE_LIMIT),
     subtitle: 'Upload photographs, shape the sequence page by page, then print only the finished magazine pages.'.slice(
       0,
       PROJECT_SUBTITLE_LIMIT,
     ),
-    issue: 'Issue 01'.slice(0, PROJECT_ISSUE_LIMIT),
+    issue: 'Folio 01'.slice(0, PROJECT_ISSUE_LIMIT),
+    frameRadius: PROJECT_FRAME_RADIUS_DEFAULT,
     assets: [],
     pages: createPagesFromTemplatePack(defaultTemplatePackId),
   };
+}
+
+function buildTemplatePageBlueprint(page: PageData, { preserveCopy }: { preserveCopy: boolean }): UserTemplatePage {
+  const starterPage = createPageDraft(page.template, `template-${page.template}`, {
+    theme: page.theme,
+    customTemplate: page.customTemplate ?? undefined,
+  });
+
+  return {
+    template: page.template,
+    theme: page.theme,
+    kicker: preserveCopy ? page.kicker : starterPage.kicker,
+    title: preserveCopy ? page.title : starterPage.title,
+    deck: preserveCopy ? page.deck : starterPage.deck,
+    body: preserveCopy ? page.body : starterPage.body,
+    caption: preserveCopy ? page.caption : starterPage.caption,
+    customTemplate: page.customTemplate ? cloneCustomTemplateDefinition(page.customTemplate) : null,
+  };
+}
+
+export function extractUserTemplatePayload(
+  project: ProjectState,
+  { preserveCopy = true }: { preserveCopy?: boolean } = {},
+): UserTemplatePayload {
+  const defaultProject = createDefaultProject();
+
+  return {
+    title: preserveCopy ? project.title : defaultProject.title,
+    subtitle: preserveCopy ? project.subtitle : defaultProject.subtitle,
+    issue: preserveCopy ? project.issue : defaultProject.issue,
+    frameRadius: normalizeFrameRadius(project.frameRadius),
+    pages: project.pages.map((page) => buildTemplatePageBlueprint(page, { preserveCopy })),
+  };
+}
+
+export function extractUserTemplatePayloadForKind(
+  project: ProjectState,
+  kind: UserTemplateKind,
+  {
+    preserveCopy = true,
+    pageId,
+  }: {
+    preserveCopy?: boolean;
+    pageId?: string | null;
+  } = {},
+): UserTemplatePayload {
+  if (kind === 'project') {
+    return extractUserTemplatePayload(project, { preserveCopy });
+  }
+
+  const selectedPage = project.pages.find((page) => page.id === pageId) ?? project.pages[0];
+  if (!selectedPage) {
+    return extractUserTemplatePayload(project, { preserveCopy });
+  }
+
+  const defaultProject = createDefaultProject();
+  return {
+    title: preserveCopy ? project.title : defaultProject.title,
+    subtitle: preserveCopy ? project.subtitle : defaultProject.subtitle,
+    issue: preserveCopy ? project.issue : defaultProject.issue,
+    frameRadius: normalizeFrameRadius(project.frameRadius),
+    pages: [buildTemplatePageBlueprint(selectedPage, { preserveCopy })],
+  };
+}
+
+export function createProjectFromUserTemplate(templatePayload: UserTemplatePayload): ProjectState {
+  const normalizedPayload =
+    templatePayload && typeof templatePayload === 'object'
+      ? templatePayload
+      : {
+          title: '',
+          subtitle: '',
+          issue: '',
+          frameRadius: PROJECT_FRAME_RADIUS_DEFAULT,
+          pages: [],
+        };
+
+  const project = createDefaultProject();
+  const pages =
+    Array.isArray(normalizedPayload.pages) && normalizedPayload.pages.length
+      ? normalizedPayload.pages.map((page, index) =>
+          createPageDraft(page.template, `page-template-${index + 1}`, {
+            theme: normalizePageTheme(page.theme),
+            kicker: typeof page.kicker === 'string' ? page.kicker : undefined,
+            title: typeof page.title === 'string' ? page.title : undefined,
+            deck: typeof page.deck === 'string' ? page.deck : undefined,
+            body: typeof page.body === 'string' ? page.body : undefined,
+            caption: typeof page.caption === 'string' ? page.caption : undefined,
+            customTemplate: page.customTemplate ? cloneCustomTemplateDefinition(page.customTemplate) : undefined,
+          }),
+        )
+      : project.pages;
+
+  return normalizeProjectState({
+    title: typeof normalizedPayload.title === 'string' ? normalizedPayload.title : project.title,
+    subtitle: typeof normalizedPayload.subtitle === 'string' ? normalizedPayload.subtitle : project.subtitle,
+    issue: typeof normalizedPayload.issue === 'string' ? normalizedPayload.issue : project.issue,
+    frameRadius: normalizedPayload.frameRadius,
+    assets: [],
+    pages,
+  });
 }
 
 export function normalizeProjectState(project: unknown): ProjectState {
@@ -844,15 +1156,25 @@ export function normalizeProjectState(project: unknown): ProjectState {
     Array.isArray(nextProject.pages) && nextProject.pages.length
       ? nextProject.pages.map((page, index) => normalizePageData(page, index))
       : fresh.pages;
-  const assets = Array.isArray(nextProject.assets) ? nextProject.assets.filter(isAsset) : [];
+  const assets = Array.isArray(nextProject.assets)
+    ? nextProject.assets
+        .map((asset) => normalizeAssetRecord(asset))
+        .filter((asset) => asset !== null)
+    : [];
+
+  const normalizedTitleSource = typeof nextProject.title === 'string' ? nextProject.title : fresh.title;
+  const normalizedIssueSource = typeof nextProject.issue === 'string' ? nextProject.issue : fresh.issue;
+  const title = normalizedTitleSource.trim() === 'Untitled Issue' || normalizedTitleSource.trim() === 'Untitled Folio' ? fresh.title : normalizedTitleSource;
+  const issue = normalizedIssueSource.trim() === 'Issue 01' || normalizedIssueSource.trim() === 'Folio 01' ? fresh.issue : normalizedIssueSource;
 
   return {
-    title: trimToLimit(typeof nextProject.title === 'string' ? nextProject.title : fresh.title, PROJECT_TITLE_LIMIT),
+    title: trimToLimit(title, PROJECT_TITLE_LIMIT),
     subtitle: trimToLimit(
       typeof nextProject.subtitle === 'string' ? nextProject.subtitle : fresh.subtitle,
       PROJECT_SUBTITLE_LIMIT,
     ),
-    issue: trimToLimit(typeof nextProject.issue === 'string' ? nextProject.issue : fresh.issue, PROJECT_ISSUE_LIMIT),
+    issue: trimToLimit(issue, PROJECT_ISSUE_LIMIT),
+    frameRadius: normalizeFrameRadius(nextProject.frameRadius),
     assets,
     pages,
   };

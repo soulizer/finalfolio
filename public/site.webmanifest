@@ -1,0 +1,22 @@
+{
+  "name": "FinalFolio",
+  "short_name": "FinalFolio",
+  "description": "Create elegant electronic magazines from photographs with a restrained WYSIWYG editor.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f1eb",
+  "theme_color": "#f4f1eb",
+  "icons": [
+    {
+      "src": "/app-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

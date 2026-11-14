@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1600">
+  <defs>
+    <linearGradient id="seated-bg-v2" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f8f2ea" />
+      <stop offset="100%" stop-color="#ded2c4" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="1600" fill="url(#seated-bg-v2)" />
+  <rect x="142" y="132" width="916" height="996" rx="40" fill="#eee3d4" />
+  <rect x="206" y="206" width="788" height="848" rx="26" fill="#fbf7ef" />
+  <g opacity="0.58">
+    <rect x="206" y="206" width="78" height="848" fill="#eadac8" />
+    <rect x="362" y="206" width="78" height="848" fill="#eadac8" />
+    <rect x="518" y="206" width="78" height="848" fill="#eadac8" />
+    <rect x="674" y="206" width="78" height="848" fill="#eadac8" />
+    <rect x="830" y="206" width="78" height="848" fill="#eadac8" />
+  </g>
+  <ellipse cx="710" cy="1302" rx="266" ry="58" fill="#665b52" opacity="0.18" />
+  <path d="M496 1222C542 1080 616 994 704 962C780 934 860 958 924 1034C968 1086 996 1142 1012 1212L956 1398H582Z" fill="#48413b" />
+  <path d="M586 1182L700 1282L804 1168L834 1390H554Z" fill="#686058" />
+  <path d="M642 684C642 554 704 454 780 454C856 454 918 554 918 684V808C918 950 854 1046 778 1046C704 1046 642 950 642 808Z" fill="#e0c8b0" />
+  <path d="M614 664C614 538 682 434 780 400C856 374 934 402 990 480C960 458 928 448 892 442C838 434 784 444 736 474C682 508 642 566 620 648C616 652 614 658 614 664Z" fill="#3c3632" />
+  <path d="M676 736C730 710 798 710 852 736" fill="none" stroke="#574b44" stroke-width="18" stroke-linecap="round" />
+  <ellipse cx="724" cy="768" rx="14" ry="10" fill="#564740" />
+  <ellipse cx="818" cy="768" rx="14" ry="10" fill="#564740" />
+  <path d="M732 884C760 904 798 904 826 880" fill="none" stroke="#a17763" stroke-width="14" stroke-linecap="round" />
+  <rect x="506" y="990" width="318" height="30" rx="15" fill="#6d6259" />
+  <rect x="534" y="1018" width="56" height="206" rx="26" fill="#5d544d" />
+  <rect x="736" y="1018" width="56" height="206" rx="26" fill="#5d544d" />
+  <rect x="470" y="1190" width="374" height="42" rx="21" fill="#534a44" />
+</svg>

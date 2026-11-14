@@ -1,0 +1,295 @@
+import type { CSSProperties } from 'react';
+import { MagazinePreview } from '../../components/MagazinePreview';
+import { getTemplateLabel } from '../../editor/demoData';
+import type { Asset, ProjectRecord } from '../../editor/types';
+import { formatTimestamp } from './accountFormatting';
+import type { ProjectVisibilityFilter } from './useAccountWorkspace';
+
+const accountPreviewStyle = {
+  '--page-scale': 0.32,
+} as CSSProperties;
+
+type AccountProjectsPanelProps = {
+  filteredProjects: ProjectRecord[];
+  handleCopyShareLink: (project: ProjectRecord) => void | Promise<void>;
+  handleDeleteProject: (projectId: string) => void | Promise<void>;
+  handleDisableShare: (project: ProjectRecord) => void | Promise<void>;
+  handleEnableShare: (project: ProjectRecord) => void | Promise<void>;
+  handleSaveProjectRename: (project: ProjectRecord) => void | Promise<void>;
+  openRoute: (path: string) => void;
+  projectBusyAction: 'delete' | 'share' | 'rename' | 'duplicate' | 'archive' | null;
+  projectBusyId: string | null;
+  projectEditingId: string | null;
+  projectIssueDraft: string;
+  projectSearch: string;
+  projectTitleDraft: string;
+  projectVisibilityFilter: ProjectVisibilityFilter;
+  selectedProject: ProjectRecord | null;
+  selectedProjectAssetsById: Record<string, Asset>;
+  setProjectIssueDraft: (value: string) => void;
+  setProjectSearch: (value: string) => void;
+  setProjectTitleDraft: (value: string) => void;
+  setProjectVisibilityFilter: (value: ProjectVisibilityFilter) => void;
+  setSelectedProjectId: (projectId: string) => void;
+  stopEditingProject: () => void;
+};
+
+const PROJECT_VISIBILITY_FILTERS: ProjectVisibilityFilter[] = ['active', 'archived', 'all'];
+
+export function AccountProjectsPanel({
+  filteredProjects,
+  handleCopyShareLink,
+  handleDeleteProject,
+  handleDisableShare,
+  handleEnableShare,
+  handleSaveProjectRename,
+  openRoute,
+  projectBusyAction,
+  projectBusyId,
+  projectEditingId,
+  projectIssueDraft,
+  projectSearch,
+  projectTitleDraft,
+  projectVisibilityFilter,
+  selectedProject,
+  selectedProjectAssetsById,
+  setProjectIssueDraft,
+  setProjectSearch,
+  setProjectTitleDraft,
+  setProjectVisibilityFilter,
+  setSelectedProjectId,
+  stopEditingProject,
+}: AccountProjectsPanelProps) {
+  return (
+    <div className="admin-page admin-page--single">
+      <section className="editor-panel admin-panel">
+        <div className="editor-panel__heading">
+          <div>
+            <p className="eyebrow">Projects</p>
+            <h2>My projects</h2>
+          </div>
+          <span className="panel-tag">{filteredProjects.length}</span>
+        </div>
+        <div className="editor-filter-row" role="tablist" aria-label="Project visibility filters">
+          {PROJECT_VISIBILITY_FILTERS.map((filter) => (
+            <button
+              key={filter}
+              type="button"
+              className={`editor-filter-chip ${projectVisibilityFilter === filter ? 'is-active' : ''}`}
+              onClick={() => setProjectVisibilityFilter(filter)}
+            >
+              {filter === 'active' ? 'Active' : filter === 'archived' ? 'Archived' : 'All'}
+            </button>
+          ))}
+        </div>
+        <label className="field admin-search-field">
+          <span>Search projects</span>
+          <input
+            placeholder="Title, folio mark, or project ID"
+            value={projectSearch}
+            onChange={(event) => setProjectSearch(event.target.value)}
+          />
+        </label>
+        <div className="admin-split-panel admin-split-panel--inspector">
+          <div className="admin-list">
+            {filteredProjects.length ? (
+              filteredProjects.map((project) => {
+                const isEditing = projectEditingId === project.id;
+                return (
+                  <article
+                    key={project.id}
+                    className={`admin-row admin-row--interactive ${selectedProject?.id === project.id ? 'is-selected' : ''}`}
+                    onClick={() => setSelectedProjectId(project.id)}
+                  >
+                    <div className="admin-row__main">
+                      {isEditing ? (
+                        <div className="template-library-card__form">
+                          <label className="field">
+                            <span>Project title</span>
+                            <input value={projectTitleDraft} onChange={(event) => setProjectTitleDraft(event.target.value)} />
+                          </label>
+                          <label className="field">
+                            <span>Folio mark</span>
+                            <input value={projectIssueDraft} onChange={(event) => setProjectIssueDraft(event.target.value)} />
+                          </label>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="admin-row__header">
+                            <strong className="admin-row__title admin-row__title--truncate" title={project.project.title}>
+                              {project.project.title}
+                            </strong>
+                          </div>
+                          <p className="admin-row__subline">{project.id}</p>
+                          <p className="admin-row__description">
+                            {`${project.project.issue} · ${project.project.pages.length} pages · ${project.project.assets.length} assets · Updated ${formatTimestamp(project.updatedAt)}`}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                    <div className="admin-row__aside">
+                      <div className="admin-row__meta">
+                        <span className="admin-pill admin-pill--strong">{project.project.issue}</span>
+                        <span className={`admin-pill ${project.share.enabled ? 'admin-pill--success' : 'admin-pill--warning'}`}>
+                          {project.share.enabled ? 'Shared' : 'Private'}
+                        </span>
+                        {project.archivedAt ? <span className="admin-pill admin-pill--warning">Archived</span> : null}
+                      </div>
+                      <div className="admin-row__actions" onClick={(event) => event.stopPropagation()}>
+                        {isEditing ? (
+                          <>
+                            <button
+                              type="button"
+                              className="button button--primary button--small"
+                              disabled={projectBusyId === project.id}
+                              onClick={() => void handleSaveProjectRename(project)}
+                            >
+                              {projectBusyId === project.id && projectBusyAction === 'rename' ? 'Saving…' : 'Save'}
+                            </button>
+                            <button type="button" className="button button--ghost button--small" onClick={stopEditingProject}>
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button type="button" className="button button--primary button--small" onClick={() => openRoute(project.sharePath)}>
+                              Edit
+                            </button>
+                            {project.share.enabled ? (
+                              <>
+                                <button type="button" className="button button--ghost button--small" onClick={() => void handleCopyShareLink(project)}>
+                                  Copy link
+                                </button>
+                                <button
+                                  type="button"
+                                  className="button button--ghost button--small"
+                                  disabled={projectBusyId === project.id}
+                                  onClick={() => void handleDisableShare(project)}
+                                >
+                                  {projectBusyId === project.id && projectBusyAction === 'share' ? 'Updating…' : 'Disable'}
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                className="button button--ghost button--small"
+                                disabled={projectBusyId === project.id}
+                                onClick={() => void handleEnableShare(project)}
+                              >
+                                {projectBusyId === project.id && projectBusyAction === 'share' ? 'Sharing…' : 'Share'}
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className="button button--danger button--small"
+                              disabled={projectBusyId === project.id}
+                              onClick={() => void handleDeleteProject(project.id)}
+                            >
+                              {projectBusyId === project.id && projectBusyAction === 'delete' ? 'Deleting…' : 'Delete'}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                );
+              })
+            ) : (
+              <article className="admin-list__empty">
+                <strong>No matching projects</strong>
+                <p>Try a different title, folio mark, or project ID.</p>
+              </article>
+            )}
+          </div>
+
+          <aside className="admin-detail-card">
+            {selectedProject ? (
+              <>
+                <div className="admin-detail-card__header">
+                  <div>
+                    <p className="eyebrow">Inspect</p>
+                    <h2>{selectedProject.project.title}</h2>
+                  </div>
+                  <span className="panel-tag">{selectedProject.project.issue}</span>
+                </div>
+                {selectedProject.project.pages.length ? (
+                  <div className="admin-detail-preview">
+                    <div className="admin-detail-preview__strip">
+                      {selectedProject.project.pages.map((page, index) => (
+                        <article key={page.id} className="admin-detail-preview__page">
+                          <div className="magazine-sheet magazine-sheet--editor" style={accountPreviewStyle}>
+                            <MagazinePreview
+                              issue={selectedProject.project.issue}
+                              page={page}
+                              assets={selectedProjectAssetsById}
+                              assetVariant="preview"
+                              frameRadius={selectedProject.project.frameRadius}
+                              pageNumber={index + 1}
+                            />
+                          </div>
+                          <div className="admin-detail-preview__caption">
+                            <span>{String(index + 1).padStart(2, '0')}</span>
+                            <strong>{page.title.trim() || getTemplateLabel(page.template, page.customTemplate)}</strong>
+                            <small>{getTemplateLabel(page.template, page.customTemplate)}</small>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                    <p className="panel-note">Scroll horizontally to inspect the full sequence.</p>
+                  </div>
+                ) : null}
+                <div className="admin-detail-metrics admin-detail-metrics--compact">
+                  <article>
+                    <span>Updated</span>
+                    <strong>{formatTimestamp(selectedProject.updatedAt)}</strong>
+                  </article>
+                  <article>
+                    <span>Pages</span>
+                    <strong>{selectedProject.project.pages.length}</strong>
+                  </article>
+                  <article>
+                    <span>Assets</span>
+                    <strong>{selectedProject.project.assets.length}</strong>
+                  </article>
+                  <article>
+                    <span>Visibility</span>
+                    <strong>{selectedProject.share.enabled ? 'Shared' : 'Private'}</strong>
+                  </article>
+                  <article>
+                    <span>Status</span>
+                    <strong>{selectedProject.archivedAt ? 'Archived' : 'Active'}</strong>
+                  </article>
+                </div>
+                {selectedProject.project.subtitle ? (
+                  <div className="admin-detail-section">
+                    <strong>Subtitle</strong>
+                    <p className="panel-note">{selectedProject.project.subtitle}</p>
+                  </div>
+                ) : null}
+                <div className="editor-panel__actions admin-panel__actions--flush">
+                  <button type="button" className="button button--primary button--small" onClick={() => openRoute(selectedProject.sharePath)}>
+                    Edit
+                  </button>
+                  {selectedProject.share.enabled ? (
+                    <button type="button" className="button button--ghost button--small" onClick={() => void handleCopyShareLink(selectedProject)}>
+                      Copy link
+                    </button>
+                  ) : (
+                    <button type="button" className="button button--ghost button--small" onClick={() => void handleEnableShare(selectedProject)}>
+                      Enable public link
+                    </button>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="admin-detail-card__empty">
+                <strong>Select a project</strong>
+                <p>Choose a project from the list to inspect its pages, metadata, and sharing state.</p>
+              </div>
+            )}
+          </aside>
+        </div>
+      </section>
+    </div>
+  );
+}

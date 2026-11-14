@@ -1,24 +1,114 @@
-import { CSSProperties } from 'react';
-import { Asset, CropSettings, LayoutArea, PageData } from '../editor/types';
+import {
+  CSSProperties,
+  KeyboardEvent as ReactKeyboardEvent,
+  useLayoutEffect,
+  PointerEvent as ReactPointerEvent,
+  WheelEvent as ReactWheelEvent,
+  useEffect,
+  useMemo,
+  useState,
+  useRef,
+} from 'react';
+import { templateUsesBody, templateUsesDeck, templateUsesKicker } from '../editor/demoData';
+import {
+  calculateImageRenderGeometry,
+  clamp,
+  pixelOffsetToCropValue,
+  resolveAssetIntrinsicSize,
+  cropValueToPixelOffset,
+} from '../editor/imageGeometry';
+import { getAssetSource } from '../editor/assetResources';
+import { Asset, AssetVariantKind, CropSettings, LayoutArea, PageData } from '../editor/types';
 
 interface MagazinePreviewProps {
   issue: string;
   page: PageData;
   assets: Record<string, Asset>;
+  assetVariant?: AssetVariantKind;
+  imageDecoding?: 'sync' | 'async' | 'auto';
+  frameRadius?: number;
   pageNumber?: number;
   selectedSlot?: string | null;
   interactive?: boolean;
   onSelectSlot?: (slot: string) => void;
   onAssignDroppedAsset?: (slot: string, assetId: string) => void;
+  onUpdateCrop?: (slot: string, updater: (crop: CropSettings) => CropSettings) => void;
+  onCropMetricsChange?: (slot: string, metrics: { maxOffsetX: number; maxOffsetY: number } | null) => void;
 }
 
-function frameStyle(crop?: CropSettings): CSSProperties {
+const eastAsianTextPattern = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uac00-\ud7af]/;
+
+function hasEastAsianText(...values: Array<string | null | undefined>) {
+  return values.some((value) => Boolean(value && eastAsianTextPattern.test(value)));
+}
+
+function fallbackFrameStyle(crop?: CropSettings): CSSProperties {
   return {
+    inset: 0,
+    width: '100%',
+    height: '100%',
     objectFit: crop?.fit ?? 'cover',
     objectPosition: `${crop?.x ?? 50}% ${crop?.y ?? 50}%`,
     transform: `scale(${crop?.scale ?? 1})`,
   };
 }
+
+function createInteractiveFrameStyle(
+  geometry: ReturnType<typeof calculateImageRenderGeometry>,
+  crop: CropSettings | undefined,
+): CSSProperties {
+  if (!crop || !geometry) {
+    return fallbackFrameStyle(crop);
+  }
+
+  return {
+    left: '50%',
+    top: '50%',
+    width: `${geometry.baseWidth}px`,
+    height: `${geometry.baseHeight}px`,
+    transform: `translate(-50%, -50%) translate(${geometry.offsetX}px, ${geometry.offsetY}px) scale(${crop.scale})`,
+  };
+}
+
+function getFallbackCrop(crop?: CropSettings): CropSettings {
+  return {
+    x: crop?.x ?? 50,
+    y: crop?.y ?? 50,
+    scale: crop?.scale ?? 1,
+    fit: crop?.fit ?? 'cover',
+  };
+}
+
+function readStableFrameSize(frame: HTMLButtonElement | HTMLDivElement) {
+  const computed = window.getComputedStyle(frame);
+  const computedWidth = Number.parseFloat(computed.width);
+  const computedHeight = Number.parseFloat(computed.height);
+
+  if (Number.isFinite(computedWidth) && computedWidth > 0 && Number.isFinite(computedHeight) && computedHeight > 0) {
+    return {
+      width: computedWidth,
+      height: computedHeight,
+    };
+  }
+
+  const clientWidth = frame.clientWidth;
+  const clientHeight = frame.clientHeight;
+  if (clientWidth > 0 && clientHeight > 0) {
+    return {
+      width: clientWidth,
+      height: clientHeight,
+    };
+  }
+
+  const rect = frame.getBoundingClientRect();
+  return {
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
+const cropNudgeStep = 4;
+const cropScaleStep = 0.06;
 
 function areaStyle(area: LayoutArea): CSSProperties {
   return {
@@ -37,30 +127,299 @@ function AssetFrame({
   interactive,
   onSelectSlot,
   onAssignDroppedAsset,
+  onUpdateCrop,
+  onCropMetricsChange,
+  assetVariant = 'original',
+  imageDecoding,
   className,
   hintLabel,
 }: {
   slot: string;
   page: PageData;
   assets: Record<string, Asset>;
+  assetVariant?: AssetVariantKind;
+  imageDecoding?: 'sync' | 'async' | 'auto';
   selectedSlot?: string | null;
   interactive?: boolean;
   onSelectSlot?: (slot: string) => void;
   onAssignDroppedAsset?: (slot: string, assetId: string) => void;
+  onUpdateCrop?: (slot: string, updater: (crop: CropSettings) => CropSettings) => void;
+  onCropMetricsChange?: (slot: string, metrics: { maxOffsetX: number; maxOffsetY: number } | null) => void;
   className?: string;
   hintLabel?: string;
 }) {
   const assetId = page.slots[slot];
   const asset = assetId ? assets[assetId] : null;
+  const assetSource = getAssetSource(asset, assetVariant);
   const isSelected = selectedSlot === slot;
-  const frameClassName = `asset-frame ${className ?? ''} ${isSelected ? 'is-selected' : ''}`.trim();
+  const canAdjustCrop = Boolean(interactive && asset && isSelected && onUpdateCrop);
+  const [isDragging, setIsDragging] = useState(false);
+  const frameClassName = `asset-frame ${className ?? ''} ${isSelected ? 'is-selected' : ''} ${canAdjustCrop ? 'is-draggable' : ''} ${isDragging ? 'is-dragging' : ''}`.trim();
   const slotHint = hintLabel ?? slot;
+  const frameRef = useRef<HTMLButtonElement | HTMLDivElement | null>(null);
+  const setFrameElement = (node: HTMLButtonElement | HTMLDivElement | null) => {
+    frameRef.current = node;
+  };
+  const imageRef = useRef<HTMLImageElement | null>(null);
+  const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
+  const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 });
+  const crop = getFallbackCrop(page.crops[slot]);
+  const intrinsicSize = useMemo(
+    () => resolveAssetIntrinsicSize(asset, naturalSize),
+    [asset, naturalSize],
+  );
+  const imageGeometry = useMemo(
+    () => calculateImageRenderGeometry(frameSize, intrinsicSize, crop),
+    [crop, frameSize, intrinsicSize],
+  );
+  const interactiveImageStyle = useMemo(() => createInteractiveFrameStyle(imageGeometry, crop), [crop, imageGeometry]);
+  const hasAsset = Boolean(asset);
+  const frameReady = frameSize.width > 0 && frameSize.height > 0;
+  const geometryReady = !hasAsset || Boolean(imageGeometry);
+  const dragMetrics = useMemo(() => {
+    if (!imageGeometry) {
+      return {
+        maxOffsetX: 0,
+        maxOffsetY: 0,
+      };
+    }
+
+    return {
+      maxOffsetX: imageGeometry.maxOffsetX,
+      maxOffsetY: imageGeometry.maxOffsetY,
+    };
+  }, [imageGeometry]);
+  const dragStateRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    startOffsetX: number;
+    startOffsetY: number;
+    maxOffsetX: number;
+    maxOffsetY: number;
+    startCrop: CropSettings;
+    target: HTMLButtonElement;
+  } | null>(null);
+
+  useLayoutEffect(() => {
+    const frame = frameRef.current;
+    if (!frame || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+
+    const updateFrameSize = (nextWidth: number, nextHeight: number) => {
+      setFrameSize((current) =>
+        Math.abs(current.width - nextWidth) < 0.1 && Math.abs(current.height - nextHeight) < 0.1
+          ? current
+          : { width: nextWidth, height: nextHeight },
+      );
+    };
+
+    const initialSize = readStableFrameSize(frame);
+    updateFrameSize(initialSize.width, initialSize.height);
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) {
+        const fallbackSize = readStableFrameSize(frame);
+        updateFrameSize(fallbackSize.width, fallbackSize.height);
+        return;
+      }
+
+      // Prefer the content box reported by ResizeObserver so preview image geometry
+      // follows the same untransformed frame dimensions across editor, homepage, and admin surfaces.
+      const nextWidth = entry.contentRect.width || frame.clientWidth || frame.getBoundingClientRect().width;
+      const nextHeight = entry.contentRect.height || frame.clientHeight || frame.getBoundingClientRect().height;
+      updateFrameSize(nextWidth, nextHeight);
+    });
+    observer.observe(frame);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    setNaturalSize({ width: 0, height: 0 });
+  }, [asset?.id, assetSource]);
+
+  useEffect(() => {
+    const image = imageRef.current;
+    if (!image?.complete || !image.naturalWidth || !image.naturalHeight) {
+      return;
+    }
+
+    setNaturalSize((current) =>
+      current.width === image.naturalWidth && current.height === image.naturalHeight
+        ? current
+        : { width: image.naturalWidth, height: image.naturalHeight },
+    );
+  }, [asset?.id, assetSource]);
+
+  useEffect(() => {
+    if (!interactive || !onCropMetricsChange) {
+      return;
+    }
+
+    onCropMetricsChange(slot, asset ? dragMetrics : null);
+    return () => onCropMetricsChange(slot, null);
+  }, [asset, dragMetrics, interactive, onCropMetricsChange, slot]);
+
+  function nudgeCropByPixels(axis: 'x' | 'y', deltaPixels: number) {
+    if (!onUpdateCrop) {
+      return;
+    }
+
+    const maxOffset = axis === 'x' ? dragMetrics.maxOffsetX : dragMetrics.maxOffsetY;
+    if (maxOffset <= 0) {
+      return;
+    }
+
+    onUpdateCrop(slot, (crop) => {
+      const safeCrop = getFallbackCrop(crop);
+      const currentOffset = cropValueToPixelOffset(safeCrop[axis], maxOffset);
+      const nextOffset = clamp(currentOffset + deltaPixels, -maxOffset, maxOffset);
+      return {
+        ...safeCrop,
+        [axis]: pixelOffsetToCropValue(nextOffset, maxOffset),
+      };
+    });
+  }
+
+  function stopCropInteraction() {
+    const dragState = dragStateRef.current;
+    if (dragState?.target.hasPointerCapture(dragState.pointerId)) {
+      dragState.target.releasePointerCapture(dragState.pointerId);
+    }
+    setIsDragging(false);
+    dragStateRef.current = null;
+    window.removeEventListener('pointermove', handlePointerMove);
+    window.removeEventListener('pointerup', stopCropInteraction);
+    window.removeEventListener('pointercancel', stopCropInteraction);
+  }
+
+  function handlePointerMove(event: PointerEvent) {
+    const dragState = dragStateRef.current;
+    if (!dragState || !onUpdateCrop || event.pointerId !== dragState.pointerId) {
+      return;
+    }
+
+    event.preventDefault();
+    const nextOffsetX = clamp(dragState.startOffsetX + (event.clientX - dragState.startX), -dragState.maxOffsetX, dragState.maxOffsetX);
+    const nextOffsetY = clamp(dragState.startOffsetY + (event.clientY - dragState.startY), -dragState.maxOffsetY, dragState.maxOffsetY);
+    onUpdateCrop(slot, (crop) => ({
+      ...getFallbackCrop(crop),
+      x: pixelOffsetToCropValue(nextOffsetX, dragState.maxOffsetX),
+      y: pixelOffsetToCropValue(nextOffsetY, dragState.maxOffsetY),
+    }));
+  }
+
+  function startCropInteraction(event: ReactPointerEvent<HTMLButtonElement>) {
+    onSelectSlot?.(slot);
+    if (!canAdjustCrop || event.button !== 0) {
+      return;
+    }
+
+    event.preventDefault();
+    setIsDragging(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.currentTarget.focus({ preventScroll: true });
+    const startCrop = getFallbackCrop(page.crops[slot]);
+    const startOffsetX = cropValueToPixelOffset(startCrop.x, dragMetrics.maxOffsetX);
+    const startOffsetY = cropValueToPixelOffset(startCrop.y, dragMetrics.maxOffsetY);
+    dragStateRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startOffsetX,
+      startOffsetY,
+      maxOffsetX: dragMetrics.maxOffsetX,
+      maxOffsetY: dragMetrics.maxOffsetY,
+      startCrop,
+      target: event.currentTarget,
+    };
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', stopCropInteraction);
+    window.addEventListener('pointercancel', stopCropInteraction);
+  }
+
+  function handleWheel(event: ReactWheelEvent<HTMLButtonElement>) {
+    if (!canAdjustCrop || !onUpdateCrop) {
+      return;
+    }
+
+    event.preventDefault();
+    const delta = event.deltaY < 0 ? cropScaleStep : -cropScaleStep;
+    onUpdateCrop(slot, (crop) => ({
+      ...crop,
+      scale: clamp(crop.scale + delta, 1, 2.2),
+    }));
+  }
+
+  function handleKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>) {
+    if (!canAdjustCrop || !onUpdateCrop) {
+      return;
+    }
+
+    switch (event.key) {
+      case 'ArrowLeft':
+        event.preventDefault();
+        nudgeCropByPixels('x', -cropNudgeStep);
+        return;
+      case 'ArrowRight':
+        event.preventDefault();
+        nudgeCropByPixels('x', cropNudgeStep);
+        return;
+      case 'ArrowUp':
+        event.preventDefault();
+        nudgeCropByPixels('y', -cropNudgeStep);
+        return;
+      case 'ArrowDown':
+        event.preventDefault();
+        nudgeCropByPixels('y', cropNudgeStep);
+        return;
+      case '+':
+      case '=':
+        event.preventDefault();
+        onUpdateCrop(slot, (crop) => ({
+          ...crop,
+          scale: clamp(crop.scale + cropScaleStep, 1, 2.2),
+        }));
+        return;
+      case '-':
+      case '_':
+        event.preventDefault();
+        onUpdateCrop(slot, (crop) => ({
+          ...crop,
+          scale: clamp(crop.scale - cropScaleStep, 1, 2.2),
+        }));
+        return;
+      default:
+        return;
+    }
+  }
+
+  useEffect(() => () => stopCropInteraction(), []);
 
   const content = (
     <>
       <div className="asset-frame__media">
         {asset ? (
-          <img alt={asset.name} src={asset.src} className="asset-frame__image" style={frameStyle(page.crops[slot])} />
+          <img
+            key={`${page.id}:${slot}:${asset.id}:${
+              assetSource.startsWith('data:') ? `${assetSource.length}:${assetSource.slice(-32)}` : assetSource
+            }`}
+            ref={imageRef}
+            alt={asset.name}
+            src={assetSource}
+            className="asset-frame__image"
+            style={interactiveImageStyle}
+            draggable={false}
+            decoding={imageDecoding ?? (assetVariant === 'original' ? 'sync' : 'async')}
+            onDragStart={(event) => event.preventDefault()}
+            onLoad={(event) =>
+              setNaturalSize({
+                width: event.currentTarget.naturalWidth,
+                height: event.currentTarget.naturalHeight,
+              })
+            }
+          />
         ) : interactive ? (
           <span className="asset-frame__placeholder">Drop a photo here</span>
         ) : null}
@@ -70,21 +429,49 @@ function AssetFrame({
   );
 
   if (!interactive) {
-    return <div className={frameClassName}>{content}</div>;
+    return (
+      <div
+        ref={setFrameElement}
+        className={frameClassName}
+        data-has-asset={hasAsset ? 'true' : 'false'}
+        data-frame-ready={frameReady ? 'true' : 'false'}
+        data-geometry-ready={geometryReady ? 'true' : 'false'}
+      >
+        {content}
+      </div>
+    );
   }
 
   return (
     <button
+      ref={setFrameElement}
       type="button"
       className={frameClassName}
+      data-has-asset={hasAsset ? 'true' : 'false'}
+      data-frame-ready={frameReady ? 'true' : 'false'}
+      data-geometry-ready={geometryReady ? 'true' : 'false'}
       aria-label={`Select the ${slotHint} frame`}
+      title={canAdjustCrop ? 'Drag to move the photo naturally. Arrow keys nudge. Use the wheel or +/- to zoom.' : undefined}
       onClick={() => onSelectSlot?.(slot)}
+      onPointerDown={startCropInteraction}
+      onDragStart={(event) => event.preventDefault()}
+      onWheel={handleWheel}
+      onKeyDown={handleKeyDown}
+      onDoubleClick={() =>
+        canAdjustCrop
+          ? onUpdateCrop?.(slot, (crop) => ({
+              ...crop,
+              x: 50,
+              y: 50,
+            }))
+          : undefined
+      }
       onDragOver={(event) => {
         event.preventDefault();
       }}
       onDrop={(event) => {
         event.preventDefault();
-        const droppedAssetId = event.dataTransfer.getData('text/crazyalbum-asset');
+        const droppedAssetId = event.dataTransfer.getData('text/finalfolio-asset');
         if (droppedAssetId) {
           onAssignDroppedAsset?.(slot, droppedAssetId);
         }
@@ -99,33 +486,60 @@ export function MagazinePreview({
   issue,
   page,
   assets,
+  assetVariant = 'original',
+  imageDecoding,
+  frameRadius,
   pageNumber,
   selectedSlot,
   interactive,
   onSelectSlot,
   onAssignDroppedAsset,
+  onUpdateCrop,
+  onCropMetricsChange,
 }: MagazinePreviewProps) {
   const customTemplate = page.customTemplate;
-  const pageClassName = `magazine-page magazine-page--${page.template} magazine-page--theme-${page.theme}`;
-  const showsDeck = page.template !== 'grid' && page.template !== 'triptych';
+  const pageHasEastAsianCopy = hasEastAsianText(
+    issue,
+    page.title,
+    page.kicker,
+    page.deck,
+    page.body,
+    page.caption,
+    customTemplate?.name,
+  );
+  const pageClassName = `magazine-page magazine-page--${page.template} magazine-page--theme-${page.theme} ${
+    pageHasEastAsianCopy ? 'magazine-page--cjk' : ''
+  }`.trim();
+  const pageStyle = {
+    '--page-frame-radius': `${frameRadius ?? 18}px`,
+  } as CSSProperties;
+  const hasKicker = templateUsesKicker(page.template) && Boolean(page.kicker.trim());
+  const hasDeck = templateUsesDeck(page.template) && Boolean(page.deck.trim());
+  const hasBody = templateUsesBody(page.template, page.customTemplate) && Boolean(page.body.trim());
+  const hasCaption = Boolean(page.caption.trim());
+  const hasTriptychAside = hasDeck || hasBody || hasCaption;
   const renderSlot = (slot: string, options: { className?: string; hintLabel?: string } = {}) => (
     <AssetFrame
+      key={`${page.id}:${slot}`}
       slot={slot}
       page={page}
       assets={assets}
+      assetVariant={assetVariant}
+      imageDecoding={imageDecoding}
       selectedSlot={selectedSlot}
       interactive={interactive}
       onSelectSlot={onSelectSlot}
       onAssignDroppedAsset={onAssignDroppedAsset}
+      onUpdateCrop={onUpdateCrop}
+      onCropMetricsChange={onCropMetricsChange}
       className={options.className}
       hintLabel={options.hintLabel}
     />
   );
 
   return (
-    <article className={pageClassName}>
+    <article className={pageClassName} style={pageStyle}>
       <header className="magazine-page__meta">
-        <span>{page.kicker}</span>
         <span>{issue}</span>
         {pageNumber ? <span>{`Page ${String(pageNumber).padStart(2, '0')}`}</span> : null}
       </header>
@@ -133,10 +547,10 @@ export function MagazinePreview({
       {page.template === 'cover' ? (
         <div className="magazine-cover">
           <div className="magazine-cover__image">{renderSlot('hero')}</div>
-          <div className="magazine-cover__copy">
-            {showsDeck && page.deck ? <p className="magazine-kicker">{page.deck}</p> : null}
+          <div className="magazine-cover__copy magazine-heading-block">
+            {hasDeck ? <p className="magazine-kicker">{page.deck}</p> : null}
             <h2>{page.title}</h2>
-            {page.caption ? <p>{page.caption}</p> : null}
+            {hasCaption ? <p>{page.caption}</p> : null}
           </div>
         </div>
       ) : null}
@@ -145,11 +559,13 @@ export function MagazinePreview({
         <div className="magazine-essay">
           <div className="magazine-essay__visual">{renderSlot('hero')}</div>
           <div className="magazine-essay__copy">
-            <p className="magazine-kicker">{page.kicker}</p>
-            <h2>{page.title}</h2>
-            {showsDeck && page.deck ? <p className="magazine-essay__deck">{page.deck}</p> : null}
-            {page.body ? <p className="magazine-essay__body">{page.body}</p> : null}
-            {page.caption ? <footer>{page.caption}</footer> : null}
+            <div className="magazine-essay__headline magazine-heading-block">
+              {hasKicker ? <p className="magazine-kicker">{page.kicker}</p> : null}
+              <h2>{page.title}</h2>
+              {hasDeck ? <p className="magazine-essay__deck">{page.deck}</p> : null}
+            </div>
+            {hasBody ? <p className="magazine-essay__body">{page.body}</p> : null}
+            {hasCaption ? <footer>{page.caption}</footer> : null}
           </div>
         </div>
       ) : null}
@@ -157,21 +573,21 @@ export function MagazinePreview({
       {page.template === 'folio' ? (
         <div className="magazine-folio">
           <div className="magazine-folio__header">
-            <div>
-              <p className="magazine-kicker">{page.kicker}</p>
+            <div className="magazine-heading-block">
+              {hasKicker ? <p className="magazine-kicker">{page.kicker}</p> : null}
               <h2>{page.title}</h2>
             </div>
-            {showsDeck && page.deck ? <p>{page.deck}</p> : null}
+            {hasDeck ? <p>{page.deck}</p> : null}
           </div>
           <div className="magazine-folio__visual">{renderSlot('hero')}</div>
-          {page.caption ? <footer>{page.caption}</footer> : null}
+          {hasCaption ? <footer>{page.caption}</footer> : null}
         </div>
       ) : null}
 
       {page.template === 'grid' ? (
         <div className="magazine-grid">
-          <div className="magazine-grid__copy">
-            <p className="magazine-kicker">{page.kicker}</p>
+          <div className="magazine-grid__copy magazine-heading-block">
+            {hasKicker ? <p className="magazine-kicker">{page.kicker}</p> : null}
             <h2>{page.title}</h2>
           </div>
           <div className="magazine-grid__frames">
@@ -180,41 +596,51 @@ export function MagazinePreview({
             {renderSlot('c', { hintLabel: 'Frame C' })}
             {renderSlot('d', { hintLabel: 'Frame D' })}
           </div>
-          {page.caption ? <footer>{page.caption}</footer> : null}
+          {hasBody || hasCaption ? (
+            <div className="magazine-grid__footer">
+              {hasBody ? <p className="magazine-grid__body">{page.body}</p> : null}
+              {hasCaption ? <footer>{page.caption}</footer> : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
       {page.template === 'diptych' ? (
         <div className="magazine-diptych">
           <div className="magazine-diptych__header">
-            <div>
-              <p className="magazine-kicker">{page.kicker}</p>
+            <div className="magazine-heading-block">
+              {hasKicker ? <p className="magazine-kicker">{page.kicker}</p> : null}
               <h2>{page.title}</h2>
             </div>
-            {showsDeck && page.deck ? <p>{page.deck}</p> : null}
+            {hasDeck ? <p>{page.deck}</p> : null}
           </div>
           <div className="magazine-diptych__frames">
             {renderSlot('left', { hintLabel: 'Left frame' })}
             {renderSlot('right', { hintLabel: 'Right frame' })}
           </div>
-          {page.caption ? <footer>{page.caption}</footer> : null}
+          {hasBody || hasCaption ? (
+            <div className="magazine-diptych__footer">
+              {hasBody ? <p className="magazine-diptych__body">{page.body}</p> : null}
+              {hasCaption ? <footer>{page.caption}</footer> : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
       {page.template === 'panorama' ? (
         <div className="magazine-panorama">
           <div className="magazine-panorama__header">
-            <div>
-              <p className="magazine-kicker">{page.kicker}</p>
+            <div className="magazine-heading-block">
+              {hasKicker ? <p className="magazine-kicker">{page.kicker}</p> : null}
               <h2>{page.title}</h2>
             </div>
-            {showsDeck && page.deck ? <p>{page.deck}</p> : null}
+            {hasDeck ? <p>{page.deck}</p> : null}
           </div>
           <div className="magazine-panorama__frames">
             {renderSlot('top', { hintLabel: 'Top frame' })}
             {renderSlot('bottom', { hintLabel: 'Bottom frame' })}
           </div>
-          {page.caption ? <footer>{page.caption}</footer> : null}
+          {hasCaption ? <footer>{page.caption}</footer> : null}
         </div>
       ) : null}
 
@@ -227,32 +653,41 @@ export function MagazinePreview({
               {renderSlot('bottom', { hintLabel: 'Support frame B' })}
             </div>
           </div>
-          <div className="magazine-mosaic__band">
-            <div className="magazine-mosaic__headline">
-              <p className="magazine-kicker">{page.kicker}</p>
+          <div className={`magazine-mosaic__band ${hasBody || hasCaption ? '' : 'magazine-mosaic__band--compact'}`.trim()}>
+            <div className="magazine-mosaic__headline magazine-heading-block">
+              {hasKicker ? <p className="magazine-kicker">{page.kicker}</p> : null}
               <h2>{page.title}</h2>
+              {hasDeck ? <p className="magazine-mosaic__deck">{page.deck}</p> : null}
             </div>
-            <div className="magazine-mosaic__notes">
-              {showsDeck && page.deck ? <p>{page.deck}</p> : null}
-              {page.caption ? <footer>{page.caption}</footer> : null}
-            </div>
+            {hasBody || hasCaption ? (
+              <div className="magazine-mosaic__notes">
+                {hasBody ? <p className="magazine-mosaic__body">{page.body}</p> : null}
+                {hasCaption ? <footer>{page.caption}</footer> : null}
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}
 
       {page.template === 'triptych' ? (
         <div className="magazine-triptych">
-          <div className="magazine-triptych__rail">
-            <div>
-              <p className="magazine-kicker">{page.kicker}</p>
-              <h2>{page.title}</h2>
-            </div>
-            {page.caption ? <footer>{page.caption}</footer> : null}
-          </div>
           <div className="magazine-triptych__frames">
             {renderSlot('a', { hintLabel: 'Frame A' })}
             {renderSlot('b', { hintLabel: 'Frame B' })}
             {renderSlot('c', { hintLabel: 'Frame C' })}
+          </div>
+          <div className={`magazine-triptych__footer ${hasTriptychAside ? '' : 'magazine-triptych__footer--compact'}`.trim()}>
+            <div className="magazine-triptych__copy magazine-heading-block">
+              {hasKicker ? <p className="magazine-kicker">{page.kicker}</p> : null}
+              <h2>{page.title}</h2>
+            </div>
+            {hasTriptychAside ? (
+              <div className="magazine-triptych__aside">
+                {hasDeck ? <p className="magazine-triptych__deck">{page.deck}</p> : null}
+                {hasBody ? <p className="magazine-triptych__body">{page.body}</p> : null}
+                {hasCaption ? <footer>{page.caption}</footer> : null}
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -267,11 +702,13 @@ export function MagazinePreview({
             ))}
             <section className="magazine-custom__text" style={areaStyle(customTemplate.text)}>
               <span className="magazine-custom__label">{customTemplate.name}</span>
-              <p className="magazine-kicker">{page.kicker}</p>
-              <h2>{page.title}</h2>
-              {page.deck ? <p className="magazine-custom__deck">{page.deck}</p> : null}
-              {page.body ? <p className="magazine-custom__body">{page.body}</p> : null}
-              {page.caption ? <footer>{page.caption}</footer> : null}
+              <div className="magazine-heading-block">
+                {hasKicker ? <p className="magazine-kicker">{page.kicker}</p> : null}
+                <h2>{page.title}</h2>
+                {hasDeck ? <p className="magazine-custom__deck">{page.deck}</p> : null}
+              </div>
+              {hasBody ? <p className="magazine-custom__body">{page.body}</p> : null}
+              {hasCaption ? <footer>{page.caption}</footer> : null}
             </section>
           </div>
         </div>

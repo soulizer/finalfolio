@@ -1,23 +1,31 @@
 services:
-  crazyalbum-web:
+  finalfolio-web:
     build:
       context: ..
       dockerfile: Dockerfile
-    container_name: crazyalbum-web
+    container_name: finalfolio-web
     restart: unless-stopped
+    environment:
+      FINALFOLIO_SMTP_HOST: mail.finalfolio.com
+      FINALFOLIO_SMTP_PORT: 465
+      FINALFOLIO_SMTP_USER: noreply@finalfolio.com
+      FINALFOLIO_SMTP_PASS: EH90wIT9
+      FINALFOLIO_SMTP_SECURE: ssl
+      FINALFOLIO_MAIL_FROM: noreply@finalfolio.com
+      FINALFOLIO_MAIL_FROM_NAME: FinalFolio
     labels:
-      caddy_0: https://crazyalbum.com
+      caddy_0: https://finalfolio.com
       caddy_0.reverse_proxy: "{{upstreams 3000}}"
       caddy_0.header.Strict-Transport-Security: "`max-age=31536000; includeSubDomains`"
       caddy_0.header.X-Content-Type-Options: "nosniff"
       caddy_0.header.Referrer-Policy: "strict-origin-when-cross-origin"
 
-      caddy_1: https://www.crazyalbum.com
-      caddy_1.redir: https://crazyalbum.com{uri}
+      caddy_1: https://www.finalfolio.com
+      caddy_1.redir: https://finalfolio.com{uri}
 
       caddy_2: :80
-      caddy_2.@crazyalbum.host: crazyalbum.com www.crazyalbum.com
-      caddy_2.redir: "@crazyalbum https://{host}{uri}"
+      caddy_2.@finalfolio.host: finalfolio.com www.finalfolio.com
+      caddy_2.redir: "@finalfolio https://{host}{uri}"
     volumes:
       - ../data:/data
     networks:

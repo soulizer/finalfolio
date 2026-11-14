@@ -10,13 +10,16 @@ FROM node:22-alpine AS runtime
 
 ENV NODE_ENV=production
 ENV PORT=3000
-ENV CRAZYALBUM_DATA_ROOT=/data
+ENV FINALFOLIO_DATA_ROOT=/data
 
 WORKDIR /app
+
+RUN apk add --no-cache ffmpeg
 
 COPY package*.json ./
 RUN npm ci --omit=dev
 COPY server ./server
+COPY scripts ./scripts
 COPY --from=build /app/dist ./dist
 
 EXPOSE 3000

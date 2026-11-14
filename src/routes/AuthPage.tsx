@@ -1,0 +1,546 @@
+import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import {
+  AuthCaptchaChallenge,
+  BootstrapStatus,
+  confirmPasswordReset,
+  fetchAuthCaptcha,
+  fetchBootstrapStatus,
+  loginUser,
+  logoutUser,
+  registerUser,
+  requestPasswordReset,
+  resendVerificationEmail,
+  verifyEmailToken,
+} from '../editor/api';
+import { getUserIdentitySummary, getUserPrimaryIdentity } from '../editor/identity';
+import { LoadingStack } from '../components/LoadingStack';
+import { SiteLegalFooter } from '../components/SiteLegalFooter';
+import { SitePageHeader } from '../components/SitePageHeader';
+import { buildTermsPath, getPageLanguage, getTermsDocument } from '../legal/terms';
+import { useSession } from '../session';
+import { useDelayedVisibility } from '../useDelayedVisibility';
+
+type Mode = 'login' | 'register' | 'forgot' | 'reset';
+
+export function AuthPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const verifyToken = searchParams.get('verify');
+  const resetToken = searchParams.get('reset');
+  const nextPath = (() => {
+    const value = searchParams.get('next');
+    return value && value.startsWith('/') && !value.startsWith('//') ? value : null;
+  })();
+  const termsDocument = useMemo(() => getTermsDocument(getPageLanguage()), []);
+  const [identifier, setIdentifier] = useState('');
+  const [mode, setMode] = useState<Mode>(resetToken ? 'reset' : 'login');
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [bootstrapStatus, setBootstrapStatus] = useState<BootstrapStatus | null>(null);
+  const [bootstrapReady, setBootstrapReady] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState<string | null>(null);
+  const [captcha, setCaptcha] = useState<AuthCaptchaChallenge | null>(null);
+  const [captchaAnswer, setCaptchaAnswer] = useState('');
+  const [captchaBusy, setCaptchaBusy] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const { user: session, ready: sessionReady, setSessionUser } = useSession();
+
+  function openRoute(path: string) {
+    navigate(path);
+  }
+
+  function replaceRoute(path: string) {
+    navigate(path, { replace: true });
+  }
+
+  function openTerms(nextTarget?: string | null) {
+    navigate(buildTermsPath(nextTarget), { replace: true });
+  }
+
+  useEffect(() => {
+    setMode(resetToken ? 'reset' : 'login');
+  }, [resetToken]);
+
+  useEffect(() => {
+    void fetchBootstrapStatus()
+      .then((payload) => {
+        setBootstrapStatus(payload);
+        setBootstrapReady(true);
+      })
+      .catch(() => {
+        setBootstrapStatus(null);
+        setBootstrapReady(true);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (!sessionReady || !session || verifyToken || resetToken) {
+      return;
+    }
+
+    if (session.needsTermsAcceptance) {
+      openTerms(nextPath ?? (session.role === 'admin' ? '/admin' : '/account'));
+      return;
+    }
+
+    replaceRoute(nextPath ?? (session.role === 'admin' ? '/admin' : '/account'));
+  }, [nextPath, resetToken, session, sessionReady, verifyToken]);
+
+  async function loadCaptcha({ clearAnswer = true, surfaceError = true } = {}) {
+    setCaptchaBusy(true);
+
+    try {
+      const payload = await fetchAuthCaptcha('register');
+      setCaptcha(payload);
+      if (clearAnswer) {
+        setCaptchaAnswer('');
+      }
+    } catch (error) {
+      setCaptcha(null);
+      if (surfaceError) {
+        setMessage(error instanceof Error ? error.message : 'Unable to load captcha.');
+      }
+    } finally {
+      setCaptchaBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!sessionReady || session || mode !== 'register') {
+      setCaptcha(null);
+      setCaptchaAnswer('');
+      return;
+    }
+
+    let cancelled = false;
+    setCaptchaBusy(true);
+
+    void fetchAuthCaptcha('register')
+      .then((payload) => {
+        if (!cancelled) {
+          setCaptcha(payload);
+          setCaptchaAnswer('');
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setCaptcha(null);
+          setMessage(error instanceof Error ? error.message : 'Unable to load captcha.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setCaptchaBusy(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, session, sessionReady]);
+
+  useEffect(() => {
+    if (!verifyToken) {
+      return;
+    }
+
+    let cancelled = false;
+    setBusy(true);
+    setMessage('Verifying your email...');
+
+    void verifyEmailToken(verifyToken)
+      .then((payload) => {
+        if (cancelled) {
+          return;
+        }
+
+        setSessionUser(payload.user);
+        setMessage('Email verified. You are now signed in.');
+        replaceRoute(
+          payload.user.needsTermsAcceptance
+            ? buildTermsPath(nextPath ?? (payload.user.role === 'admin' ? '/admin' : '/account'))
+            : nextPath ?? (payload.user.role === 'admin' ? '/admin' : '/account'),
+        );
+      })
+      .catch((error) => {
+        if (cancelled) {
+          return;
+        }
+
+        setMessage(error instanceof Error ? error.message : 'Unable to verify email.');
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setBusy(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate, nextPath, verifyToken]);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      if (mode === 'register') {
+        if (!captcha) {
+          setMessage('Loading verification challenge. Refresh and try again.');
+          return;
+        }
+
+        const requiresBootstrap = bootstrapStatus?.requiresBootstrap === true;
+        const payload = await registerUser(username, email, password, captcha.id, captchaAnswer, acceptTerms, termsDocument.language);
+        setPendingVerificationEmail(payload.user.email);
+        setPassword('');
+        setCaptchaAnswer('');
+        setMessage(
+          requiresBootstrap
+            ? 'Initial admin account created. Check your inbox to verify the email before signing in.'
+            : 'Account created. Check your inbox to verify your email before signing in.',
+        );
+        return;
+      }
+
+      if (mode === 'forgot') {
+        await requestPasswordReset(email);
+        setMessage('If this email exists, a password reset link has been sent.');
+        return;
+      }
+
+      if (mode === 'reset' && resetToken) {
+        const payload = await confirmPasswordReset(resetToken, password);
+        setSessionUser(payload.user);
+        setPendingVerificationEmail(null);
+        setPassword('');
+        setMessage('Password reset complete. You are now signed in.');
+        replaceRoute(
+          payload.user.needsTermsAcceptance
+            ? buildTermsPath(nextPath ?? (payload.user.role === 'admin' ? '/admin' : '/account'))
+            : nextPath ?? (payload.user.role === 'admin' ? '/admin' : '/account'),
+        );
+        return;
+      }
+
+      const payload = await loginUser(identifier, password);
+      setSessionUser(payload.user);
+      setPassword('');
+      setMessage('Signed in.');
+      replaceRoute(
+        payload.user.needsTermsAcceptance
+          ? buildTermsPath(nextPath ?? (payload.user.role === 'admin' ? '/admin' : '/account'))
+          : nextPath ?? (payload.user.role === 'admin' ? '/admin' : '/account'),
+      );
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Unable to continue.');
+      if (mode === 'register') {
+        void loadCaptcha({ clearAnswer: true, surfaceError: false });
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleLogout() {
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      await logoutUser();
+      setSessionUser(null);
+      setMessage('Signed out.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Unable to sign out.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleResendVerification() {
+    const targetEmail = pendingVerificationEmail ?? email;
+    if (!targetEmail) {
+      setMessage('Enter the email address that needs a new verification link.');
+      return;
+    }
+
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      await resendVerificationEmail(targetEmail);
+      setMessage('Verification email sent.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Unable to resend verification email.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const title = session
+    ? 'Account ready.'
+    : verifyToken
+      ? 'Verifying your email.'
+      : mode === 'register'
+        ? bootstrapStatus?.requiresBootstrap
+          ? 'Create the first admin account.'
+          : 'Create your account.'
+        : mode === 'forgot'
+          ? 'Reset your password.'
+          : mode === 'reset'
+            ? 'Set a new password.'
+            : 'Sign in to FinalFolio.';
+  const registerActionLabel = bootstrapStatus?.requiresBootstrap ? 'Create admin account' : 'Register';
+  const showLoadingShell = useDelayedVisibility(!sessionReady || !bootstrapReady);
+
+  if (!sessionReady || !bootstrapReady) {
+    if (!showLoadingShell) {
+      return (
+        <div className="editor-shell editor-shell--site-page editor-shell--auth" aria-hidden="true">
+          <SitePageHeader current="auth" accountPath="/auth" sessionReady={false} canAccessAdmin={false} />
+          <SiteLegalFooter />
+        </div>
+      );
+    }
+
+    return (
+      <div className="editor-shell editor-shell--site-page editor-shell--auth">
+        <SitePageHeader current="auth" accountPath="/auth" sessionReady={false} canAccessAdmin={false} />
+
+        <section className="editor-empty-state" aria-busy="true">
+          <p className="eyebrow">Auth</p>
+          <h1>Account access</h1>
+          <p>Checking the current session and access state.</p>
+          <div className="auth-form">
+            <LoadingStack lines={['line-full', 'line-full', 'line-medium', 'line-short']} />
+          </div>
+        </section>
+
+        <SiteLegalFooter />
+      </div>
+    );
+  }
+
+  return (
+    <div className="editor-shell editor-shell--site-page editor-shell--auth">
+      <SitePageHeader
+        current="auth"
+        accountPath={session ? '/account' : '/auth'}
+        signedIn={Boolean(session)}
+        sessionReady={sessionReady}
+        onSignOut={session ? handleLogout : undefined}
+        canAccessAdmin={session?.role === 'admin'}
+      />
+
+      <section className="editor-empty-state">
+        <p className="eyebrow">Auth</p>
+        <h1>{title}</h1>
+        {!session && bootstrapStatus?.requiresBootstrap ? (
+          <p>No account exists yet. The first registered account will become the initial administrator after verification.</p>
+        ) : null}
+        {session ? (
+          <>
+            <p>{`${getUserIdentitySummary(session)} · ${session.role} · ${session.emailVerifiedAt ? 'verified' : 'unverified'}`}</p>
+            <div className="editor-empty-state__actions">
+              <button
+                type="button"
+                className="button button--primary"
+                onClick={() => openRoute(nextPath ?? (session.role === 'admin' ? '/admin' : '/account'))}
+              >
+                {nextPath ? 'Continue' : session.role === 'admin' ? 'Open admin' : 'Open account'}
+              </button>
+              {session.role !== 'admin' ? (
+                <button type="button" className="button button--primary" onClick={() => openRoute('/editor')}>
+                  Open editor
+                </button>
+              ) : (
+                <button type="button" className="button button--ghost" onClick={() => openRoute('/account')}>
+                  Open account
+                </button>
+              )}
+              <button type="button" className="button button--ghost" onClick={() => void handleLogout()} disabled={busy}>
+                Sign out
+              </button>
+            </div>
+            <p>Your projects, uploads, and account settings now live in the dedicated account dashboard instead of this auth screen.</p>
+          </>
+        ) : verifyToken ? (
+          <div className="editor-empty-state__actions">
+            <button type="button" className="button button--ghost" onClick={() => openRoute('/auth')}>
+              Back to sign in
+            </button>
+          </div>
+        ) : (
+          <form className="auth-form" onSubmit={handleSubmit}>
+            {mode === 'login' ? (
+              <label className="field">
+                <span>Email or username</span>
+                <input
+                  type="text"
+                  value={identifier}
+                  onChange={(event) => setIdentifier(event.target.value)}
+                  autoComplete="username"
+                  required
+                />
+              </label>
+            ) : null}
+            {mode === 'register' ? (
+              <label className="field">
+                <span>Username</span>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(event) => setUsername(event.target.value)}
+                  placeholder="3-40 letters, numbers, hyphen, underscore"
+                  minLength={3}
+                  maxLength={40}
+                  pattern="[A-Za-z0-9](?:[A-Za-z0-9_-]{1,38}[A-Za-z0-9])?"
+                  autoComplete="username"
+                  required
+                />
+              </label>
+            ) : null}
+            {mode !== 'login' && mode !== 'reset' ? (
+              <label className="field">
+                <span>Email</span>
+                <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
+              </label>
+            ) : null}
+            {mode !== 'forgot' ? (
+              <label className="field">
+                <span>Password</span>
+                <input
+                  type="password"
+                  minLength={8}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  autoComplete={mode === 'register' || mode === 'reset' ? 'new-password' : 'current-password'}
+                  required
+                />
+              </label>
+            ) : null}
+            {mode === 'register' ? (
+              <section className="auth-captcha" aria-label="Registration verification">
+                <div className="auth-captcha__header">
+                  <div>
+                    <strong>Human check</strong>
+                    <p className="field-note">Usernames are unique across FinalFolio. Registration sends email and is rate-limited per IP to protect delivery reputation.</p>
+                  </div>
+                </div>
+                <div className="auth-captcha__panel">
+                  <div className="auth-captcha__visual">
+                    {captcha ? (
+                      <img className="auth-captcha__image" src={captcha.imageDataUrl} alt="Registration captcha challenge" />
+                    ) : (
+                      <div className="auth-captcha__image auth-captcha__image--placeholder">Loading challenge…</div>
+                    )}
+                    <button
+                      type="button"
+                      className="button button--ghost button--small auth-captcha__refresh"
+                      disabled={busy || captchaBusy}
+                      onClick={() => void loadCaptcha()}
+                    >
+                      {captchaBusy ? 'Refreshing…' : 'Refresh code'}
+                    </button>
+                  </div>
+                  <label className="field auth-captcha__field">
+                    <span>{captcha?.prompt ?? 'Enter the characters shown above'}</span>
+                    <input
+                      type="text"
+                      value={captchaAnswer}
+                      onChange={(event) => setCaptchaAnswer(event.target.value.toUpperCase())}
+                      required
+                      minLength={5}
+                      maxLength={8}
+                      autoCapitalize="characters"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      inputMode="text"
+                    />
+                  </label>
+                </div>
+              </section>
+            ) : null}
+            {mode === 'register' ? (
+              <section className="auth-terms">
+                <div className="auth-terms__notice">
+                  <strong>{termsDocument.riskNoticeTitle}</strong>
+                  <p>{termsDocument.riskNoticeBody}</p>
+                </div>
+                <label className="auth-terms__checkbox">
+                  <input type="checkbox" checked={acceptTerms} onChange={(event) => setAcceptTerms(event.target.checked)} />
+                  <span>{termsDocument.agreementLabel}</span>
+                </label>
+                <p className="auth-terms__linkline legal-inline-links">
+                  <Link to={buildTermsPath('/auth')}>Terms of Service</Link>
+                  <span>·</span>
+                  <Link to="/privacy">Privacy Policy</Link>
+                </p>
+              </section>
+            ) : null}
+            <div className="editor-empty-state__actions auth-form__actions">
+              <button type="submit" className="button button--primary" disabled={busy || (mode === 'register' && !acceptTerms)}>
+                {busy
+                  ? 'Working…'
+                  : mode === 'register'
+                    ? registerActionLabel
+                    : mode === 'forgot'
+                      ? 'Send reset link'
+                      : mode === 'reset'
+                        ? 'Reset password'
+                        : 'Sign in'}
+              </button>
+              <button
+                type="button"
+                className="button button--ghost"
+                disabled={busy}
+                onClick={() =>
+                  setMode((current) => {
+                    if (current === 'login') {
+                      return 'register';
+                    }
+
+                    if (current === 'register') {
+                      return 'login';
+                    }
+
+                    return 'login';
+                  })
+                }
+              >
+                {mode === 'login' ? 'Need an account?' : 'Back to sign in'}
+              </button>
+              {mode === 'login' ? (
+                <button type="button" className="button button--ghost" disabled={busy} onClick={() => setMode('forgot')}>
+                  Forgot password
+                </button>
+              ) : null}
+              {mode === 'register' || pendingVerificationEmail ? (
+                <button type="button" className="button button--ghost" disabled={busy} onClick={() => void handleResendVerification()}>
+                  Resend verification
+                </button>
+              ) : null}
+            </div>
+          </form>
+        )}
+        {message ? <p>{message}</p> : null}
+        {!session && mode === 'register' ? (
+          <p className="panel-note">
+            {username.trim()
+              ? `${getUserPrimaryIdentity({ username, email }, 'This username')} will become your primary account identity after sign-in.`
+              : 'Choose a username to create your account. It becomes your primary account identity after sign-in.'}
+          </p>
+        ) : null}
+      </section>
+
+      <SiteLegalFooter />
+    </div>
+  );
+}
