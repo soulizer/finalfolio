@@ -1,4 +1,4 @@
-import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
+import { CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CustomLayoutMap } from '../components/CustomLayoutMap';
 import { MagazinePreview } from '../components/MagazinePreview';
@@ -152,9 +152,14 @@ export function EditorPage() {
   const [saveState, setSaveState] = useState<SaveState>(projectId ? 'saving' : 'draft');
   const [message, setMessage] = useState<string | null>(null);
   const {
+    canRedo,
+    canUndo,
     currentCrop,
     customTemplateDraft,
+    getProject,
     project,
+    redo,
+    resetHistory,
     selectedPage,
     selectedPageId,
     selectedPageIndex,
@@ -168,6 +173,7 @@ export function EditorPage() {
     setThemeChoice,
     templateChoice,
     themeChoice,
+    undo,
     updateProject,
     updateSelectedCrop,
     updateSelectedPage,
@@ -237,6 +243,7 @@ export function EditorPage() {
   const [assetDeleteBusy, setAssetDeleteBusy] = useState(false);
   const [assetDeleteTargetId, setAssetDeleteTargetId] = useState<string | null>(null);
   const [assetRetryTargetId, setAssetRetryTargetId] = useState<string | null>(null);
+  const [saveConflict, setSaveConflict] = useState<string | null>(null);
   const [shareBusy, setShareBusy] = useState(false);
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
   const [shareCopyState, setShareCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
@@ -256,6 +263,10 @@ export function EditorPage() {
     canvasRef,
     sheetProbeRef,
   });
+
+  useEffect(() => {
+    resetHistory();
+  }, [projectId, resetHistory]);
 
   useEffect(() => {
     if (!authReady || !session?.needsTermsAcceptance) {
@@ -451,10 +462,6 @@ export function EditorPage() {
   });
 
 
-  if (!selectedPage && loadState === 'ready') {
-    return null;
-  }
-
   const {
     activateCustomLayoutPreview,
     clearTemplateHoverPreview,
@@ -501,18 +508,19 @@ export function EditorPage() {
     setMessage,
   });
 
-  const {
-    applyServerProjectRecord,
-    handleCopyPublicShareLink,
-    handleDisableProjectShare,
-    handleEnableProjectShare,
-    saveProject,
-    startNewDraft,
-  } = createEditorProjectPersistenceActions({
+  // The persistence factory closes over the current project/session. Keeping the newest
+  // instance in a ref lets us expose a stable saveProject function, which the autosave
+  // effect depends on. Without this the 1.2s debounce restarts on every render and the
+  // save never fires while the editor is busy re-rendering.
+  const persistenceActionsRef = useRef<ReturnType<typeof createEditorProjectPersistenceActions> | null>(null);
+  persistenceActionsRef.current = createEditorProjectPersistenceActions({
     session,
     project,
     projectRecord,
     ownedUploads,
+    getCurrentProject: getProject,
+    onConflict: setSaveConflict,
+    onSaveSuccess: () => setSaveConflict(null),
     getInitialSlot,
     lastSavedSnapshotRef,
     setProject,
@@ -532,12 +540,30 @@ export function EditorPage() {
     navigate,
     formatSavedAt,
   });
+  const persistenceActions = persistenceActionsRef.current;
+  const {
+    applyServerProjectRecord,
+    handleCopyPublicShareLink,
+    handleDisableProjectShare,
+    handleEnableProjectShare,
+  } = persistenceActions;
+  const saveProjectRef = useRef(persistenceActions.saveProject);
+  saveProjectRef.current = persistenceActions.saveProject;
+  const saveProject = useCallback(
+    (options: { manual: boolean }) => saveProjectRef.current(options),
+    [],
+  );
+  const handleStartNewDraft = useCallback(() => {
+    resetHistory();
+    persistenceActionsRef.current?.startNewDraft();
+  }, [resetHistory]);
 
   useEditorProjectLifecycle({
     projectId,
     project,
     projectRecord,
     loadState,
+    saveConflict: Boolean(saveConflict),
     saveState,
     getInitialSlot,
     lastSavedSnapshotRef,
@@ -579,7 +605,7 @@ export function EditorPage() {
     setMessage,
   });
 
-  const { handleRunExport } = createEditorExportActions({
+  const { handlePrint, handleRunExport } = createEditorExportActions({
     project,
     projectRecordId: projectRecord?.id,
     exportSettings,
@@ -680,6 +706,42 @@ export function EditorPage() {
     updateProject,
   });
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.altKey) {
+        return;
+      }
+
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) {
+        return;
+      }
+
+      if (event.key.toLowerCase() !== 'z') {
+        return;
+      }
+
+      event.preventDefault();
+      if (event.shiftKey) {
+        redo();
+      } else {
+        undo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [redo, undo]);
+
+  if (!selectedPage) {
+    return (
+      <EditorUnavailableState
+        loadError="This folio has no pages to edit. Start a new draft to keep working."
+        startNewDraft={handleStartNewDraft}
+      />
+    );
+  }
+
   const selectedFrameLabel =
     selectedSlot && selectedPage?.template === 'custom'
       ? selectedPage.customTemplate?.frames.find((frame) => frame.slot === selectedSlot)?.label ?? selectedSlot
@@ -703,6 +765,10 @@ export function EditorPage() {
           : saveState === 'error'
             ? 'Save failed. Retry to keep this URL current.'
             : formatSavedAt(projectRecord.updatedAt);
+  // Pending/unsaved state must never be hidden behind an action message such as
+  // "Preset applied"; the user needs to see that the folio still has to be saved.
+  const showSaveState =
+    saveState === 'dirty' || saveState === 'saving' || saveState === 'error' || !projectRecord || legacyProjectReadOnly;
   const statusText =
     printBusy
       ? `Preparing print-ready pages ${printState.completedAssets}/${printState.totalAssets}...`
@@ -712,7 +778,9 @@ export function EditorPage() {
         ? `Preparing upload ${uploadState.completedFiles}/${uploadState.totalFiles}...`
         : uploadState.phase === 'uploading'
           ? `${session ? 'Uploading' : 'Adding'} images ${uploadProgressPercent}%...`
-          : message ?? fallbackStatus;
+          : showSaveState
+            ? fallbackStatus
+            : message ?? fallbackStatus;
   const sequenceLabel = `${project.pages.length} page${project.pages.length === 1 ? '' : 's'}`;
   const selectedPagePositionLabel = `Page ${selectedPageIndex + 1} of ${project.pages.length}`;
   const selectedTemplateMeta = templateMeta[templateChoice];
@@ -861,11 +929,11 @@ export function EditorPage() {
   }
 
   if (loadState === 'error') {
-    return <EditorUnavailableState loadError={loadError} startNewDraft={startNewDraft} />;
+    return <EditorUnavailableState loadError={loadError} startNewDraft={handleStartNewDraft} />;
   }
 
   if (protectedProjectLocked) {
-    return <EditorLockedState openAccountPage={openAccountPage} startNewDraft={startNewDraft} />;
+    return <EditorLockedState openAccountPage={openAccountPage} startNewDraft={handleStartNewDraft} />;
   }
 
 
@@ -1399,6 +1467,8 @@ export function EditorPage() {
 
         <EditorOperationsSidebar
           archiveActionLabel={archiveActionLabel}
+          canRedo={canRedo}
+          canUndo={canUndo}
           authReady={authReady}
           canSaveProject={canSaveProject}
           copyButtonLabel={copyButtonLabel}
@@ -1417,6 +1487,8 @@ export function EditorPage() {
           onEnableShare={() => void handleEnableProjectShare()}
           onOpenAccountPage={openAccountPage}
           onOpenAdminPage={openAdminPage}
+          onRedo={redo}
+          onUndo={undo}
           onOpenSharedProject={() => {
             if (projectRecord?.share.path) {
               navigate(projectRecord.share.path);
@@ -1425,7 +1497,7 @@ export function EditorPage() {
           onRegenerateShare={() => void handleEnableProjectShare({ rotate: true })}
           onSaveCurrentProjectAsTemplate={() => void handleSaveCurrentProjectAsTemplate()}
           onSaveProject={() => void saveProject({ manual: true })}
-          onStartNewDraft={startNewDraft}
+          onStartNewDraft={handleStartNewDraft}
           onTemplatePreserveCopyChange={(value) => setTemplatePreserveCopy(value)}
           onTemplateSaveDescriptionChange={(value) => setTemplateSaveDescription(value)}
           onTemplateSaveKindChange={(kind) => setTemplateSaveKind(kind)}
@@ -1440,7 +1512,9 @@ export function EditorPage() {
           publicShareCopyLabel={publicShareCopyLabel}
           publicShareUrl={publicShareUrl}
           saveActionLabel={saveActionLabel}
+          saveConflict={saveConflict}
           saveState={saveState}
+          onReloadLatest={() => window.location.reload()}
           selectedPagePositionLabel={selectedPagePositionLabel}
           sequenceLabel={sequenceLabel}
           session={session}
@@ -1474,6 +1548,7 @@ export function EditorPage() {
             }
           }}
           onRunExport={() => void handleRunExport()}
+          onRunPrint={() => void handlePrint()}
           onSelectPreflightIssue={(issue) => {
             setExportCenterOpen(false);
             setSelectedPageId(issue.pageId);
@@ -1483,31 +1558,33 @@ export function EditorPage() {
         />
       ) : null}
 
-      <section
-        ref={printStackRef}
-        className={`editor-print-stack ${exportCaptureActive ? 'is-export-capture-active' : ''}`.trim()}
-        aria-hidden="true"
-      >
-        {project.pages.map((page, index) => (
-          <div
-            className="editor-print-page"
-            key={page.id}
-            ref={(node) => {
-              printPageRefs.current[page.id] = node;
-            }}
-          >
-            <div className="magazine-sheet magazine-sheet--print">
-              <MagazinePreview
-                issue={project.issue}
-                page={page}
-                assets={printAssetsById ?? assetsById}
-                frameRadius={project.frameRadius}
-                pageNumber={index + 1}
-              />
+      {exportCaptureActive ? (
+        <section
+          ref={printStackRef}
+          className="editor-print-stack is-export-capture-active"
+          aria-hidden="true"
+        >
+          {project.pages.map((page, index) => (
+            <div
+              className="editor-print-page"
+              key={page.id}
+              ref={(node) => {
+                printPageRefs.current[page.id] = node;
+              }}
+            >
+              <div className="magazine-sheet magazine-sheet--print">
+                <MagazinePreview
+                  issue={project.issue}
+                  page={page}
+                  assets={printAssetsById ?? assetsById}
+                  frameRadius={project.frameRadius}
+                  pageNumber={index + 1}
+                />
+              </div>
             </div>
-          </div>
-        ))}
-      </section>
+          ))}
+        </section>
+      ) : null}
     </div>
   );
 }

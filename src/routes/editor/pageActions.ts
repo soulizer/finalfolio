@@ -3,6 +3,7 @@ import {
   type TemplatePackId,
 } from '../../editor/demoData';
 import { getConfirmationMessage } from '../../editor/confirmations';
+import { confirmAction } from '../../ui/confirm';
 import type {
   CustomTemplateDefinition,
   PageData,
@@ -62,9 +63,17 @@ export function createEditorPageActions({
   createPageId,
   getInitialSlot,
 }: CreateEditorPageActionsOptions) {
-  function applyTemplatePack(packId: TemplatePackId, mode: 'replace' | 'insert') {
-    if (mode === 'replace' && !window.confirm(getConfirmationMessage('replaceLayout'))) {
-      return;
+  async function applyTemplatePack(packId: TemplatePackId, mode: 'replace' | 'insert') {
+    if (mode === 'replace') {
+      const confirmed = await confirmAction({
+        title: 'Replace every page in this folio?',
+        body: 'Page titles, captions, body copy, and frame assignments are replaced by the starter pack. Photos stay in the media library.',
+        confirmLabel: 'Replace pages',
+        tone: 'danger',
+      });
+      if (!confirmed) {
+        return;
+      }
     }
 
     const nextState = applyTemplatePackToProject({
@@ -136,13 +145,19 @@ export function createEditorPageActions({
     updateProject(() => nextProject);
   }
 
-  function removeSelectedPage() {
+  async function removeSelectedPage() {
     if (!selectedPage || project.pages.length === 1 || selectedPageIndex < 0) {
       return;
     }
 
     const pageTitle = selectedPage.title.trim() || 'Page ' + (selectedPageIndex + 1);
-    if (!window.confirm(getConfirmationMessage('deletePage', { pageTitle }))) {
+    const confirmed = await confirmAction({
+      title: 'Delete this page?',
+      body: getConfirmationMessage('deletePage', { pageTitle }),
+      confirmLabel: 'Delete page',
+      tone: 'danger',
+    });
+    if (!confirmed) {
       return;
     }
 

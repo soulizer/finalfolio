@@ -1,4 +1,5 @@
 
+import { confirmAction } from '../ui/confirm';
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { LoadingStack } from '../components/LoadingStack';
@@ -163,7 +164,13 @@ export function AccountPage() {
   }
 
   async function handleDeleteProject(projectId: string) {
-    if (!window.confirm(getConfirmationMessage('deleteProject'))) {
+    const confirmed = await confirmAction({
+      title: 'Delete this folio?',
+      body: `${getConfirmationMessage('deleteProject')} Photos that no other folio uses are removed too.`,
+      confirmLabel: 'Delete folio',
+      tone: 'danger',
+    });
+    if (!confirmed) {
       return;
     }
 
@@ -290,7 +297,13 @@ export function AccountPage() {
   }
 
   async function handleDisableShare(project: ProjectRecord) {
-    if (!window.confirm('Disable this share link? Anyone with the old public URL will lose access immediately.')) {
+    const confirmed = await confirmAction({
+      title: 'Disable this share link?',
+      body: 'Anyone with the old public URL will lose access immediately.',
+      confirmLabel: 'Disable link',
+      tone: 'danger',
+    });
+    if (!confirmed) {
       return;
     }
 
@@ -378,7 +391,13 @@ export function AccountPage() {
   }
 
   async function handleDeleteTemplate(template: UserTemplateRecord) {
-    if (!window.confirm(`Delete template “${template.name}”?`)) {
+    const confirmed = await confirmAction({
+      title: 'Delete this template?',
+      body: `“${template.name}” will be removed from your saved templates. Folios created from it keep their current pages.`,
+      confirmLabel: 'Delete template',
+      tone: 'danger',
+    });
+    if (!confirmed) {
       return;
     }
 
@@ -400,7 +419,13 @@ export function AccountPage() {
   }
 
   async function handleDeleteUpload(upload: AccountUploadListItem) {
-    if (!window.confirm(getConfirmationMessage('deleteUpload', { filename: upload.filename }))) {
+    const confirmed = await confirmAction({
+      title: 'Delete this upload?',
+      body: getConfirmationMessage('deleteUpload', { filename: upload.filename }),
+      confirmLabel: 'Delete upload',
+      tone: 'danger',
+    });
+    if (!confirmed) {
       return;
     }
 

@@ -63,11 +63,25 @@ test('upload, save, reopen, share, and export the editor flow', async ({ page })
   await page.goto(editorUrl);
   await page.getByRole('button', { name: 'Export Center' }).click();
   await page.getByRole('button', { name: /A3/ }).click();
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: /^Export PDF$/ }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/\.pdf$/);
+  const pdfPath = await download.path();
+  expect(pdfPath).toBeTruthy();
+  const pdfBytes = fs.readFileSync(pdfPath as string);
+  expect(pdfBytes.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+  expect(pdfBytes.length).toBeGreaterThan(10_000);
+
+  // The print path stays available as a secondary action and must still use the
+  // same page renderer as the editor preview.
+  await page.getByRole('button', { name: 'Export Center' }).click();
   await page.evaluate(() => {
     const runtime = window as PrintRuntime;
     runtime.__holdPrintOpen = true;
   });
-  await page.getByRole('button', { name: 'Export PDF' }).click();
+  await page.getByRole('button', { name: 'Print instead' }).click();
   await expect.poll(async () => page.evaluate(() => (window as PrintRuntime).__printCalls ?? 0)).toBe(1);
 
   const exportGeometry = await page.evaluate(() => {
@@ -113,5 +127,5 @@ test('upload, save, reopen, share, and export the editor flow', async ({ page })
   });
 
   await page.goto('/account');
-  await expect(page.getByText('Requested PDF export')).toBeVisible();
+  await expect(page.getByText('Exported a project').first()).toBeVisible();
 });

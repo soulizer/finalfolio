@@ -6,6 +6,7 @@ import {
   capturePageNodeAsJpeg,
   createCombinedJpeg,
   createJpegZip,
+  createPdfFromJpegPages,
   createProjectExportBlob,
   downloadBlob,
   getExportOptimizationOptions,
@@ -51,7 +52,7 @@ type RunPrintExportOptions = {
   settings: ExportSettings;
   project: ProjectState;
   projectRecordId?: string | null;
-  printStackRoot: HTMLElement | null;
+  getPrintStackRoot: () => HTMLElement | null;
   setExportCaptureActive: SetExportCaptureActive;
   setExportDialogMessage: SetExportDialogMessage;
   setPrintState: SetPrintState;
@@ -59,11 +60,25 @@ type RunPrintExportOptions = {
   preparePrintAssets: (settings: ExportSettings) => Promise<Record<string, Asset>>;
 };
 
+type RunPdfExportOptions = {
+  settings: ExportSettings;
+  project: ProjectState;
+  projectRecordId?: string | null;
+  getPrintStackRoot: () => HTMLElement | null;
+  getPrintPageRefs: () => Record<string, HTMLDivElement | null>;
+  setExportCaptureActive: SetExportCaptureActive;
+  setExportDialogMessage: SetExportDialogMessage;
+  setPrintState: SetPrintState;
+  setMessage: SetMessage;
+  setExportCenterOpen: SetExportCenterOpen;
+  preparePrintAssets: (settings: ExportSettings) => Promise<Record<string, Asset>>;
+};
+
 type CaptureJpgPagesOptions = {
   settings: ExportSettings;
   project: ProjectState;
-  printStackRoot: HTMLElement | null;
-  printPageRefs: Record<string, HTMLDivElement | null>;
+  getPrintStackRoot: () => HTMLElement | null;
+  getPrintPageRefs: () => Record<string, HTMLDivElement | null>;
   setExportCaptureActive: SetExportCaptureActive;
   setExportDialogMessage: SetExportDialogMessage;
   setMessage: SetMessage;
@@ -80,6 +95,7 @@ type RunProjectExportFlowOptions = {
   setExportDialogMessage: SetExportDialogMessage;
   setMessage: SetMessage;
   runPrintExport: (settings: ExportSettings) => Promise<void>;
+  runPdfExport: (settings: ExportSettings) => Promise<void>;
   captureJpgPages: (settings: ExportSettings) => Promise<Array<{ name: string; dataUrl: string }>>;
 };
 
@@ -162,7 +178,7 @@ export function createEditorExportActions({
       settings,
       project,
       projectRecordId,
-      printStackRoot: getPrintStackRoot(),
+      getPrintStackRoot,
       setExportCaptureActive,
       setExportDialogMessage,
       setPrintState,
@@ -171,12 +187,28 @@ export function createEditorExportActions({
     });
   }
 
+  async function handlePdfExport(settings: ExportSettings = exportSettings) {
+    await runPdfExport({
+      settings,
+      project,
+      projectRecordId,
+      getPrintStackRoot,
+      getPrintPageRefs,
+      setExportCaptureActive,
+      setExportDialogMessage,
+      setPrintState,
+      setMessage,
+      setExportCenterOpen,
+      preparePrintAssets: preparePrintAssetsIfNeeded,
+    });
+  }
+
   async function captureProjectJpgPages(settings: ExportSettings) {
     return captureJpgPages({
       settings,
       project,
-      printStackRoot: getPrintStackRoot(),
-      printPageRefs: getPrintPageRefs(),
+      getPrintStackRoot,
+      getPrintPageRefs,
       setExportCaptureActive,
       setExportDialogMessage,
       setMessage,
@@ -195,11 +227,13 @@ export function createEditorExportActions({
       setExportDialogMessage,
       setMessage,
       runPrintExport: handlePrint,
+      runPdfExport: handlePdfExport,
       captureJpgPages: captureProjectJpgPages,
     });
   }
 
   return {
+    handlePrint,
     handleRunExport,
   };
 }
@@ -306,7 +340,7 @@ export async function runPrintExport({
   settings,
   project,
   projectRecordId,
-  printStackRoot,
+  getPrintStackRoot,
   setExportCaptureActive,
   setExportDialogMessage,
   setPrintState,
@@ -336,7 +370,8 @@ export async function runPrintExport({
     await preparePrintAssets(settings);
     document.title = nextTitle;
     window.addEventListener('afterprint', restoreTitle, { once: true });
-    await waitForPrintSurfaceReady(printStackRoot);
+    await waitForRenderFrame();
+    await waitForPrintSurfaceReady(getPrintStackRoot());
     setExportDialogMessage('Opening print dialog...');
     await recordExportEvent(exportProjectRecordId, 'requested', undefined, settings);
     window.print();
@@ -355,8 +390,8 @@ export async function runPrintExport({
 export async function captureJpgPages({
   settings,
   project,
-  printStackRoot,
-  printPageRefs,
+  getPrintStackRoot,
+  getPrintPageRefs,
   setExportCaptureActive,
   setExportDialogMessage,
   setMessage,
@@ -372,7 +407,8 @@ export async function captureJpgPages({
     await waitForFontsReady();
     await waitForRenderFrame();
     await waitForRenderFrame();
-    await waitForPrintSurfaceReady(printStackRoot);
+    await waitForPrintSurfaceReady(getPrintStackRoot());
+    const printPageRefs = getPrintPageRefs();
 
     const renderedPages = [];
     for (let index = 0; index < project.pages.length; index += 1) {
@@ -397,6 +433,56 @@ export async function captureJpgPages({
   }
 }
 
+export async function runPdfExport({
+  settings,
+  project,
+  projectRecordId,
+  getPrintStackRoot,
+  getPrintPageRefs,
+  setExportCaptureActive,
+  setExportDialogMessage,
+  setPrintState,
+  setMessage,
+  setExportCenterOpen,
+  preparePrintAssets,
+}: RunPdfExportOptions) {
+  const restoreLayout = applyPrintLayout(settings.pageSize);
+  setExportCaptureActive(true);
+
+  try {
+    setExportDialogMessage('Preparing PDF...');
+    await preparePrintAssets(settings);
+    await waitForRenderFrame();
+    await waitForFontsReady();
+    await waitForPrintSurfaceReady(getPrintStackRoot());
+    const printPageRefs = getPrintPageRefs();
+
+    const blob = await createPdfFromJpegPages(project.pages.length, settings, async (index) => {
+      const page = project.pages[index];
+      setExportDialogMessage(`Rendering page ${index + 1}/${project.pages.length}...`);
+      const node = printPageRefs[page.id];
+      if (!node) {
+        throw new Error('One or more export pages are not ready yet.');
+      }
+
+      return await capturePageNodeAsJpeg(node, settings);
+    });
+
+    downloadBlob(`${buildExportFilenameBase(project)}.pdf`, blob);
+    await recordExportEvent(projectRecordId ?? undefined, 'ok', undefined, settings);
+    setExportCenterOpen(false);
+  } catch (error) {
+    const errorMessage = getErrorMessage(error, 'Unable to build the PDF.');
+    void recordExportEvent(projectRecordId ?? undefined, 'error', errorMessage, settings);
+    setExportDialogMessage(errorMessage, 'error');
+    setMessage(errorMessage);
+  } finally {
+    setPrintState({ phase: 'idle' });
+    setExportCaptureActive(false);
+    restoreLayout();
+  }
+}
+
 export async function runProjectExportFlow({
   project,
   projectRecordId,
@@ -407,6 +493,7 @@ export async function runProjectExportFlow({
   setExportDialogMessage,
   setMessage,
   runPrintExport,
+  runPdfExport,
   captureJpgPages,
 }: RunProjectExportFlowOptions) {
   const exportProjectRecordId = projectRecordId ?? undefined;
@@ -453,6 +540,17 @@ export async function runProjectExportFlow({
         nextIssues.length
           ? `Project export downloaded with ${nextIssues.length} preflight warning${nextIssues.length === 1 ? '' : 's'}.`
           : 'Project export downloaded.',
+      );
+      setExportCenterOpen(false);
+      return;
+    }
+
+    if (exportSettings.format === 'pdf') {
+      await runPdfExport(exportSettings);
+      setMessage(
+        nextIssues.length
+          ? `PDF downloaded with ${nextIssues.length} preflight warning${nextIssues.length === 1 ? '' : 's'}.`
+          : 'PDF downloaded.',
       );
       setExportCenterOpen(false);
       return;

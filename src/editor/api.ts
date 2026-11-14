@@ -348,13 +348,16 @@ export function fetchProject(projectId: string) {
   return readJson<ProjectRecord>(`/api/projects/${projectId}`);
 }
 
-export function updateProject(projectId: string, project: ProjectState) {
+export function updateProject(projectId: string, project: ProjectState, expectedRev?: number) {
   return readJson<ProjectRecord>(`/api/projects/${projectId}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ project }),
+    body: JSON.stringify({
+      project,
+      ...(typeof expectedRev === 'number' ? { expectedRev } : {}),
+    }),
   });
 }
 

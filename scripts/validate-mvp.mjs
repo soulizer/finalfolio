@@ -1415,7 +1415,9 @@ try {
     assert.match(appRoutes, /const AccountPage = lazy\(\(\) => import\('\.\/routes\/AccountPage'\)/);
     assert.match(appRoutes, /const EditorPage = lazy\(\(\) => import\('\.\/routes\/EditorPage'\)/);
     assert.match(appRoutes, /useDeferredValue/);
-    assert.match(appRoutes, /<Suspense fallback=\{null\}>/);
+    assert.match(appRoutes, /<Suspense fallback=\{<RouteFallback \/>\}>/);
+    assert.match(appRoutes, /<AppErrorBoundary>/);
+    assert.match(appRoutes, /path="\*" element=\{<NotFoundPage \/>\}/);
     assert.match(appRoutes, /<Routes location=\{deferredLocation\}>/);
     assert.doesNotMatch(appRoutes, /import \{ HomePage \} from '\.\/routes\/HomePage'/);
     assert.match(appRoutes, /path="\/auth"/);
@@ -1834,8 +1836,10 @@ try {
     assert.match(editorUseEditorProjectLifecycle, /writeDraftProject\(project\)/);
     assert.match(editorUseEditorProjectLifecycle, /saveProject\(\{ manual: false \}\)/);
     assert.match(editorUseEditorProjectState, /export function useEditorProjectState/);
-    assert.match(editorUseEditorProjectState, /function updateSelectedCrop/);
-    assert.match(editorUseEditorProjectState, /function selectPage/);
+    assert.match(editorUseEditorProjectState, /const updateSelectedCrop = useCallback/);
+    assert.match(editorUseEditorProjectState, /const selectPage = useCallback/);
+    assert.match(editorUseEditorProjectState, /const undo = useCallback/);
+    assert.match(editorUseEditorProjectState, /const redo = useCallback/);
     assert.match(editorUseEditorTemplateState, /export function useEditorTemplateState/);
     assert.match(editorUseEditorTemplateState, /function createExportSettingsFromPreferences/);
     assert.match(editorUseEditorTemplateState, /fetchTemplateGovernance/);

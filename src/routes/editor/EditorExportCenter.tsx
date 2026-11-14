@@ -27,6 +27,7 @@ type EditorExportCenterProps = {
   onClose: () => void;
   onRequestCloseIfIdle: () => void;
   onRunExport: () => void;
+  onRunPrint: () => void;
   onSelectPreflightIssue: (issue: ExportPreflightIssue) => void;
   updateExportSettings: (updater: ExportSettings | ((current: ExportSettings) => ExportSettings)) => void;
 };
@@ -41,6 +42,7 @@ export function EditorExportCenter({
   onClose,
   onRequestCloseIfIdle,
   onRunExport,
+  onRunPrint,
   onSelectPreflightIssue,
   updateExportSettings,
 }: EditorExportCenterProps) {
@@ -202,6 +204,16 @@ export function EditorExportCenter({
           >
             {exportSubmitLabel}
           </button>
+          {exportSettings.format === 'pdf' ? (
+            <button
+              type="button"
+              className="button button--ghost button--small"
+              disabled={exportActionBusy}
+              onClick={onRunPrint}
+            >
+              Print instead
+            </button>
+          ) : null}
           <button type="button" className="button button--ghost button--small" disabled={exportActionBusy} onClick={onClose}>
             Cancel
           </button>

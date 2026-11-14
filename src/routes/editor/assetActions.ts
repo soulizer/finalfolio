@@ -1,5 +1,6 @@
 import type { UserSession } from '../../editor/api';
 import { getConfirmationMessage } from '../../editor/confirmations';
+import { confirmAction } from '../../ui/confirm';
 import type { Asset, PageData, ProjectRecord, ProjectState } from '../../editor/types';
 import {
   assignAssetToProject,
@@ -129,7 +130,13 @@ export function createEditorAssetActions({
   }
 
   async function handleDeleteAsset(asset: Asset) {
-    if (!window.confirm(getConfirmationMessage('removeIssueAsset', { assetName: asset.name }))) {
+    const confirmed = await confirmAction({
+      title: 'Remove this photo from the folio?',
+      body: getConfirmationMessage('removeIssueAsset', { assetName: asset.name }),
+      confirmLabel: 'Remove photo',
+      tone: 'danger',
+    });
+    if (!confirmed) {
       return;
     }
 
@@ -180,7 +187,13 @@ export function createEditorAssetActions({
       return;
     }
 
-    if (!window.confirm(getConfirmationMessage('removeUnusedAssets', { unusedAssetCount: removableAssets.length }))) {
+    const confirmed = await confirmAction({
+      title: 'Remove unused photos?',
+      body: getConfirmationMessage('removeUnusedAssets', { unusedAssetCount: removableAssets.length }),
+      confirmLabel: 'Remove photos',
+      tone: 'danger',
+    });
+    if (!confirmed) {
       return;
     }
 

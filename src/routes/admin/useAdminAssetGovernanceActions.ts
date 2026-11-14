@@ -1,3 +1,4 @@
+import { confirmAction } from '../../ui/confirm';
 import {
   deleteAdminProject,
   deleteAdminUpload,
@@ -12,7 +13,13 @@ type UseAdminAssetGovernanceActionsOptions = {
 
 export function useAdminAssetGovernanceActions({ refreshAll, setMessage }: UseAdminAssetGovernanceActionsOptions) {
   async function handleDeleteProject(projectId: string) {
-    if (!window.confirm(getConfirmationMessage('deleteProject'))) {
+    const confirmed = await confirmAction({
+      title: 'Delete this project?',
+      body: `${getConfirmationMessage('deleteProject')} Unreferenced photos are removed as well.`,
+      confirmLabel: 'Delete project',
+      tone: 'danger',
+    });
+    if (!confirmed) {
       return;
     }
 
@@ -28,7 +35,13 @@ export function useAdminAssetGovernanceActions({ refreshAll, setMessage }: UseAd
   }
 
   async function handleDeleteUpload(filename: string) {
-    if (!window.confirm(getConfirmationMessage('deleteUpload', { filename }))) {
+    const confirmed = await confirmAction({
+      title: 'Delete this upload?',
+      body: getConfirmationMessage('deleteUpload', { filename }),
+      confirmLabel: 'Delete upload',
+      tone: 'danger',
+    });
+    if (!confirmed) {
       return;
     }
 

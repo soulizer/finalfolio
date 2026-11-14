@@ -119,6 +119,7 @@ export interface ProjectShareMeta {
 
 export interface ProjectRecord {
   id: string;
+  rev?: number;
   createdAt: string;
   updatedAt: string;
   archivedAt?: string | null;

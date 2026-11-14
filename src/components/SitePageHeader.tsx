@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-type SitePageKey = 'home' | 'auth' | 'account' | 'admin' | 'terms' | 'privacy';
+type SitePageKey = 'home' | 'auth' | 'account' | 'admin' | 'terms' | 'privacy' | 'not-found';
 
 const PAGE_SUBTITLE_BY_KEY: Partial<Record<SitePageKey, string>> = {
   auth: 'Account and access',
@@ -9,6 +9,7 @@ const PAGE_SUBTITLE_BY_KEY: Partial<Record<SitePageKey, string>> = {
   admin: 'Product backend',
   terms: 'Terms of Service',
   privacy: 'Privacy Policy',
+  'not-found': 'Page not found',
 };
 
 export function SitePageHeader({

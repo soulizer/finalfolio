@@ -1,6 +1,8 @@
 import { lazy, Suspense, useDeferredValue, useEffect } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
+import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { SessionProvider } from './session';
+import { ConfirmProvider } from './ui/confirm';
 
 const HomePage = lazy(() => import('./routes/HomePage').then((module) => ({ default: module.HomePage })));
 const AuthPage = lazy(() => import('./routes/AuthPage').then((module) => ({ default: module.AuthPage })));
@@ -10,6 +12,16 @@ const AccountPage = lazy(() => import('./routes/AccountPage').then((module) => (
 const AdminPage = lazy(() => import('./routes/AdminPage').then((module) => ({ default: module.AdminPage })));
 const IssueViewPage = lazy(() => import('./routes/IssueViewPage').then((module) => ({ default: module.IssueViewPage })));
 const EditorPage = lazy(() => import('./routes/EditorPage').then((module) => ({ default: module.EditorPage })));
+const NotFoundPage = lazy(() => import('./routes/NotFoundPage').then((module) => ({ default: module.NotFoundPage })));
+
+function RouteFallback() {
+  return (
+    <div className="route-fallback" role="status" aria-live="polite">
+      <span className="route-fallback__mark" aria-hidden="true" />
+      <p>Loading</p>
+    </div>
+  );
+}
 
 function useRevealObserver(pathname: string) {
   useEffect(() => {
@@ -67,19 +79,24 @@ export default function App() {
 
   return (
     <SessionProvider>
-      <Suspense fallback={null}>
-        <Routes location={deferredLocation}>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/auth" element={<AuthPage />} />
-          <Route path="/terms" element={<TermsPage />} />
-          <Route path="/privacy" element={<PrivacyPage />} />
-          <Route path="/account" element={<AccountPage />} />
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/project/:shareId" element={<IssueViewPage />} />
-          <Route path="/editor" element={<EditorPage />} />
-          <Route path="/editor/:projectId" element={<EditorPage />} />
-        </Routes>
-      </Suspense>
+      <AppErrorBoundary>
+        <ConfirmProvider>
+          <Suspense fallback={<RouteFallback />}>
+          <Routes location={deferredLocation}>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/auth" element={<AuthPage />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/account" element={<AccountPage />} />
+            <Route path="/admin" element={<AdminPage />} />
+            <Route path="/project/:shareId" element={<IssueViewPage />} />
+            <Route path="/editor" element={<EditorPage />} />
+            <Route path="/editor/:projectId" element={<EditorPage />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+          </Suspense>
+        </ConfirmProvider>
+      </AppErrorBoundary>
     </SessionProvider>
   );
 }

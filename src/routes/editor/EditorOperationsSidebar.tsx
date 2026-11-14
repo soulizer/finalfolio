@@ -17,7 +17,9 @@ type CopyState = 'idle' | 'copied' | 'error';
 type EditorOperationsSidebarProps = {
   archiveActionLabel: string;
   authReady: boolean;
+  canRedo: boolean;
   canSaveProject: boolean;
+  canUndo: boolean;
   copyButtonLabel: string;
   copyState: CopyState;
   exportActionBusy: boolean;
@@ -35,6 +37,7 @@ type EditorOperationsSidebarProps = {
   onOpenAccountPage: () => void;
   onOpenAdminPage: () => void;
   onOpenSharedProject: () => void;
+  onRedo: () => void;
   onRegenerateShare: () => void;
   onSaveCurrentProjectAsTemplate: () => void;
   onSaveProject: () => void;
@@ -45,11 +48,14 @@ type EditorOperationsSidebarProps = {
   onTemplateSaveNameChange: (value: string) => void;
   onToggleExportCenter: () => void;
   onToggleTemplateComposer: () => void;
+  onUndo: () => void;
   project: ProjectState;
   projectActionBusy: ProjectActionBusy;
   projectModeTag: string;
   projectMutationLocked: boolean;
   projectRecord: ProjectRecord | null;
+  onReloadLatest: () => void;
+  saveConflict: string | null;
   publicShareCopyLabel: string;
   publicShareUrl: string;
   saveActionLabel: string;
@@ -74,7 +80,9 @@ type EditorOperationsSidebarProps = {
 export function EditorOperationsSidebar({
   archiveActionLabel,
   authReady,
+  canRedo,
   canSaveProject,
+  canUndo,
   copyButtonLabel,
   copyState,
   exportActionBusy,
@@ -92,6 +100,7 @@ export function EditorOperationsSidebar({
   onOpenAccountPage,
   onOpenAdminPage,
   onOpenSharedProject,
+  onRedo,
   onRegenerateShare,
   onSaveCurrentProjectAsTemplate,
   onSaveProject,
@@ -102,11 +111,14 @@ export function EditorOperationsSidebar({
   onTemplateSaveNameChange,
   onToggleExportCenter,
   onToggleTemplateComposer,
+  onUndo,
   project,
   projectActionBusy,
   projectModeTag,
   projectMutationLocked,
   projectRecord,
+  onReloadLatest,
+  saveConflict,
   publicShareCopyLabel,
   publicShareUrl,
   saveActionLabel,
@@ -173,6 +185,34 @@ export function EditorOperationsSidebar({
           <span className="panel-tag">{projectModeTag}</span>
         </div>
         <p className="panel-note panel-note--status">{statusText}</p>
+        {saveConflict ? (
+          <div className="editor-conflict-notice" role="alert">
+            <p>{saveConflict}</p>
+            <button type="button" className="button button--primary button--small" onClick={onReloadLatest}>
+              Reload latest
+            </button>
+          </div>
+        ) : null}
+        <div className="editor-history-row" role="group" aria-label="Edit history">
+          <button
+            type="button"
+            className="button button--ghost button--small editor-history-button"
+            disabled={!canUndo}
+            onClick={onUndo}
+            title="Undo (Ctrl+Z)"
+          >
+            Undo
+          </button>
+          <button
+            type="button"
+            className="button button--ghost button--small editor-history-button"
+            disabled={!canRedo}
+            onClick={onRedo}
+            title="Redo (Ctrl+Shift+Z)"
+          >
+            Redo
+          </button>
+        </div>
         <div className="editor-panel__actions editor-panel__actions--tight">
           <button
             type="button"
@@ -212,7 +252,7 @@ export function EditorOperationsSidebar({
             disabled={libraryBusy || exportActionBusy}
             onClick={onStartNewDraft}
           >
-            New
+            New draft
           </button>
           <button
             type="button"

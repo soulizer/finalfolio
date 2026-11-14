@@ -23,7 +23,7 @@ export const exportFormatMeta: Record<
 > = {
   pdf: {
     label: 'PDF',
-    description: 'Flatten the folio into a print-ready PDF using the existing editorial page renderer.',
+    description: 'Render every page into a downloadable PDF at the selected page size and quality.',
   },
   project: {
     label: 'FinalFolio Project',
@@ -338,6 +338,40 @@ export async function createCombinedJpeg(dataUrls: string[], settings: ExportSet
   });
 
   return blob;
+}
+
+/**
+ * Builds a real PDF file from rendered page JPEGs. pdf-lib is imported lazily so the
+ * editor bundle only pays for it when someone actually exports a PDF.
+ */
+export async function createPdfFromJpegPages(
+  pageCount: number,
+  settings: ExportSettings,
+  getPageJpeg: (index: number) => Promise<string>,
+) {
+  const { PDFDocument } = await import('pdf-lib');
+  const preset = exportPageSizeMeta[settings.pageSize];
+  const pageWidth = (preset.widthMm * 72) / 25.4;
+  const pageHeight = (preset.heightMm * 72) / 25.4;
+  const document = await PDFDocument.create();
+
+  for (let index = 0; index < pageCount; index += 1) {
+    const dataUrl = await getPageJpeg(index);
+    const binary = atob(extractBase64Payload(dataUrl));
+    const bytes = new Uint8Array(binary.length);
+    for (let offset = 0; offset < binary.length; offset += 1) {
+      bytes[offset] = binary.charCodeAt(offset);
+    }
+
+    const image = await document.embedJpg(bytes);
+    const page = document.addPage([pageWidth, pageHeight]);
+    page.drawImage(image, { x: 0, y: 0, width: pageWidth, height: pageHeight });
+  }
+
+  const pdfBytes = await document.save();
+  const buffer = new ArrayBuffer(pdfBytes.byteLength);
+  new Uint8Array(buffer).set(pdfBytes);
+  return new Blob([buffer], { type: 'application/pdf' });
 }
 
 export async function createJpegZip(

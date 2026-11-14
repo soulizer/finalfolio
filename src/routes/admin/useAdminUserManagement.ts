@@ -1,3 +1,4 @@
+import { confirmAction } from '../../ui/confirm';
 import { useState } from 'react';
 import {
   createAdminUser,
@@ -47,7 +48,13 @@ export function useAdminUserManagement({ refreshAll, setMessage }: UseAdminUserM
   }
 
   async function handleDeleteUser(user: UserSession) {
-    if (!window.confirm(getConfirmationMessage('deleteUser', { userLabel: getUserPrimaryIdentity(user) }))) {
+    const confirmed = await confirmAction({
+      title: 'Delete this account?',
+      body: getConfirmationMessage('deleteUser', { userLabel: getUserPrimaryIdentity(user) }),
+      confirmLabel: 'Delete account',
+      tone: 'danger',
+    });
+    if (!confirmed) {
       return;
     }
 

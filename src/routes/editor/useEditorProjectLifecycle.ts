@@ -35,6 +35,7 @@ type UseEditorProjectLifecycleOptions = HydrationSetters & {
   project: ProjectState;
   projectRecord: ProjectRecord | null;
   loadState: LoadState;
+  saveConflict: boolean;
   saveState: SaveState;
   getInitialSlot: (page?: PageData) => string | null;
   lastSavedSnapshotRef: { current: string };
@@ -52,6 +53,7 @@ export function useEditorProjectLifecycle({
   project,
   projectRecord,
   loadState,
+  saveConflict,
   saveState,
   getInitialSlot,
   lastSavedSnapshotRef,
@@ -151,7 +153,7 @@ export function useEditorProjectLifecycle({
   }, [projectId]);
 
   useEffect(() => {
-    if (loadState !== 'ready') {
+    if (loadState !== 'ready' || saveConflict) {
       return;
     }
 
@@ -173,5 +175,5 @@ export function useEditorProjectLifecycle({
     }, 1200);
 
     return () => window.clearTimeout(timer);
-  }, [loadState, project, projectRecord, saveProject, saveState]);
+  }, [loadState, project, projectRecord, saveConflict, saveProject, saveState]);
 }

@@ -163,7 +163,9 @@ function AssetFrame({
   const imageRef = useRef<HTMLImageElement | null>(null);
   const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
   const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 });
-  const crop = getFallbackCrop(page.crops[slot]);
+  // getFallbackCrop allocates a fresh object. Memoising it keeps imageGeometry and
+  // dragMetrics referentially stable, which the crop-metrics effect below depends on.
+  const crop = useMemo(() => getFallbackCrop(page.crops[slot]), [page.crops, slot]);
   const intrinsicSize = useMemo(
     () => resolveAssetIntrinsicSize(asset, naturalSize),
     [asset, naturalSize],
@@ -252,14 +254,18 @@ function AssetFrame({
     );
   }, [asset?.id, assetSource]);
 
+  const onCropMetricsChangeRef = useRef(onCropMetricsChange);
+  onCropMetricsChangeRef.current = onCropMetricsChange;
+
   useEffect(() => {
-    if (!interactive || !onCropMetricsChange) {
+    const notify = onCropMetricsChangeRef.current;
+    if (!interactive || !notify) {
       return;
     }
 
-    onCropMetricsChange(slot, asset ? dragMetrics : null);
-    return () => onCropMetricsChange(slot, null);
-  }, [asset, dragMetrics, interactive, onCropMetricsChange, slot]);
+    notify(slot, asset ? dragMetrics : null);
+    return () => onCropMetricsChangeRef.current?.(slot, null);
+  }, [asset, dragMetrics, interactive, slot]);
 
   function nudgeCropByPixels(axis: 'x' | 'y', deltaPixels: number) {
     if (!onUpdateCrop) {

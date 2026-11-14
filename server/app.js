@@ -604,6 +604,7 @@ function serializeProjectShare(share) {
 export function serializeProjectRecord(record) {
   return {
     id: record.id,
+    rev: Number.isInteger(record.rev) && record.rev >= 0 ? record.rev : 0,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
     archivedAt: sanitizeArchivedAt(record.archivedAt),
@@ -706,6 +707,7 @@ export function createProjectStore({
 
       return {
         id: record.id,
+        rev: Number.isInteger(record.rev) && record.rev >= 0 ? record.rev : 0,
         createdAt: record.createdAt,
         updatedAt: record.updatedAt,
         archivedAt: sanitizeArchivedAt(record.archivedAt),
@@ -729,6 +731,7 @@ export function createProjectStore({
     const timestamp = now();
     const record = {
       id: idFactory(9),
+      rev: 1,
       createdAt: timestamp,
       updatedAt: timestamp,
       archivedAt: null,
@@ -747,6 +750,7 @@ export function createProjectStore({
     const project = sanitizeProjectState(payload, { maxPageCount, maxAssetCount });
     const nextRecord = {
       ...existingRecord,
+      rev: (existingRecord.rev ?? 0) + 1,
       updatedAt: now(),
       project,
       archivedAt: sanitizeArchivedAt(existingRecord.archivedAt),
@@ -770,6 +774,7 @@ export function createProjectStore({
     };
     const nextRecord = {
       ...existingRecord,
+      rev: (existingRecord.rev ?? 0) + 1,
       updatedAt: timestamp,
       archivedAt:
         patch.archivedAt === undefined
@@ -831,6 +836,7 @@ export function createProjectStore({
         };
     const nextRecord = {
       ...existingRecord,
+      rev: (existingRecord.rev ?? 0) + 1,
       updatedAt: timestamp,
       share: nextShare,
     };
@@ -2839,6 +2845,16 @@ export function createApp({
     try {
       const existingRecord = await store.readProjectRecord(request.params.projectId);
       const user = requireProjectMutationAccess(request, existingRecord);
+      const expectedRev = Number(request.body?.expectedRev);
+      if (Number.isInteger(expectedRev) && expectedRev !== existingRecord.rev) {
+        const error = new Error(
+          'This folio was updated in another tab or on another device. Reload it to see the latest version before saving.',
+        );
+        error.statusCode = 409;
+        error.code = 'revision_conflict';
+        error.details = { rev: existingRecord.rev };
+        throw error;
+      }
       const record = await updateProjectRecordPreservingAssets(request.params.projectId, request.body);
       await opsStore.recordEvent({
         type: 'project',
@@ -3774,7 +3790,7 @@ export function createApp({
     if (statusCode >= 500) {
       console.error(error);
     }
-    if (statusCode >= 400) {
+    if (statusCode >= 400 && error?.code !== 'revision_conflict') {
       const failureType = request.path.startsWith('/api/uploads')
         ? 'upload'
         : request.path.startsWith('/api/auth')
@@ -3795,6 +3811,7 @@ export function createApp({
       error: message,
       ...(typeof error?.code === 'string' ? { code: error.code } : {}),
       ...(typeof error?.termsVersion === 'string' ? { termsVersion: error.termsVersion } : {}),
+      ...(error?.details && typeof error.details === 'object' ? { details: error.details } : {}),
     });
   });
 

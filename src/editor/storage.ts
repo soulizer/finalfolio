@@ -145,6 +145,11 @@ export function subscribeToDraftAssetRemoval(listener: (detail: DraftAssetRemova
   };
 }
 
+// Uploads are written to IndexedDB before the project state contains the new asset.
+// The draft-sync effect can run in that window and would otherwise delete the file it
+// just saw. Ids stay protected until the project references them.
+const pendingDraftUploadIds = new Set<string>();
+
 export function createPersistedDraftUploadSource(assetId: string) {
   return `${PERSISTED_DRAFT_UPLOAD_SCHEME}${assetId}`;
 }
@@ -291,21 +296,28 @@ export async function writePersistedDraftUpload(
     height?: number;
   } = {},
 ) {
-  await withDraftUploadTransaction<void>('readwrite', (store, resolve, reject) => {
-    const request = store.put({
-      assetId,
-      blob: file,
-      name: file.name,
-      type: file.type,
-      width: typeof width === 'number' ? width : null,
-      height: typeof height === 'number' ? height : null,
-      bytes: typeof file.size === 'number' ? file.size : null,
-      updatedAt: Date.now(),
-    } satisfies DraftUploadRecord);
+  pendingDraftUploadIds.add(assetId);
 
-    request.onsuccess = () => resolve(undefined);
-    request.onerror = () => reject(request.error ?? new Error('Unable to cache this local draft upload.'));
-  });
+  try {
+    await withDraftUploadTransaction<void>('readwrite', (store, resolve, reject) => {
+      const request = store.put({
+        assetId,
+        blob: file,
+        name: file.name,
+        type: file.type,
+        width: typeof width === 'number' ? width : null,
+        height: typeof height === 'number' ? height : null,
+        bytes: typeof file.size === 'number' ? file.size : null,
+        updatedAt: Date.now(),
+      } satisfies DraftUploadRecord);
+
+      request.onsuccess = () => resolve(undefined);
+      request.onerror = () => reject(request.error ?? new Error('Unable to cache this local draft upload.'));
+    });
+  } catch (error) {
+    pendingDraftUploadIds.delete(assetId);
+    throw error;
+  }
 }
 
 export async function readPersistedDraftUploadFile(
@@ -336,6 +348,7 @@ export async function readPersistedDraftUploadFile(
 }
 
 export async function removePersistedDraftUpload(assetId: string) {
+  pendingDraftUploadIds.delete(assetId);
   await withDraftUploadTransaction<void>('readwrite', (store, resolve, reject) => {
     const request = store.delete(assetId);
     request.onsuccess = () => resolve(undefined);
@@ -361,11 +374,18 @@ export async function syncPersistedDraftUploads(project: ProjectState) {
       .map((asset) => asset.id),
   );
   const storedIds = await listPersistedDraftUploadIds();
+  const removableIds = storedIds.filter(
+    (assetId) => !activeDraftUploadIds.has(assetId) && !pendingDraftUploadIds.has(assetId),
+  );
 
-  await Promise.all(storedIds.filter((assetId) => !activeDraftUploadIds.has(assetId)).map((assetId) => removePersistedDraftUpload(assetId)));
+  await Promise.all(removableIds.map((assetId) => removePersistedDraftUpload(assetId)));
+
+  // Once the project references the upload the normal lifecycle can manage it again.
+  activeDraftUploadIds.forEach((assetId) => pendingDraftUploadIds.delete(assetId));
 }
 
 export async function clearPersistedDraftUploads() {
+  pendingDraftUploadIds.clear();
   await withDraftUploadTransaction<void>('readwrite', (store, resolve, reject) => {
     const request = store.clear();
     request.onsuccess = () => resolve(undefined);

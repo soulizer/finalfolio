@@ -21,7 +21,11 @@ export default defineConfig({
     browserName: 'chromium',
     headless: true,
     launchOptions: {
-      executablePath: '/usr/bin/chromium-browser',
+      // Use the browser managed by Playwright by default; allow CI images that ship a
+      // system Chromium to point at it explicitly instead of hardcoding a path.
+      ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE
+        ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE }
+        : {}),
       args: ['--no-sandbox'],
     },
     trace: 'retain-on-failure',

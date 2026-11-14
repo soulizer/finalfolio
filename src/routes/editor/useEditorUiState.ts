@@ -1,4 +1,4 @@
-import { ChangeEvent, FocusEvent, RefObject, useEffect, useState } from 'react';
+import { ChangeEvent, FocusEvent, RefObject, useCallback, useEffect, useState } from 'react';
 import { DEFAULT_FILL_SCALE } from '../../editor/demoData';
 import { cropValueToPixelOffset, pixelOffsetToCropValue } from '../../editor/imageGeometry';
 import type { CropSettings, TemplateId } from '../../editor/types';
@@ -195,7 +195,10 @@ export function useEditorUiState({
     setCustomLayoutPreviewFocus(false);
   }
 
-  function handleCropMetricsChange(slot: string, metrics: CropMetrics | null) {
+  // Stable identity is required: MagazinePreview includes this callback in an effect
+  // dependency list, so a fresh function on every render would re-trigger the effect and
+  // feed a render loop back through setCropMetricsBySlot.
+  const handleCropMetricsChange = useCallback((slot: string, metrics: CropMetrics | null) => {
     setCropMetricsBySlot((current) => {
       if (!metrics) {
         if (!(slot in current)) {
@@ -217,7 +220,7 @@ export function useEditorUiState({
         [slot]: metrics,
       };
     });
-  }
+  }, []);
 
   function nudgeSelectedCrop(axis: 'x' | 'y', deltaPixels: number) {
     const maxOffset = axis === 'x' ? (selectedCropMetrics?.maxOffsetX ?? 0) : (selectedCropMetrics?.maxOffsetY ?? 0);

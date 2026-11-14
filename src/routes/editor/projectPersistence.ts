@@ -12,6 +12,7 @@ import { getAssetVariant } from '../../editor/assetResources';
 import { createDefaultProject } from '../../editor/demoData';
 import { clearDraftProject, writeDraftProject } from '../../editor/storage';
 import { Asset, ProjectRecord, ProjectState } from '../../editor/types';
+import { confirmAction } from '../../ui/confirm';
 import {
   buildDraftProjectHydration,
   CREATED_EDITOR_URL_MESSAGE,
@@ -36,6 +37,8 @@ type ProjectHydrationSetters = {
 type ApplyServerProjectRecordStateOptions = {
   record: ProjectRecord;
   nextMessage?: string;
+  requestSnapshot?: string;
+  getCurrentProject?: () => ProjectState;
   lastSavedSnapshotRef: { current: string };
   setProject: (project: ProjectState) => void;
   setProjectRecord: (record: ProjectRecord) => void;
@@ -46,6 +49,9 @@ type ApplyServerProjectRecordStateOptions = {
 
 type SaveProjectRecordOptions = {
   manual: boolean;
+  getCurrentProject?: () => ProjectState;
+  onConflict?: (message: string) => void;
+  onSaveSuccess?: () => void;
   session: UserSession | null;
   project: ProjectState;
   projectRecord: ProjectRecord | null;
@@ -53,14 +59,24 @@ type SaveProjectRecordOptions = {
   setSaveState: (state: SaveState) => void;
   setMessage: (message: string | null) => void;
   createPersistableProjectSnapshot: (currentProject: ProjectState) => ProjectState;
-  applyServerProjectRecord: (record: ProjectRecord, nextMessage?: string) => void;
+  applyServerProjectRecord: (
+    record: ProjectRecord,
+    nextMessage?: string,
+    options?: { requestSnapshot?: string },
+  ) => void;
   formatSavedAt: (updatedAt: string) => string;
   navigate: NavigateFunction;
 };
 
 type ProjectShareOptions = {
+  getCurrentProject?: () => ProjectState;
+  project: ProjectState;
   projectRecord: ProjectRecord | null;
-  applyServerProjectRecord: (record: ProjectRecord, nextMessage?: string) => void;
+  applyServerProjectRecord: (
+    record: ProjectRecord,
+    nextMessage?: string,
+    options?: { requestSnapshot?: string },
+  ) => void;
   setShareBusy: (busy: boolean) => void;
   setShareCopyState: (state: CopyState) => void;
   setMessage: (message: string | null) => void;
@@ -79,6 +95,9 @@ type StartNewDraftOptions = ProjectHydrationSetters & {
 };
 
 type CreateEditorProjectPersistenceActionsOptions = ProjectHydrationSetters & {
+  getCurrentProject?: () => ProjectState;
+  onConflict?: (message: string) => void;
+  onSaveSuccess?: () => void;
   session: UserSession | null;
   project: ProjectState;
   projectRecord: ProjectRecord | null;
@@ -101,6 +120,9 @@ export function createEditorProjectPersistenceActions({
   project,
   projectRecord,
   ownedUploads,
+  getCurrentProject,
+  onConflict,
+  onSaveSuccess,
   getInitialSlot,
   lastSavedSnapshotRef,
   setProject,
@@ -120,10 +142,16 @@ export function createEditorProjectPersistenceActions({
   navigate,
   formatSavedAt,
 }: CreateEditorProjectPersistenceActionsOptions) {
-  function applyServerProjectRecord(record: ProjectRecord, nextMessage?: string) {
+  function applyServerProjectRecord(
+    record: ProjectRecord,
+    nextMessage?: string,
+    options: { requestSnapshot?: string } = {},
+  ) {
     applyServerProjectRecordState({
       record,
       nextMessage,
+      requestSnapshot: options.requestSnapshot,
+      getCurrentProject,
       lastSavedSnapshotRef,
       setProject,
       setProjectRecord: (nextRecord) => setProjectRecord(nextRecord),
@@ -136,6 +164,9 @@ export function createEditorProjectPersistenceActions({
   async function saveProject({ manual }: { manual: boolean }) {
     await saveProjectRecord({
       manual,
+      getCurrentProject,
+      onConflict,
+      onSaveSuccess,
       session,
       project,
       projectRecord,
@@ -151,6 +182,8 @@ export function createEditorProjectPersistenceActions({
 
   async function handleEnableProjectShare({ rotate = false }: { rotate?: boolean } = {}) {
     await enableProjectShareLink({
+      getCurrentProject,
+      project,
       projectRecord,
       applyServerProjectRecord,
       setShareBusy,
@@ -162,6 +195,8 @@ export function createEditorProjectPersistenceActions({
 
   async function handleDisableProjectShare() {
     await disableProjectShareLink({
+      getCurrentProject,
+      project,
       projectRecord,
       applyServerProjectRecord,
       setShareBusy,
@@ -224,6 +259,8 @@ export function applyHydratedProjectState(hydration: EditorProjectHydration, set
 export function applyServerProjectRecordState({
   record,
   nextMessage,
+  requestSnapshot,
+  getCurrentProject,
   lastSavedSnapshotRef,
   setProject,
   setProjectRecord,
@@ -232,6 +269,25 @@ export function applyServerProjectRecordState({
   setMessage,
 }: ApplyServerProjectRecordStateOptions) {
   const normalizedRecord = normalizeEditorProjectRecord(record);
+  const currentProject = getCurrentProject?.();
+  const hasNewerLocalEdits =
+    Boolean(requestSnapshot) && Boolean(currentProject) && JSON.stringify(currentProject) !== requestSnapshot;
+
+  if (hasNewerLocalEdits) {
+    // The response only contains the version that was sent. Replacing local state here
+    // would silently discard everything the user typed while the request was in flight.
+    lastSavedSnapshotRef.current = requestSnapshot ?? '';
+    setProjectRecord(normalizedRecord.projectRecord);
+    setSaveState('dirty');
+    setShareCopyState('idle');
+    setMessage(
+      nextMessage
+        ? `${nextMessage} Newer edits are queued for the next save.`
+        : 'Newer edits are queued for the next save.',
+    );
+    return;
+  }
+
   lastSavedSnapshotRef.current = normalizedRecord.snapshot;
   clearDraftProject();
   setProject(normalizedRecord.project);
@@ -302,6 +358,9 @@ export function createPersistableProjectSnapshot(currentProject: ProjectState, o
 
 export async function saveProjectRecord({
   manual,
+  getCurrentProject,
+  onConflict,
+  onSaveSuccess,
   session,
   project,
   projectRecord,
@@ -332,24 +391,55 @@ export async function saveProjectRecord({
     return;
   }
 
+  if (project.assets.some((asset) => asset.src.startsWith('blob:') || asset.src.startsWith('guest-upload://'))) {
+    setSaveState('dirty');
+    setMessage('Local photos are still being attached. This folio will save automatically once they finish.');
+    return;
+  }
+
+  const requestSnapshot = snapshot;
   setSaveState('saving');
   setMessage(projectRecord ? 'Saving changes to the server...' : 'Creating a stable editor URL on the server...');
 
   try {
     const projectToPersist = createPersistableProjectSnapshot(project);
-    const record = projectRecord ? await persistProject(projectRecord.id, projectToPersist) : await createProject(projectToPersist);
-    applyServerProjectRecord(record, projectRecord ? formatSavedAt(record.updatedAt) : CREATED_EDITOR_URL_MESSAGE);
+    const record = projectRecord
+      ? await persistProject(projectRecord.id, projectToPersist, projectRecord.rev)
+      : await createProject(projectToPersist);
+    applyServerProjectRecord(record, projectRecord ? formatSavedAt(record.updatedAt) : CREATED_EDITOR_URL_MESSAGE, {
+      requestSnapshot,
+    });
+
+    onSaveSuccess?.();
 
     if (!projectRecord) {
       startTransition(() => navigate(record.sharePath, { replace: true }));
     }
   } catch (error) {
     setSaveState('error');
-    setMessage(error instanceof Error ? error.message : 'Save failed.');
+    const messageText = error instanceof Error ? error.message : 'Save failed.';
+    setMessage(messageText);
+
+    if ((error as { code?: string }).code === 'revision_conflict') {
+      onConflict?.(messageText);
+    }
+
+    if (manual && (error as { code?: string }).code === 'revision_conflict') {
+      const reloadLatest = await confirmAction({
+        title: 'This folio changed in another window',
+        body: messageText,
+        confirmLabel: 'Reload latest',
+        cancelLabel: 'Keep editing',
+      });
+      if (reloadLatest && typeof window !== 'undefined') {
+        window.location.reload();
+      }
+    }
   }
 }
 
 export async function enableProjectShareLink({
+  project,
   projectRecord,
   applyServerProjectRecord,
   setShareBusy,
@@ -363,13 +453,16 @@ export async function enableProjectShareLink({
     return;
   }
 
+  const requestSnapshot = JSON.stringify(project);
   setShareBusy(true);
   setShareCopyState('idle');
   setMessage(rotate ? 'Regenerating the public share link...' : 'Enabling the public share link...');
 
   try {
     const record = await enableProjectShare(projectRecord.id, { rotate });
-    applyServerProjectRecord(record, rotate ? 'Public share link regenerated.' : 'Public share link enabled.');
+    applyServerProjectRecord(record, rotate ? 'Public share link regenerated.' : 'Public share link enabled.', {
+      requestSnapshot,
+    });
   } catch (error) {
     setMessage(error instanceof Error ? error.message : 'Unable to enable project sharing.');
   } finally {
@@ -378,6 +471,7 @@ export async function enableProjectShareLink({
 }
 
 export async function disableProjectShareLink({
+  project,
   projectRecord,
   applyServerProjectRecord,
   setShareBusy,
@@ -388,7 +482,13 @@ export async function disableProjectShareLink({
     return;
   }
 
-  if (!window.confirm('Disable this public share link? Anyone using the current share URL will lose access immediately.')) {
+  const confirmed = await confirmAction({
+    title: 'Disable this public share link?',
+    body: 'Anyone using the current share URL will lose access immediately.',
+    confirmLabel: 'Disable link',
+    tone: 'danger',
+  });
+  if (!confirmed) {
     return;
   }
 
@@ -398,7 +498,9 @@ export async function disableProjectShareLink({
 
   try {
     const record = await disableProjectShare(projectRecord.id);
-    applyServerProjectRecord(record, 'Public share link disabled.');
+    applyServerProjectRecord(record, 'Public share link disabled.', {
+      requestSnapshot: JSON.stringify(project),
+    });
   } catch (error) {
     setMessage(error instanceof Error ? error.message : 'Unable to disable project sharing.');
   } finally {

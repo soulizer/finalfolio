@@ -1,3 +1,4 @@
+import { confirmAction } from '../../ui/confirm';
 import { type Dispatch, type SetStateAction, useState } from 'react';
 import {
   type AdminObjectStorageDraft,
@@ -105,7 +106,17 @@ export function useAdminConfigState({
   }
 
   async function handleSaveObjectStorage() {
-    if (!objectStorageDraft || !window.confirm(getConfirmationMessage('saveObjectStorageConfig'))) {
+    if (!objectStorageDraft) {
+      return;
+    }
+
+    const confirmed = await confirmAction({
+      title: 'Save production storage settings?',
+      body: getConfirmationMessage('saveObjectStorageConfig'),
+      confirmLabel: 'Save settings',
+      tone: 'danger',
+    });
+    if (!confirmed) {
       return;
     }
 
@@ -144,7 +155,13 @@ export function useAdminConfigState({
   }
 
   async function handleRestoreObjectStorage() {
-    if (!window.confirm(getConfirmationMessage('restoreObjectStorageUploads'))) {
+    const confirmed = await confirmAction({
+      title: 'Restore uploads to local delivery?',
+      body: getConfirmationMessage('restoreObjectStorageUploads'),
+      confirmLabel: 'Restore local',
+      tone: 'danger',
+    });
+    if (!confirmed) {
       return;
     }
 
