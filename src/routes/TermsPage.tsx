@@ -84,7 +84,7 @@ export function TermsPage() {
         canAccessAdmin={session?.role === 'admin'}
       />
 
-      <section className="editor-empty-state terms-state">
+      <section id="main-content" className="editor-empty-state terms-state">
         <div className="terms-state__header">
           <p className="eyebrow">{document.shortTitle}</p>
           <h1>{document.title}</h1>
@@ -128,7 +128,7 @@ export function TermsPage() {
                 </button>
               )}
               <button type="button" className="button button--ghost" onClick={() => void handleLogout()} disabled={busy}>
-                Log Out
+                Sign out
               </button>
             </div>
           </section>

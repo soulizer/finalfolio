@@ -17,6 +17,7 @@ export function IssueViewLoadingState({
   return (
     <div ref={shellRef} className={shellClassName}>
       <main
+        id="main-content"
         className="issue-view-layout issue-view-layout--loading"
         aria-busy="true"
         style={

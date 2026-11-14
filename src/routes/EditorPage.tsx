@@ -6,6 +6,7 @@ import { TemplateIssuePreview } from '../components/TemplateIssuePreview';
 import { TemplateLayoutPreview } from '../components/TemplateLayoutPreview';
 import { AccountUploadListItem } from '../editor/api';
 import { getConfirmationMessage } from '../editor/confirmations';
+import { formatDateTime } from '../editor/dateFormat';
 import { getAssetSource } from '../editor/assetResources';
 import {
   createDefaultProject,
@@ -27,6 +28,8 @@ import {
   CUSTOM_TEMPLATE_FRAME_LIMIT,
   CUSTOM_TEMPLATE_FRAME_LABEL_LIMIT,
   CUSTOM_TEMPLATE_NAME_LIMIT,
+  PROJECT_ASSET_LIMIT,
+  PROJECT_PAGE_LIMIT,
 } from '../editor/limits';
 import { buildExportAdvisories } from '../editor/export';
 import { readDraftProject } from '../editor/storage';
@@ -105,12 +108,7 @@ function formatSavedAt(timestamp?: string) {
     return 'Saved on the server.';
   }
 
-  return `Saved ${new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(new Date(timestamp))}.`;
+  return `Saved ${formatDateTime(timestamp)}.`;
 }
 
 function formatBytes(bytes: number) {
@@ -705,6 +703,22 @@ export function EditorPage() {
     setUploadState,
     updateProject,
   });
+  const handleUploadFilesWithLimit = useCallback(
+    (files: File[]) => {
+      const remaining = PROJECT_ASSET_LIMIT - project.assets.length;
+      if (files.length > remaining) {
+        setMessage(
+          remaining > 0
+            ? `This folio can hold ${PROJECT_ASSET_LIMIT} photos. Add ${remaining} more or remove unused photos first.`
+            : `This folio already holds the maximum of ${PROJECT_ASSET_LIMIT} photos.`,
+        );
+        return;
+      }
+
+      void handleUploadFiles(files);
+    },
+    [handleUploadFiles, project.assets.length, setMessage],
+  );
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -818,7 +832,7 @@ export function EditorPage() {
           : 'Sign in to save'
         : projectRecord
           ? 'Save'
-          : 'Create link';
+          : 'Save folio';
   const exportActionBusy = exportBusy || printBusy;
   const exportActionLabel = exportActionBusy ? 'Preparing…' : exportCenterOpen ? 'Close export' : 'Export Center';
   const themeChoiceMatchesAllPages = project.pages.every((page) => page.theme === themeChoice);
@@ -831,7 +845,7 @@ export function EditorPage() {
         </div>
         <span className="panel-tag">{chosenThemeMeta.label}</span>
       </div>
-      <div className="theme-grid" role="radiogroup" aria-label="Paper color">
+      <div className="theme-grid" role="group" aria-label="Paper color">
         {pageThemeOrder.map((themeId) => {
           const meta = pageThemeMeta[themeId];
           return (
@@ -939,6 +953,7 @@ export function EditorPage() {
 
   return (
     <div className="editor-shell">
+      <h1 className="sr-only">Folio editor</h1>
       <div className="editor-layout">
         <aside className="editor-sidebar editor-sidebar--navigation">
           <section className="page-strip-panel">
@@ -969,8 +984,8 @@ export function EditorPage() {
                         <button
                           type="button"
                           className="page-chip__action"
-                          title="Copy page"
-                          aria-label="Copy page"
+                          title="Duplicate page"
+                          aria-label="Duplicate page"
                           onClick={duplicatePage}
                         >
                           ⧉
@@ -1225,9 +1240,15 @@ export function EditorPage() {
                   <button
                     type="button"
                     className="button button--ghost button--small"
+                    disabled={project.pages.length >= PROJECT_PAGE_LIMIT}
+                    title={
+                      project.pages.length >= PROJECT_PAGE_LIMIT
+                        ? `Maximum ${PROJECT_PAGE_LIMIT} pages per folio`
+                        : 'Add a page after the current one'
+                    }
                     onClick={() => addPage()}
                   >
-                    Add page
+                    {project.pages.length >= PROJECT_PAGE_LIMIT ? 'Page limit' : 'Add page'}
                   </button>
                   <button
                     type="button"
@@ -1399,7 +1420,7 @@ export function EditorPage() {
           </section>
         </aside>
 
-        <main ref={editorStageRef} className="editor-stage" aria-label="Live page editor">
+        <main id="main-content" ref={editorStageRef} className="editor-stage" aria-label="Live page editor">
           <div className="editor-canvas" ref={canvasRef}>
             <div ref={sheetProbeRef} className="magazine-sheet-probe" aria-hidden="true" />
             <div className="magazine-sheet magazine-sheet--editor" style={previewStyle}>
@@ -1435,7 +1456,7 @@ export function EditorPage() {
           focusAssetPlacement={focusAssetPlacement}
           handleDeleteAsset={handleDeleteAsset}
           handleRetryAssetMirror={handleRetryAssetMirror}
-          handleUploadFiles={handleUploadFiles}
+          handleUploadFiles={handleUploadFilesWithLimit}
           handleZoomInputChange={handleZoomInputChange}
           libraryAssets={libraryAssets}
           nudgeSelectedCrop={nudgeSelectedCrop}

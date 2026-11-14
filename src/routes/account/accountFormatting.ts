@@ -1,20 +1,7 @@
+import { formatDateTime } from '../../editor/dateFormat';
+
 export function formatTimestamp(value: string | null | undefined) {
-  if (!value) {
-    return 'never';
-  }
-
-  const parsed = Date.parse(value);
-  if (Number.isNaN(parsed)) {
-    return value;
-  }
-
-  return new Date(parsed).toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return formatDateTime(value);
 }
 
 export function formatBytes(bytes: number) {

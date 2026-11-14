@@ -348,7 +348,12 @@ export function fetchProject(projectId: string) {
   return readJson<ProjectRecord>(`/api/projects/${projectId}`);
 }
 
-export function updateProject(projectId: string, project: ProjectState, expectedRev?: number) {
+export function updateProject(
+  projectId: string,
+  project: ProjectState,
+  expectedRev?: number,
+  options: { autosave?: boolean } = {},
+) {
   return readJson<ProjectRecord>(`/api/projects/${projectId}`, {
     method: 'PUT',
     headers: {
@@ -357,6 +362,7 @@ export function updateProject(projectId: string, project: ProjectState, expected
     body: JSON.stringify({
       project,
       ...(typeof expectedRev === 'number' ? { expectedRev } : {}),
+      ...(options.autosave === true ? { autosave: true } : {}),
     }),
   });
 }

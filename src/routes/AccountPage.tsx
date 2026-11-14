@@ -536,7 +536,7 @@ export function AccountPage() {
       <div className="editor-shell editor-shell--site-page editor-shell--account">
         <SitePageHeader current="account" accountPath="/auth" sessionReady={false} canAccessAdmin={false} />
 
-        <div className="admin-console account-console" aria-busy="true">
+        <div id="main-content" className="admin-console account-console" aria-busy="true">
           <section className="editor-panel admin-hero">
             <div className="editor-panel__heading">
               <div>
@@ -641,7 +641,8 @@ export function AccountPage() {
         }
       />
 
-      <div className="admin-console account-console">
+      <div id="main-content" className="admin-console account-console">
+        <h1 className="sr-only">Account workspace</h1>
         <AccountConsoleHeader
           activeSection={activeSection}
           selectSection={selectSection}

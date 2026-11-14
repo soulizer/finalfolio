@@ -314,7 +314,7 @@ export function AuthPage() {
       <div className="editor-shell editor-shell--site-page editor-shell--auth">
         <SitePageHeader current="auth" accountPath="/auth" sessionReady={false} canAccessAdmin={false} />
 
-        <section className="editor-empty-state" aria-busy="true">
+        <section id="main-content" className="editor-empty-state" aria-busy="true">
           <p className="eyebrow">Auth</p>
           <h1>Account access</h1>
           <p>Checking the current session and access state.</p>
@@ -339,7 +339,7 @@ export function AuthPage() {
         canAccessAdmin={session?.role === 'admin'}
       />
 
-      <section className="editor-empty-state">
+      <section id="main-content" className="editor-empty-state">
         <p className="eyebrow">Auth</p>
         <h1>{title}</h1>
         {!session && bootstrapStatus?.requiresBootstrap ? (

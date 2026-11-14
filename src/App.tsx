@@ -1,6 +1,7 @@
 import { lazy, Suspense, useDeferredValue, useEffect } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
+import { SiteSkipLink } from './components/SiteSkipLink';
 import { SessionProvider } from './session';
 import { ConfirmProvider } from './ui/confirm';
 
@@ -81,6 +82,7 @@ export default function App() {
     <SessionProvider>
       <AppErrorBoundary>
         <ConfirmProvider>
+          <SiteSkipLink />
           <Suspense fallback={<RouteFallback />}>
           <Routes location={deferredLocation}>
             <Route path="/" element={<HomePage />} />

@@ -5,11 +5,9 @@ import {
 } from '../../editor/demoData';
 import { CustomTemplateDefinition, PageData, PageThemeId, ProjectRecord, ProjectState, TemplateId } from '../../editor/types';
 
-export const DRAFT_ONLY_MESSAGE = 'Draft only on this device. Create a stable editor URL when you want to reopen the folio later.';
-export const STABLE_EDITOR_URL_MESSAGE =
-  'Stable editor URL. Reopen this project from the same link whenever you need to edit or export again.';
-export const CREATED_EDITOR_URL_MESSAGE =
-  'Stable editor URL created. This link is now the canonical place to reopen the folio.';
+export const DRAFT_ONLY_MESSAGE = 'Draft only on this device. Save this folio to reopen it from any device later.';
+export const STABLE_EDITOR_URL_MESSAGE = 'Saved. Reopen this folio from the same link whenever you need to edit or export again.';
+export const CREATED_EDITOR_URL_MESSAGE = 'Folio saved. This link is now the permanent address for the folio.';
 
 export type EditorSelectionState = {
   selectedPageId: string;

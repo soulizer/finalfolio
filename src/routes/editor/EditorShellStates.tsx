@@ -41,7 +41,7 @@ export function EditorLoadingState() {
           </section>
         </aside>
 
-        <main className="editor-stage" aria-label="Loading editor">
+        <main id="main-content" className="editor-stage" aria-label="Loading editor">
           <div className="editor-canvas editor-canvas--loading">
             <div className="editor-loading-canvas">
               <div className="editor-loading-canvas__meta">

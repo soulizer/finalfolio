@@ -3,6 +3,7 @@ import {
   type TemplatePackId,
 } from '../../editor/demoData';
 import { getConfirmationMessage } from '../../editor/confirmations';
+import { PROJECT_PAGE_LIMIT } from '../../editor/limits';
 import { confirmAction } from '../../ui/confirm';
 import type {
   CustomTemplateDefinition,
@@ -96,6 +97,11 @@ export function createEditorPageActions({
 
   function addPage(template = templateChoice) {
     if (!selectedPage) {
+      return;
+    }
+
+    if (project.pages.length >= PROJECT_PAGE_LIMIT) {
+      setMessage(`This folio already has the maximum of ${PROJECT_PAGE_LIMIT} pages.`);
       return;
     }
 

@@ -26,7 +26,7 @@ export function PrivacyPage() {
     <div className="editor-shell editor-shell--site-page editor-shell--auth editor-shell--legal">
       <SitePageHeader current="privacy" accountPath={session ? '/account' : '/auth'} signedIn={Boolean(session)} sessionReady={sessionReady} subtitle={document.title} canAccessAdmin={session?.role === 'admin'} />
 
-      <section className="editor-empty-state terms-state">
+      <section id="main-content" className="editor-empty-state terms-state">
         <div className="terms-state__header">
           <p className="eyebrow">{document.shortTitle}</p>
           <h1>{document.title}</h1>

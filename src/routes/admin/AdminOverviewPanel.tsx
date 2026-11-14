@@ -29,7 +29,7 @@ export function AdminOverviewPanel({
               <p className="eyebrow">Overview</p>
               <h2>Operational snapshot</h2>
             </div>
-            <span className="panel-tag">{summary.counts.exports} exports logged</span>
+            <span className="panel-tag">{`${summary.counts.exports} ${summary.counts.exports === 1 ? 'export' : 'exports'} logged`}</span>
           </div>
           <div className="admin-metric-grid">
             <button type="button" className="template-card admin-stat-card admin-stat-card--interactive" onClick={() => selectSection('users')}>

@@ -134,6 +134,7 @@ export function IssueViewPage() {
   return (
     <div ref={shellRef} className={shellClassName}>
       <main
+        id="main-content"
         className="issue-view-layout"
         style={
           {

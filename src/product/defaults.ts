@@ -7,7 +7,7 @@ const demoAssets: Asset[] = [
   {
     id: 'builtin-architecture',
     name: 'Architecture',
-    src: '/builtins/architecture-stock.jpg',
+    src: '/builtins/architecture.jpg',
     note: '',
     builtIn: true,
     width: 1200,
@@ -34,7 +34,7 @@ const demoAssets: Asset[] = [
   {
     id: 'builtin-still-life',
     name: 'Still life',
-    src: '/builtins/still-life-stock.jpg',
+    src: '/builtins/still-life.jpg',
     note: '',
     builtIn: true,
     width: 1200,
@@ -43,7 +43,7 @@ const demoAssets: Asset[] = [
   {
     id: 'builtin-studio',
     name: 'Studio',
-    src: '/builtins/studio-stock.jpg',
+    src: '/builtins/studio.jpg',
     note: '',
     builtIn: true,
     width: 1200,
@@ -70,7 +70,7 @@ const demoAssets: Asset[] = [
   {
     id: 'builtin-interior',
     name: 'Interior',
-    src: '/builtins/interior-stock.jpg',
+    src: '/builtins/interior.jpg',
     note: '',
     builtIn: true,
     width: 1600,
@@ -79,7 +79,7 @@ const demoAssets: Asset[] = [
   {
     id: 'builtin-night-window',
     name: 'Night window',
-    src: '/builtins/night-window-stock.jpg',
+    src: '/builtins/night-window.jpg',
     note: '',
     builtIn: true,
     width: 1600,
@@ -88,7 +88,7 @@ const demoAssets: Asset[] = [
   {
     id: 'builtin-still-life-vase',
     name: 'Still life vase',
-    src: '/builtins/still-life-vase-stock.jpg',
+    src: '/builtins/still-life-vase.jpg',
     note: '',
     builtIn: true,
     width: 1200,

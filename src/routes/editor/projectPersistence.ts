@@ -404,7 +404,7 @@ export async function saveProjectRecord({
   try {
     const projectToPersist = createPersistableProjectSnapshot(project);
     const record = projectRecord
-      ? await persistProject(projectRecord.id, projectToPersist, projectRecord.rev)
+      ? await persistProject(projectRecord.id, projectToPersist, projectRecord.rev, { autosave: !manual })
       : await createProject(projectToPersist);
     applyServerProjectRecord(record, projectRecord ? formatSavedAt(record.updatedAt) : CREATED_EDITOR_URL_MESSAGE, {
       requestSnapshot,

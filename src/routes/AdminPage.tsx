@@ -165,7 +165,8 @@ export function AdminPage() {
         }
       />
 
-      <div className="admin-console">
+      <div id="main-content" className="admin-console">
+      <h1 className="sr-only">Admin console</h1>
         <AdminConsoleHeader
           activeSection={activeSection}
           selectSection={selectSection}

@@ -106,7 +106,7 @@ export function duplicateProjectPage({
   const duplicatedPageLabel = duplicate.title.trim() || `Page ${insertAt + 1}`;
 
   return {
-    message: `Copied ${sourcePageLabel}. You are now editing the new page ${duplicatedPageLabel} at Page ${insertAt + 1} of ${project.pages.length + 1}.`,
+    message: `Duplicated ${sourcePageLabel}. You are now editing the new page ${duplicatedPageLabel} at Page ${insertAt + 1} of ${project.pages.length + 1}.`,
     nextPage: duplicate,
     nextProject: {
       ...project,

@@ -6,7 +6,7 @@ export function NotFoundPage() {
   return (
     <div className="site-shell">
       <SitePageHeader current="not-found" sessionReady={false} reveal />
-      <main className="site-main">
+      <main id="main-content" className="site-main">
         <section className="hero hero--compact" data-reveal>
           <div className="hero__copy">
             <p className="eyebrow">Page not found</p>

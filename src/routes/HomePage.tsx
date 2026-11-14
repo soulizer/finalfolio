@@ -402,7 +402,7 @@ export function HomePage() {
         canAccessAdmin={session?.role === 'admin'}
       />
 
-      <main className="site-main">
+      <main id="main-content" className="site-main">
         <section className="hero" id="showcase" data-reveal>
           <div className="hero__copy">
             <p className="eyebrow">{siteContent.hero.eyebrow}</p>

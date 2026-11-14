@@ -3,7 +3,7 @@
   src: url('/fonts/Manrope-wght.ttf') format('truetype');
   font-style: normal;
   font-weight: 400 700;
-  font-display: block;
+  font-display: swap;
 }
 
 @font-face {
@@ -11,7 +11,7 @@
   src: url('/fonts/Newsreader-opsz-wght.ttf') format('truetype');
   font-style: normal;
   font-weight: 400 600;
-  font-display: block;
+  font-display: swap;
 }
 
 @font-face {
@@ -19,7 +19,7 @@
   src: url('/fonts/Newsreader-Italic-opsz-wght.ttf') format('truetype');
   font-style: italic;
   font-weight: 400 600;
-  font-display: block;
+  font-display: swap;
 }
 
 @font-face {
@@ -27,7 +27,7 @@
   src: url('/fonts/IBMPlexMono-Regular.ttf') format('truetype');
   font-style: normal;
   font-weight: 400;
-  font-display: block;
+  font-display: swap;
 }
 
 @font-face {
@@ -35,25 +35,7 @@
   src: url('/fonts/IBMPlexMono-Medium.ttf') format('truetype');
   font-style: normal;
   font-weight: 500;
-  font-display: block;
-}
-
-@font-face {
-  font-family: 'GenYo Min TC Title';
-  src: url('/fonts/GenYoMin2TC-M.otf') format('opentype');
-  font-style: normal;
-  font-weight: 500;
-  font-display: block;
-  unicode-range:
-    U+2E80-2EFF,
-    U+3000-303F,
-    U+3100-312F,
-    U+31A0-31BF,
-    U+31C0-31EF,
-    U+3400-4DBF,
-    U+4E00-9FFF,
-    U+F900-FAFF,
-    U+FF00-FFEF;
+  font-display: swap;
 }
 
 :root {
@@ -67,12 +49,40 @@
   --muted: #6f6a63;
   --line: rgba(17, 17, 17, 0.12);
   --line-strong: rgba(17, 17, 17, 0.2);
-  --focus-ring: rgba(17, 17, 17, 0.18);
+  --focus-ring: rgba(17, 17, 17, 0.55);
   --paper: #faf8f3;
   --shadow: 0 24px 70px rgba(17, 17, 17, 0.08);
   --pressed-card-shadow: inset 0px 1px 7px 4px #11111114;
   --radius: 26px;
   --control-radius: 5px;
+  --control-height: 44px;
+  --control-height-sm: 36px;
+  --control-pad-x: 16px;
+  --control-pad-x-sm: 12px;
+  --control-font: 0.9rem;
+  --control-font-sm: 0.8rem;
+  --control-border: 1px solid rgba(255, 255, 255, 0.76);
+  --control-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.94),
+    inset 0 -1px 0 rgba(226, 217, 204, 0.3),
+    0 14px 28px rgba(17, 17, 17, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.72);
+  --control-shadow-hover:
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    inset 0 -1px 0 rgba(226, 217, 204, 0.34),
+    0 18px 34px rgba(17, 17, 17, 0.1),
+    0 1px 0 rgba(255, 255, 255, 0.72);
+  --control-shadow-active:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    inset 0 -1px 0 rgba(226, 217, 204, 0.22),
+    0 8px 18px rgba(17, 17, 17, 0.08);
+  --overlay-bg: rgba(249, 246, 240, 0.82);
+  --overlay-bg-strong: rgba(255, 253, 249, 0.94);
+  --overlay-border: 1px solid rgba(17, 17, 17, 0.14);
+  --overlay-blur: blur(18px) saturate(140%);
+  --overlay-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 24px 60px rgba(17, 17, 17, 0.16);
   --surface-radius: 10px;
   --site-width: min(1240px, calc(100vw - 48px));
   --site-section-space: clamp(58px, 7vw, 88px);
@@ -345,23 +355,18 @@ a:focus-visible {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 46px;
-  padding: 0 18px;
-  border: 1px solid rgba(255, 255, 255, 0.76);
+  min-height: var(--control-height);
+  padding: 0 var(--control-pad-x);
+  border: var(--control-border);
   border-radius: var(--control-radius);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(246, 241, 233, 0.5)),
     rgba(255, 255, 255, 0.4);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.94),
-    inset 0 -1px 0 rgba(226, 217, 204, 0.3),
-    0 14px 28px rgba(17, 17, 17, 0.08),
-    0 1px 0 rgba(255, 255, 255, 0.72);
+  box-shadow: var(--control-shadow);
   backdrop-filter: blur(22px) saturate(145%);
-  -webkit-backdrop-filter: blur(22px) saturate(145%);
   color: var(--ink);
   font-family: 'Manrope', sans-serif;
-  font-size: 0.92rem;
+  font-size: var(--control-font);
   font-weight: 600;
   line-height: 1;
   letter-spacing: 0.01em;
@@ -385,26 +390,19 @@ a:focus-visible {
 }
 
 .button--small {
-  min-height: 38px;
-  padding: 0 14px;
-  font-size: 0.84rem;
+  min-height: var(--control-height-sm);
+  padding: 0 var(--control-pad-x-sm);
+  font-size: var(--control-font-sm);
 }
 
 .button:hover {
   transform: translateY(-1px);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.96),
-    inset 0 -1px 0 rgba(226, 217, 204, 0.34),
-    0 18px 34px rgba(17, 17, 17, 0.1),
-    0 1px 0 rgba(255, 255, 255, 0.72);
+  box-shadow: var(--control-shadow-hover);
 }
 
 .button:active {
   transform: translateY(0);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.86),
-    inset 0 -1px 0 rgba(226, 217, 204, 0.22),
-    0 8px 18px rgba(17, 17, 17, 0.08);
+  box-shadow: var(--control-shadow-active);
 }
 
 .button:disabled {
@@ -1076,48 +1074,12 @@ a:focus-visible {
 
 .editor-shell .button,
 .editor-shell .upload-button {
-  min-height: 38px;
-  padding: 0 14px;
   max-width: 100%;
   min-width: 0;
   white-space: normal;
   overflow-wrap: anywhere;
   line-height: 1.08;
   text-align: center;
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  border-color: rgba(17, 17, 17, 0.18);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(242, 237, 229, 0.78)),
-    rgba(255, 255, 255, 0.9);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.98),
-    inset 0 -1px 0 rgba(220, 209, 193, 0.34),
-    0 8px 18px rgba(17, 17, 17, 0.05);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-.editor-shell .button--small {
-  min-height: 38px;
-  padding: 0 14px;
-}
-
-.editor-shell .button--ghost {
-  color: rgba(17, 17, 17, 0.88);
-}
-
-.editor-shell .button--primary {
-  background:
-    linear-gradient(180deg, rgba(53, 48, 42, 0.98), rgba(18, 16, 14, 1)),
-    rgba(17, 17, 17, 0.96);
-  color: var(--paper);
-  border-color: rgba(24, 21, 18, 0.98);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.32),
-    0 12px 24px rgba(17, 17, 17, 0.18);
 }
 
 .editor-shell .upload-button.upload-button--dark {
@@ -1216,7 +1178,6 @@ a:focus-visible {
     color 160ms ease,
     background 160ms ease;
   backdrop-filter: none;
-  -webkit-backdrop-filter: none;
 }
 
 .editor-icon-button svg {
@@ -1581,7 +1542,6 @@ a:focus-visible {
   padding: 24px;
   background: rgba(17, 17, 17, 0.42);
   backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
 }
 
 .editor-modal__panel {
@@ -1590,11 +1550,10 @@ a:focus-visible {
   overflow: auto;
   padding: 18px;
   border-radius: 24px;
-  border: 1px solid rgba(17, 17, 17, 0.12);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 239, 231, 0.95)),
-    rgba(255, 255, 255, 0.94);
-  box-shadow: 0 32px 80px rgba(17, 17, 17, 0.22);
+  border: var(--overlay-border);
+  background: var(--overlay-bg-strong);
+  box-shadow: var(--overlay-shadow);
+  backdrop-filter: var(--overlay-blur);
 }
 
 .editor-modal__actions {
@@ -1652,7 +1611,6 @@ a:focus-visible {
     inset 0 -1px 0 rgba(226, 217, 204, 0.3),
     0 8px 18px rgba(17, 17, 17, 0.05);
   backdrop-filter: blur(22px) saturate(145%);
-  -webkit-backdrop-filter: blur(22px) saturate(145%);
   font-family: 'Manrope', sans-serif;
   font-size: 0.84rem;
   font-weight: 600;
@@ -2481,18 +2439,6 @@ a:focus-visible {
   padding-bottom: 40px;
 }
 
-.editor-shell--site-page .button,
-.editor-shell--site-page .upload-button {
-  font-size: 0.8rem;
-}
-
-.editor-shell--site-page .button--small,
-.editor-shell--site-page .upload-button.button--small {
-  min-height: 34px;
-  padding: 0 11px;
-  font-size: 0.76rem;
-}
-
 .admin-dashboard,
 .admin-product-layout,
 .admin-product-layout__main,
@@ -2545,9 +2491,9 @@ a:focus-visible {
 
 .admin-section-tab {
   min-width: 108px;
-  padding-inline: 16px;
+  padding-inline: var(--control-pad-x-sm);
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.74rem;
+  font-size: var(--control-font-sm);
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
@@ -2585,12 +2531,10 @@ a:focus-visible {
   justify-items: center;
   padding: 18px 22px;
   border-radius: 18px;
-  border: 1px solid rgba(17, 17, 17, 0.14);
-  background: linear-gradient(180deg, rgba(255, 251, 245, 0.97), rgba(244, 238, 229, 0.94));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.88),
-    0 22px 54px rgba(17, 17, 17, 0.16);
-  backdrop-filter: blur(18px) saturate(118%);
+  border: var(--overlay-border);
+  background: var(--overlay-bg-strong);
+  box-shadow: var(--overlay-shadow);
+  backdrop-filter: var(--overlay-blur);
   text-align: center;
 }
 
@@ -3660,7 +3604,7 @@ a:focus-visible {
 
 .magazine-page h2 {
   margin: 0;
-  font-family: 'Newsreader', 'GenYo Min TC Title', serif;
+  font-family: 'Newsreader', 'Songti SC', 'Noto Serif CJK SC', 'Source Han Serif SC', serif;
   font-size: clamp(2.2rem, 4vw, 4.4rem);
   white-space: pre-line;
   overflow-wrap: anywhere;
@@ -4169,7 +4113,6 @@ button.asset-frame {
   border-radius: 0;
   background: transparent;
   backdrop-filter: none;
-  -webkit-backdrop-filter: none;
 }
 
 .page-chip__action {
@@ -4380,13 +4323,10 @@ button.asset-frame {
   width: 214px;
   padding: 12px;
   border-radius: 18px;
-  border: 1px solid rgba(17, 17, 17, 0.14);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 242, 235, 0.92)),
-    rgba(255, 255, 255, 0.96);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.96),
-    0 20px 38px rgba(17, 17, 17, 0.14);
+  border: var(--overlay-border);
+  background: var(--overlay-bg-strong);
+  box-shadow: var(--overlay-shadow);
+  backdrop-filter: var(--overlay-blur);
   pointer-events: none;
 }
 
@@ -4642,7 +4582,6 @@ button.asset-frame {
 .issue-view-shell.is-fullscreen .issue-view-tools {
   background: rgba(255, 251, 245, 0.82);
   backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
 }
 
 .issue-view-shell:fullscreen .issue-view-layout,
@@ -5650,13 +5589,10 @@ button.asset-frame {
   gap: 10px;
   padding: 10px;
   border-radius: 18px;
-  border: 3px solid rgba(17, 17, 17, 0.14);
-  background: rgba(255, 251, 245, 0.82);
-  box-shadow:
-    0 16px 36px rgba(17, 17, 17, 0.14),
-    0 4px 10px rgba(17, 17, 17, 0.07);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  border: var(--overlay-border);
+  background: var(--overlay-bg);
+  box-shadow: var(--overlay-shadow);
+  backdrop-filter: var(--overlay-blur);
   transform: translateX(-50%);
 }
 
@@ -5726,13 +5662,10 @@ button.asset-frame {
   align-items: center;
   padding: 12px 14px;
   border-radius: 22px;
-  border: 1px solid rgba(17, 17, 17, 0.1);
-  background: rgba(255, 251, 245, 0.86);
-  box-shadow:
-    0 18px 36px rgba(17, 17, 17, 0.14),
-    0 4px 10px rgba(17, 17, 17, 0.06);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  border: var(--overlay-border);
+  background: var(--overlay-bg);
+  box-shadow: var(--overlay-shadow);
+  backdrop-filter: var(--overlay-blur);
 }
 
 .issue-view-mobile-topbar__summary {
@@ -5807,7 +5740,6 @@ button.asset-frame {
     0 18px 36px rgba(17, 17, 17, 0.14),
     0 4px 10px rgba(17, 17, 17, 0.06);
   backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
 }
 
 .issue-view-mobile-controls__status span,
@@ -5841,7 +5773,6 @@ button.asset-frame {
   border: 0;
   background: rgba(17, 17, 17, 0.22);
   backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
 }
 
 .issue-view-mobile-sheet {
@@ -5868,7 +5799,6 @@ button.asset-frame {
     0 -16px 40px rgba(17, 17, 17, 0.18),
     0 -4px 12px rgba(17, 17, 17, 0.08);
   backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
   overflow: hidden;
   transform: translateY(calc(100% + 24px));
   transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -6878,10 +6808,9 @@ button.asset-frame {
     padding: 14px;
     border: 1px solid var(--line);
     border-radius: 24px;
-    background: rgba(250, 248, 243, 0.96);
-    box-shadow: var(--shadow);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
+    background: var(--overlay-bg-strong);
+    box-shadow: var(--overlay-shadow);
+    backdrop-filter: var(--overlay-blur);
     z-index: 24;
   }
 
@@ -6975,7 +6904,6 @@ button.asset-frame {
 
   .admin-hero__meta,
   .auth-captcha__header,
-  .admin-section-nav,
   .admin-row__actions {
     grid-template-columns: 1fr;
     flex-direction: column;
@@ -6993,8 +6921,7 @@ button.asset-frame {
   }
 
   .admin-row__actions .button,
-  .admin-row__actions a.button,
-  .admin-section-nav .button {
+  .admin-row__actions a.button {
     width: 100%;
   }
 
@@ -7378,5 +7305,201 @@ html:lang(zh-CN) .magazine-page h2,
 
   .product-brief__intro h2 {
     font-size: clamp(2.3rem, 10vw, 3.4rem);
+  }
+}
+
+
+/* ------------------------------------------------------------------ */
+/* Shared UI primitives (added in the 2026-11 review pass)             */
+/* ------------------------------------------------------------------ */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 200;
+  padding: 10px 14px;
+  border-radius: var(--control-radius);
+  border: var(--control-border);
+  background: var(--overlay-bg-strong);
+  box-shadow: var(--overlay-shadow);
+  font-size: var(--control-font-sm);
+  font-weight: 600;
+  transform: translateY(-160%);
+  transition: transform 160ms ease;
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+.route-fallback {
+  display: grid;
+  place-items: center;
+  gap: 12px;
+  min-height: 60vh;
+  color: var(--muted);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.route-fallback__mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  border-top-color: var(--ink);
+  animation: route-fallback-spin 900ms linear infinite;
+}
+
+@keyframes route-fallback-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.surface-popover {
+  border: var(--overlay-border);
+  border-radius: 18px;
+  background: var(--overlay-bg);
+  box-shadow: var(--overlay-shadow);
+  backdrop-filter: var(--overlay-blur);
+}
+
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(17, 17, 17, 0.32);
+  backdrop-filter: blur(4px);
+}
+
+.confirm-dialog {
+  width: min(460px, calc(100vw - 32px));
+  padding: 22px;
+  display: grid;
+  gap: 10px;
+}
+
+.confirm-dialog h2 {
+  margin: 0;
+  font-family: 'Newsreader', serif;
+  font-size: 1.6rem;
+  line-height: 1.1;
+}
+
+.confirm-dialog p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.confirm-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.editor-history-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.editor-history-button {
+  flex: 1 1 0;
+}
+
+.editor-conflict-notice {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 12px;
+  border-radius: var(--surface-radius);
+  border: 1px solid rgba(122, 46, 46, 0.28);
+  background: rgba(122, 46, 46, 0.08);
+}
+
+.editor-conflict-notice p {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: #6c2a2a;
+}
+
+.editor-conflict-notice .button {
+  justify-self: start;
+}
+
+@media (max-width: 760px) {
+  .admin-section-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(17, 17, 17, 0.22) transparent;
+  }
+
+  .admin-section-nav .button {
+    flex: 0 0 auto;
+    width: auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .editor-shell {
+    overflow-x: clip;
+  }
+
+  .editor-stage {
+    position: sticky;
+    top: 8px;
+    z-index: 20;
+    max-height: 46vh;
+    border-radius: var(--surface-radius);
+    background: var(--bg-strong);
+    box-shadow: var(--shadow);
+    margin-bottom: 12px;
+  }
+
+  .editor-canvas {
+    padding: 8px;
+  }
+}
+
+@media (pointer: coarse) {
+  .button--small {
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }

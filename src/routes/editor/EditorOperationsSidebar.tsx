@@ -268,7 +268,7 @@ export function EditorOperationsSidebar({
             aria-label="Project URL"
             className="editor-project-bar__input"
             readOnly
-            value={projectRecord ? shareUrl : 'Create a link to save this folio.'}
+            value={projectRecord ? shareUrl : 'Save this folio to get a permanent link.'}
           />
           <button
             type="button"
