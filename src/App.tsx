@@ -2,7 +2,7 @@ import { lazy, Suspense, useDeferredValue, useEffect } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { SiteSkipLink } from './components/SiteSkipLink';
-import { LocaleProvider } from './i18n';
+import { LocaleProvider, useT } from './i18n';
 import { SessionProvider } from './session';
 import { ConfirmProvider } from './ui/confirm';
 
@@ -17,10 +17,12 @@ const EditorPage = lazy(() => import('./routes/EditorPage').then((module) => ({ 
 const NotFoundPage = lazy(() => import('./routes/NotFoundPage').then((module) => ({ default: module.NotFoundPage })));
 
 function RouteFallback() {
+  const t = useT();
+
   return (
     <div className="route-fallback" role="status" aria-live="polite">
       <span className="route-fallback__mark" aria-hidden="true" />
-      <p>Loading</p>
+      <p>{t('Loading')}</p>
     </div>
   );
 }

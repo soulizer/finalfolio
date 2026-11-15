@@ -1501,3 +1501,22 @@
 ### Remaining risk
 
 - The display subset covers GB2312 level-1 characters; rare characters in user copy fall back to the system font.
+
+## 2026-11-15 Loading Experience and Asset Weight
+
+### What changed
+
+- Added an inline critical boot style + centred brand loader in `index.html` so the first paint uses the same paper tone as the app (no white flash or colour shift), and the spinner is centred in the real viewport (`100dvh`). The Suspense fallback now matches that loader instead of a mono, uppercase "LOADING" label.
+- Converted the 12 built-in demo photographs to 1000 px WebP (3.7 MB → 1.2 MB) and updated the demo asset paths.
+- Subset Newsreader to Latin + punctuation as a 120 KB WOFF2 (was a 442 KB TTF) and removed the unused italic and IBM Plex/Manrope fonts and preloads.
+- Removed the last remaining percentage gap in layout schematics earlier in this cycle; this pass only touches loading and asset delivery.
+
+### Validation
+
+- `npm run validate:mvp`
+- `./node_modules/.bin/playwright test` (13 specs)
+- Slow-network check: boot loader centred at 390×844, first paint matches the final background, homepage load ~1.6 s on throttled 400 kbps.
+
+### Remaining risk
+
+- Homepage still ships the demo photographs (now WebP). Further savings would need per-viewport variants or lazy loading of off-screen marquee pages.

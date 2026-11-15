@@ -7,7 +7,7 @@ const demoAssets: Asset[] = [
   {
     id: 'builtin-architecture',
     name: 'Architecture',
-    src: '/builtins/architecture.jpg',
+    src: '/builtins/architecture.webp',
     note: '',
     builtIn: true,
     width: 1200,
@@ -16,7 +16,7 @@ const demoAssets: Asset[] = [
   {
     id: 'builtin-landscape',
     name: 'Landscape',
-    src: '/builtins/landscape-lowangle-v2.jpg',
+    src: '/builtins/landscape-lowangle-v2.webp',
     note: '',
     builtIn: true,
     width: 1600,
@@ -25,7 +25,7 @@ const demoAssets: Asset[] = [
   {
     id: 'builtin-portrait',
     name: 'Portrait',
-    src: '/builtins/portrait-male-glasses-v3.jpg',
+    src: '/builtins/portrait-male-glasses-v3.webp',
     note: '',
     builtIn: true,
     width: 1200,
@@ -34,7 +34,7 @@ const demoAssets: Asset[] = [
   {
     id: 'builtin-still-life',
     name: 'Still life',
-    src: '/builtins/still-life.jpg',
+    src: '/builtins/still-life.webp',
     note: '',
     builtIn: true,
     width: 1200,
@@ -43,7 +43,7 @@ const demoAssets: Asset[] = [
   {
     id: 'builtin-studio',
     name: 'Studio',
-    src: '/builtins/studio.jpg',
+    src: '/builtins/studio.webp',
     note: '',
     builtIn: true,
     width: 1200,
@@ -52,7 +52,7 @@ const demoAssets: Asset[] = [
   {
     id: 'builtin-atelier',
     name: 'Atelier portrait',
-    src: '/builtins/atelier-portrait-v2.jpg',
+    src: '/builtins/atelier-portrait-v2.webp',
     note: '',
     builtIn: true,
     width: 1200,
@@ -61,7 +61,7 @@ const demoAssets: Asset[] = [
   {
     id: 'builtin-coastline',
     name: 'Coastline',
-    src: '/builtins/coastline-lowangle-v2.jpg',
+    src: '/builtins/coastline-lowangle-v2.webp',
     note: '',
     builtIn: true,
     width: 1600,
@@ -70,7 +70,7 @@ const demoAssets: Asset[] = [
   {
     id: 'builtin-interior',
     name: 'Interior',
-    src: '/builtins/interior.jpg',
+    src: '/builtins/interior.webp',
     note: '',
     builtIn: true,
     width: 1600,
@@ -79,7 +79,7 @@ const demoAssets: Asset[] = [
   {
     id: 'builtin-night-window',
     name: 'Night window',
-    src: '/builtins/night-window.jpg',
+    src: '/builtins/night-window.webp',
     note: '',
     builtIn: true,
     width: 1600,
@@ -88,7 +88,7 @@ const demoAssets: Asset[] = [
   {
     id: 'builtin-still-life-vase',
     name: 'Still life vase',
-    src: '/builtins/still-life-vase.jpg',
+    src: '/builtins/still-life-vase.webp',
     note: '',
     builtIn: true,
     width: 1200,
@@ -97,7 +97,7 @@ const demoAssets: Asset[] = [
   {
     id: 'builtin-seated-portrait',
     name: 'Seated portrait',
-    src: '/builtins/portrait-male-white-shirt-v3.jpg',
+    src: '/builtins/portrait-male-white-shirt-v3.webp',
     note: '',
     builtIn: true,
     width: 1200,
@@ -106,7 +106,7 @@ const demoAssets: Asset[] = [
   {
     id: 'builtin-window-portrait',
     name: 'Window portrait',
-    src: '/builtins/window-portrait-v2.jpg',
+    src: '/builtins/window-portrait-v2.webp',
     note: '',
     builtIn: true,
     width: 1200,

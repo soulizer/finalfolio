@@ -18,9 +18,67 @@
     <link rel="icon" href="/favicon.svg" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
+    <style>
+      /* Critical boot styles: keep the first paint on the same paper tone as the
+         app so there is no white flash or colour shift while the bundle loads. */
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background: linear-gradient(180deg, #f6f2eb 0%, #efe8df 100%);
+        color: #111111;
+      }
+
+      #root {
+        min-height: 100vh;
+        min-height: 100dvh;
+      }
+
+      .boot {
+        display: grid;
+        place-items: center;
+        align-content: center;
+        gap: 14px;
+        min-height: 100vh;
+        min-height: 100dvh;
+        padding: 24px;
+        color: #6f6a63;
+        font-family: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+      }
+
+      .boot__mark {
+        width: 30px;
+        height: 30px;
+        border-radius: 999px;
+        border: 1px solid rgba(17, 17, 17, 0.18);
+        border-top-color: #111111;
+        animation: boot-spin 900ms linear infinite;
+      }
+
+      @keyframes boot-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .boot__mark {
+          animation: none;
+        }
+      }
+    </style>
     <script type="module" src="/src/main.tsx"></script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="boot" role="status" aria-live="polite">
+        <span class="boot__mark" aria-hidden="true"></span>
+        <span>FinalFolio</span>
+      </div>
+    </div>
   </body>
 </html>

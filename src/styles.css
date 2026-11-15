@@ -9,7 +9,7 @@
 
 @font-face {
   font-family: 'Newsreader';
-  src: url('/fonts/Newsreader-opsz-wght.ttf') format('truetype');
+  src: url('/fonts/Newsreader-Latin.woff2') format('woff2');
   font-style: normal;
   font-weight: 400 600;
   font-display: swap;
@@ -7326,22 +7326,30 @@ html:lang(zh-CN) .magazine-page h2,
 .route-fallback {
   display: grid;
   place-items: center;
-  gap: 12px;
-  min-height: 60vh;
+  align-content: center;
+  gap: 14px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 24px;
   color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
 }
 
 .route-fallback__mark {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border-radius: 999px;
-  border: 1px solid var(--line-strong);
+  border: 1px solid rgba(17, 17, 17, 0.18);
   border-top-color: var(--ink);
   animation: route-fallback-spin 900ms linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-fallback__mark {
+    animation: none;
+  }
 }
 
 @keyframes route-fallback-spin {
