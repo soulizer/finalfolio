@@ -511,7 +511,7 @@ const zh: Record<string, string> = {
   'Project templates': '项目模板',
   'Built-in folio starters': '内置项目模板',
   'Use as project': '用作新项目',
-  Insert: '插入当前',
+  Insert: '插入页面',
   'Replaces every page in this folio. Photos stay in the media library.':
     '会替换这本作品集的全部页面，照片仍保留在图库中。',
   'Replace every page in this folio?': '替换全部页面？',
@@ -576,7 +576,7 @@ const zh: Record<string, string> = {
   Overview: '概览',
   Projects: '项目',
   Uploads: '图片',
-  'Stored files': '已存文件',
+  'Stored files': '已存图片',
   Templates: '模板',
   'Reusable folio scaffolds': '可复用的作品集结构',
   'Recent projects': '最近项目',
@@ -876,8 +876,8 @@ const zh: Record<string, string> = {
   'Wait for the current library mutation to finish.': '请等当前图库操作完成。',
   'No unused': '无未使用',
   'Upload finished': '上传完成',
-  'Unused in this folio': '未用于本作品集',
-  'Saved in account': '已存入账户',
+  'Unused in this folio': '本作品集未使用',
+  'Saved in account': '账户图库',
   'No photos yet.': '还没有照片。',
   'Use the upload button above, or drag photos straight onto the page.': '点上方「上传」添加照片，也可以直接把照片拖到页面上。',
   'Session cookies keep accounts signed in. Uploads are stored on object storage, and shared folio links should be treated as public.':

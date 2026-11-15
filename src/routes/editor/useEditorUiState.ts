@@ -151,8 +151,11 @@ export function useEditorUiState({
 
   function openTemplateHoverPreview(templateId: TemplateId, element: HTMLElement) {
     const bounds = element.getBoundingClientRect();
+    // Anchor the preview outside the whole sidebar so it never covers the
+    // neighbouring layout cards.
+    const sidebarBounds = element.closest('.editor-sidebar')?.getBoundingClientRect();
     const viewportPadding = 16;
-    const preferredLeft = bounds.right + TEMPLATE_HOVER_PREVIEW_GAP;
+    const preferredLeft = (sidebarBounds?.right ?? bounds.right) + TEMPLATE_HOVER_PREVIEW_GAP;
     const left =
       preferredLeft + TEMPLATE_HOVER_PREVIEW_WIDTH > window.innerWidth - viewportPadding
         ? Math.max(viewportPadding, bounds.left - TEMPLATE_HOVER_PREVIEW_WIDTH - TEMPLATE_HOVER_PREVIEW_GAP)

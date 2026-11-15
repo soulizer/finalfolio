@@ -1067,7 +1067,13 @@ export function EditorPage() {
                                 }
                                 setColorPickerPageId(null);
                               }}
-                            />
+                            >
+                              {page.theme === themeId ? (
+                                <span className="page-color-popover__check" aria-hidden="true">
+                                  ✓
+                                </span>
+                              ) : null}
+                            </button>
                           ))}
                         </div>
                         <button

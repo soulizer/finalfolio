@@ -1005,15 +1005,23 @@ export function createPageDraft(template: TemplateId, id: string, overrides: Par
   const slots = getTemplateSlots(template, customTemplate);
   const starter = pageStarters[template];
 
+  const starterCopy = {
+    kicker: translate(starter.kicker),
+    title: translate(starter.title),
+    deck: translate(starter.deck),
+    body: translate(starter.body),
+    caption: translate(starter.caption),
+  };
+
   return {
     id,
     template,
     theme: normalizePageTheme(overrides.theme),
-    kicker: trimToLimit(overrides.kicker ?? starter.kicker, PAGE_KICKER_LIMIT),
-    title: trimToLimit(overrides.title ?? starter.title, PAGE_TITLE_LIMIT),
-    deck: trimToLimit(overrides.deck ?? starter.deck, PAGE_DECK_LIMIT),
-    body: trimToLimit(overrides.body ?? starter.body, PAGE_BODY_LIMIT),
-    caption: trimToLimit(overrides.caption ?? starter.caption, PAGE_CAPTION_LIMIT),
+    kicker: trimToLimit(overrides.kicker ?? starterCopy.kicker, PAGE_KICKER_LIMIT),
+    title: trimToLimit(overrides.title ?? starterCopy.title, PAGE_TITLE_LIMIT),
+    deck: trimToLimit(overrides.deck ?? starterCopy.deck, PAGE_DECK_LIMIT),
+    body: trimToLimit(overrides.body ?? starterCopy.body, PAGE_BODY_LIMIT),
+    caption: trimToLimit(overrides.caption ?? starterCopy.caption, PAGE_CAPTION_LIMIT),
     customTemplate,
     slots:
       overrides.slots && typeof overrides.slots === 'object'

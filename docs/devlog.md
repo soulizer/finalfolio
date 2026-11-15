@@ -1480,3 +1480,24 @@
 
 - LXGW WenKai adds ~9 MB of subsetted WOFF2 to the build; subsets load on demand via `unicode-range`, so first paint stays light.
 - Existing drafts keep the language they were created in; only new pages pick up Chinese starter copy.
+
+## 2026-11-15 Font Scoping and Layout Picker Polish
+
+### What changed
+
+- Replaced the 194-file LXGW WenKai webfont bundle with one self-hosted 866 KB WOFF2 subset (`public/fonts/LXGWWenKai-Regular.woff2`, GB2312 level-1 plus punctuation) and removed the font npm dependency and all font preloads.
+- Scoped the designed typeface to the homepage and the rendered folio pages only (editor preview, public viewer). Auth, terms, account, admin, buttons, links and captions now use the system UI font, and admin previews stay on the system stack too. `font-display: swap` keeps the system font visible until the display font is ready.
+- Paper-colour selection now uses a small check mark instead of a heavy outline, and the popover background is opaque so chips no longer show through.
+- Layout schematics: replaced percentage gaps inside text stacks (which collapsed to zero) with fixed gaps, reduced line and image corner radii, and gave the page thumbnail a small sheet shadow. Hover actions are centred over the schematic, which dims and blurs behind them; the description panel now anchors outside the sidebar.
+- Localised structural page labels (`Page 01`, frame hints) and fixed new-draft template copy so pages are created with native Chinese starter text instead of English defaults.
+- Copy fixes: “已存入账户” → “账户图库”, “未用于本作品集” → “本作品集未使用”, “插入当前” → “插入页面”.
+
+### Validation
+
+- `npm run validate:mvp`
+- `./node_modules/.bin/playwright test` (13 specs)
+- Font network check: auth/terms/account/admin load no custom fonts; homepage and editor load Newsreader + one WenKai file.
+
+### Remaining risk
+
+- The display subset covers GB2312 level-1 characters; rare characters in user copy fall back to the system font.

@@ -1,4 +1,4 @@
-import { useT } from '../i18n';
+import { translate, useT } from '../i18n';
 import {
   CSSProperties,
   KeyboardEvent as ReactKeyboardEvent,
@@ -462,7 +462,7 @@ function AssetFrame({
       data-has-asset={hasAsset ? 'true' : 'false'}
       data-frame-ready={frameReady ? 'true' : 'false'}
       data-geometry-ready={geometryReady ? 'true' : 'false'}
-      aria-label={`Select the ${slotHint} frame`}
+      aria-label={`Select the ${slot} frame`}
       title={canAdjustCrop ? t('Drag to move the photo naturally. Arrow keys nudge. Use the wheel or +/- to zoom.') : undefined}
       onClick={() => onSelectSlot?.(slot)}
       onPointerDown={startCropInteraction}
@@ -588,12 +588,12 @@ export function MagazinePreview({
     <article className={pageClassName} style={pageStyle}>
       <header className="magazine-page__meta">
         <span>{issue}</span>
-        {pageNumber ? <span>{`Page ${String(pageNumber).padStart(2, '0')}`}</span> : null}
+        {pageNumber ? <span>{t('Page %s').replace('%s', String(pageNumber).padStart(2, '0'))}</span> : null}
       </header>
 
       {page.template === 'cover' ? (
         <div className="magazine-cover">
-          <div className="magazine-cover__image">{renderSlot('hero')}</div>
+          <div className="magazine-cover__image">{renderSlot('hero', { hintLabel: t('Hero') })}</div>
           <div className="magazine-cover__copy magazine-heading-block">
             {hasDeck ? <p className="magazine-kicker">{renderText('deck')}</p> : null}
             <h2>{renderText('title')}</h2>
@@ -604,7 +604,7 @@ export function MagazinePreview({
 
       {page.template === 'essay' ? (
         <div className="magazine-essay">
-          <div className="magazine-essay__visual">{renderSlot('hero')}</div>
+          <div className="magazine-essay__visual">{renderSlot('hero', { hintLabel: t('Hero') })}</div>
           <div className="magazine-essay__copy">
             <div className="magazine-essay__headline magazine-heading-block">
               {hasKicker ? <p className="magazine-kicker">{renderText('kicker')}</p> : null}
@@ -626,7 +626,7 @@ export function MagazinePreview({
             </div>
             {hasDeck ? <p>{renderText('deck')}</p> : null}
           </div>
-          <div className="magazine-folio__visual">{renderSlot('hero')}</div>
+          <div className="magazine-folio__visual">{renderSlot('hero', { hintLabel: t('Hero') })}</div>
           {hasCaption ? <footer>{renderText('caption')}</footer> : null}
         </div>
       ) : null}
