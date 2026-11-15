@@ -1520,3 +1520,20 @@
 ### Remaining risk
 
 - Homepage still ships the demo photographs (now WebP). Further savings would need per-viewport variants or lazy loading of off-screen marquee pages.
+
+## 2026-11-15 Proactive Design Polish Pass
+
+### What changed
+
+- Layout picker: the hover dim/blur now covers the whole card instead of only the thumbnail, and the custom card renders the actual custom template geometry rather than a generic placeholder.
+- Copy: “已存入账户” → “已在图库中”; localised the photo count, usage count and page numbers; fixed the hardcoded editor-topbar “Menu” and translated the app error boundary.
+- Readability: darkened the muted text token to meet AA contrast, raised the CJK body line-height, removed sub-11px UI labels, and increased small hit targets (nav links, page actions, colour dot).
+- Consistency: replaced the page-chip text glyphs with SVG icons, switched account activity pills to 成功/失败/已发起, translated admin failure messages and converted admin hour buckets to 24-hour labels.
+- Mobile: meta pills wrap inline, all account/admin tabs are visible without horizontal scrolling, page-chip actions move into the flow and the colour dot sits top-right.
+- Asset tiles now truncate long filenames instead of colliding with the delivery indicator.
+
+### Validation
+
+- `npm run validate:mvp`
+- `./node_modules/.bin/playwright test` (13 specs)
+- No horizontal overflow at 360/390/768/1024 across home, auth, terms, privacy and editor.

@@ -1097,7 +1097,10 @@ export function EditorPage() {
                           aria-label={t('Duplicate page')}
                           onClick={duplicatePage}
                         >
-                          ⧉
+                          <svg viewBox="0 0 16 16" aria-hidden="true">
+                            <rect x="5.5" y="3.5" width="7" height="9" rx="1.2" />
+                            <path d="M10.5 12.5H4.5A1 1 0 0 1 3.5 11.5V6" />
+                          </svg>
                         </button>
                         <button
                           type="button"
@@ -1107,7 +1110,9 @@ export function EditorPage() {
                           disabled={selectedPageIndex <= 0}
                           onClick={() => moveSelectedPage(-1)}
                         >
-                          ↑
+                          <svg viewBox="0 0 16 16" aria-hidden="true">
+                            <path d="M8 12.5V4M4.5 7.5 8 4l3.5 3.5" />
+                          </svg>
                         </button>
                         <button
                           type="button"
@@ -1117,7 +1122,9 @@ export function EditorPage() {
                           disabled={selectedPageIndex >= project.pages.length - 1}
                           onClick={() => moveSelectedPage(1)}
                         >
-                          ↓
+                          <svg viewBox="0 0 16 16" aria-hidden="true">
+                            <path d="M8 3.5V12M4.5 8.5 8 12l3.5-3.5" />
+                          </svg>
                         </button>
                         <button
                           type="button"
@@ -1127,7 +1134,9 @@ export function EditorPage() {
                           disabled={project.pages.length === 1}
                           onClick={removeSelectedPage}
                         >
-                          ×
+                          <svg viewBox="0 0 16 16" aria-hidden="true">
+                            <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" />
+                          </svg>
                         </button>
                       </div>
                     ) : null}
@@ -1176,7 +1185,10 @@ export function EditorPage() {
                           onFocus={(event) => openTemplateHoverPreview(templateId, event.currentTarget)}
                           onBlur={clearTemplateHoverPreview}
                         >
-                          <LayoutThumbnail templateId={templateId} />
+                          <LayoutThumbnail
+                            templateId={templateId}
+                            customTemplate={templateId === 'custom' ? customTemplateDraft : null}
+                          />
                           <span className="layout-card__name">{t(meta.label)}</span>
                         </button>
                         <div className="layout-card__actions">
@@ -1187,9 +1199,7 @@ export function EditorPage() {
                             title={t("Replaces this page's layout. Photos and text stay.")}
                             onClick={() => {
                               setTemplateChoice(templateId);
-                              if (templateId !== 'custom') {
-                                applyTemplateChoice(templateId);
-                              }
+                              applyTemplateChoice(templateId);
                             }}
                           >
                             {t('Replace this page')}

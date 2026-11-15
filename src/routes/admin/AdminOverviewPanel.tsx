@@ -1,7 +1,7 @@
 import { useT } from '../../i18n';
 import type { AdminSummary, ProductConfigPayload } from '../../editor/api';
 import { getUserPrimaryIdentity, getUserSecondaryIdentity } from '../../editor/identity';
-import { formatBytes, formatTimestamp } from './adminFormatting';
+import { formatBytes, formatHourLabel, formatTimestamp } from './adminFormatting';
 import type { AdminSectionKey } from './useAdminShellState';
 
 type AdminOverviewPanelProps = {
@@ -164,7 +164,7 @@ export function AdminOverviewPanel({
             <div className="admin-trend-grid">
               {activeHourlyTrend.map((bucket) => (
                 <article key={bucket.label} className="admin-stat-card admin-stat-card--static">
-                  <span>{bucket.label}</span>
+                  <span>{formatHourLabel(bucket.label)}</span>
                   <strong>{bucket.total}</strong>
                   {bucket.failures > 0 ? (
                     <small>{bucket.failures === 1 ? t('1 failure') : t('%s failures').replace('%s', String(bucket.failures))}</small>
@@ -180,7 +180,7 @@ export function AdminOverviewPanel({
               summary.failures.slice(0, 5).map((failure) => (
                 <article key={failure.id} className="admin-mini-list__item">
                   <span>{t(failure.type)}</span>
-                  <strong>{failure.detail?.message ?? t('Unknown error')}</strong>
+                  <strong>{t(failure.detail?.message ?? 'Unknown error')}</strong>
                   <p className="panel-note">{formatTimestamp(failure.createdAt)}</p>
                 </article>
               ))

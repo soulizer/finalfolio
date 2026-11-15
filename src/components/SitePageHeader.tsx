@@ -163,7 +163,7 @@ export function SitePageHeader({
         aria-controls={menuId}
         onClick={() => setMobileMenuOpen((currentValue) => !currentValue)}
       >
-        Menu
+        {t('Menu')}
       </button>
       <div id={menuId} className={`editor-topbar__actions site-page-header__editor-actions ${mobileMenuOpen ? 'is-open' : ''}`.trim()}>
         {nav}

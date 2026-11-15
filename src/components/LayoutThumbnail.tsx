@@ -1,4 +1,4 @@
-import { TemplateId } from '../editor/types';
+import { CustomTemplateDefinition, TemplateId } from '../editor/types';
 
 /**
  * Schematic page previews used in the layout picker. The outer box keeps the A4
@@ -27,7 +27,15 @@ function ImageBlock({ className = '' }: { className?: string }) {
   );
 }
 
-export function LayoutThumbnail({ templateId, className = '' }: { templateId: TemplateId; className?: string }) {
+export function LayoutThumbnail({
+  templateId,
+  customTemplate,
+  className = '',
+}: {
+  templateId: TemplateId;
+  customTemplate?: CustomTemplateDefinition | null;
+  className?: string;
+}) {
   return (
     <div className={`layout-thumb layout-thumb--${templateId} ${className}`.trim()} aria-hidden="true">
       <div className="layout-thumb__page">
@@ -165,17 +173,42 @@ export function LayoutThumbnail({ templateId, className = '' }: { templateId: Te
           ) : null}
 
           {templateId === 'custom' ? (
-            <>
-              <div className="layout-thumb__frames layout-thumb__frames--custom">
-                <ImageBlock />
-                <ImageBlock />
-                <ImageBlock />
-              </div>
-              <div className="layout-thumb__stack layout-thumb__stack--tight">
-                <span className="layout-thumb__line layout-thumb__line--title" />
-                <TextLines count={2} />
-              </div>
-            </>
+            <div className="layout-thumb__custom">
+              {customTemplate
+                ? customTemplate.frames.map((frame) => (
+                    <span
+                      key={frame.slot}
+                      className="layout-thumb__image layout-thumb__custom-frame"
+                      style={{
+                        left: `${frame.x}%`,
+                        top: `${frame.y}%`,
+                        width: `${frame.width}%`,
+                        height: `${frame.height}%`,
+                      }}
+                    >
+                      <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                        <circle cx="8" cy="8" r="2.2" />
+                        <path d="M3.4 19.2 9.6 12l3.7 4.2 2.6-2.9 4.7 5.9Z" />
+                      </svg>
+                    </span>
+                  ))
+                : null}
+              {customTemplate ? (
+                <span
+                  className="layout-thumb__custom-text"
+                  style={{
+                    left: `${customTemplate.text.x}%`,
+                    top: `${customTemplate.text.y}%`,
+                    width: `${customTemplate.text.width}%`,
+                    height: `${customTemplate.text.height}%`,
+                  }}
+                >
+                  <span className="layout-thumb__line layout-thumb__line--title" />
+                  <span className="layout-thumb__line" />
+                  <span className="layout-thumb__line" />
+                </span>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>

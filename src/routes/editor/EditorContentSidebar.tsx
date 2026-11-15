@@ -130,7 +130,7 @@ export function EditorContentSidebar({
             <p className="eyebrow">{t('Photos')}</p>
             <h2>{t('Media library')}</h2>
           </div>
-          <span className="panel-tag">{libraryAssets.length === 0 ? t('Empty') : `${libraryAssets.length} photo${libraryAssets.length === 1 ? '' : 's'}`}</span>
+          <span className="panel-tag">{libraryAssets.length === 0 ? t('Empty') : t('%s photos').replace('%s', String(libraryAssets.length))}</span>
         </div>
         <form
           className="import-url-form"
@@ -257,7 +257,7 @@ export function EditorContentSidebar({
                       </div>
                       <span>
                         {placements
-                          ? `${placements} use${placements === 1 ? '' : 's'}`
+                          ? t('%s uses').replace('%s', String(placements))
                           : isInCurrentProject
                             ? t('Unused in this folio')
                             : t('Saved in account')}

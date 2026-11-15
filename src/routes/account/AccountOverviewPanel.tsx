@@ -56,9 +56,9 @@ export function AccountOverviewPanel({
       return t('Requested');
     }
     if (item.status === 'error') {
-      return t('Issue');
+      return t('Failed');
     }
-    return item.type;
+    return t('Success');
   };
 
   return (

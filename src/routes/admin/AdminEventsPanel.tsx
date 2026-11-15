@@ -2,7 +2,7 @@ import { translate as tModule } from '../../i18n';
 import { useT } from '../../i18n';
 import type { AdminProjectListItem, AdminSummary, UserSession } from '../../editor/api';
 import { getUserPrimaryIdentity } from '../../editor/identity';
-import { formatTimestamp } from './adminFormatting';
+import { formatHourLabel, formatTimestamp } from './adminFormatting';
 
 type AdminEventRecord = AdminSummary['events'][number];
 
@@ -144,7 +144,7 @@ export function AdminEventsPanel({
               summary.failures.map((failure) => (
                 <article key={failure.id} className="admin-mini-list__item">
                   <span>{getEventTypeLabel(failure.type)}</span>
-                  <strong>{formatDetailSummary(failure.detail, t('Unknown error'))}</strong>
+                  <strong>{t(formatDetailSummary(failure.detail, t('Unknown error')))}</strong>
                   <p className="panel-note">{buildEventContext(failure, usersById, projectsById)}</p>
                 </article>
               ))
@@ -194,7 +194,7 @@ export function AdminEventsPanel({
                 <div className="admin-breakdown-list">
                   {(activeDailyTrend.length ? activeDailyTrend : summary.trends.last7Days).map((bucket) => (
                     <article key={bucket.label} className="admin-breakdown-row">
-                      <strong>{bucket.label}</strong>
+                      <strong>{formatHourLabel(bucket.label)}</strong>
                       <div className="admin-breakdown-row__stats">
                         <span>{`${bucket.total} events`}</span>
                         <span>{`${bucket.failures} failures`}</span>
@@ -208,7 +208,7 @@ export function AdminEventsPanel({
                 <div className="admin-breakdown-list">
                   {(activeHourlyTrend.length ? activeHourlyTrend : summary.trends.last24Hours).map((bucket) => (
                     <article key={bucket.label} className="admin-breakdown-row">
-                      <strong>{bucket.label}</strong>
+                      <strong>{formatHourLabel(bucket.label)}</strong>
                       <div className="admin-breakdown-row__stats">
                         <span>{`${bucket.total} events`}</span>
                         <span>{`${bucket.failures} failures`}</span>
