@@ -457,7 +457,15 @@ export function getTermsDocument(language: string | null | undefined) {
 }
 
 export function getPageLanguage() {
-  return 'en';
+  if (typeof window === 'undefined') {
+    return 'en';
+  }
+
+  try {
+    return window.localStorage.getItem('finalfolio-locale') === 'zh' ? 'zh-CN' : 'en';
+  } catch {
+    return 'en';
+  }
 }
 
 export function buildTermsPath(nextPath?: string | null) {

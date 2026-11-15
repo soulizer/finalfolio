@@ -1,3 +1,4 @@
+import { useT } from '../../i18n';
 import type { CSSProperties } from 'react';
 import { MagazinePreview } from '../../components/MagazinePreview';
 import type { AdminProjectDetail, AdminProjectListItem } from '../../editor/api';
@@ -28,6 +29,7 @@ export function AdminProjectsPanel({
   setProjectSearch,
   setSelectedProjectId,
 }: AdminProjectsPanelProps) {
+  const t = useT();
   const selectedProjectMetrics = selectedProjectDetail?.metrics ?? null;
   const selectedProjectEvents = selectedProjectDetail?.recentEvents ?? [];
   const selectedProjectFailures = selectedProjectDetail?.recentFailures ?? [];
@@ -40,15 +42,15 @@ export function AdminProjectsPanel({
       <section className="editor-panel admin-panel">
         <div className="editor-panel__heading">
           <div>
-            <p className="eyebrow">Projects</p>
-            <h2>Folio governance</h2>
+            <p className="eyebrow">{t('Projects')}</p>
+            <h2>{t('Folio governance')}</h2>
           </div>
           <span className="panel-tag">{filteredProjects.length}</span>
         </div>
         <label className="field admin-search-field">
-          <span>Search projects</span>
+          <span>{t('Search projects')}</span>
           <input
-            placeholder="Title, folio mark, owner username/email, or project ID"
+            placeholder={t('Title, folio mark, owner username/email, or project ID')}
             value={projectSearch}
             onChange={(event) => setProjectSearch(event.target.value)}
           />
@@ -92,8 +94,7 @@ export function AdminProjectsPanel({
                             rel="noreferrer"
                             onClick={(event) => event.stopPropagation()}
                           >
-                            Public Link
-                          </a>
+                            {t('Public Link')}</a>
                         ) : null}
                         <a
                           className="button button--primary button--small"
@@ -102,8 +103,7 @@ export function AdminProjectsPanel({
                           rel="noreferrer"
                           onClick={(event) => event.stopPropagation()}
                         >
-                          Edit
-                        </a>
+                          {t('Edit')}</a>
                         <button
                           type="button"
                           className="button button--danger button--small"
@@ -112,8 +112,7 @@ export function AdminProjectsPanel({
                             void handleDeleteProject(project.id);
                           }}
                         >
-                          Delete
-                        </button>
+                          {t('Delete')}</button>
                       </div>
                     </div>
                   </article>
@@ -121,8 +120,8 @@ export function AdminProjectsPanel({
               })
             ) : (
               <article className="admin-list__empty">
-                <strong>No matching projects</strong>
-                <p>Try a different folio mark, title, owner username/email, or project ID.</p>
+                <strong>{t('No matching projects')}</strong>
+                <p>{t('Try a different folio mark, title, owner username/email, or project ID.')}</p>
               </article>
             )}
           </div>
@@ -132,7 +131,7 @@ export function AdminProjectsPanel({
               <>
                 <div className="admin-detail-card__header">
                   <div>
-                    <p className="eyebrow">Inspect</p>
+                    <p className="eyebrow">{t('Inspect')}</p>
                     <h2>{selectedProjectDetail.title}</h2>
                   </div>
                   <span className="panel-tag">{selectedProjectDetail.issue}</span>
@@ -160,37 +159,37 @@ export function AdminProjectsPanel({
                         </article>
                       ))}
                     </div>
-                    <p className="panel-note">Scroll horizontally to inspect the full sequence. Preview derivatives are used instead of pulling full originals into admin.</p>
+                    <p className="panel-note">{t('Scroll horizontally to inspect the full sequence. Preview derivatives are used instead of pulling full originals into admin.')}</p>
                   </div>
                 ) : null}
                 <div className="admin-detail-metrics admin-detail-metrics--compact">
                   <article>
-                    <span>Owner</span>
+                    <span>{t('Owner')}</span>
                     <strong>{selectedProjectDetail.ownerDisplay ?? 'unowned'}</strong>
                   </article>
                   <article>
-                    <span>Pages</span>
+                    <span>{t('Pages')}</span>
                     <strong>{selectedProjectMetrics.pageCount}</strong>
                   </article>
                   <article>
-                    <span>Assets</span>
+                    <span>{t('Assets')}</span>
                     <strong>{selectedProjectMetrics.assetCount}</strong>
                   </article>
                   <article>
-                    <span>Unused assets</span>
+                    <span>{t('Unused assets')}</span>
                     <strong>{selectedProjectMetrics.unusedAssetCount}</strong>
                   </article>
                   <article>
-                    <span>Blank pages</span>
+                    <span>{t('Blank pages')}</span>
                     <strong>{selectedProjectMetrics.blankPages}</strong>
                   </article>
                   <article>
-                    <span>Missing assets</span>
+                    <span>{t('Missing assets')}</span>
                     <strong>{selectedProjectMetrics.missingAssetCount}</strong>
                   </article>
                 </div>
                 <div className="admin-detail-section">
-                  <strong>Template distribution</strong>
+                  <strong>{t('Template distribution')}</strong>
                   <div className="admin-tag-cloud">
                     {Object.entries(selectedProjectMetrics.templateUsage).map(([templateId, count]) => (
                       <span key={templateId} className="admin-pill">
@@ -200,7 +199,7 @@ export function AdminProjectsPanel({
                   </div>
                 </div>
                 <div className="admin-detail-section">
-                  <strong>Recent project events</strong>
+                  <strong>{t('Recent project events')}</strong>
                   <div className="admin-mini-list">
                     {selectedProjectEvents.length ? (
                       selectedProjectEvents.map((event) => (
@@ -210,18 +209,18 @@ export function AdminProjectsPanel({
                         </article>
                       ))
                     ) : (
-                      <p className="panel-note">No recent project events recorded for this folio.</p>
+                      <p className="panel-note">{t('No recent project events recorded for this folio.')}</p>
                     )}
                   </div>
                 </div>
                 {selectedProjectFailures.length ? (
                   <div className="admin-detail-section">
-                    <strong>Recent failures</strong>
+                    <strong>{t('Recent failures')}</strong>
                     <div className="admin-mini-list">
                       {selectedProjectFailures.map((failure) => (
                         <article key={failure.id} className="admin-mini-list__item">
                           <span>{failure.type}</span>
-                          <strong>{failure.detail?.message ?? 'Unknown error'}</strong>
+                          <strong>{failure.detail?.message ?? t('Unknown error')}</strong>
                         </article>
                       ))}
                     </div>
@@ -230,8 +229,8 @@ export function AdminProjectsPanel({
               </>
             ) : (
               <div className="admin-detail-card__empty">
-                <strong>Select a project</strong>
-                <p>Pick a folio from the list to inspect its first page, health signals, and recent operations.</p>
+                <strong>{t('Select a project')}</strong>
+                <p>{t('Pick a folio from the list to inspect its first page, health signals, and recent operations.')}</p>
               </div>
             )}
           </aside>

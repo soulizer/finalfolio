@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { SiteLegalFooter } from '../components/SiteLegalFooter';
 import { SitePageHeader } from '../components/SitePageHeader';
 import { getPrivacyDocument, PrivacyBlock } from '../legal/privacy';
+import { useT } from '../i18n';
 import { useSession } from '../session';
 
 function renderSectionBlock(block: PrivacyBlock, key: string) {
@@ -19,6 +20,7 @@ function renderSectionBlock(block: PrivacyBlock, key: string) {
 }
 
 export function PrivacyPage() {
+  const t = useT();
   const document = getPrivacyDocument();
   const { user: session, ready: sessionReady } = useSession();
 
@@ -53,15 +55,15 @@ export function PrivacyPage() {
 
         <section className="terms-gate">
           <div className="terms-gate__copy">
-            <strong>Questions or deletion requests</strong>
-            <p>{'For account removal, upload deletion, or privacy questions, contact ' + document.contactEmail + '.'}</p>
+            <strong>{t('Questions or deletion requests')}</strong>
+            <p>{t('For account removal, upload deletion, or privacy questions, contact %s.').replace('%s', document.contactEmail)}</p>
           </div>
           <div className="terms-actions">
             <Link className="button button--primary" to="/auth">
-              Open account access
+              {t('Open account access')}
             </Link>
             <Link className="button button--ghost" to="/">
-              Back home
+              {t('Back home')}
             </Link>
           </div>
         </section>

@@ -1,3 +1,4 @@
+import { useT } from '../../i18n';
 import type { AccountSummary, UserSession } from '../../editor/api';
 import { getUserPrimaryIdentity, getUserSecondaryIdentity } from '../../editor/identity';
 import { ACCOUNT_SECTIONS, type AccountSectionKey } from './accountSections';
@@ -15,24 +16,24 @@ export function AccountConsoleHeader({
   session,
   summary,
 }: AccountConsoleHeaderProps) {
+  const t = useT();
   return (
     <section className="editor-panel admin-hero">
       <div className="editor-panel__heading">
         <div>
-          <p className="eyebrow">Account</p>
-          <h2>Manage your own projects, uploads, and identity.</h2>
+          <p className="eyebrow">{t('Account')}</p>
+          <h2>{t('Manage your own projects, uploads, and identity.')}</h2>
           <p className="panel-note admin-hero__lede">
-            This workspace keeps the same information architecture and governance language as admin, but scoped to your own content.
-          </p>
+            {t('This workspace keeps the same information architecture and governance language as admin, but scoped to your own content.')}</p>
         </div>
         <div className="admin-hero__meta">
-          <span className="panel-tag">{`${getUserPrimaryIdentity(session)} · ${session.role}`}</span>
+          <span className="panel-tag">{`${getUserPrimaryIdentity(session)} · ${t(session.role)}`}</span>
           {getUserSecondaryIdentity(session) ? <span className="panel-tag">{getUserSecondaryIdentity(session)}</span> : null}
-          <span className="panel-tag">{session.emailVerifiedAt ? 'verified' : 'verification pending'}</span>
-          {summary ? <span className="panel-tag">{`${summary.counts.projects} projects`}</span> : null}
+          <span className="panel-tag">{session.emailVerifiedAt ? t('Verified') : t('verification pending')}</span>
+          {summary ? <span className="panel-tag">{t('%s projects').replace('%s', String(summary.counts.projects))}</span> : null}
         </div>
       </div>
-      <div className="admin-section-nav" role="tablist" aria-label="Account sections">
+      <div className="admin-section-nav" role="tablist" aria-label={t('Account sections')}>
         {ACCOUNT_SECTIONS.map((section) => (
           <button
             key={section.id}
@@ -41,7 +42,7 @@ export function AccountConsoleHeader({
             aria-pressed={activeSection === section.id}
             onClick={() => selectSection(section.id)}
           >
-            {section.label}
+            {t(section.label)}
           </button>
         ))}
       </div>

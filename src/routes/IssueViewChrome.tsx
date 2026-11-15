@@ -1,3 +1,4 @@
+import { useT } from '../i18n';
 import type { CSSProperties } from 'react';
 import type { UserSession } from '../editor/api';
 import type { PublicIssuePayload } from '../editor/types';
@@ -59,24 +60,23 @@ function IssueViewSharedFolioSection({
   session,
   sessionReady,
 }: IssueViewSharedFolioSectionProps) {
+  const t = useT();
   return (
     <section className={className}>
-      <p className="eyebrow">Shared folio</p>
+      <p className="eyebrow">{t('Shared folio')}</p>
       <h1>{issue.title}</h1>
       <div className="issue-view-copy__meta">
-        <span className="panel-tag">Read only</span>
-        <span className="panel-tag">{issue.issue || 'Folio'}</span>
+        <span className="panel-tag">{t('Read only')}</span>
+        <span className="panel-tag">{issue.issue || t('Folio')}</span>
         <span className="panel-tag">{`${pageCount} pages`}</span>
       </div>
       {issue.subtitle ? <p>{issue.subtitle}</p> : null}
       {sessionReady && !session ? (
         <div className="issue-view-copy__actions">
           <Link to="/" className="button button--ghost button--small">
-            Back to FinalFolio
-          </Link>
+            {t('Back to FinalFolio')}</Link>
           <Link to="/editor" className="button button--primary button--small">
-            Make my folio
-          </Link>
+            {t('Make my folio')}</Link>
         </div>
       ) : null}
     </section>
@@ -104,11 +104,12 @@ function IssueViewCurrentViewTools({
   onAdvanceToPreviousPage,
   onToggleFullscreen,
 }: IssueViewCurrentViewToolsProps) {
+  const t = useT();
   return (
     <section className={className}>
       <div className="issue-view-tools__section">
         <div>
-          <p className="eyebrow">Current view</p>
+          <p className="eyebrow">{t('Current view')}</p>
           <h2>{currentView.label}</h2>
         </div>
         <p className="issue-view-tools__caption">{currentView.rangeLabel}</p>
@@ -125,7 +126,7 @@ function IssueViewCurrentViewTools({
             <span aria-hidden="true" className="issue-view-controls__icon">
               ←
             </span>
-            <span>Previous</span>
+            <span>{t('Previous')}</span>
           </button>
           <button
             type="button"
@@ -133,7 +134,7 @@ function IssueViewCurrentViewTools({
             disabled={!currentView.canGoNext || isTurning}
             onClick={onAdvanceToNextPage}
           >
-            <span>Next</span>
+            <span>{t('Next')}</span>
             <span aria-hidden="true" className="issue-view-controls__icon">
               →
             </span>
@@ -143,7 +144,7 @@ function IssueViewCurrentViewTools({
 
       <div className="issue-view-tools__section issue-view-tools__section--aux">
         <button type="button" className="button button--ghost button--small" onClick={() => void onToggleFullscreen()}>
-          {fullscreenActive ? 'Exit fullscreen' : 'Fullscreen'}
+          {fullscreenActive ? t('Exit fullscreen') : t('Fullscreen')}
         </button>
         <p className="issue-view-tools__hint">{viewerHint}</p>
       </div>
@@ -169,13 +170,14 @@ export function IssueViewReaderChrome({
   onToggleFullscreen,
   onToggleMobilePanel,
 }: IssueViewReaderChromeProps) {
+  const t = useT();
   return (
     <>
       {showMobileChrome ? (
         <>
           <div className="issue-view-mobile-topbar">
             <div className="issue-view-mobile-topbar__summary">
-              <span className="eyebrow">Shared folio</span>
+              <span className="eyebrow">{t('Shared folio')}</span>
               <strong>{issue.title}</strong>
               <small>{`${issue.issue} · ${currentView.rangeLabel}`}</small>
             </div>
@@ -186,8 +188,7 @@ export function IssueViewReaderChrome({
               aria-controls="issue-view-mobile-panel"
               onClick={onToggleMobilePanel}
             >
-              Details
-            </button>
+              {t('Details')}</button>
           </div>
 
           <div
@@ -205,16 +206,14 @@ export function IssueViewReaderChrome({
                 disabled={!currentView.canGoPrev || isTurning}
                 onClick={onAdvanceToPreviousPage}
               >
-                Previous
-              </button>
+                {t('Previous')}</button>
               <button
                 type="button"
                 className="button button--ghost issue-view-controls__button issue-view-mobile-controls__button"
                 disabled={!currentView.canGoNext || isTurning}
                 onClick={onAdvanceToNextPage}
               >
-                Next
-              </button>
+                {t('Next')}</button>
             </div>
           </div>
 
@@ -222,7 +221,7 @@ export function IssueViewReaderChrome({
             <button
               type="button"
               className="issue-view-mobile-overlay"
-              aria-label="Close shared folio details"
+              aria-label={t('Close shared folio details')}
               onClick={onCloseMobilePanel}
             />
           ) : null}
@@ -232,13 +231,12 @@ export function IssueViewReaderChrome({
             className={`issue-view-mobile-sheet ${mobilePanelOpen ? 'is-open' : ''}`.trim()}
             role="dialog"
             aria-modal="true"
-            aria-label="Shared folio details"
+            aria-label={t('Shared folio details')}
           >
             <div className="issue-view-mobile-sheet__card">
               <div className="issue-view-mobile-sheet__header">
                 <button type="button" className="button button--ghost button--small" onClick={onCloseMobilePanel}>
-                  Close
-                </button>
+                  {t('Close')}</button>
               </div>
               <div className="issue-view-mobile-sheet__content">
                 <IssueViewSharedFolioSection issue={issue} pageCount={pageCount} session={session} sessionReady={sessionReady} />
@@ -256,23 +254,20 @@ export function IssueViewReaderChrome({
             disabled={!currentView.canGoPrev || isTurning}
             onClick={onAdvanceToPreviousPage}
           >
-            Previous
-          </button>
+            {t('Previous')}</button>
           <button
             type="button"
             className="button button--ghost button--small issue-view-fullscreen-controls__button"
             disabled={!currentView.canGoNext || isTurning}
             onClick={onAdvanceToNextPage}
           >
-            Next
-          </button>
+            {t('Next')}</button>
           <button
             type="button"
             className="button button--ghost button--small issue-view-fullscreen-controls__button"
             onClick={() => void onToggleFullscreen()}
           >
-            Exit fullscreen
-          </button>
+            {t('Exit fullscreen')}</button>
         </div>
       ) : null}
     </>

@@ -1,3 +1,4 @@
+import { useT } from '../../i18n';
 import type { CSSProperties } from 'react';
 import { MagazinePreview } from '../../components/MagazinePreview';
 import { getTemplateLabel } from '../../editor/demoData';
@@ -60,17 +61,18 @@ export function AccountProjectsPanel({
   setSelectedProjectId,
   stopEditingProject,
 }: AccountProjectsPanelProps) {
+  const t = useT();
   return (
     <div className="admin-page admin-page--single">
       <section className="editor-panel admin-panel">
         <div className="editor-panel__heading">
           <div>
-            <p className="eyebrow">Projects</p>
-            <h2>My projects</h2>
+            <p className="eyebrow">{t('Projects')}</p>
+            <h2>{t('My projects')}</h2>
           </div>
           <span className="panel-tag">{filteredProjects.length}</span>
         </div>
-        <div className="editor-filter-row" role="tablist" aria-label="Project visibility filters">
+        <div className="editor-filter-row" role="tablist" aria-label={t('Project visibility filters')}>
           {PROJECT_VISIBILITY_FILTERS.map((filter) => (
             <button
               key={filter}
@@ -78,14 +80,14 @@ export function AccountProjectsPanel({
               className={`editor-filter-chip ${projectVisibilityFilter === filter ? 'is-active' : ''}`}
               onClick={() => setProjectVisibilityFilter(filter)}
             >
-              {filter === 'active' ? 'Active' : filter === 'archived' ? 'Archived' : 'All'}
+              {filter === 'active' ? t('Active') : filter === 'archived' ? t('Archived') : t('All')}
             </button>
           ))}
         </div>
         <label className="field admin-search-field">
-          <span>Search projects</span>
+          <span>{t('Search projects')}</span>
           <input
-            placeholder="Title, folio mark, or project ID"
+            placeholder={t('Title, folio mark, or project ID')}
             value={projectSearch}
             onChange={(event) => setProjectSearch(event.target.value)}
           />
@@ -105,11 +107,11 @@ export function AccountProjectsPanel({
                       {isEditing ? (
                         <div className="template-library-card__form">
                           <label className="field">
-                            <span>Project title</span>
+                            <span>{t('Project title')}</span>
                             <input value={projectTitleDraft} onChange={(event) => setProjectTitleDraft(event.target.value)} />
                           </label>
                           <label className="field">
-                            <span>Folio mark</span>
+                            <span>{t('Folio mark')}</span>
                             <input value={projectIssueDraft} onChange={(event) => setProjectIssueDraft(event.target.value)} />
                           </label>
                         </div>
@@ -131,9 +133,9 @@ export function AccountProjectsPanel({
                       <div className="admin-row__meta">
                         <span className="admin-pill admin-pill--strong">{project.project.issue}</span>
                         <span className={`admin-pill ${project.share.enabled ? 'admin-pill--success' : 'admin-pill--warning'}`}>
-                          {project.share.enabled ? 'Shared' : 'Private'}
+                          {project.share.enabled ? t('Shared') : t('Private')}
                         </span>
-                        {project.archivedAt ? <span className="admin-pill admin-pill--warning">Archived</span> : null}
+                        {project.archivedAt ? <span className="admin-pill admin-pill--warning">{t('Archived')}</span> : null}
                       </div>
                       <div className="admin-row__actions" onClick={(event) => event.stopPropagation()}>
                         {isEditing ? (
@@ -144,29 +146,26 @@ export function AccountProjectsPanel({
                               disabled={projectBusyId === project.id}
                               onClick={() => void handleSaveProjectRename(project)}
                             >
-                              {projectBusyId === project.id && projectBusyAction === 'rename' ? 'Saving…' : 'Save'}
+                              {projectBusyId === project.id && projectBusyAction === 'rename' ? t('Saving…') : t('Save')}
                             </button>
                             <button type="button" className="button button--ghost button--small" onClick={stopEditingProject}>
-                              Cancel
-                            </button>
+                              {t('Cancel')}</button>
                           </>
                         ) : (
                           <>
                             <button type="button" className="button button--primary button--small" onClick={() => openRoute(project.sharePath)}>
-                              Edit
-                            </button>
+                              {t('Edit')}</button>
                             {project.share.enabled ? (
                               <>
                                 <button type="button" className="button button--ghost button--small" onClick={() => void handleCopyShareLink(project)}>
-                                  Copy link
-                                </button>
+                                  {t('Copy link')}</button>
                                 <button
                                   type="button"
                                   className="button button--ghost button--small"
                                   disabled={projectBusyId === project.id}
                                   onClick={() => void handleDisableShare(project)}
                                 >
-                                  {projectBusyId === project.id && projectBusyAction === 'share' ? 'Updating…' : 'Disable'}
+                                  {projectBusyId === project.id && projectBusyAction === 'share' ? t('Updating…') : t('Disable')}
                                 </button>
                               </>
                             ) : (
@@ -176,7 +175,7 @@ export function AccountProjectsPanel({
                                 disabled={projectBusyId === project.id}
                                 onClick={() => void handleEnableShare(project)}
                               >
-                                {projectBusyId === project.id && projectBusyAction === 'share' ? 'Sharing…' : 'Share'}
+                                {projectBusyId === project.id && projectBusyAction === 'share' ? t('Sharing…') : t('Share')}
                               </button>
                             )}
                             <button
@@ -185,7 +184,7 @@ export function AccountProjectsPanel({
                               disabled={projectBusyId === project.id}
                               onClick={() => void handleDeleteProject(project.id)}
                             >
-                              {projectBusyId === project.id && projectBusyAction === 'delete' ? 'Deleting…' : 'Delete'}
+                              {projectBusyId === project.id && projectBusyAction === 'delete' ? t('Deleting…') : t('Delete')}
                             </button>
                           </>
                         )}
@@ -196,8 +195,8 @@ export function AccountProjectsPanel({
               })
             ) : (
               <article className="admin-list__empty">
-                <strong>No matching projects</strong>
-                <p>Try a different title, folio mark, or project ID.</p>
+                <strong>{t('No matching projects')}</strong>
+                <p>{t('Try a different title, folio mark, or project ID.')}</p>
               </article>
             )}
           </div>
@@ -207,7 +206,7 @@ export function AccountProjectsPanel({
               <>
                 <div className="admin-detail-card__header">
                   <div>
-                    <p className="eyebrow">Inspect</p>
+                    <p className="eyebrow">{t('Inspect')}</p>
                     <h2>{selectedProject.project.title}</h2>
                   </div>
                   <span className="panel-tag">{selectedProject.project.issue}</span>
@@ -229,62 +228,59 @@ export function AccountProjectsPanel({
                           </div>
                           <div className="admin-detail-preview__caption">
                             <span>{String(index + 1).padStart(2, '0')}</span>
-                            <strong>{page.title.trim() || getTemplateLabel(page.template, page.customTemplate)}</strong>
-                            <small>{getTemplateLabel(page.template, page.customTemplate)}</small>
+                            <strong>{page.title.trim() || t(getTemplateLabel(page.template, page.customTemplate))}</strong>
+                            <small>{t(getTemplateLabel(page.template, page.customTemplate))}</small>
                           </div>
                         </article>
                       ))}
                     </div>
-                    <p className="panel-note">Scroll horizontally to inspect the full sequence.</p>
+                    <p className="panel-note">{t('Scroll horizontally to inspect the full sequence.')}</p>
                   </div>
                 ) : null}
                 <div className="admin-detail-metrics admin-detail-metrics--compact">
                   <article>
-                    <span>Updated</span>
+                    <span>{t('Updated')}</span>
                     <strong>{formatTimestamp(selectedProject.updatedAt)}</strong>
                   </article>
                   <article>
-                    <span>Pages</span>
+                    <span>{t('Pages')}</span>
                     <strong>{selectedProject.project.pages.length}</strong>
                   </article>
                   <article>
-                    <span>Assets</span>
+                    <span>{t('Assets')}</span>
                     <strong>{selectedProject.project.assets.length}</strong>
                   </article>
                   <article>
-                    <span>Visibility</span>
-                    <strong>{selectedProject.share.enabled ? 'Shared' : 'Private'}</strong>
+                    <span>{t('Visibility')}</span>
+                    <strong>{selectedProject.share.enabled ? t('Shared') : t('Private')}</strong>
                   </article>
                   <article>
-                    <span>Status</span>
-                    <strong>{selectedProject.archivedAt ? 'Archived' : 'Active'}</strong>
+                    <span>{t('Status')}</span>
+                    <strong>{selectedProject.archivedAt ? t('Archived') : t('Active')}</strong>
                   </article>
                 </div>
                 {selectedProject.project.subtitle ? (
                   <div className="admin-detail-section">
-                    <strong>Subtitle</strong>
+                    <strong>{t('Subtitle')}</strong>
                     <p className="panel-note">{selectedProject.project.subtitle}</p>
                   </div>
                 ) : null}
                 <div className="editor-panel__actions admin-panel__actions--flush">
                   <button type="button" className="button button--primary button--small" onClick={() => openRoute(selectedProject.sharePath)}>
-                    Edit
-                  </button>
+                    {t('Edit')}</button>
                   {selectedProject.share.enabled ? (
                     <button type="button" className="button button--ghost button--small" onClick={() => void handleCopyShareLink(selectedProject)}>
-                      Copy link
-                    </button>
+                      {t('Copy link')}</button>
                   ) : (
                     <button type="button" className="button button--ghost button--small" onClick={() => void handleEnableShare(selectedProject)}>
-                      Enable public link
-                    </button>
+                      {t('Enable public link')}</button>
                   )}
                 </div>
               </>
             ) : (
               <div className="admin-detail-card__empty">
-                <strong>Select a project</strong>
-                <p>Choose a project from the list to inspect its pages, metadata, and sharing state.</p>
+                <strong>{t('Select a project')}</strong>
+                <p>{t('Choose a project from the list to inspect its pages, metadata, and sharing state.')}</p>
               </div>
             )}
           </aside>

@@ -2,6 +2,7 @@ import { lazy, Suspense, useDeferredValue, useEffect } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { SiteSkipLink } from './components/SiteSkipLink';
+import { LocaleProvider } from './i18n';
 import { SessionProvider } from './session';
 import { ConfirmProvider } from './ui/confirm';
 
@@ -80,6 +81,7 @@ export default function App() {
 
   return (
     <SessionProvider>
+      <LocaleProvider>
       <AppErrorBoundary>
         <ConfirmProvider>
           <SiteSkipLink />
@@ -99,6 +101,7 @@ export default function App() {
           </Suspense>
         </ConfirmProvider>
       </AppErrorBoundary>
+      </LocaleProvider>
     </SessionProvider>
   );
 }

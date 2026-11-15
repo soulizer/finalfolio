@@ -1,3 +1,4 @@
+import { useT } from '../../i18n';
 import {
   getAssetDeliveryLabel,
   getAssetDeliveryTooltip,
@@ -27,20 +28,21 @@ export function AdminUploadsPanel({
   setUploadSearch,
   uploadSearch,
 }: AdminUploadsPanelProps) {
+  const t = useT();
   return (
     <div className="admin-page admin-page--single">
       <section className="editor-panel admin-panel">
         <div className="editor-panel__heading">
           <div>
-            <p className="eyebrow">Uploads</p>
-            <h2>Asset governance</h2>
+            <p className="eyebrow">{t('Uploads')}</p>
+            <h2>{t('Asset governance')}</h2>
           </div>
           <span className="panel-tag">{filteredUploads.length}</span>
         </div>
         <label className="field admin-search-field">
-          <span>Search uploads</span>
+          <span>{t('Search uploads')}</span>
           <input
-            placeholder="Filename, owner, or project"
+            placeholder={t('Filename, owner, or project')}
             value={uploadSearch}
             onChange={(event) => setUploadSearch(event.target.value)}
           />
@@ -94,8 +96,7 @@ export function AdminUploadsPanel({
                         rel="noreferrer"
                         onClick={(event) => event.stopPropagation()}
                       >
-                        Open
-                      </a>
+                        {t('Open')}</a>
                       {upload.delivery.canRetry ? (
                         <button
                           type="button"
@@ -105,8 +106,7 @@ export function AdminUploadsPanel({
                             void handleRetryUpload(upload.filename);
                           }}
                         >
-                          Retry mirror
-                        </button>
+                          {t('Retry mirror')}</button>
                       ) : null}
                       <button
                         type="button"
@@ -117,16 +117,15 @@ export function AdminUploadsPanel({
                           void handleDeleteUpload(upload.filename);
                         }}
                       >
-                        Delete
-                      </button>
+                        {t('Delete')}</button>
                     </div>
                   </div>
                 </article>
               ))
             ) : (
               <article className="admin-list__empty">
-                <strong>No matching uploads</strong>
-                <p>Try a filename, owner username/email, or project title.</p>
+                <strong>{t('No matching uploads')}</strong>
+                <p>{t('Try a filename, owner username/email, or project title.')}</p>
               </article>
             )}
           </div>
@@ -136,7 +135,7 @@ export function AdminUploadsPanel({
               <>
                 <div className="admin-detail-card__header">
                   <div>
-                    <p className="eyebrow">Inspect</p>
+                    <p className="eyebrow">{t('Inspect')}</p>
                     <div className="admin-detail-card__title">
                       <h2 className="admin-row__title--truncate" title={selectedUploadDetail.filename}>
                         {selectedUploadDetail.filename}
@@ -160,39 +159,39 @@ export function AdminUploadsPanel({
                 </div>
                 <div className="admin-detail-metrics">
                   <article>
-                    <span>Dimensions</span>
+                    <span>{t('Dimensions')}</span>
                     <strong>{formatDimensions(selectedUploadDetail.width, selectedUploadDetail.height)}</strong>
                   </article>
                   <article>
-                    <span>Uploaded</span>
+                    <span>{t('Uploaded')}</span>
                     <strong>{formatTimestamp(selectedUploadDetail.uploadedAt)}</strong>
                   </article>
                   <article>
-                    <span>Owners</span>
+                    <span>{t('Owners')}</span>
                     <strong>{selectedUploadDetail.ownerDisplayNames.length ? selectedUploadDetail.ownerDisplayNames.join(', ') : 'unowned'}</strong>
                   </article>
                   <article>
-                    <span>Projects</span>
+                    <span>{t('Projects')}</span>
                     <strong>{selectedUploadDetail.referencedProjectCount}</strong>
                   </article>
                   <article>
-                    <span>Placed pages</span>
+                    <span>{t('Placed pages')}</span>
                     <strong>{selectedUploadDetail.referencedPages.length}</strong>
                   </article>
                   <article>
-                    <span>Asset records</span>
+                    <span>{t('Asset records')}</span>
                     <strong>{selectedUploadDetail.assetIds.length}</strong>
                   </article>
                   <article>
-                    <span>Preview</span>
+                    <span>{t('Preview')}</span>
                     <strong>{selectedUploadDetail.preview?.bytes ? formatBytes(selectedUploadDetail.preview.bytes) : 'fallback'}</strong>
                   </article>
                   <article>
-                    <span>Thumb</span>
+                    <span>{t('Thumb')}</span>
                     <strong>{selectedUploadDetail.thumb?.bytes ? formatBytes(selectedUploadDetail.thumb.bytes) : 'fallback'}</strong>
                   </article>
                   <article>
-                    <span>Delivery</span>
+                    <span>{t('Delivery')}</span>
                     <strong>{getAssetDeliveryLabel(selectedUploadDetail.delivery)}</strong>
                   </article>
                 </div>
@@ -203,36 +202,34 @@ export function AdminUploadsPanel({
                     target="_blank"
                     rel="noreferrer"
                   >
-                    Open original
-                  </a>
+                    {t('Open original')}</a>
                   {selectedUploadDetail.delivery.canRetry ? (
                     <button
                       type="button"
                       className="button button--ghost button--small"
                       onClick={() => void handleRetryUpload(selectedUploadDetail.filename)}
                     >
-                      Retry mirror
-                    </button>
+                      {t('Retry mirror')}</button>
                   ) : null}
                 </div>
                 <div className="admin-detail-section">
-                  <strong>Referenced projects</strong>
+                  <strong>{t('Referenced projects')}</strong>
                   <div className="admin-mini-list">
                     {selectedUploadDetail.referencedProjects.length ? (
                       selectedUploadDetail.referencedProjects.map((project) => (
                         <article key={project.id} className="admin-mini-list__item">
-                          <span>{project.issue ?? 'folio mark'}</span>
+                          <span>{project.issue ?? t('folio mark')}</span>
                           <strong>{project.title ?? project.id}</strong>
                         </article>
                       ))
                     ) : (
-                      <p className="panel-note">No saved project currently references this file. It is safe to clean up.</p>
+                      <p className="panel-note">{t('No saved project currently references this file. It is safe to clean up.')}</p>
                     )}
                   </div>
                 </div>
                 {selectedUploadDetail.referencedPages.length ? (
                   <div className="admin-detail-section">
-                    <strong>Placed on pages</strong>
+                    <strong>{t('Placed on pages')}</strong>
                     <div className="admin-mini-list">
                       {selectedUploadDetail.referencedPages.slice(0, 8).map((reference) => (
                         <article key={`${reference.projectId}:${reference.pageId}:${reference.slot}`} className="admin-mini-list__item">
@@ -246,8 +243,8 @@ export function AdminUploadsPanel({
               </>
             ) : (
               <div className="admin-detail-card__empty">
-                <strong>Select an upload</strong>
-                <p>Pick a stored file to inspect its preview, ownership, references, and cleanup safety.</p>
+                <strong>{t('Select an upload')}</strong>
+                <p>{t('Pick a stored file to inspect its preview, ownership, references, and cleanup safety.')}</p>
               </div>
             )}
           </aside>

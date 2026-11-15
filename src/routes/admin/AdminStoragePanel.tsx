@@ -1,3 +1,4 @@
+import { useT } from '../../i18n';
 import type { AdminObjectStorageDraft, ProductConfigPayload } from '../../editor/api';
 import { formatTimestamp } from './adminFormatting';
 import { AdminInlineField, AdminToggleField } from './AdminFormFields';
@@ -28,103 +29,103 @@ export function AdminStoragePanel({
   productConfig,
   updateObjectStorageDraftField,
 }: AdminStoragePanelProps) {
+  const t = useT();
   return (
     <div className="admin-page admin-page--single">
       <section className="editor-panel admin-panel">
         <div className="editor-panel__heading">
           <div>
-            <p className="eyebrow">Object storage</p>
-            <h2>Bitiful S3 delivery and upload mirroring</h2>
+            <p className="eyebrow">{t('Object storage')}</p>
+            <h2>{t('Bitiful S3 delivery and upload mirroring')}</h2>
           </div>
-          <span className="panel-tag">{productConfig?.objectStorage.enabled ? 'enabled' : 'local only'}</span>
+          <span className="panel-tag">{productConfig?.objectStorage.enabled ? 'enabled' : t('local only')}</span>
         </div>
         {objectStorageDraft ? (
           <div className="admin-settings-stack">
             <div className="admin-overview-grid">
               <article className="admin-overview-card">
                 <div className="admin-overview-card__header">
-                  <strong>Delivery mode</strong>
-                  <span>{productConfig?.objectStorage.provider ?? 'Provider'}</span>
+                  <strong>{t('Delivery mode')}</strong>
+                  <span>{productConfig?.objectStorage.provider ?? t('Provider')}</span>
                 </div>
                 <p>
                   {productConfig?.objectStorage.enabled
                     ? `Remote delivery enabled with ${productConfig.objectStorage.syncStats.mirroredUploads} mirrored uploads, ${productConfig.objectStorage.syncStats.pendingUploads} pending mirrors, and ${productConfig.objectStorage.syncStats.failedUploads} failed mirrors.`
-                    : 'Uploads still resolve locally until remote delivery is enabled.'}
+                    : t('Uploads still resolve locally until remote delivery is enabled.')}
                 </p>
               </article>
               <article className="admin-overview-card">
                 <div className="admin-overview-card__header">
-                  <strong>Mirror coverage</strong>
-                  <span>{productConfig?.objectStorage.bucket ?? 'Bucket'}</span>
+                  <strong>{t('Mirror coverage')}</strong>
+                  <span>{productConfig?.objectStorage.bucket ?? t('Bucket')}</span>
                 </div>
                 <p>{`${productConfig?.objectStorage.syncStats.mirroredUploads ?? 0} mirrored · ${productConfig?.objectStorage.syncStats.pendingUploads ?? 0} pending · ${productConfig?.objectStorage.syncStats.failedUploads ?? 0} failed · ${productConfig?.objectStorage.syncStats.localOnlyUploads ?? 0} local only`}</p>
               </article>
               <article className="admin-overview-card">
                 <div className="admin-overview-card__header">
-                  <strong>Validation</strong>
-                  <span>{productConfig?.objectStorage.lastValidatedAt ? formatTimestamp(productConfig.objectStorage.lastValidatedAt) : 'Not tested'}</span>
+                  <strong>{t('Validation')}</strong>
+                  <span>{productConfig?.objectStorage.lastValidatedAt ? formatTimestamp(productConfig.objectStorage.lastValidatedAt) : t('Not tested')}</span>
                 </div>
                 <p>
                   {productConfig?.objectStorage.lastValidationOk === true
-                    ? 'Last connection test completed successfully.'
+                    ? t('Last connection test completed successfully.')
                     : productConfig?.objectStorage.lastValidationOk === false
-                      ? 'Last connection test failed. Review config before enabling delivery.'
-                      : 'No connection test has been recorded yet.'}
+                      ? t('Last connection test failed. Review config before enabling delivery.')
+                      : t('No connection test has been recorded yet.')}
                 </p>
               </article>
               <article className="admin-overview-card">
                 <div className="admin-overview-card__header">
-                  <strong>Latest sync</strong>
-                  <span>{productConfig?.objectStorage.updatedAt ? formatTimestamp(productConfig.objectStorage.updatedAt) : 'Never saved'}</span>
+                  <strong>{t('Latest sync')}</strong>
+                  <span>{productConfig?.objectStorage.updatedAt ? formatTimestamp(productConfig.objectStorage.updatedAt) : t('Never saved')}</span>
                 </div>
-                <p>{productConfig?.objectStorage.syncStats.latestSyncAt ? `Last mirrored upload ${formatTimestamp(productConfig.objectStorage.syncStats.latestSyncAt)}.` : 'No upload has been mirrored yet.'}</p>
+                <p>{productConfig?.objectStorage.syncStats.latestSyncAt ? `Last mirrored upload ${formatTimestamp(productConfig.objectStorage.syncStats.latestSyncAt)}.` : t('No upload has been mirrored yet.')}</p>
               </article>
             </div>
 
             <p className="panel-note">
-              Canonical upload identity stays local under <code>/uploads</code>. Object storage mirrors original, preview, and thumb resources for delivery. Changing or disabling storage is blocked while mirrored uploads still exist, so restore them to local first before switching buckets or credentials.
-            </p>
+              {t('Canonical upload identity stays local under')}<code>{t('/uploads')}</code>{t('. Object storage mirrors original, preview, and thumb resources for delivery. Changing or disabling storage is blocked while mirrored uploads still exist, so restore them to local first before switching buckets or credentials.')}</p>
 
             <div className="admin-form-grid">
               <article className="admin-inline-card">
-                <strong>Connection</strong>
+                <strong>{t('Connection')}</strong>
                 <div className="admin-inline-field-stack">
                   <AdminToggleField
-                    label="Enable remote delivery"
+                    label={t('Enable remote delivery')}
                     checked={objectStorageDraft.enabled}
                     onChange={(checked) => updateObjectStorageDraftField('enabled', checked)}
                   />
-                  <AdminInlineField label="Provider">
+                  <AdminInlineField label={t('Provider')}>
                     <input
                       value={objectStorageDraft.provider}
                       onChange={(event) => updateObjectStorageDraftField('provider', event.target.value)}
                     />
                   </AdminInlineField>
-                  <AdminInlineField label="Endpoint">
+                  <AdminInlineField label={t('Endpoint')}>
                     <input
                       value={objectStorageDraft.endpoint}
                       onChange={(event) => updateObjectStorageDraftField('endpoint', event.target.value)}
                     />
                   </AdminInlineField>
-                  <AdminInlineField label="Region">
+                  <AdminInlineField label={t('Region')}>
                     <input
                       value={objectStorageDraft.region}
                       onChange={(event) => updateObjectStorageDraftField('region', event.target.value)}
                     />
                   </AdminInlineField>
-                  <AdminInlineField label="Bucket">
+                  <AdminInlineField label={t('Bucket')}>
                     <input
                       value={objectStorageDraft.bucket}
                       onChange={(event) => updateObjectStorageDraftField('bucket', event.target.value)}
                     />
                   </AdminInlineField>
-                  <AdminInlineField label="Prefix">
+                  <AdminInlineField label={t('Prefix')}>
                     <input
                       value={objectStorageDraft.prefix}
                       onChange={(event) => updateObjectStorageDraftField('prefix', event.target.value)}
                     />
                   </AdminInlineField>
-                  <AdminInlineField label="Public base URL" multiline stacked>
+                  <AdminInlineField label={t('Public base URL')} multiline stacked>
                     <input
                       value={objectStorageDraft.publicBaseUrl}
                       onChange={(event) => updateObjectStorageDraftField('publicBaseUrl', event.target.value)}
@@ -134,45 +135,44 @@ export function AdminStoragePanel({
               </article>
 
               <article className="admin-inline-card">
-                <strong>Credentials</strong>
+                <strong>{t('Credentials')}</strong>
                 <div className="admin-inline-field-stack">
-                  <AdminInlineField label="Access key ID" stacked>
+                  <AdminInlineField label={t('Access key ID')} stacked>
                     <div className="admin-secret-field">
                       <input
                         value={objectStorageDraft.accessKeyId ?? ''}
                         onChange={(event) => updateObjectStorageDraftField('accessKeyId', event.target.value)}
-                        placeholder="Leave blank to keep the current key"
+                        placeholder={t('Leave blank to keep the current key')}
                       />
                       <p className="field-note">
                         {productConfig?.objectStorage.hasAccessKey
                           ? `Current key: ${productConfig.objectStorage.accessKeyHint}`
-                          : 'No access key is stored yet.'}
+                          : t('No access key is stored yet.')}
                       </p>
                     </div>
                   </AdminInlineField>
-                  <AdminInlineField label="Secret access key" stacked>
+                  <AdminInlineField label={t('Secret access key')} stacked>
                     <div className="admin-secret-field">
                       <input
                         type="password"
                         value={objectStorageDraft.secretAccessKey ?? ''}
                         onChange={(event) => updateObjectStorageDraftField('secretAccessKey', event.target.value)}
-                        placeholder="Leave blank to keep the current secret"
+                        placeholder={t('Leave blank to keep the current secret')}
                       />
                       <p className="field-note">
                         {productConfig?.objectStorage.hasSecretKey
                           ? `Current secret: ${productConfig.objectStorage.secretKeyHint}`
-                          : 'No secret key is stored yet.'}
+                          : t('No secret key is stored yet.')}
                       </p>
                     </div>
                   </AdminInlineField>
                   <article className="admin-overview-card">
                     <div className="admin-overview-card__header">
-                      <strong>Change safety</strong>
-                      <span>Guarded</span>
+                      <strong>{t('Change safety')}</strong>
+                      <span>{t('Guarded')}</span>
                     </div>
                     <p>
-                      Save requires explicit confirmation, and the server rejects bucket or credential changes until mirrored uploads are restored back to local delivery.
-                    </p>
+                      {t('Save requires explicit confirmation, and the server rejects bucket or credential changes until mirrored uploads are restored back to local delivery.')}</p>
                   </article>
                 </div>
               </article>
@@ -185,32 +185,28 @@ export function AdminStoragePanel({
                 onClick={() => void handleTestObjectStorage()}
                 disabled={objectStorageBusy}
               >
-                Test connection
-              </button>
+                {t('Test connection')}</button>
               <button
                 type="button"
                 className="button button--primary button--small"
                 onClick={() => void handleSaveObjectStorage()}
                 disabled={objectStorageBusy}
               >
-                Save object storage
-              </button>
+                {t('Save object storage')}</button>
               <button
                 type="button"
                 className="button button--ghost button--small"
                 onClick={() => void handleSyncObjectStorage()}
                 disabled={objectStorageBusy || !productConfig?.objectStorage.enabled}
               >
-                Sync existing uploads
-              </button>
+                {t('Sync existing uploads')}</button>
               <button
                 type="button"
                 className="button button--ghost button--small"
                 onClick={() => void handleRestoreObjectStorage()}
                 disabled={objectStorageBusy || (productConfig?.objectStorage.syncStats.mirroredUploads ?? 0) === 0}
               >
-                Restore to local
-              </button>
+                {t('Restore to local')}</button>
             </div>
           </div>
         ) : null}

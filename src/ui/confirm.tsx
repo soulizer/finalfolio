@@ -1,4 +1,5 @@
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { useT } from '../i18n';
 
 export type ConfirmOptions = {
   title: string;
@@ -31,6 +32,7 @@ export function confirmAction(options: ConfirmOptions): Promise<boolean> {
 }
 
 export function ConfirmProvider({ children }: { children: ReactNode }) {
+  const t = useT();
   const [queue, setQueue] = useState<PendingConfirm[]>([]);
   const cancelRef = useRef<HTMLButtonElement | null>(null);
   const current = queue[0] ?? null;
@@ -94,9 +96,9 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
             aria-labelledby="confirm-dialog-title"
             aria-describedby={current.body ? 'confirm-dialog-body' : undefined}
           >
-            <p className="eyebrow">Please confirm</p>
-            <h2 id="confirm-dialog-title">{current.title}</h2>
-            {current.body ? <p id="confirm-dialog-body">{current.body}</p> : null}
+            <p className="eyebrow">{t('Please confirm')}</p>
+            <h2 id="confirm-dialog-title">{t(current.title)}</h2>
+            {current.body ? <p id="confirm-dialog-body">{t(current.body)}</p> : null}
             <div className="confirm-dialog__actions">
               <button
                 ref={cancelRef}
@@ -104,14 +106,14 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                 className="button button--ghost button--small"
                 onClick={() => settle(false)}
               >
-                {current.cancelLabel ?? 'Cancel'}
+                {current.cancelLabel ? t(current.cancelLabel) : t('Cancel')}
               </button>
               <button
                 type="button"
                 className={`button button--small ${current.tone === 'danger' ? 'button--danger' : 'button--primary'}`}
                 onClick={() => settle(true)}
               >
-                {current.confirmLabel ?? 'Continue'}
+                {current.confirmLabel ? t(current.confirmLabel) : t('Continue')}
               </button>
             </div>
           </div>

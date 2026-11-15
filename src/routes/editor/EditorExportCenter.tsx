@@ -1,3 +1,4 @@
+import { useT } from '../../i18n';
 import {
   exportFormatMeta,
   exportPageSizeMeta,
@@ -46,6 +47,7 @@ export function EditorExportCenter({
   onSelectPreflightIssue,
   updateExportSettings,
 }: EditorExportCenterProps) {
+  const t = useT();
   return (
     <div className="editor-modal" role="presentation" onClick={onRequestCloseIfIdle}>
       <section
@@ -57,21 +59,19 @@ export function EditorExportCenter({
       >
         <div className="editor-panel__heading">
           <div>
-            <p className="eyebrow">Export Center</p>
-            <h2 id="export-center-title">Preflight and output</h2>
+            <p className="eyebrow">{t('Export Center')}</p>
+            <h2 id="export-center-title">{t('Preflight and output')}</h2>
           </div>
           <div className="editor-modal__actions">
             <span className="panel-tag">{exportFormatMeta[exportSettings.format].label}</span>
             <button type="button" className="button button--ghost button--small" disabled={exportActionBusy} onClick={onClose}>
-              Close
-            </button>
+              {t('Close')}</button>
           </div>
         </div>
         <p className="panel-note">
-          Choose export format, same-ratio page size, and quality first. JPG can export as a ZIP package of separate pages or as one stitched image.
-        </p>
+          {t('Choose export format, same-ratio page size, and quality first. JPG can export as a ZIP package of separate pages or as one stitched image.')}</p>
         <div className="editor-stack-field">
-          <span className="editor-stack-field__label">Format</span>
+          <span className="editor-stack-field__label">{t('Format')}</span>
           <div className="template-grid template-grid--compact">
             {EXPORT_FORMAT_ORDER.map((format) => {
               const meta = exportFormatMeta[format];
@@ -82,9 +82,9 @@ export function EditorExportCenter({
                   className={`template-card ${exportSettings.format === format ? 'is-active' : ''}`}
                   onClick={() => updateExportSettings((current) => ({ ...current, format }))}
                 >
-                  <span>{meta.label}</span>
-                  <strong>{format === 'jpg' ? 'Image output' : format === 'pdf' ? 'Print output' : 'Reusable source'}</strong>
-                  <small>{meta.description}</small>
+                  <span>{t(meta.label)}</span>
+                  <strong>{format === 'jpg' ? t('Image output') : format === 'pdf' ? t('Print output') : t('Reusable source')}</strong>
+                  <small>{t(meta.description)}</small>
                 </button>
               );
             })}
@@ -93,7 +93,7 @@ export function EditorExportCenter({
 
         {exportSettings.format !== 'project' ? (
           <div className="editor-stack-field">
-            <span className="editor-stack-field__label">Page size (same ratio)</span>
+            <span className="editor-stack-field__label">{t('Page size (same ratio)')}</span>
             <div className="template-grid template-grid--compact">
               {EXPORT_PAGE_SIZE_ORDER.map((pageSize) => (
                 <button
@@ -113,7 +113,7 @@ export function EditorExportCenter({
 
         {exportSettings.format !== 'project' ? (
           <div className="editor-stack-field">
-            <span className="editor-stack-field__label">Quality / file size</span>
+            <span className="editor-stack-field__label">{t('Quality / file size')}</span>
             <div className="template-grid template-grid--compact">
               {(Object.keys(exportQualityMeta) as ExportQuality[]).map((quality) => (
                 <button
@@ -133,7 +133,7 @@ export function EditorExportCenter({
 
         {exportSettings.format === 'jpg' ? (
           <div className="editor-stack-field">
-            <span className="editor-stack-field__label">JPG output mode</span>
+            <span className="editor-stack-field__label">{t('JPG output mode')}</span>
             <div className="template-grid template-grid--compact">
               {(Object.keys(jpgExportModeMeta) as JpgExportMode[]).map((jpgMode) => (
                 <button
@@ -143,7 +143,7 @@ export function EditorExportCenter({
                   onClick={() => updateExportSettings((current) => ({ ...current, jpgMode }))}
                 >
                   <span>{jpgExportModeMeta[jpgMode].label}</span>
-                  <strong>{jpgMode === 'separate' ? 'ZIP package' : 'Single long image'}</strong>
+                  <strong>{jpgMode === 'separate' ? t('ZIP package') : t('Single long image')}</strong>
                   <small>{jpgExportModeMeta[jpgMode].description}</small>
                 </button>
               ))}
@@ -152,7 +152,7 @@ export function EditorExportCenter({
         ) : null}
 
         <div className="editor-stack-field">
-          <span className="editor-stack-field__label">Advisory</span>
+          <span className="editor-stack-field__label">{t('Advisory')}</span>
           {exportAdvisories.length ? (
             <div>
               {exportAdvisories.map((advisory) => (
@@ -162,12 +162,12 @@ export function EditorExportCenter({
               ))}
             </div>
           ) : (
-            <p className="panel-note">No extra export advisory for this combination.</p>
+            <p className="panel-note">{t('No extra export advisory for this combination.')}</p>
           )}
         </div>
 
         <div className="editor-stack-field">
-          <span className="editor-stack-field__label">Preflight</span>
+          <span className="editor-stack-field__label">{t('Preflight')}</span>
           {exportPreflightIssues.length ? (
             <div className="editor-warning-list">
               {exportPreflightIssues.slice(0, 6).map((issue) => (
@@ -188,7 +188,7 @@ export function EditorExportCenter({
               ) : null}
             </div>
           ) : (
-            <p className="panel-note">No high-confidence issues detected for the current export settings.</p>
+            <p className="panel-note">{t('No high-confidence issues detected for the current export settings.')}</p>
           )}
         </div>
 
@@ -211,12 +211,10 @@ export function EditorExportCenter({
               disabled={exportActionBusy}
               onClick={onRunPrint}
             >
-              Print instead
-            </button>
+              {t('Print instead')}</button>
           ) : null}
           <button type="button" className="button button--ghost button--small" disabled={exportActionBusy} onClick={onClose}>
-            Cancel
-          </button>
+            {t('Cancel')}</button>
         </div>
       </section>
     </div>

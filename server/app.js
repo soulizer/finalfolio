@@ -1,7 +1,9 @@
 import crypto from 'node:crypto';
+import dns from 'node:dns';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isIP } from 'node:net';
 import express from 'express';
 import multer from 'multer';
 import { createAccountPreferencesStore } from './accountPreferences.js';
@@ -98,13 +100,13 @@ const PASSWORD_RESET_IP_RATE_LIMIT = {
 };
 const LOGIN_IP_RATE_LIMIT = {
   scope: 'auth-login-ip',
-  limit: 30,
+  limit: Number(process.env.FINALFOLIO_LOGIN_IP_LIMIT ?? 30),
   windowMs: 15 * 60 * 1000,
   message: 'Too many sign-in attempts from this network. Try again later.',
 };
 const LOGIN_IDENTIFIER_RATE_LIMIT = {
   scope: 'auth-login-identifier',
-  limit: 10,
+  limit: Number(process.env.FINALFOLIO_LOGIN_IDENTIFIER_LIMIT ?? 10),
   windowMs: 15 * 60 * 1000,
   message: 'Too many sign-in attempts for this account. Try again later.',
 };
@@ -731,6 +733,178 @@ function mapImageProcessingError(error) {
   }
 
   return error;
+}
+
+/**
+ * URL import guard: only public http/https origins may be fetched. Each hop
+ * (the original URL plus up to three redirects) must resolve to addresses
+ * outside loopback, link-local, private, and other non-routable ranges so the
+ * endpoint cannot be used to reach internal services.
+ */
+function assertPublicImportAddress(address) {
+  const family = isIP(address);
+  if (family === 4) {
+    const parts = address.split('.').map((part) => Number(part));
+    const [a, b] = parts;
+    const blocked =
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      a >= 224;
+    if (blocked) {
+      throw createBadRequest('Only public image URLs can be imported.');
+    }
+    return;
+  }
+
+  if (family === 6) {
+    const value = address.toLowerCase();
+    const firstHextet = value.split(':')[0];
+
+    if (value === '::' || value === '::1') {
+      throw createBadRequest('Only public image URLs can be imported.');
+    }
+
+    // IPv4-mapped / IPv4-compatible addresses re-use the IPv4 rules.
+    const mappedMatch = /(?:^|:)((?:\d{1,3}\.){3}\d{1,3})$/.exec(value);
+    if (mappedMatch) {
+      assertPublicImportAddress(mappedMatch[1]);
+      return;
+    }
+
+    const secondHextet = value.split(':')[1] ?? '';
+    const blocked =
+      firstHextet === 'fe8' ||
+      firstHextet === 'fe9' ||
+      firstHextet === 'fea' ||
+      firstHextet === 'feb' || // link-local fe80::/10
+      firstHextet === 'fc' ||
+      firstHextet === 'fd' || // unique local fc00::/7
+      (firstHextet === '2001' && (secondHextet === 'db8' || secondHextet === '0')) || // docs / Teredo
+      firstHextet === '0';
+    if (blocked) {
+      throw createBadRequest('Only public image URLs can be imported.');
+    }
+    return;
+  }
+
+  throw createBadRequest('Only public image URLs can be imported.');
+}
+
+async function assertPublicImportUrl(rawUrl) {
+  let parsed;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    throw createBadRequest('This URL is invalid.');
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw createBadRequest('Only http and https URLs can be imported.');
+  }
+
+  const credentials = `${parsed.username}${parsed.password}`;
+  if (credentials) {
+    throw createBadRequest('Only public image URLs can be imported.');
+  }
+
+  const lookup = await dns.promises.lookup(parsed.hostname, { all: true, verbatim: true }).catch(() => null);
+  const addresses = lookup && lookup.length ? lookup : [{ address: parsed.hostname }];
+  for (const entry of addresses) {
+    assertPublicImportAddress(entry.address);
+  }
+
+  return parsed;
+}
+
+async function downloadImageFromUrl(rawUrl, { maxBytes, uploadsDir, idFactory }) {
+  let currentUrl = await assertPublicImportUrl(rawUrl);
+  let response = null;
+
+  for (let hop = 0; hop < 4; hop += 1) {
+    response = await fetch(currentUrl, {
+      method: 'GET',
+      redirect: 'manual',
+      signal: AbortSignal.timeout(20_000),
+      headers: { accept: 'image/jpeg,image/png,image/webp,image/gif,image/avif,image/*;q=0.8' },
+    });
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get('location');
+      await response.arrayBuffer().catch(() => null);
+      if (!location) {
+        throw createBadRequest('This URL could not be downloaded.');
+      }
+      currentUrl = await assertPublicImportUrl(new URL(location, currentUrl).toString());
+      continue;
+    }
+    break;
+  }
+
+  if (!response || !response.ok) {
+    throw createBadRequest('This URL could not be downloaded.');
+  }
+
+  const declaredLength = Number(response.headers.get('content-length') ?? '0');
+  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
+    throw createBadRequest('This image is too large to import from a URL.');
+  }
+
+  const chunks = [];
+  let totalBytes = 0;
+  const reader = response.body.getReader();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    totalBytes += value.byteLength;
+    if (totalBytes > maxBytes) {
+      await reader.cancel().catch(() => null);
+      throw createBadRequest('This image is too large to import from a URL.');
+    }
+    chunks.push(Buffer.from(value));
+  }
+
+  const buffer = Buffer.concat(chunks);
+  if (totalBytes === 0) {
+    throw createBadRequest('This URL returned an empty response.');
+  }
+
+  const matched = imageMagicMatchers.find((matcher) => matcher.test(buffer));
+  if (!matched || !allowedUploadTypes.has(matched.mime)) {
+    throw createBadRequest('This file is not a readable JPG, PNG, WebP, GIF, or AVIF image.');
+  }
+
+  const extensionByMime = {
+    'image/jpeg': '.jpg',
+    'image/png': '.png',
+    'image/webp': '.webp',
+    'image/gif': '.gif',
+    'image/avif': '.avif',
+  };
+  const extension = extensionByMime[matched.mime];
+  const sourceName = path.basename(new URL(currentUrl).pathname).replace(/[^.a-zA-Z0-9_-]/g, '').slice(0, 60);
+  const filename = createUploadFilename(sourceName ? `${sourceName}${extension}` : `import${extension}`, {
+    idFactory,
+  });
+  const targetPath = path.join(uploadsDir, filename);
+  await fs.writeFile(targetPath, buffer, { mode: 0o600 });
+
+  const displayName = sourceName ? `${sourceName}${extension}` : filename;
+
+  return {
+    file: {
+      path: targetPath,
+      filename,
+      originalname: displayName,
+      mimetype: matched.mime,
+    },
+    bytes: totalBytes,
+  };
 }
 
 export function validateUploadFile(file) {
@@ -2837,6 +3011,72 @@ export function createApp({
       }
     },
   );
+
+  app.post('/api/uploads/from-url', async (request, response, next) => {
+    try {
+      const user = requireAuthenticated(request);
+      const rawUrl = typeof request.body?.url === 'string' ? request.body.url.trim() : '';
+      if (!rawUrl || rawUrl.length > 2048) {
+        throw createBadRequest('Provide a valid image URL.');
+      }
+
+      const maxBytes = maxUploadSizeBytes;
+      const downloaded = await downloadImageFromUrl(rawUrl, {
+        maxBytes,
+        uploadsDir: store.uploadsDir,
+        idFactory: createId,
+      });
+
+      const createdAssets = [];
+      try {
+        await assertReadableImageFile(downloaded.file);
+        const baseAsset = store.createStoredUpload(downloaded.file, {
+          width: undefined,
+          height: undefined,
+        });
+        let asset = await store.hydrateStoredUploadAsset(baseAsset, { ensureVariants: true });
+        const artifacts = await store.getUploadArtifacts(downloaded.file.filename, {
+          originalWidth: asset.width,
+          originalHeight: asset.height,
+        });
+
+        if (artifacts?.resources?.original && objectStorageStore) {
+          try {
+            await objectStorageStore.syncLocalUpload(downloaded.file.filename, artifacts);
+          } catch (error) {
+            const failure = new Error(
+              `Remote delivery did not complete. Upload was rolled back. ${error instanceof Error ? error.message : String(error)}`,
+            );
+            failure.statusCode = 424;
+            throw failure;
+          }
+          asset = await store.hydrateStoredUploadAsset(baseAsset, { ensureVariants: true });
+        }
+        createdAssets.push(asset);
+
+        await assetStore.createAssetRecord(asset, { ownerUserId: user.id });
+        store.invalidateStoreCaches();
+      } catch (error) {
+        await store.removeUploadArtifacts(downloaded.file.filename).catch(() => null);
+        if (objectStorageStore) {
+          await objectStorageStore.clearSyncEntry(downloaded.file.filename).catch(() => null);
+        }
+        throw mapImageProcessingError(error);
+      }
+
+      response.status(201).json({
+        assets: createdAssets,
+      });
+      await opsStore.recordEvent({
+        type: 'upload',
+        status: 'ok',
+        userId: user.id,
+        detail: { action: 'import-url', count: 1 },
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
 
   app.get('/api/issues/:shareId', async (request, response, next) => {
     try {

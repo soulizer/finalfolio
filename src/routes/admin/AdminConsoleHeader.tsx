@@ -1,3 +1,4 @@
+import { useT } from '../../i18n';
 import type { AdminSummary, UserSession } from '../../editor/api';
 import { getUserPrimaryIdentity, getUserSecondaryIdentity } from '../../editor/identity';
 import { formatBytes } from './adminFormatting';
@@ -28,27 +29,26 @@ export function AdminConsoleHeader({
   sessionReady,
   summary,
 }: AdminConsoleHeaderProps) {
+  const t = useT();
   return (
     <section className="editor-panel admin-hero">
       <div className="editor-panel__heading">
         <div>
-          <p className="eyebrow">Admin</p>
-          <h2>Operations console for product governance.</h2>
+          <p className="eyebrow">{t('Admin')}</p>
+          <h2>{t('Operations console for product governance.')}</h2>
           <p className="panel-note admin-hero__lede">
-            Switch between focused backend views instead of cramming overview, folio governance, asset governance, and product
-            settings into one scrolling page.
-          </p>
+            {t('Switch between focused backend views instead of cramming overview, folio governance, asset governance, and product             settings into one scrolling page.')}</p>
         </div>
         <div className="admin-hero__meta">
           <span className="panel-tag">
-            {!sessionReady ? 'Checking session' : session ? `${getUserPrimaryIdentity(session)} · ${session.role}` : 'Session required'}
+            {!sessionReady ? t('Checking session') : session ? `${getUserPrimaryIdentity(session)} · ${t(session.role)}` : t('Session required')}
           </span>
           {sessionReady && session && getUserSecondaryIdentity(session) ? <span className="panel-tag">{getUserSecondaryIdentity(session)}</span> : null}
-          {summary ? <span className="panel-tag">{`${formatBytes(summary.storage.totalBytes)} storage`}</span> : null}
-          {summary ? <span className="panel-tag">{`${summary.failures.length} recent failures`}</span> : null}
+          {summary ? <span className="panel-tag">{t('%s storage').replace('%s', formatBytes(summary.storage.totalBytes))}</span> : null}
+          {summary ? <span className="panel-tag">{t('%s recent failures').replace('%s', String(summary.failures.length))}</span> : null}
         </div>
       </div>
-      <div className="admin-section-nav" role="tablist" aria-label="Admin sections">
+      <div className="admin-section-nav" role="tablist" aria-label={t('Admin sections')}>
         {ADMIN_SECTIONS.map((section) => (
           <button
             key={section.id}
@@ -57,7 +57,7 @@ export function AdminConsoleHeader({
             aria-pressed={activeSection === section.id}
             onClick={() => selectSection(section.id)}
           >
-            {section.label}
+            {t(section.label)}
           </button>
         ))}
       </div>

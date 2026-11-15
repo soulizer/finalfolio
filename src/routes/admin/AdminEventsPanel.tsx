@@ -1,3 +1,5 @@
+import { translate as tModule } from '../../i18n';
+import { useT } from '../../i18n';
 import type { AdminProjectListItem, AdminSummary, UserSession } from '../../editor/api';
 import { getUserPrimaryIdentity } from '../../editor/identity';
 import { formatTimestamp } from './adminFormatting';
@@ -22,12 +24,12 @@ type AdminEventsPanelProps = {
 };
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
-  admin: 'Admin',
-  auth: 'Authentication',
-  export: 'Exports',
-  project: 'Projects',
-  share: 'Sharing',
-  upload: 'Uploads',
+  admin: tModule('Admin'),
+  auth: tModule('Authentication'),
+  export: tModule('Exports'),
+  project: tModule('Projects'),
+  share: tModule('Sharing'),
+  upload: tModule('Uploads'),
 };
 
 function getEventTypeLabel(type: string) {
@@ -78,12 +80,12 @@ function buildEventContext(
 
 function getEventStatusLabel(record: Pick<AdminEventRecord, 'status' | 'type'>) {
   if (record.status === 'requested' && record.type === 'export') {
-    return 'Requested';
+    return tModule('Requested');
   }
   if (record.status === 'error') {
-    return 'Error';
+    return tModule('Error');
   }
-  return 'Completed';
+  return tModule('Completed');
 }
 
 function getEventStatusClass(record: Pick<AdminEventRecord, 'status'>) {
@@ -104,16 +106,17 @@ export function AdminEventsPanel({
   summary,
   usersById,
 }: AdminEventsPanelProps) {
+  const t = useT();
   return (
     <div className="admin-page admin-page--events">
       <div className="admin-page__main admin-dashboard__primary">
         <section className="editor-panel admin-panel">
           <div className="editor-panel__heading">
             <div>
-              <p className="eyebrow">Events</p>
-              <h2>Recent errors and activity</h2>
+              <p className="eyebrow">{t('Events')}</p>
+              <h2>{t('Recent errors and activity')}</h2>
             </div>
-            <span className="panel-tag">{summary.failures.length ? `${summary.failures.length} failures` : 'No current failures'}</span>
+            <span className="panel-tag">{summary.failures.length ? `${summary.failures.length} failures` : t('No current failures')}</span>
           </div>
           <div className="admin-breakdown-list">
             {rankedEventBreakdown.map(([type, counts]) => (
@@ -131,8 +134,8 @@ export function AdminEventsPanel({
         <section className="editor-panel admin-panel">
           <div className="editor-panel__heading">
             <div>
-              <p className="eyebrow">Failures</p>
-              <h2>Recent failures</h2>
+              <p className="eyebrow">{t('Failures')}</p>
+              <h2>{t('Recent failures')}</h2>
             </div>
             <span className="panel-tag">{summary.failures.length}</span>
           </div>
@@ -141,12 +144,12 @@ export function AdminEventsPanel({
               summary.failures.map((failure) => (
                 <article key={failure.id} className="admin-mini-list__item">
                   <span>{getEventTypeLabel(failure.type)}</span>
-                  <strong>{formatDetailSummary(failure.detail, 'Unknown error')}</strong>
+                  <strong>{formatDetailSummary(failure.detail, t('Unknown error'))}</strong>
                   <p className="panel-note">{buildEventContext(failure, usersById, projectsById)}</p>
                 </article>
               ))
             ) : (
-              <p className="panel-note">No recent failures recorded.</p>
+              <p className="panel-note">{t('No recent failures recorded.')}</p>
             )}
           </div>
         </section>
@@ -156,8 +159,8 @@ export function AdminEventsPanel({
         <section className="editor-panel admin-panel">
           <div className="editor-panel__heading">
             <div>
-              <p className="eyebrow">Operations</p>
-              <h2>Recent operations</h2>
+              <p className="eyebrow">{t('Operations')}</p>
+              <h2>{t('Recent operations')}</h2>
             </div>
             <span className="panel-tag">{summary.events.length}</span>
           </div>
@@ -174,7 +177,7 @@ export function AdminEventsPanel({
                 </article>
               ))
             ) : (
-              <p className="panel-note">No recent operations recorded.</p>
+              <p className="panel-note">{t('No recent operations recorded.')}</p>
             )}
           </div>
         </section>
@@ -182,12 +185,12 @@ export function AdminEventsPanel({
         <section className="editor-panel admin-panel">
           <details className="admin-collapsible">
             <summary>
-              <span>Trend details</span>
-              <small>Secondary diagnostic view</small>
+              <span>{t('Trend details')}</span>
+              <small>{t('Secondary diagnostic view')}</small>
             </summary>
             <div className="admin-collapsible__body">
               <div className="admin-detail-section">
-                <strong>Last 7 days</strong>
+                <strong>{t('Last 7 days')}</strong>
                 <div className="admin-breakdown-list">
                   {(activeDailyTrend.length ? activeDailyTrend : summary.trends.last7Days).map((bucket) => (
                     <article key={bucket.label} className="admin-breakdown-row">
@@ -201,7 +204,7 @@ export function AdminEventsPanel({
                 </div>
               </div>
               <div className="admin-detail-section">
-                <strong>Last 24 hours</strong>
+                <strong>{t('Last 24 hours')}</strong>
                 <div className="admin-breakdown-list">
                   {(activeHourlyTrend.length ? activeHourlyTrend : summary.trends.last24Hours).map((bucket) => (
                     <article key={bucket.label} className="admin-breakdown-row">

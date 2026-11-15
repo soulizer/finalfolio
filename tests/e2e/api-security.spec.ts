@@ -13,8 +13,9 @@ async function signInCookie(request: import('@playwright/test').APIRequestContex
 
 test('login attempts are throttled per identifier', async ({ request }) => {
   const identifier = `throttle-${Date.now()}@example.com`;
+  const limit = Number(process.env.FINALFOLIO_LOGIN_IDENTIFIER_LIMIT ?? 10);
   const statuses: number[] = [];
-  for (let attempt = 0; attempt < 12; attempt += 1) {
+  for (let attempt = 0; attempt < limit + 2; attempt += 1) {
     const response = await request.post('/api/auth/login', {
       data: { identifier, password: `wrong-password-${attempt}` },
     });
@@ -152,4 +153,41 @@ test('deleting a folio removes photos no other folio references', async ({ reque
   const uploads = await request.get('/api/account/uploads', { headers: { cookie } });
   const remaining = (await uploads.json()).uploads as Array<{ assetId: string }>;
   expect(remaining.some((entry) => entry.assetId === asset.id)).toBeFalsy();
+});
+
+test('url imports reject private, loopback, and non-http targets', async ({ request, playwright }) => {
+  const cookie = await signInCookie(request);
+
+  const blockedTargets = [
+    'http://127.0.0.1/icon.png',
+    'http://localhost/icon.png',
+    'http://10.0.0.5/icon.png',
+    'http://192.168.1.2/icon.png',
+    'http://169.254.169.254/latest/meta-data',
+    'http://[::1]/icon.png',
+    'file:///etc/passwd',
+    'data:image/png;base64,AAAA',
+  ];
+
+  for (const url of blockedTargets) {
+    const response = await request.post('/api/uploads/from-url', {
+      headers: { cookie },
+      data: { url },
+    });
+    expect(response.status(), url).toBe(400);
+  }
+
+  const empty = await request.post('/api/uploads/from-url', {
+    headers: { cookie },
+    data: { url: '   ' },
+  });
+  expect(empty.status()).toBe(400);
+
+  // A fresh context has no session cookie, so the endpoint must refuse anonymous callers.
+  const anonymousContext = await playwright.request.newContext({ baseURL: 'http://127.0.0.1:4173' });
+  const anonymous = await anonymousContext.post('/api/uploads/from-url', {
+    data: { url: 'https://example.com/photo.jpg' },
+  });
+  expect(anonymous.status()).toBe(401);
+  await anonymousContext.dispose();
 });

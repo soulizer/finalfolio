@@ -1430,3 +1430,29 @@
 ### Remaining risk
 
 - This is a presentation-level cleanup only; the remaining acceptance item is visual confirmation in a live browser that the direct presentation reads the way you want across desktop and fullscreen.
+
+## 2026-11-15 Intuitive Editor Pass and Full Chinese Interface
+
+### What changed
+
+- Added a gettext-style i18n runtime (`src/i18n`): `LocaleProvider`, `useT()`, a standalone `translate()` for module-level copy, and a language toggle in the site header. The choice persists in `localStorage` and drives `<html lang>`.
+- Translated the whole product surface, not just chrome: site pages, auth, account, admin, editor sidebars, export center, confirmations, toasts, server error messages, legal pages (privacy now ships a zh-CN document), template/theme/starter-pack metadata, page starter copy for new drafts, and the homepage demo sequence.
+- Editor UX:
+  - Paper colour moved from a standalone panel into a per-page dot on each sequence chip, opening a compact swatch popover with "apply to all pages". Non-active chips collapse to one row.
+  - Page templates now render layout thumbnails; descriptions stay in the hover/focus preview.
+  - Project templates stay collapsed unless the draft is empty, and "Use as project" is a danger-styled action behind an explicit confirmation.
+  - The content sidebar leads with Photos; a new "Add from URL" form imports remote images.
+  - Clicking any text block on the stage opens an anchored inline editor (kicker/title/deck/body/caption); Esc or blur commits and closes.
+  - Empty drafts show a dismissible four-step first-run hint.
+- Server: `POST /api/uploads/from-url` downloads http/https images with SSRF guards (public addresses only, per-hop redirect validation, size cap, magic-byte validation) and feeds the existing upload/variant/object-storage pipeline.
+
+### Validation
+
+- `npm run validate:mvp`
+- `./node_modules/.bin/playwright test` (12 specs, including new URL-import guard and editor UX/i18n coverage)
+- zh/en screenshot sweep at 390/768/1024/1440 with no horizontal overflow
+
+### Remaining risk
+
+- Machine-translated copy should get a native review pass, especially long marketing sentences and admin-only labels.
+- The URL importer depends on outbound network access from the server; failures surface as a toast and never create partial uploads.

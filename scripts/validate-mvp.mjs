@@ -1690,8 +1690,9 @@ try {
     assert.match(editorPage, /Apply/);
     assert.match(editorPage, /Add page/);
     assert.match(editorPage, /editor-panel--layout/);
-    assert.match(editorPage, /Page style/);
-    assert.match(editorPage, /Apply all/);
+    assert.match(editorPage, /Paper color/);
+    assert.match(editorPage, /page-color-popover/);
+    assert.match(editorPage, /Apply to all pages/);
     assert.match(editorPage, /editor-collapsible-meta/);
     assert.match(editorPage, /zoomInputValue/);
     assert.match(editorPage, /handleCropMetricsChange/);
@@ -1712,7 +1713,7 @@ try {
     assert.match(editorPage, /Text block geometry/);
     assert.match(editorPage, /Advanced frame geometry/);
     assert.match(editorPage, /editor-sidebar editor-sidebar--navigation/);
-    assert.match(editorPage, /aria-label="Live page editor"/);
+    assert.match(editorPage, /aria-label=\{t\('Live page editor'\)\}/);
     assert.match(editorPage, /Save folio/);
     assert.match(editorPage, /<EditorContentSidebar/);
     assert.match(editorPage, /<EditorOperationsSidebar/);
@@ -1723,6 +1724,8 @@ try {
     assert.match(editorContentSidebar, /export function EditorContentSidebar/);
     assert.match(editorContentSidebar, /editor-panel--content-work/);
     assert.match(editorContentSidebar, /editor-panel--photos/);
+    assert.match(editorContentSidebar, /import-url-form/);
+    assert.match(editorContentSidebar, /onImportFromUrl/);
     assert.match(editorContentSidebar, /Fields/);
     assert.match(editorContentSidebar, /Small label above the main headline\./);
     assert.match(editorContentSidebar, /Line breaks stay visible in the preview\./);

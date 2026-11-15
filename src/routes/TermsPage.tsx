@@ -4,6 +4,7 @@ import { SiteLegalFooter } from '../components/SiteLegalFooter';
 import { SitePageHeader } from '../components/SitePageHeader';
 import { acceptTerms, logoutUser } from '../editor/api';
 import { getPageLanguage, getTermsDocument } from '../legal/terms';
+import { useT } from '../i18n';
 import { useSession } from '../session';
 
 function normalizeNextPath(value: string | null) {
@@ -25,6 +26,7 @@ function renderSectionBlock(block: { type: 'paragraph'; text: string } | { type:
 }
 
 export function TermsPage() {
+  const t = useT();
   const navigate = useNavigate();
   const location = useLocation();
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
@@ -51,7 +53,7 @@ export function TermsPage() {
       setSessionUser(payload.user);
       openRoute(continuePath, { replace: true });
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to accept the Terms of Service.');
+      setMessage(error instanceof Error ? error.message : t('Unable to accept the Terms of Service.'));
     } finally {
       setBusy(false);
     }
@@ -66,7 +68,7 @@ export function TermsPage() {
       setSessionUser(null);
       openRoute('/auth', { replace: true });
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to sign out.');
+      setMessage(error instanceof Error ? error.message : t('Unable to sign out.'));
     } finally {
       setBusy(false);
     }
@@ -104,7 +106,7 @@ export function TermsPage() {
           <section className="terms-gate">
             <div className="terms-gate__copy">
               <strong>{document.acceptanceHeading}</strong>
-              <p>Preparing the correct account gate for this session.</p>
+              <p>{t('Preparing the correct account gate for this session.')}</p>
             </div>
           </section>
         ) : session ? (
@@ -119,7 +121,7 @@ export function TermsPage() {
               {session.needsTermsAcceptance ? (
                 <form onSubmit={handleAccept}>
                   <button type="submit" className="button button--primary" disabled={busy}>
-                    {busy ? 'Working…' : document.acceptButtonLabel}
+                    {busy ? t('Working…') : document.acceptButtonLabel}
                   </button>
                 </form>
               ) : (
@@ -128,7 +130,7 @@ export function TermsPage() {
                 </button>
               )}
               <button type="button" className="button button--ghost" onClick={() => void handleLogout()} disabled={busy}>
-                Sign out
+                {t('Sign out')}
               </button>
             </div>
           </section>
@@ -136,7 +138,7 @@ export function TermsPage() {
           <section className="terms-gate">
             <div className="terms-gate__copy">
               <strong>{document.acceptanceHeading}</strong>
-              <p>Sign in first, then accept the current Terms of Service to continue using uploads, editor, account, or admin features.</p>
+              <p>{t('Sign in first, then accept the current Terms of Service to continue using uploads, editor, account, or admin features.')}</p>
             </div>
             <div className="terms-actions">
               <button
@@ -147,7 +149,7 @@ export function TermsPage() {
                 {document.signInButtonLabel}
               </button>
               <Link className="button button--ghost" to="/">
-                Back home
+                {t('Back home')}
               </Link>
             </div>
           </section>

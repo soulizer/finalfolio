@@ -1,3 +1,4 @@
+import { useT } from '../i18n';
 import { useState } from 'react';
 import { SiteLegalFooter } from '../components/SiteLegalFooter';
 import { SitePageHeader } from '../components/SitePageHeader';
@@ -19,6 +20,7 @@ import { useAdminUserManagement } from './admin/useAdminUserManagement';
 import { useAdminWorkspace } from './admin/useAdminWorkspace';
 
 export function AdminPage() {
+  const t = useT();
   const [message, setMessage] = useState<string | null>(null);
   const { user: session, ready: sessionReady, refreshSession, setSessionUser } = useSession();
   const {
@@ -150,7 +152,7 @@ export function AdminPage() {
 
   return (
     <div className="editor-shell editor-shell--site-page editor-shell--admin">
-      <TransientNotice message={message} onDismiss={() => setMessage(null)} label="Admin update" />
+      <TransientNotice message={message} onDismiss={() => setMessage(null)} label={t('Admin update')} />
       <SitePageHeader
         current="admin"
         accountPath={accountPath}
@@ -160,13 +162,13 @@ export function AdminPage() {
         canAccessAdmin={canAccessAdmin}
         actions={
           <button type="button" className="button button--ghost button--small" onClick={() => void refreshAll()} disabled={busy || !sessionReady}>
-            Refresh
+            {t('Refresh')}
           </button>
         }
       />
 
       <div id="main-content" className="admin-console">
-      <h1 className="sr-only">Admin console</h1>
+      <h1 className="sr-only">{t('Admin console')}</h1>
         <AdminConsoleHeader
           activeSection={activeSection}
           selectSection={selectSection}

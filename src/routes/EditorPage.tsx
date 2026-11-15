@@ -1,10 +1,11 @@
+import { useT } from '../i18n';
 import { CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CustomLayoutMap } from '../components/CustomLayoutMap';
 import { MagazinePreview } from '../components/MagazinePreview';
 import { TemplateIssuePreview } from '../components/TemplateIssuePreview';
 import { TemplateLayoutPreview } from '../components/TemplateLayoutPreview';
-import { AccountUploadListItem } from '../editor/api';
+import { AccountUploadListItem, importAssetFromUrl } from '../editor/api';
 import { getConfirmationMessage } from '../editor/confirmations';
 import { formatDateTime } from '../editor/dateFormat';
 import { getAssetSource } from '../editor/assetResources';
@@ -17,6 +18,7 @@ import {
   getTemplateLabel,
   pageThemeMeta,
   pageThemeOrder,
+  pageStarters,
   templateUsesBody,
   templateUsesDeck,
   templateUsesKicker,
@@ -108,7 +110,7 @@ function formatSavedAt(timestamp?: string) {
     return 'Saved on the server.';
   }
 
-  return `Saved ${formatDateTime(timestamp)}.`;
+  return 'Saved %s.'.replace('%s', formatDateTime(timestamp));
 }
 
 function formatBytes(bytes: number) {
@@ -135,6 +137,7 @@ function getAssetOrientation(asset: Asset) {
   return 'square';
 }
 export function EditorPage() {
+  const t = useT();
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId: string }>();
   const { user: session, ready: authReady, refreshFailed: authRefreshFailed } = useSession();
@@ -246,8 +249,13 @@ export function EditorPage() {
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
   const [shareCopyState, setShareCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(true);
   const [starterPacksOpen, setStarterPacksOpen] = useState(false);
+  const [colorPickerPageId, setColorPickerPageId] = useState<string | null>(null);
+  const [textEditTarget, setTextEditTarget] = useState<{ field: 'kicker' | 'title' | 'deck' | 'body' | 'caption'; rect: { left: number; top: number; width: number } } | null>(null);
+  const [importUrlBusy, setImportUrlBusy] = useState(false);
+  const [firstStepsDismissed, setFirstStepsDismissed] = useState(false);
+  const [starterPacksAutoOpened, setStarterPacksAutoOpened] = useState(false);
   const lastSavedSnapshotRef = useRef('');
   const printAssetFingerprintRef = useRef('');
   const canvasRef = useRef<HTMLDivElement | null>(null);
@@ -255,6 +263,8 @@ export function EditorPage() {
   const printStackRef = useRef<HTMLElement | null>(null);
   const printPageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const customLayoutBuilderRef = useRef<HTMLDivElement | null>(null);
+  const textEditPopoverRef = useRef<HTMLDivElement | null>(null);
+  const textEditStageRef = useRef<HTMLDivElement | null>(null);
   const editorStageRef = useRef<HTMLElement | null>(null);
   const previewScale = useEditorPreviewScale({
     loadState,
@@ -425,10 +435,10 @@ export function EditorPage() {
   const uploadProgressPercent = Math.round(
     ((uploadState.completedFiles + currentUploadFraction) / Math.max(uploadState.totalFiles, 1)) * 100,
   );
-  const uploadProgressLabel = uploadBusy ? `Photo ${Math.max(uploadState.currentFileIndex, 1)}/${Math.max(uploadState.totalFiles, 1)}` : 'Upload';
+  const uploadProgressLabel = uploadBusy ? `Photo ${Math.max(uploadState.currentFileIndex, 1)}/${Math.max(uploadState.totalFiles, 1)}` : t('Upload');
   const uploadProgressDetail =
     uploadState.phase === 'preparing'
-      ? `Optimizing ${uploadState.currentFileName} before ${session ? 'upload' : 'adding it locally'}.`
+      ? `Optimizing ${uploadState.currentFileName} before ${session ? 'upload' : t('adding it locally')}.`
       : uploadState.phase === 'uploading'
         ? session
           ? `${uploadState.currentFileName} · ${formatBytes(uploadState.currentFileLoadedBytes)} of ${formatBytes(
@@ -695,6 +705,104 @@ export function EditorPage() {
     getInitialSlot,
   });
 
+  const handleImportFromUrl = useCallback(
+    async (rawUrl: string) => {
+      const url = rawUrl.trim();
+      if (!url || importUrlBusy) {
+        return;
+      }
+
+      setImportUrlBusy(true);
+      try {
+        const asset = await importAssetFromUrl(url);
+        updateProject((current) => ({
+          ...current,
+          assets: [asset, ...current.assets],
+        }));
+        setMessage(t('Added %s from the URL.').replace('%s', asset.name));
+      } catch (error) {
+        setMessage(error instanceof Error ? t(error.message) : t('Unable to import from this URL.'));
+      } finally {
+        setImportUrlBusy(false);
+      }
+    },
+    [importUrlBusy, setMessage, t, updateProject],
+  );
+
+  const handleTextEditRequest = useCallback(
+    (field: 'kicker' | 'title' | 'deck' | 'body' | 'caption', element: HTMLElement) => {
+      const canvasRect = canvasRef.current?.getBoundingClientRect();
+      const rect = element.getBoundingClientRect();
+      if (!canvasRect) {
+        return;
+      }
+      setSelectedSlot(null);
+      setTextEditTarget({
+        field,
+        rect: {
+          left: rect.left - canvasRect.left,
+          top: rect.top - canvasRect.top,
+          width: Math.max(rect.width, 220),
+        },
+      });
+    },
+    [],
+  );
+
+  const closeTextEdit = useCallback(() => setTextEditTarget(null), []);
+
+  useEffect(() => {
+    if (!textEditTarget) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setTextEditTarget(null);
+      }
+    };
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (!textEditPopoverRef.current?.contains(target) && !textEditStageRef.current?.contains(target)) {
+        setTextEditTarget(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('mousedown', handlePointerDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('mousedown', handlePointerDown);
+    };
+  }, [textEditTarget]);
+
+  // Empty drafts open the starter packs so the first step is obvious; drafts with
+  // real content keep them collapsed to protect the existing work.
+  useEffect(() => {
+    if (starterPacksAutoOpened) {
+      return;
+    }
+    const pageMatchesStarter = (page: (typeof project.pages)[number]) => {
+      const starter = pageStarters[page.template];
+      if (!starter) {
+        return false;
+      }
+      return (['kicker', 'title', 'deck', 'body', 'caption'] as const).every(
+        (key) => page[key] === starter[key],
+      );
+    };
+    const hasContent =
+      project.pages.some((page) => Array.from(projectAssetIds).some((assetId) => Object.values(page.slots).includes(assetId))) ||
+      !project.pages.every(pageMatchesStarter);
+    if (!hasContent && !projectRecord) {
+      setStarterPacksAutoOpened(true);
+      setStarterPacksOpen(true);
+    } else if (hasContent || projectRecord) {
+      setStarterPacksAutoOpened(true);
+      setStarterPacksOpen(false);
+    }
+  }, [project, projectRecord, projectAssetIds, starterPacksAutoOpened]);
+
   const { handleUploadFiles } = createEditorUploadActions({
     navigate,
     session,
@@ -764,20 +872,20 @@ export function EditorPage() {
     ? hasGuestUploadAssets
       ? session
         ? guestUploadTransferBusy
-          ? 'Attaching recovered local uploads to this account before saving.'
-          : 'Recovered local uploads are still pending account attachment before this folio can be saved.'
-        : 'Local uploads are kept on this device. Sign in to attach them to your account before creating a saved link.'
-      : 'Draft only. Create a stable editor URL to save this folio on the server.'
+          ? t('Attaching recovered local uploads to this account before saving.')
+          : t('Recovered local uploads are still pending account attachment before this folio can be saved.')
+        : t('Local uploads are kept on this device. Sign in to attach them to your account before creating a saved link.')
+      : t('Draft only. Create a stable editor URL to save this folio on the server.')
     : legacyProjectReadOnly
       ? session
-        ? 'Legacy read-only project. Duplicate it into your account before saving, sharing, or archiving.'
-        : 'Legacy read-only project. Sign in to duplicate it into your account before editing.'
+        ? t('Legacy read-only project. Duplicate it into your account before saving, sharing, or archiving.')
+        : t('Legacy read-only project. Sign in to duplicate it into your account before editing.')
       : saveState === 'saving'
-        ? 'Saving changes to the server...'
+        ? t('Saving changes to the server...')
         : saveState === 'dirty'
-          ? 'Changes queued. Autosave will sync this folio shortly.'
+          ? t('Changes queued. Autosave will sync this folio shortly.')
           : saveState === 'error'
-            ? 'Save failed. Retry to keep this URL current.'
+            ? t('Save failed. Retry to keep this URL current.')
             : formatSavedAt(projectRecord.updatedAt);
   // Pending/unsaved state must never be hidden behind an action message such as
   // "Preset applied"; the user needs to see that the folio still has to be saved.
@@ -785,131 +893,94 @@ export function EditorPage() {
     saveState === 'dirty' || saveState === 'saving' || saveState === 'error' || !projectRecord || legacyProjectReadOnly;
   const statusText =
     printBusy
-      ? `Preparing print-ready pages ${printState.completedAssets}/${printState.totalAssets}...`
+      ? t('Preparing print-ready pages %s/%s...')
+          .replace('%s', String(printState.completedAssets))
+          .replace('%s', String(printState.totalAssets))
       : assetMutationBusy
-        ? 'Updating the media library...'
+        ? t('Updating the media library...')
       : uploadState.phase === 'preparing'
-        ? `Preparing upload ${uploadState.completedFiles}/${uploadState.totalFiles}...`
+        ? t('Preparing upload %s/%s...')
+          .replace('%s', String(uploadState.completedFiles))
+          .replace('%s', String(uploadState.totalFiles))
         : uploadState.phase === 'uploading'
-          ? `${session ? 'Uploading' : 'Adding'} images ${uploadProgressPercent}%...`
+          ? `${session ? t('Uploading') : t('Adding')} images %s%...`.replace('%s', String(uploadProgressPercent))
           : showSaveState
             ? fallbackStatus
             : message ?? fallbackStatus;
-  const sequenceLabel = `${project.pages.length} page${project.pages.length === 1 ? '' : 's'}`;
-  const selectedPagePositionLabel = `Page ${selectedPageIndex + 1} of ${project.pages.length}`;
+  const sequenceLabel =
+    project.pages.length === 1 ? t('1 page') : t('%s pages').replace('%s', String(project.pages.length));
+  const selectedPagePositionLabel = t('Page %s of %s')
+    .replace('%s', String(selectedPageIndex + 1))
+    .replace('%s', String(project.pages.length));
   const selectedTemplateMeta = templateMeta[templateChoice];
   const selectedTemplateLabel = getTemplateLabel(templateChoice, templateChoice === 'custom' ? customTemplateDraft : null);
   const chosenThemeMeta = pageThemeMeta[themeChoice];
   const templatePanelTag =
     templateChoice === 'custom'
-      ? `${customTemplateDraft.frames.length} frame${customTemplateDraft.frames.length === 1 ? '' : 's'}`
-      : selectedTemplateMeta.summary;
+      ? customTemplateDraft.frames.length === 1
+        ? t('1 frame')
+        : t('%s frames').replace('%s', String(customTemplateDraft.frames.length))
+      : t(selectedTemplateMeta.summary);
   const selectedAssetId = selectedSlot ? selectedPage.slots[selectedSlot] : null;
   const selectedPageUsesKicker = templateUsesKicker(selectedPage.template);
   const selectedPageUsesDeck = templateUsesDeck(selectedPage.template);
   const selectedPageUsesBody = templateUsesBody(selectedPage.template, selectedPage.customTemplate);
   const projectModeTag = !projectRecord
     ? session
-      ? 'Local draft'
-      : 'Guest draft'
+      ? t('Local draft')
+      : t('Guest draft')
     : legacyProjectReadOnly
-      ? 'Legacy read-only'
+      ? t('Legacy read-only')
       : projectRecord.archivedAt
-        ? 'Archived'
-        : 'Saved link';
-  const copyButtonLabel = copyState === 'copied' ? 'Copied' : copyState === 'error' ? 'Copy failed' : 'Copy link';
+        ? t('Archived')
+        : t('Saved link');
+  const copyButtonLabel = copyState === 'copied' ? t('Copied') : copyState === 'error' ? t('Copy failed') : t('Copy link');
   const publicShareUrl =
     projectRecord?.share.path && typeof window !== 'undefined' ? new URL(projectRecord.share.path, window.location.origin).toString() : '';
   const publicShareCopyLabel =
-    shareCopyState === 'copied' ? 'Copied' : shareCopyState === 'error' ? 'Copy failed' : 'Copy public link';
+    shareCopyState === 'copied' ? t('Copied') : shareCopyState === 'error' ? t('Copy failed') : t('Copy public link');
   const saveActionLabel = saveState === 'saving'
-    ? 'Saving…'
+    ? t('Saving…')
     : legacyProjectReadOnly
-      ? 'Duplicate to edit'
+      ? t('Duplicate to edit')
       : hasGuestUploadAssets
         ? session
-          ? 'Uploads pending'
-          : 'Sign in to save'
+          ? t('Uploads pending')
+          : t('Sign in to save')
         : projectRecord
-          ? 'Save'
-          : 'Save folio';
+          ? t('Save')
+          : t('Save folio');
   const exportActionBusy = exportBusy || printBusy;
-  const exportActionLabel = exportActionBusy ? 'Preparing…' : exportCenterOpen ? 'Close export' : 'Export Center';
+  const exportActionLabel = exportActionBusy ? t('Preparing…') : exportCenterOpen ? t('Close export') : t('Export Center');
   const themeChoiceMatchesAllPages = project.pages.every((page) => page.theme === themeChoice);
-  const pageStylePanel = (
-    <section className="editor-panel editor-panel--page-style">
-      <div className="editor-panel__heading">
-        <div>
-          <p className="eyebrow">Page style</p>
-          <h2>Paper color</h2>
-        </div>
-        <span className="panel-tag">{chosenThemeMeta.label}</span>
-      </div>
-      <div className="theme-grid" role="group" aria-label="Paper color">
-        {pageThemeOrder.map((themeId) => {
-          const meta = pageThemeMeta[themeId];
-          return (
-            <button
-              key={themeId}
-              type="button"
-              className={`theme-card ${themeChoice === themeId ? 'is-active' : ''}`}
-              onClick={() => {
-                setThemeChoice(themeId);
-                if (selectedPage.theme !== themeId) {
-                  applyTheme(themeId, 'page');
-                }
-              }}
-              aria-pressed={themeChoice === themeId}
-            >
-              <span className={`theme-card__swatch theme-card__swatch--${themeId}`} aria-hidden="true" />
-              <span className="theme-card__meta">
-                <strong>{meta.label}</strong>
-                <small>{meta.summary}</small>
-              </span>
-            </button>
-          );
-        })}
-      </div>
-      <div className="theme-apply-actions">
-        <button
-          type="button"
-          className="button button--ghost button--small"
-          disabled={themeChoiceMatchesAllPages}
-          onClick={() => applyTheme(themeChoice, 'all')}
-        >
-          {themeChoiceMatchesAllPages ? 'Already global' : 'Apply all'}
-        </button>
-      </div>
-    </section>
-  );
   const exportSubmitDefaultLabel =
     exportSettings.format === 'project'
-      ? 'Download project'
+      ? t('Download project')
       : exportSettings.format === 'pdf'
-        ? 'Export PDF'
+        ? t('Export PDF')
         : exportSettings.jpgMode === 'combined'
-          ? 'Export stitched JPG'
-          : 'Export JPG set';
+          ? t('Export stitched JPG')
+          : t('Export JPG set');
   const exportSubmitLabel =
     exportDialogState?.text ??
     (printBusy ? `Preparing ${printState.completedAssets}/${printState.totalAssets}...` : exportSubmitDefaultLabel);
   const templateSaveActionLabel =
-    templateSaveBusy ? 'Saving…' : templateSaveKind === 'page' ? 'Save page template' : 'Save project template';
+    templateSaveBusy ? t('Saving…') : templateSaveKind === 'page' ? t('Save page template') : t('Save project template');
   const archiveActionLabel =
     projectActionBusy === 'archive'
-      ? 'Archiving…'
+      ? t('Archiving…')
       : projectActionBusy === 'unarchive'
-        ? 'Restoring…'
+        ? t('Restoring…')
         : projectRecord?.archivedAt
-          ? 'Unarchive'
-          : 'Archive';
+          ? t('Unarchive')
+          : t('Archive');
   const hoveredTemplateMeta = templateHoverPreview ? templateMeta[templateHoverPreview.templateId] : null;
   const hoveredTemplateLabel = templateHoverPreview
     ? getTemplateLabel(templateHoverPreview.templateId, templateHoverPreview.templateId === 'custom' ? customTemplateDraft : null)
     : '';
   const hoveredTemplateDescription = templateHoverPreview
     ? templateHoverPreview.templateId === 'custom'
-      ? 'Current custom scaffold preview.'
+      ? t('Current custom scaffold preview.')
       : hoveredTemplateMeta?.description ?? ''
     : '';
   const hoveredTemplateSlotCount = templateHoverPreview
@@ -921,11 +992,10 @@ export function EditorPage() {
   const customLayoutOverview = showInlineCustomLayoutOverview ? (
     <div className="custom-layout-overview">
       <div className="custom-layout-overview__copy">
-        <p className="eyebrow">Layout map</p>
-        <h3>Start from a scaffold</h3>
+        <p className="eyebrow">{t('Layout map')}</p>
+        <h3>{t('Start from a scaffold')}</h3>
         <p className="panel-note">
-          Pick the closest structure first. Open the geometry controls only when the preset still needs fine tuning.
-        </p>
+          {t('Pick the closest structure first. Open the geometry controls only when the preset still needs fine tuning.')}</p>
       </div>
       <CustomLayoutMap template={customTemplateDraft} highlightedSlot={selectedSlot} />
     </div>
@@ -953,13 +1023,13 @@ export function EditorPage() {
 
   return (
     <div className="editor-shell">
-      <h1 className="sr-only">Folio editor</h1>
+      <h1 className="sr-only">{t('Folio editor')}</h1>
       <div className="editor-layout">
         <aside className="editor-sidebar editor-sidebar--navigation">
           <section className="page-strip-panel">
             <div className="page-strip-panel__header page-strip-panel__header--compact">
               <div>
-                <p className="eyebrow">Sequence</p>
+                <p className="eyebrow">{t('Sequence')}</p>
               </div>
               <span className="panel-tag">{sequenceLabel}</span>
             </div>
@@ -967,25 +1037,82 @@ export function EditorPage() {
             <div className="page-strip">
               {project.pages.map((page, index) => {
                 const isActive = page.id === selectedPage.id;
-                const pagePositionLabel = `Page ${index + 1}`;
+                const pagePositionLabel = t('Page %s').replace('%s', String(index + 1));
 
                 return (
                   <article
                     key={page.id}
                     className={`page-chip page-chip--theme-${page.theme} ${isActive ? 'is-active' : ''}`.trim()}
                   >
-                    <button type="button" className="page-chip__main" onClick={() => selectPage(page.id)}>
-                      <span>{pagePositionLabel}</span>
-                      <strong>{page.title}</strong>
-                      <em>{getTemplateLabel(page.template, page.customTemplate)}</em>
+                    <button
+                      type="button"
+                      className="page-chip__main"
+                      onClick={() => {
+                        selectPage(page.id);
+                        setColorPickerPageId(null);
+                      }}
+                    >
+                      <span className="page-chip__row">
+                        <span>{pagePositionLabel}</span>
+                        <em>{t(getTemplateLabel(page.template, page.customTemplate))}</em>
+                      </span>
+                      {isActive ? <strong>{page.title}</strong> : null}
                     </button>
+                    <button
+                      type="button"
+                      className={`page-chip__dot theme-card__swatch--${page.theme}`}
+                      title={t('Paper color')}
+                      aria-label={t('Paper color')}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        if (!isActive) {
+                          selectPage(page.id);
+                        }
+                        setColorPickerPageId((current) => (current === page.id ? null : page.id));
+                      }}
+                    />
+                    {colorPickerPageId === page.id ? (
+                      <div className="page-color-popover surface-popover" role="group" aria-label={t('Paper color')}>
+                        <div className="page-color-popover__swatches">
+                          {pageThemeOrder.map((themeId) => (
+                            <button
+                              key={themeId}
+                              type="button"
+                              className={`page-color-popover__swatch theme-card__swatch--${themeId} ${page.theme === themeId ? 'is-active' : ''}`}
+                              title={t(pageThemeMeta[themeId].label)}
+                              aria-label={t(pageThemeMeta[themeId].label)}
+                              aria-pressed={page.theme === themeId}
+                              onClick={() => {
+                                if (!isActive) {
+                                  selectPage(page.id);
+                                }
+                                if (page.theme !== themeId) {
+                                  applyTheme(themeId, 'page');
+                                }
+                                setColorPickerPageId(null);
+                              }}
+                            />
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          className="page-color-popover__apply-all"
+                          onClick={() => {
+                            applyTheme(page.theme, 'all');
+                            setColorPickerPageId(null);
+                          }}
+                        >
+                          {t('Apply to all pages')}
+                        </button>
+                      </div>
+                    ) : null}
                     {isActive ? (
-                      <div className="page-chip__actions" aria-label={`Actions for ${pagePositionLabel}`}>
+                      <div className="page-chip__actions" aria-label={t('Actions for %s').replace('%s', pagePositionLabel)}>
                         <button
                           type="button"
                           className="page-chip__action"
-                          title="Duplicate page"
-                          aria-label="Duplicate page"
+                          title={t('Duplicate page')}
+                          aria-label={t('Duplicate page')}
                           onClick={duplicatePage}
                         >
                           ⧉
@@ -993,8 +1120,8 @@ export function EditorPage() {
                         <button
                           type="button"
                           className="page-chip__action"
-                          title="Move page up"
-                          aria-label="Move page up"
+                          title={t('Move page up')}
+                          aria-label={t('Move page up')}
                           disabled={selectedPageIndex <= 0}
                           onClick={() => moveSelectedPage(-1)}
                         >
@@ -1003,8 +1130,8 @@ export function EditorPage() {
                         <button
                           type="button"
                           className="page-chip__action"
-                          title="Move page down"
-                          aria-label="Move page down"
+                          title={t('Move page down')}
+                          aria-label={t('Move page down')}
                           disabled={selectedPageIndex >= project.pages.length - 1}
                           onClick={() => moveSelectedPage(1)}
                         >
@@ -1013,8 +1140,8 @@ export function EditorPage() {
                         <button
                           type="button"
                           className="page-chip__action page-chip__action--danger"
-                          title={project.pages.length === 1 ? 'Keep at least one page' : 'Delete page'}
-                          aria-label={project.pages.length === 1 ? 'Keep at least one page' : 'Delete page'}
+                          title={project.pages.length === 1 ? t('Keep at least one page') : t('Delete page')}
+                          aria-label={project.pages.length === 1 ? t('Keep at least one page') : t('Delete page')}
                           disabled={project.pages.length === 1}
                           onClick={removeSelectedPage}
                         >
@@ -1027,13 +1154,12 @@ export function EditorPage() {
               })}
             </div>
           </section>
-          {pageStylePanel}
 
           <section className="editor-panel editor-panel--layout">
             <div className="editor-panel__heading">
               <div>
-                <p className="eyebrow">Page templates</p>
-                <h2>{selectedTemplateLabel}</h2>
+                <p className="eyebrow">{t('Page templates')}</p>
+                <h2>{t(selectedTemplateLabel)}</h2>
               </div>
               <div className="editor-collapsible-meta">
                 <span className="panel-tag">{templatePanelTag}</span>
@@ -1043,7 +1169,7 @@ export function EditorPage() {
                   onClick={() => setTemplatePickerOpen((current) => !current)}
                   aria-expanded={templatePickerOpen}
                 >
-                  {templatePickerOpen ? 'Hide' : 'Show'}
+                  {templatePickerOpen ? t('Hide') : t('Show')}
                 </button>
               </div>
             </div>
@@ -1063,9 +1189,8 @@ export function EditorPage() {
                         onFocus={(event) => openTemplateHoverPreview(templateId, event.currentTarget)}
                         onBlur={clearTemplateHoverPreview}
                       >
-                        <span>{meta.label}</span>
-                        <strong>{meta.summary}</strong>
-                        <small>{meta.slots.length} image slot{meta.slots.length === 1 ? '' : 's'}</small>
+                        <TemplateLayoutPreview templateId={templateId} className="template-card__thumb" />
+                        <span className="template-card__name">{t(meta.label)}</span>
                       </button>
                     );
                   })}
@@ -1081,12 +1206,14 @@ export function EditorPage() {
                   >
                     <div className="editor-panel__heading">
                       <div>
-                        <p className="eyebrow">Custom layout</p>
+                        <p className="eyebrow">{t('Custom layout')}</p>
                         <h2>{customTemplateDraft.name}</h2>
                       </div>
-                      <span className="panel-tag">{`${customTemplateDraft.frames.length} frame${
-                        customTemplateDraft.frames.length === 1 ? '' : 's'
-                      }`}</span>
+                      <span className="panel-tag">
+                        {customTemplateDraft.frames.length === 1
+                          ? t('1 frame')
+                          : t('%s frames').replace('%s', String(customTemplateDraft.frames.length))}
+                      </span>
                     </div>
                     {customLayoutOverview}
                     <div className="template-grid template-grid--compact">
@@ -1098,14 +1225,14 @@ export function EditorPage() {
                           onClick={() => loadCustomLayoutPreset(preset.id)}
                         >
                           <CustomLayoutMap template={preset.template} className="custom-layout-map--card" />
-                          <span>{preset.label}</span>
+                          <span>{t(preset.label)}</span>
                           <strong>{preset.template.name}</strong>
-                          <small>{preset.summary}</small>
+                          <small>{t(preset.summary)}</small>
                         </button>
                       ))}
                     </div>
                     <label className="field">
-                      <span>Layout name</span>
+                      <span>{t('Layout name')}</span>
                       <input
                         maxLength={CUSTOM_TEMPLATE_NAME_LIMIT}
                         value={customTemplateDraft.name}
@@ -1123,19 +1250,18 @@ export function EditorPage() {
                         className="button button--ghost button--small"
                         onClick={() => loadCustomLayoutPreset(defaultCustomLayoutPresetId)}
                       >
-                        Reset base
-                      </button>
+                        {t('Reset base')}</button>
                       <button
                         type="button"
                         className="button button--ghost button--small"
                         disabled={customTemplateDraft.frames.length >= CUSTOM_TEMPLATE_FRAME_LIMIT}
                         onClick={addCustomFrame}
                       >
-                        {customTemplateDraft.frames.length >= CUSTOM_TEMPLATE_FRAME_LIMIT ? 'Frame limit' : 'Add frame'}
+                        {customTemplateDraft.frames.length >= CUSTOM_TEMPLATE_FRAME_LIMIT ? t('Frame limit') : t('Add frame')}
                       </button>
                     </div>
                     <details className="custom-layout-details">
-                      <summary>Text block geometry</summary>
+                      <summary>{t('Text block geometry')}</summary>
                       <div className="custom-layout-grid">
                         {customAreaFields.map((field) => (
                           <label className="field" key={`text-${field.key}`}>
@@ -1162,13 +1288,13 @@ export function EditorPage() {
                         <section key={frame.slot} className="custom-frame-card">
                           <div className="editor-panel__heading">
                             <div>
-                              <p className="eyebrow">Frame {frameIndex + 1}</p>
+                              <p className="eyebrow">{t('Frame')}{frameIndex + 1}</p>
                               <h2>{frame.label}</h2>
                             </div>
                             <span className="panel-tag">{frame.slot.toUpperCase()}</span>
                           </div>
                           <label className="field">
-                            <span>Label</span>
+                            <span>{t('Label')}</span>
                             <input
                               maxLength={CUSTOM_TEMPLATE_FRAME_LABEL_LIMIT}
                               value={frame.label}
@@ -1194,18 +1320,17 @@ export function EditorPage() {
                               disabled={customTemplateDraft.frames.length === 1}
                               onClick={() => removeCustomFrame(frame.slot)}
                             >
-                              {customTemplateDraft.frames.length === 1 ? 'Keep one' : 'Remove'}
+                              {customTemplateDraft.frames.length === 1 ? t('Keep one') : t('Remove')}
                             </button>
                             <button
                               type="button"
                               className="button button--ghost button--small"
                               onClick={() => setSelectedSlot(frame.slot)}
                             >
-                              Focus
-                            </button>
+                              {t('Focus')}</button>
                           </div>
                           <details className="custom-layout-details">
-                            <summary>Advanced frame geometry</summary>
+                            <summary>{t('Advanced frame geometry')}</summary>
                             <div className="custom-layout-grid">
                               {customAreaFields.map((field) => (
                                 <label className="field" key={`${frame.slot}-${field.key}`}>
@@ -1244,11 +1369,11 @@ export function EditorPage() {
                     title={
                       project.pages.length >= PROJECT_PAGE_LIMIT
                         ? `Maximum ${PROJECT_PAGE_LIMIT} pages per folio`
-                        : 'Add a page after the current one'
+                        : t('Add a page after the current one')
                     }
                     onClick={() => addPage()}
                   >
-                    {project.pages.length >= PROJECT_PAGE_LIMIT ? 'Page limit' : 'Add page'}
+                    {project.pages.length >= PROJECT_PAGE_LIMIT ? t('Page limit') : t('Add page')}
                   </button>
                   <button
                     type="button"
@@ -1256,7 +1381,7 @@ export function EditorPage() {
                     disabled={templateChoice === selectedPage.template && templateChoice !== 'custom'}
                     onClick={applyTemplateChoice}
                   >
-                    {templateChoice === selectedPage.template && templateChoice !== 'custom' ? 'Current' : 'Apply'}
+                    {templateChoice === selectedPage.template && templateChoice !== 'custom' ? t('Current') : t('Apply')}
                   </button>
                 </div>
               </>
@@ -1278,7 +1403,7 @@ export function EditorPage() {
               />
               <div className="template-hover-preview__meta">
                 <span>{hoveredTemplateLabel}</span>
-                <strong>{hoveredTemplateMeta?.summary ?? 'User-defined'}</strong>
+                <strong>{hoveredTemplateMeta?.summary ?? t('User-defined')}</strong>
                 <p>{hoveredTemplateDescription}</p>
                 <small>{`${hoveredTemplateSlotCount} image slot${hoveredTemplateSlotCount === 1 ? '' : 's'}`}</small>
               </div>
@@ -1295,11 +1420,10 @@ export function EditorPage() {
             >
               <div className="custom-layout-overview custom-layout-overview--floating">
                 <div className="custom-layout-overview__copy">
-                  <p className="eyebrow">Layout map</p>
-                  <h3>Start from a scaffold</h3>
+                  <p className="eyebrow">{t('Layout map')}</p>
+                  <h3>{t('Start from a scaffold')}</h3>
                   <p className="panel-note">
-                    Pick the closest structure first. Open the geometry controls only when the preset still needs fine tuning.
-                  </p>
+                    {t('Pick the closest structure first. Open the geometry controls only when the preset still needs fine tuning.')}</p>
                 </div>
                 <CustomLayoutMap
                   template={customTemplateDraft}
@@ -1313,8 +1437,8 @@ export function EditorPage() {
           <section className="editor-panel editor-panel--starter-packs">
             <div className="editor-panel__heading">
               <div>
-                <p className="eyebrow">Project templates</p>
-                <h2>Built-in folio starters</h2>
+                <p className="eyebrow">{t('Project templates')}</p>
+                <h2>{t('Built-in folio starters')}</h2>
               </div>
               <div className="editor-collapsible-meta">
                 <span className="panel-tag">{projectTemplateSectionTag}</span>
@@ -1324,7 +1448,7 @@ export function EditorPage() {
                   onClick={() => setStarterPacksOpen((current) => !current)}
                   aria-expanded={starterPacksOpen}
                 >
-                  {starterPacksOpen ? 'Hide' : 'Show'}
+                  {starterPacksOpen ? t('Hide') : t('Show')}
                 </button>
               </div>
             </div>
@@ -1335,9 +1459,9 @@ export function EditorPage() {
                   return (
                     <article key={packId} className={`template-pack-card ${packId === defaultTemplatePackId ? 'is-featured' : ''}`}>
                       <div className="template-pack-card__copy">
-                        <span>{packId === defaultTemplatePackId ? `${pack.label} default` : pack.label}</span>
-                        <strong>{pack.summary}</strong>
-                        <p>{pack.description}</p>
+                        <span>{packId === defaultTemplatePackId ? t('%s default').replace('%s', t(pack.label)) : t(pack.label)}</span>
+                        <strong>{t(pack.summary)}</strong>
+                        <p>{t(pack.description)}</p>
                       </div>
                       <p className="template-pack-card__sequence">
                         {pack.pages.map((page) => getTemplateLabel(page.template, page.customTemplate)).join(' / ')}
@@ -1345,18 +1469,17 @@ export function EditorPage() {
                       <div className="template-pack-card__actions">
                         <button
                           type="button"
-                          className="button button--primary button--small"
+                          className="button button--danger button--small"
+                          title={t('Replaces every page in this folio. Photos stay in the media library.')}
                           onClick={() => applyTemplatePack(packId, 'replace')}
                         >
-                          Use as project
-                        </button>
+                          {t('Use as project')}</button>
                         <button
                           type="button"
                           className="button button--ghost button--small"
                           onClick={() => applyTemplatePack(packId, 'insert')}
                         >
-                          Insert
-                        </button>
+                          {t('Insert')}</button>
                       </div>
                     </article>
                   );
@@ -1368,22 +1491,21 @@ export function EditorPage() {
           <section className="editor-panel editor-panel--user-templates">
             <div className="editor-panel__heading">
               <div>
-                <p className="eyebrow">My templates</p>
-                <h2>Reusable folios</h2>
+                <p className="eyebrow">{t('My templates')}</p>
+                <h2>{t('Reusable folios')}</h2>
               </div>
               <div className="editor-collapsible-meta">
-                <span className="panel-tag">{session ? `${userTemplates.length} saved` : 'Sign in'}</span>
+                <span className="panel-tag">{session ? `${userTemplates.length} saved` : t('Sign in')}</span>
                 {session ? (
                   <Link to="/account?section=templates" className="button button--ghost button--small editor-toggle-button">
-                    Manage
-                  </Link>
+                    {t('Manage')}</Link>
                 ) : null}
               </div>
             </div>
             {!session ? (
-              <p className="panel-note">Sign in to save reusable templates and reopen them as new folios.</p>
+              <p className="panel-note">{t('Sign in to save reusable templates and reopen them as new folios.')}</p>
             ) : templateLibraryBusy ? (
-              <p className="panel-note">Loading saved templates...</p>
+              <p className="panel-note">{t('Loading saved templates...')}</p>
             ) : userTemplates.length ? (
               <div className="template-library-grid template-library-grid--editor">
                 {userTemplates.map((template) => (
@@ -1395,10 +1517,10 @@ export function EditorPage() {
                         <span className="admin-pill admin-pill--strong">{`${template.templatePayload.pages.length} pages`}</span>
                       </div>
                       <p className="template-library-card__description">
-                        {template.description || 'Reusable folio structure saved from your editor.'}
+                        {template.description || t('Reusable folio structure saved from your editor.')}
                       </p>
                       <p className="template-library-card__meta">
-                        {template.preserveCopy ? 'Includes saved copy' : 'Structure and style only'}
+                        {template.preserveCopy ? t('Includes saved copy') : t('Structure and style only')}
                       </p>
                     </div>
                     <div className="template-library-card__actions">
@@ -1408,25 +1530,48 @@ export function EditorPage() {
                         disabled={templateActionBusyId === template.id}
                         onClick={() => void handleOpenUserTemplate(template)}
                       >
-                        {templateActionBusyId === template.id ? 'Opening…' : 'Start new'}
+                        {templateActionBusyId === template.id ? t('Opening…') : t('Start new')}
                       </button>
                     </div>
                   </article>
                 ))}
               </div>
             ) : (
-              <p className="panel-note">Save the current folio as a template to reuse it across future projects.</p>
+              <p className="panel-note">{t('Save the current folio as a template to reuse it across future projects.')}</p>
             )}
           </section>
         </aside>
 
-        <main id="main-content" ref={editorStageRef} className="editor-stage" aria-label="Live page editor">
+        <main id="main-content" ref={editorStageRef} className="editor-stage" aria-label={t('Live page editor')}>
           <div className="editor-canvas" ref={canvasRef}>
+            {project.assets.length === 0 && !firstStepsDismissed ? (
+              <aside className="editor-first-steps surface-popover" aria-label={t('First steps')}>
+                <div className="editor-first-steps__header">
+                  <p className="eyebrow">{t('First steps')}</p>
+                  <button
+                    type="button"
+                    className="editor-first-steps__dismiss"
+                    aria-label={t('Dismiss')}
+                    onClick={() => setFirstStepsDismissed(true)}
+                  >
+                    ×
+                  </button>
+                </div>
+                <ul>
+                  <li>{t('Upload photos')}</li>
+                  <li>{t('Pick a layout')}</li>
+                  <li>{t('Write your text')}</li>
+                  <li>{t('Save & share')}</li>
+                </ul>
+                <p className="panel-note">{t('Upload photos, then pick a layout, write text, and save or export.')}</p>
+              </aside>
+            ) : null}
             <div ref={sheetProbeRef} className="magazine-sheet-probe" aria-hidden="true" />
-            <div className="magazine-sheet magazine-sheet--editor" style={previewStyle}>
+            <div className="magazine-sheet magazine-sheet--editor" style={previewStyle} ref={textEditStageRef}>
               <MagazinePreview
                 issue={project.issue}
                 page={selectedPage}
+                onTextEditRequest={textEditTarget ? undefined : handleTextEditRequest}
                 assets={assetsById}
                 frameRadius={project.frameRadius}
                 pageNumber={selectedPageIndex + 1}
@@ -1439,6 +1584,29 @@ export function EditorPage() {
               />
             </div>
           </div>
+            {textEditTarget ? (
+              <div
+                ref={textEditPopoverRef}
+                className="text-edit-popover surface-popover"
+                style={{ left: Math.max(12, textEditTarget.rect.left), top: Math.max(12, textEditTarget.rect.top), width: Math.max(240, textEditTarget.rect.width + 32) }}
+                onMouseDown={(event) => event.stopPropagation()}
+              >
+                <label className="field text-edit-popover__field">
+                  <span>{textEditTarget.field === 'kicker' ? t('Kicker') : textEditTarget.field === 'title' ? t('Title') : textEditTarget.field === 'deck' ? t('Deck') : textEditTarget.field === 'body' ? t('Body') : t('Caption')}</span>
+                  <textarea
+                    autoFocus
+                    rows={textEditTarget.field === 'title' ? 2 : 4}
+                    value={selectedPage[textEditTarget.field]}
+                    onChange={(event) => {
+                      const field = textEditTarget.field;
+                      const value = event.target.value;
+                      updateSelectedPage((current) => ({ ...current, [field]: value }));
+                    }}
+                    onBlur={() => setTextEditTarget(null)}
+                  />
+                </label>
+              </div>
+            ) : null}
         </main>
 
         <EditorContentSidebar
@@ -1457,6 +1625,8 @@ export function EditorPage() {
           handleDeleteAsset={handleDeleteAsset}
           handleRetryAssetMirror={handleRetryAssetMirror}
           handleUploadFiles={handleUploadFilesWithLimit}
+          importUrlBusy={importUrlBusy}
+          onImportFromUrl={handleImportFromUrl}
           handleZoomInputChange={handleZoomInputChange}
           libraryAssets={libraryAssets}
           nudgeSelectedCrop={nudgeSelectedCrop}

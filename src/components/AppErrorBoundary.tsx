@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { translate as t } from '../i18n';
 
 type AppErrorBoundaryState = {
   error: Error | null;
@@ -12,7 +13,7 @@ export class AppErrorBoundary extends Component<{ children: ReactNode }, AppErro
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('FinalFolio render failure', error, info.componentStack);
+    console.error(t('FinalFolio render failure'), error, info.componentStack);
   }
 
   private handleReload = () => {

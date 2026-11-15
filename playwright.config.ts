@@ -3,6 +3,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
+
+// Keep the production throttle defaults intact while letting this suite sign in
+// repeatedly with the same seeded account. The throttle test reads this value.
+process.env.FINALFOLIO_LOGIN_IDENTIFIER_LIMIT ??= '200';
+process.env.FINALFOLIO_LOGIN_IP_LIMIT ??= '400';
 const dataRoot = '/tmp/finalfolio-playwright-data';
 
 export default defineConfig({
@@ -40,6 +45,10 @@ export default defineConfig({
     env: {
       PORT: '4173',
       FINALFOLIO_DATA_ROOT: dataRoot,
+      // The suite signs in repeatedly with the same seeded account; keep the
+      // production throttle defaults intact but lift them for this test server.
+      FINALFOLIO_LOGIN_IDENTIFIER_LIMIT: '200',
+      FINALFOLIO_LOGIN_IP_LIMIT: '400',
     },
   },
 });

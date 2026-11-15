@@ -1,3 +1,4 @@
+import { useT } from '../i18n';
 import {
   CSSProperties,
   KeyboardEvent as ReactKeyboardEvent,
@@ -34,7 +35,11 @@ interface MagazinePreviewProps {
   onAssignDroppedAsset?: (slot: string, assetId: string) => void;
   onUpdateCrop?: (slot: string, updater: (crop: CropSettings) => CropSettings) => void;
   onCropMetricsChange?: (slot: string, metrics: { maxOffsetX: number; maxOffsetY: number } | null) => void;
+  onTextEditRequest?: (field: 'kicker' | 'title' | 'deck' | 'body' | 'caption', element: HTMLElement) => void;
+  localizeContent?: boolean;
 }
+
+type PageTextField = 'kicker' | 'title' | 'deck' | 'body' | 'caption';
 
 const eastAsianTextPattern = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uac00-\ud7af]/;
 
@@ -148,6 +153,7 @@ function AssetFrame({
   className?: string;
   hintLabel?: string;
 }) {
+  const t = useT();
   const assetId = page.slots[slot];
   const asset = assetId ? assets[assetId] : null;
   const assetSource = getAssetSource(asset, assetVariant);
@@ -364,19 +370,19 @@ function AssetFrame({
     }
 
     switch (event.key) {
-      case 'ArrowLeft':
+      case t('ArrowLeft'):
         event.preventDefault();
         nudgeCropByPixels('x', -cropNudgeStep);
         return;
-      case 'ArrowRight':
+      case t('ArrowRight'):
         event.preventDefault();
         nudgeCropByPixels('x', cropNudgeStep);
         return;
-      case 'ArrowUp':
+      case t('ArrowUp'):
         event.preventDefault();
         nudgeCropByPixels('y', -cropNudgeStep);
         return;
-      case 'ArrowDown':
+      case t('ArrowDown'):
         event.preventDefault();
         nudgeCropByPixels('y', cropNudgeStep);
         return;
@@ -427,7 +433,7 @@ function AssetFrame({
             }
           />
         ) : interactive ? (
-          <span className="asset-frame__placeholder">Drop a photo here</span>
+          <span className="asset-frame__placeholder">{t('Drop a photo here')}</span>
         ) : null}
       </div>
       {interactive ? <span className="asset-frame__hint">{slotHint}</span> : null}
@@ -457,7 +463,7 @@ function AssetFrame({
       data-frame-ready={frameReady ? 'true' : 'false'}
       data-geometry-ready={geometryReady ? 'true' : 'false'}
       aria-label={`Select the ${slotHint} frame`}
-      title={canAdjustCrop ? 'Drag to move the photo naturally. Arrow keys nudge. Use the wheel or +/- to zoom.' : undefined}
+      title={canAdjustCrop ? t('Drag to move the photo naturally. Arrow keys nudge. Use the wheel or +/- to zoom.') : undefined}
       onClick={() => onSelectSlot?.(slot)}
       onPointerDown={startCropInteraction}
       onDragStart={(event) => event.preventDefault()}
@@ -477,7 +483,7 @@ function AssetFrame({
       }}
       onDrop={(event) => {
         event.preventDefault();
-        const droppedAssetId = event.dataTransfer.getData('text/finalfolio-asset');
+        const droppedAssetId = event.dataTransfer.getData(t('text/finalfolio-asset'));
         if (droppedAssetId) {
           onAssignDroppedAsset?.(slot, droppedAssetId);
         }
@@ -502,8 +508,32 @@ export function MagazinePreview({
   onAssignDroppedAsset,
   onUpdateCrop,
   onCropMetricsChange,
+  onTextEditRequest,
+  localizeContent,
 }: MagazinePreviewProps) {
+  const t = useT();
   const customTemplate = page.customTemplate;
+
+  // Inline stage editing: when the editor passes a text-edit callback, clicking a
+  // text block opens the anchored field editor instead of being static copy.
+  const renderText = (field: PageTextField) => {
+    if (!onTextEditRequest) {
+      return localizeContent ? t(page[field]) : page[field];
+    }
+    return (
+      <span
+        className="magazine-editable"
+        role="button"
+        tabIndex={-1}
+        onClick={(event) => {
+          event.stopPropagation();
+          onTextEditRequest(field, event.currentTarget);
+        }}
+      >
+        {page[field]}
+      </span>
+    );
+  };
   const pageHasEastAsianCopy = hasEastAsianText(
     issue,
     page.title,
@@ -554,9 +584,9 @@ export function MagazinePreview({
         <div className="magazine-cover">
           <div className="magazine-cover__image">{renderSlot('hero')}</div>
           <div className="magazine-cover__copy magazine-heading-block">
-            {hasDeck ? <p className="magazine-kicker">{page.deck}</p> : null}
-            <h2>{page.title}</h2>
-            {hasCaption ? <p>{page.caption}</p> : null}
+            {hasDeck ? <p className="magazine-kicker">{renderText('deck')}</p> : null}
+            <h2>{renderText('title')}</h2>
+            {hasCaption ? <p>{renderText('caption')}</p> : null}
           </div>
         </div>
       ) : null}
@@ -566,12 +596,12 @@ export function MagazinePreview({
           <div className="magazine-essay__visual">{renderSlot('hero')}</div>
           <div className="magazine-essay__copy">
             <div className="magazine-essay__headline magazine-heading-block">
-              {hasKicker ? <p className="magazine-kicker">{page.kicker}</p> : null}
-              <h2>{page.title}</h2>
-              {hasDeck ? <p className="magazine-essay__deck">{page.deck}</p> : null}
+              {hasKicker ? <p className="magazine-kicker">{renderText('kicker')}</p> : null}
+              <h2>{renderText('title')}</h2>
+              {hasDeck ? <p className="magazine-essay__deck">{renderText('deck')}</p> : null}
             </div>
-            {hasBody ? <p className="magazine-essay__body">{page.body}</p> : null}
-            {hasCaption ? <footer>{page.caption}</footer> : null}
+            {hasBody ? <p className="magazine-essay__body">{renderText('body')}</p> : null}
+            {hasCaption ? <footer>{renderText('caption')}</footer> : null}
           </div>
         </div>
       ) : null}
@@ -580,32 +610,32 @@ export function MagazinePreview({
         <div className="magazine-folio">
           <div className="magazine-folio__header">
             <div className="magazine-heading-block">
-              {hasKicker ? <p className="magazine-kicker">{page.kicker}</p> : null}
-              <h2>{page.title}</h2>
+              {hasKicker ? <p className="magazine-kicker">{renderText('kicker')}</p> : null}
+              <h2>{renderText('title')}</h2>
             </div>
-            {hasDeck ? <p>{page.deck}</p> : null}
+            {hasDeck ? <p>{renderText('deck')}</p> : null}
           </div>
           <div className="magazine-folio__visual">{renderSlot('hero')}</div>
-          {hasCaption ? <footer>{page.caption}</footer> : null}
+          {hasCaption ? <footer>{renderText('caption')}</footer> : null}
         </div>
       ) : null}
 
       {page.template === 'grid' ? (
         <div className="magazine-grid">
           <div className="magazine-grid__copy magazine-heading-block">
-            {hasKicker ? <p className="magazine-kicker">{page.kicker}</p> : null}
-            <h2>{page.title}</h2>
+            {hasKicker ? <p className="magazine-kicker">{renderText('kicker')}</p> : null}
+            <h2>{renderText('title')}</h2>
           </div>
           <div className="magazine-grid__frames">
-            {renderSlot('a', { hintLabel: 'Frame A' })}
-            {renderSlot('b', { hintLabel: 'Frame B' })}
-            {renderSlot('c', { hintLabel: 'Frame C' })}
-            {renderSlot('d', { hintLabel: 'Frame D' })}
+            {renderSlot('a', { hintLabel: t('Frame A') })}
+            {renderSlot('b', { hintLabel: t('Frame B') })}
+            {renderSlot('c', { hintLabel: t('Frame C') })}
+            {renderSlot('d', { hintLabel: t('Frame D') })}
           </div>
           {hasBody || hasCaption ? (
             <div className="magazine-grid__footer">
-              {hasBody ? <p className="magazine-grid__body">{page.body}</p> : null}
-              {hasCaption ? <footer>{page.caption}</footer> : null}
+              {hasBody ? <p className="magazine-grid__body">{renderText('body')}</p> : null}
+              {hasCaption ? <footer>{renderText('caption')}</footer> : null}
             </div>
           ) : null}
         </div>
@@ -615,19 +645,19 @@ export function MagazinePreview({
         <div className="magazine-diptych">
           <div className="magazine-diptych__header">
             <div className="magazine-heading-block">
-              {hasKicker ? <p className="magazine-kicker">{page.kicker}</p> : null}
-              <h2>{page.title}</h2>
+              {hasKicker ? <p className="magazine-kicker">{renderText('kicker')}</p> : null}
+              <h2>{renderText('title')}</h2>
             </div>
-            {hasDeck ? <p>{page.deck}</p> : null}
+            {hasDeck ? <p>{renderText('deck')}</p> : null}
           </div>
           <div className="magazine-diptych__frames">
-            {renderSlot('left', { hintLabel: 'Left frame' })}
-            {renderSlot('right', { hintLabel: 'Right frame' })}
+            {renderSlot('left', { hintLabel: t('Left frame') })}
+            {renderSlot('right', { hintLabel: t('Right frame') })}
           </div>
           {hasBody || hasCaption ? (
             <div className="magazine-diptych__footer">
-              {hasBody ? <p className="magazine-diptych__body">{page.body}</p> : null}
-              {hasCaption ? <footer>{page.caption}</footer> : null}
+              {hasBody ? <p className="magazine-diptych__body">{renderText('body')}</p> : null}
+              {hasCaption ? <footer>{renderText('caption')}</footer> : null}
             </div>
           ) : null}
         </div>
@@ -637,38 +667,38 @@ export function MagazinePreview({
         <div className="magazine-panorama">
           <div className="magazine-panorama__header">
             <div className="magazine-heading-block">
-              {hasKicker ? <p className="magazine-kicker">{page.kicker}</p> : null}
-              <h2>{page.title}</h2>
+              {hasKicker ? <p className="magazine-kicker">{renderText('kicker')}</p> : null}
+              <h2>{renderText('title')}</h2>
             </div>
-            {hasDeck ? <p>{page.deck}</p> : null}
+            {hasDeck ? <p>{renderText('deck')}</p> : null}
           </div>
           <div className="magazine-panorama__frames">
-            {renderSlot('top', { hintLabel: 'Top frame' })}
-            {renderSlot('bottom', { hintLabel: 'Bottom frame' })}
+            {renderSlot('top', { hintLabel: t('Top frame') })}
+            {renderSlot('bottom', { hintLabel: t('Bottom frame') })}
           </div>
-          {hasCaption ? <footer>{page.caption}</footer> : null}
+          {hasCaption ? <footer>{renderText('caption')}</footer> : null}
         </div>
       ) : null}
 
       {page.template === 'mosaic' ? (
         <div className="magazine-mosaic">
           <div className="magazine-mosaic__frames">
-            <div className="magazine-mosaic__lead">{renderSlot('lead', { hintLabel: 'Lead frame' })}</div>
+            <div className="magazine-mosaic__lead">{renderSlot('lead', { hintLabel: t('Lead frame') })}</div>
             <div className="magazine-mosaic__support">
-              {renderSlot('top', { hintLabel: 'Support frame A' })}
-              {renderSlot('bottom', { hintLabel: 'Support frame B' })}
+              {renderSlot('top', { hintLabel: t('Support frame A') })}
+              {renderSlot('bottom', { hintLabel: t('Support frame B') })}
             </div>
           </div>
-          <div className={`magazine-mosaic__band ${hasBody || hasCaption ? '' : 'magazine-mosaic__band--compact'}`.trim()}>
+          <div className={`magazine-mosaic__band ${hasBody || hasCaption ? '' : t('magazine-mosaic__band--compact')}`.trim()}>
             <div className="magazine-mosaic__headline magazine-heading-block">
-              {hasKicker ? <p className="magazine-kicker">{page.kicker}</p> : null}
-              <h2>{page.title}</h2>
-              {hasDeck ? <p className="magazine-mosaic__deck">{page.deck}</p> : null}
+              {hasKicker ? <p className="magazine-kicker">{renderText('kicker')}</p> : null}
+              <h2>{renderText('title')}</h2>
+              {hasDeck ? <p className="magazine-mosaic__deck">{renderText('deck')}</p> : null}
             </div>
             {hasBody || hasCaption ? (
               <div className="magazine-mosaic__notes">
-                {hasBody ? <p className="magazine-mosaic__body">{page.body}</p> : null}
-                {hasCaption ? <footer>{page.caption}</footer> : null}
+                {hasBody ? <p className="magazine-mosaic__body">{renderText('body')}</p> : null}
+                {hasCaption ? <footer>{renderText('caption')}</footer> : null}
               </div>
             ) : null}
           </div>
@@ -678,20 +708,20 @@ export function MagazinePreview({
       {page.template === 'triptych' ? (
         <div className="magazine-triptych">
           <div className="magazine-triptych__frames">
-            {renderSlot('a', { hintLabel: 'Frame A' })}
-            {renderSlot('b', { hintLabel: 'Frame B' })}
-            {renderSlot('c', { hintLabel: 'Frame C' })}
+            {renderSlot('a', { hintLabel: t('Frame A') })}
+            {renderSlot('b', { hintLabel: t('Frame B') })}
+            {renderSlot('c', { hintLabel: t('Frame C') })}
           </div>
-          <div className={`magazine-triptych__footer ${hasTriptychAside ? '' : 'magazine-triptych__footer--compact'}`.trim()}>
+          <div className={`magazine-triptych__footer ${hasTriptychAside ? '' : t('magazine-triptych__footer--compact')}`.trim()}>
             <div className="magazine-triptych__copy magazine-heading-block">
-              {hasKicker ? <p className="magazine-kicker">{page.kicker}</p> : null}
-              <h2>{page.title}</h2>
+              {hasKicker ? <p className="magazine-kicker">{renderText('kicker')}</p> : null}
+              <h2>{renderText('title')}</h2>
             </div>
             {hasTriptychAside ? (
               <div className="magazine-triptych__aside">
-                {hasDeck ? <p className="magazine-triptych__deck">{page.deck}</p> : null}
-                {hasBody ? <p className="magazine-triptych__body">{page.body}</p> : null}
-                {hasCaption ? <footer>{page.caption}</footer> : null}
+                {hasDeck ? <p className="magazine-triptych__deck">{renderText('deck')}</p> : null}
+                {hasBody ? <p className="magazine-triptych__body">{renderText('body')}</p> : null}
+                {hasCaption ? <footer>{renderText('caption')}</footer> : null}
               </div>
             ) : null}
           </div>
@@ -703,18 +733,18 @@ export function MagazinePreview({
           <div className="magazine-custom__canvas">
             {customTemplate.frames.map((frame) => (
               <div key={frame.slot} className="magazine-custom__frame" style={areaStyle(frame)}>
-                {renderSlot(frame.slot, { className: 'magazine-custom__asset-frame', hintLabel: frame.label })}
+                {renderSlot(frame.slot, { className: t('magazine-custom__asset-frame'), hintLabel: frame.label })}
               </div>
             ))}
             <section className="magazine-custom__text" style={areaStyle(customTemplate.text)}>
               <span className="magazine-custom__label">{customTemplate.name}</span>
               <div className="magazine-heading-block">
-                {hasKicker ? <p className="magazine-kicker">{page.kicker}</p> : null}
-                <h2>{page.title}</h2>
-                {hasDeck ? <p className="magazine-custom__deck">{page.deck}</p> : null}
+                {hasKicker ? <p className="magazine-kicker">{renderText('kicker')}</p> : null}
+                <h2>{renderText('title')}</h2>
+                {hasDeck ? <p className="magazine-custom__deck">{renderText('deck')}</p> : null}
               </div>
-              {hasBody ? <p className="magazine-custom__body">{page.body}</p> : null}
-              {hasCaption ? <footer>{page.caption}</footer> : null}
+              {hasBody ? <p className="magazine-custom__body">{renderText('body')}</p> : null}
+              {hasCaption ? <footer>{renderText('caption')}</footer> : null}
             </section>
           </div>
         </div>

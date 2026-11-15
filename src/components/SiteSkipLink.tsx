@@ -1,7 +1,8 @@
+import { useT } from '../i18n';
 export function SiteSkipLink() {
+  const t = useT();
   return (
     <a className="skip-link" href="#main-content">
-      Skip to content
-    </a>
+      {t('Skip to content')}</a>
   );
 }

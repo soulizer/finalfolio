@@ -14,6 +14,7 @@ import {
   PROJECT_SUBTITLE_LIMIT,
   PROJECT_TITLE_LIMIT,
 } from './limits';
+import { translate } from '../i18n';
 import {
   Asset,
   CropSettings,
@@ -463,7 +464,7 @@ export function templateUsesBody(template: TemplateId, customTemplate?: CustomTe
   return templateFieldSupport[template].body;
 }
 
-const pageStarters: Record<TemplateId, Omit<PageData, 'id' | 'slots' | 'crops' | 'template' | 'customTemplate' | 'theme'>> = {
+export const pageStarters: Record<TemplateId, Omit<PageData, 'id' | 'slots' | 'crops' | 'template' | 'customTemplate' | 'theme'>> = {
   cover: {
     kicker: 'Cover',
     title: 'Untitled Project',
@@ -877,16 +878,23 @@ function createStarterPage(template: TemplateId, id: string, customTemplate?: Cu
   const normalizedCustomTemplate = template === 'custom' ? cloneCustomTemplateDefinition(customTemplate) : null;
   const slots = getTemplateSlots(template, normalizedCustomTemplate);
   const starter = pageStarters[template];
+  const localizedStarter = {
+    kicker: translate(starter.kicker),
+    title: translate(starter.title),
+    deck: translate(starter.deck),
+    body: translate(starter.body),
+    caption: translate(starter.caption),
+  };
 
   return {
     id,
     template,
     theme: defaultPageTheme,
-    kicker: starter.kicker,
-    title: starter.title,
-    deck: starter.deck,
-    body: starter.body,
-    caption: starter.caption,
+    kicker: localizedStarter.kicker,
+    title: localizedStarter.title,
+    deck: localizedStarter.deck,
+    body: localizedStarter.body,
+    caption: localizedStarter.caption,
     customTemplate: normalizedCustomTemplate,
     slots: Object.fromEntries(slots.map((slot) => [slot, null])),
     crops: Object.fromEntries(slots.map((slot) => [slot, createDefaultCrop()])),
@@ -1032,12 +1040,11 @@ export function createPagesFromTemplatePack(
 
 export function createDefaultProject(): ProjectState {
   return {
-    title: 'Untitled Project'.slice(0, PROJECT_TITLE_LIMIT),
-    subtitle: 'Upload photographs, shape the sequence page by page, then print only the finished magazine pages.'.slice(
-      0,
-      PROJECT_SUBTITLE_LIMIT,
-    ),
-    issue: 'Folio 01'.slice(0, PROJECT_ISSUE_LIMIT),
+    title: translate('Untitled Project').slice(0, PROJECT_TITLE_LIMIT),
+    subtitle: translate(
+      'Upload photographs, shape the sequence page by page, then print only the finished magazine pages.',
+    ).slice(0, PROJECT_SUBTITLE_LIMIT),
+    issue: translate('Folio 01').slice(0, PROJECT_ISSUE_LIMIT),
     frameRadius: PROJECT_FRAME_RADIUS_DEFAULT,
     assets: [],
     pages: createPagesFromTemplatePack(defaultTemplatePackId),

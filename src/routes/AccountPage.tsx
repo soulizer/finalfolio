@@ -1,4 +1,5 @@
 
+import { useT } from '../i18n';
 import { confirmAction } from '../ui/confirm';
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -42,6 +43,7 @@ import { ACCOUNT_SECTIONS, normalizeAccountSection, type AccountSectionKey } fro
 import { useAccountWorkspace } from './account/useAccountWorkspace';
 
 export function AccountPage() {
+  const t = useT();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeSection = normalizeAccountSection(searchParams.get('section'));
@@ -160,14 +162,14 @@ export function AccountPage() {
     await logoutUser();
     setSessionUser(null);
     clearWorkspace();
-    setMessage('Signed out.');
+    setMessage(t('Signed out.'));
   }
 
   async function handleDeleteProject(projectId: string) {
     const confirmed = await confirmAction({
-      title: 'Delete this folio?',
+      title: t('Delete this folio?'),
       body: `${getConfirmationMessage('deleteProject')} Photos that no other folio uses are removed too.`,
-      confirmLabel: 'Delete folio',
+      confirmLabel: t('Delete folio'),
       tone: 'danger',
     });
     if (!confirmed) {
@@ -184,9 +186,9 @@ export function AccountPage() {
         stopEditingProject();
       }
       await refreshAll();
-      setMessage('Project deleted.');
+      setMessage(t('Project deleted.'));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to delete project.');
+      setMessage(error instanceof Error ? error.message : t('Unable to delete project.'));
     } finally {
       setProjectBusyId(null);
       setProjectBusyAction(null);
@@ -222,7 +224,7 @@ export function AccountPage() {
     const nextTitle = projectTitleDraft.trim();
     const nextIssue = projectIssueDraft.trim();
     if (!nextTitle || !nextIssue) {
-      setMessage('Project title and folio mark are required.');
+      setMessage(t('Project title and folio mark are required.'));
       return;
     }
 
@@ -238,9 +240,9 @@ export function AccountPage() {
       });
       replaceProjectRecord(updatedProject);
       stopEditingProject();
-      setMessage('Project renamed.');
+      setMessage(t('Project renamed.'));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to rename project.');
+      setMessage(error instanceof Error ? error.message : t('Unable to rename project.'));
     } finally {
       setProjectBusyId(null);
       setProjectBusyAction(null);
@@ -254,9 +256,9 @@ export function AccountPage() {
     try {
       const duplicated = await duplicateProject(project.id);
       replaceProjectRecord(duplicated);
-      setMessage('Project duplicated.');
+      setMessage(t('Project duplicated.'));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to duplicate project.');
+      setMessage(error instanceof Error ? error.message : t('Unable to duplicate project.'));
     } finally {
       setProjectBusyId(null);
       setProjectBusyAction(null);
@@ -270,9 +272,9 @@ export function AccountPage() {
     try {
       const updatedProject = await patchProject(project.id, nextArchived ? { archive: true } : { unarchive: true });
       replaceProjectRecord(updatedProject);
-      setMessage(nextArchived ? 'Project archived.' : 'Project restored.');
+      setMessage(nextArchived ? t('Project archived.') : t('Project restored.'));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to update archive status.');
+      setMessage(error instanceof Error ? error.message : t('Unable to update archive status.'));
     } finally {
       setProjectBusyId(null);
       setProjectBusyAction(null);
@@ -287,9 +289,9 @@ export function AccountPage() {
     try {
       const updatedProject = await enableProjectShare(project.id);
       replaceProjectRecord(updatedProject);
-      setMessage('Share link enabled.');
+      setMessage(t('Share link enabled.'));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to enable sharing.');
+      setMessage(error instanceof Error ? error.message : t('Unable to enable sharing.'));
     } finally {
       setProjectBusyId(null);
       setProjectBusyAction(null);
@@ -298,9 +300,9 @@ export function AccountPage() {
 
   async function handleDisableShare(project: ProjectRecord) {
     const confirmed = await confirmAction({
-      title: 'Disable this share link?',
-      body: 'Anyone with the old public URL will lose access immediately.',
-      confirmLabel: 'Disable link',
+      title: t('Disable this share link?'),
+      body: t('Anyone with the old public URL will lose access immediately.'),
+      confirmLabel: t('Disable link'),
       tone: 'danger',
     });
     if (!confirmed) {
@@ -314,9 +316,9 @@ export function AccountPage() {
     try {
       const updatedProject = await disableProjectShare(project.id);
       replaceProjectRecord(updatedProject);
-      setMessage('Share link disabled.');
+      setMessage(t('Share link disabled.'));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to disable sharing.');
+      setMessage(error instanceof Error ? error.message : t('Unable to disable sharing.'));
     } finally {
       setProjectBusyId(null);
       setProjectBusyAction(null);
@@ -330,9 +332,9 @@ export function AccountPage() {
 
     try {
       await navigator.clipboard.writeText(buildAbsoluteUrl(project.share.path));
-      setMessage('Share link copied.');
+      setMessage(t('Share link copied.'));
     } catch {
-      setMessage('Unable to copy the share link.');
+      setMessage(t('Unable to copy the share link.'));
     }
   }
 
@@ -344,7 +346,7 @@ export function AccountPage() {
       const record = await createProjectFromUserTemplate(template.id);
       navigate(record.sharePath);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to create a new folio from this template.');
+      setMessage(error instanceof Error ? error.message : t('Unable to create a new folio from this template.'));
     } finally {
       setTemplateBusyId(null);
     }
@@ -357,9 +359,9 @@ export function AccountPage() {
     try {
       const payload = await duplicateUserTemplate(template.id);
       appendTemplateRecord(payload.template);
-      setMessage('Template duplicated.');
+      setMessage(t('Template duplicated.'));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to duplicate template.');
+      setMessage(error instanceof Error ? error.message : t('Unable to duplicate template.'));
     } finally {
       setTemplateBusyId(null);
     }
@@ -368,7 +370,7 @@ export function AccountPage() {
   async function handleSaveTemplate(template: UserTemplateRecord) {
     const nextName = templateNameDraft.trim();
     if (!nextName) {
-      setMessage('Template name is required.');
+      setMessage(t('Template name is required.'));
       return;
     }
 
@@ -382,9 +384,9 @@ export function AccountPage() {
       });
       replaceTemplateRecord(payload.template);
       stopEditingTemplate();
-      setMessage('Template updated.');
+      setMessage(t('Template updated.'));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to update template.');
+      setMessage(error instanceof Error ? error.message : t('Unable to update template.'));
     } finally {
       setTemplateBusyId(null);
     }
@@ -392,9 +394,9 @@ export function AccountPage() {
 
   async function handleDeleteTemplate(template: UserTemplateRecord) {
     const confirmed = await confirmAction({
-      title: 'Delete this template?',
+      title: t('Delete this template?'),
       body: `“${template.name}” will be removed from your saved templates. Folios created from it keep their current pages.`,
-      confirmLabel: 'Delete template',
+      confirmLabel: t('Delete template'),
       tone: 'danger',
     });
     if (!confirmed) {
@@ -410,9 +412,9 @@ export function AccountPage() {
       if (templateEditingId === template.id) {
         stopEditingTemplate();
       }
-      setMessage('Template deleted.');
+      setMessage(t('Template deleted.'));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to delete template.');
+      setMessage(error instanceof Error ? error.message : t('Unable to delete template.'));
     } finally {
       setTemplateBusyId(null);
     }
@@ -420,9 +422,9 @@ export function AccountPage() {
 
   async function handleDeleteUpload(upload: AccountUploadListItem) {
     const confirmed = await confirmAction({
-      title: 'Delete this upload?',
+      title: t('Delete this upload?'),
       body: getConfirmationMessage('deleteUpload', { filename: upload.filename }),
-      confirmLabel: 'Delete upload',
+      confirmLabel: t('Delete upload'),
       tone: 'danger',
     });
     if (!confirmed) {
@@ -440,9 +442,9 @@ export function AccountPage() {
         at: Date.now(),
       });
       await refreshAll();
-      setMessage('Upload deleted.');
+      setMessage(t('Upload deleted.'));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to delete upload.');
+      setMessage(error instanceof Error ? error.message : t('Unable to delete upload.'));
     } finally {
       setUploadBusyId(null);
     }
@@ -457,9 +459,9 @@ export function AccountPage() {
       const payload = await updateAccountProfile({ username: usernameDraft.trim() });
       setSessionUser(payload.user);
       setUsernameDraft(payload.user.username ?? '');
-      setMessage('Profile updated.');
+      setMessage(t('Profile updated.'));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to update profile.');
+      setMessage(error instanceof Error ? error.message : t('Unable to update profile.'));
     } finally {
       setSettingsBusy(false);
     }
@@ -473,9 +475,9 @@ export function AccountPage() {
     try {
       const payload = await updateAccountPreferences(preferences);
       setPreferences(payload.preferences);
-      setMessage('Preferences updated.');
+      setMessage(t('Preferences updated.'));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to update preferences.');
+      setMessage(error instanceof Error ? error.message : t('Unable to update preferences.'));
     } finally {
       setPreferencesBusy(false);
     }
@@ -484,7 +486,7 @@ export function AccountPage() {
   async function handleChangePassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (newPassword !== confirmPassword) {
-      setMessage('New password confirmation does not match.');
+      setMessage(t('New password confirmation does not match.'));
       return;
     }
 
@@ -497,9 +499,9 @@ export function AccountPage() {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      setMessage('Password updated.');
+      setMessage(t('Password updated.'));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to update password.');
+      setMessage(error instanceof Error ? error.message : t('Unable to update password.'));
     } finally {
       setSettingsBusy(false);
     }
@@ -512,9 +514,9 @@ export function AccountPage() {
     try {
       await retryOwnedAssetObjectStorageSync(upload.assetId);
       await refreshAll();
-      setMessage('Remote delivery retry queued.');
+      setMessage(t('Remote delivery retry queued.'));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to retry remote delivery.');
+      setMessage(error instanceof Error ? error.message : t('Unable to retry remote delivery.'));
     } finally {
       setUploadBusyId(null);
     }
@@ -540,12 +542,12 @@ export function AccountPage() {
           <section className="editor-panel admin-hero">
             <div className="editor-panel__heading">
               <div>
-                <p className="eyebrow">Account</p>
-                <h2>Account workspace.</h2>
-                <p className="panel-note admin-hero__lede">Checking the active session and loading projects, uploads, templates, and settings.</p>
+                <p className="eyebrow">{t('Account')}</p>
+                <h2>{t('Account workspace.')}</h2>
+                <p className="panel-note admin-hero__lede">{t('Checking the active session and loading projects, uploads, templates, and settings.')}</p>
               </div>
               <div className="admin-hero__meta">
-                <span className="panel-tag">Checking session</span>
+                <span className="panel-tag">{t('Checking session')}</span>
               </div>
             </div>
             <div className="loading-tab-strip" aria-hidden="true">
@@ -564,10 +566,10 @@ export function AccountPage() {
               <section className="editor-panel admin-panel">
                 <div className="editor-panel__heading">
                   <div>
-                    <p className="eyebrow">Overview</p>
-                    <h2>Your working set</h2>
+                    <p className="eyebrow">{t('Overview')}</p>
+                    <h2>{t('Your working set')}</h2>
                   </div>
-                  <span className="panel-tag">Loading</span>
+                  <span className="panel-tag">{t('Loading')}</span>
                 </div>
                 <LoadingStack lines={['title', 'line-long', 'line-full', 'line-medium']} />
               </section>
@@ -577,10 +579,10 @@ export function AccountPage() {
               <section className="editor-panel admin-panel">
                 <div className="editor-panel__heading">
                   <div>
-                    <p className="eyebrow">Recent activity</p>
-                    <h2>Recent activity</h2>
+                    <p className="eyebrow">{t('Recent activity')}</p>
+                    <h2>{t('Recent activity')}</h2>
                   </div>
-                  <span className="panel-tag">Loading</span>
+                  <span className="panel-tag">{t('Loading')}</span>
                 </div>
                 <LoadingStack lines={['line-full', 'line-long', 'line-medium']} />
               </section>
@@ -599,16 +601,14 @@ export function AccountPage() {
         <SitePageHeader current="account" accountPath="/auth" sessionReady={sessionReady} canAccessAdmin={false} />
 
         <section className="editor-empty-state">
-          <p className="eyebrow">Account</p>
-          <h1>Sign in to open your workspace.</h1>
-          <p>Projects, uploads, and account settings now live in a dedicated self-service backend.</p>
+          <p className="eyebrow">{t('Account')}</p>
+          <h1>{t('Sign in to open your workspace.')}</h1>
+          <p>{t('Projects, uploads, and account settings now live in a dedicated self-service backend.')}</p>
           <div className="editor-empty-state__actions">
             <button type="button" className="button button--primary" onClick={() => openRoute('/auth?next=/account')}>
-              Sign in
-            </button>
+              {t('Sign in')}</button>
             <button type="button" className="button button--ghost" onClick={() => openRoute('/')}>
-              Back home
-            </button>
+              {t('Back home')}</button>
           </div>
           {message ? <p>{message}</p> : null}
         </section>
@@ -620,7 +620,7 @@ export function AccountPage() {
 
   return (
     <div className="editor-shell editor-shell--site-page editor-shell--account">
-      <TransientNotice message={message} onDismiss={() => setMessage(null)} label="Account update" />
+      <TransientNotice message={message} onDismiss={() => setMessage(null)} label={t('Account update')} />
       <SitePageHeader
         current="account"
         signedIn
@@ -630,19 +630,17 @@ export function AccountPage() {
         actions={
           <>
             <button type="button" className="button button--ghost button--small" onClick={() => void refreshAll()} disabled={busy}>
-              Refresh
-            </button>
+              {t('Refresh')}</button>
             {session.role === 'admin' ? (
               <button type="button" className="button button--ghost button--small" onClick={() => openRoute('/admin')}>
-                Open admin
-              </button>
+                {t('Open admin')}</button>
             ) : null}
           </>
         }
       />
 
       <div id="main-content" className="admin-console account-console">
-        <h1 className="sr-only">Account workspace</h1>
+        <h1 className="sr-only">{t('Account workspace')}</h1>
         <AccountConsoleHeader
           activeSection={activeSection}
           selectSection={selectSection}

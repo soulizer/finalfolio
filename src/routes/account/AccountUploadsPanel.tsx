@@ -1,3 +1,4 @@
+import { useT } from '../../i18n';
 import {
   getAssetDeliveryLabel,
   getAssetDeliveryTooltip,
@@ -27,20 +28,21 @@ export function AccountUploadsPanel({
   uploadBusyId,
   uploadSearch,
 }: AccountUploadsPanelProps) {
+  const t = useT();
   return (
     <div className="admin-page admin-page--single">
       <section className="editor-panel admin-panel">
         <div className="editor-panel__heading">
           <div>
-            <p className="eyebrow">Uploads</p>
-            <h2>My uploads</h2>
+            <p className="eyebrow">{t('Uploads')}</p>
+            <h2>{t('My uploads')}</h2>
           </div>
           <span className="panel-tag">{filteredUploads.length}</span>
         </div>
         <label className="field admin-search-field">
-          <span>Search uploads</span>
+          <span>{t('Search uploads')}</span>
           <input
-            placeholder="Filename, title, or referenced project"
+            placeholder={t('Filename, title, or referenced project')}
             value={uploadSearch}
             onChange={(event) => setUploadSearch(event.target.value)}
           />
@@ -92,8 +94,7 @@ export function AccountUploadsPanel({
                         target="_blank"
                         rel="noreferrer"
                       >
-                        Open
-                      </a>
+                        {t('Open')}</a>
                       {upload.delivery.canRetry ? (
                         <button
                           type="button"
@@ -101,7 +102,7 @@ export function AccountUploadsPanel({
                           disabled={uploadBusyId === upload.assetId}
                           onClick={() => void handleRetryUpload(upload)}
                         >
-                          {uploadBusyId === upload.assetId ? 'Retrying…' : 'Retry mirror'}
+                          {uploadBusyId === upload.assetId ? t('Retrying…') : t('Retry mirror')}
                         </button>
                       ) : null}
                       <button
@@ -110,7 +111,7 @@ export function AccountUploadsPanel({
                         disabled={uploadBusyId === upload.assetId || upload.referencedProjectCount > 0}
                         onClick={() => void handleDeleteUpload(upload)}
                       >
-                        {uploadBusyId === upload.assetId ? 'Deleting…' : 'Delete'}
+                        {uploadBusyId === upload.assetId ? t('Deleting…') : t('Delete')}
                       </button>
                     </div>
                   </div>
@@ -118,8 +119,8 @@ export function AccountUploadsPanel({
               ))
             ) : (
               <article className="admin-list__empty">
-                <strong>No matching uploads</strong>
-                <p>Try a different filename, image title, or referenced project.</p>
+                <strong>{t('No matching uploads')}</strong>
+                <p>{t('Try a different filename, image title, or referenced project.')}</p>
               </article>
             )}
           </div>
@@ -129,7 +130,7 @@ export function AccountUploadsPanel({
               <>
                 <div className="admin-detail-card__header">
                   <div>
-                    <p className="eyebrow">Inspect</p>
+                    <p className="eyebrow">{t('Inspect')}</p>
                     <div className="admin-detail-card__title">
                       <h2 className="admin-row__title--truncate" title={selectedUpload.filename}>
                         {selectedUpload.name || selectedUpload.filename}
@@ -153,35 +154,35 @@ export function AccountUploadsPanel({
                 </div>
                 <div className="admin-detail-metrics">
                   <article>
-                    <span>Dimensions</span>
+                    <span>{t('Dimensions')}</span>
                     <strong>{formatDimensions(selectedUpload.width, selectedUpload.height)}</strong>
                   </article>
                   <article>
-                    <span>Uploaded</span>
+                    <span>{t('Uploaded')}</span>
                     <strong>{formatTimestamp(selectedUpload.createdAt)}</strong>
                   </article>
                   <article>
-                    <span>Updated</span>
+                    <span>{t('Updated')}</span>
                     <strong>{formatTimestamp(selectedUpload.updatedAt)}</strong>
                   </article>
                   <article>
-                    <span>Last used</span>
+                    <span>{t('Last used')}</span>
                     <strong>{formatTimestamp(selectedUpload.lastUsedAt)}</strong>
                   </article>
                   <article>
-                    <span>Projects</span>
+                    <span>{t('Projects')}</span>
                     <strong>{selectedUpload.referencedProjectCount}</strong>
                   </article>
                   <article>
-                    <span>Placed pages</span>
+                    <span>{t('Placed pages')}</span>
                     <strong>{selectedUpload.referencedPageCount}</strong>
                   </article>
                   <article>
-                    <span>Delivery</span>
+                    <span>{t('Delivery')}</span>
                     <strong>{getAssetDeliveryLabel(selectedUpload.delivery)}</strong>
                   </article>
                   <article>
-                    <span>Name</span>
+                    <span>{t('Name')}</span>
                     <strong>{selectedUpload.filename}</strong>
                   </article>
                 </div>
@@ -192,8 +193,7 @@ export function AccountUploadsPanel({
                     target="_blank"
                     rel="noreferrer"
                   >
-                    Open original
-                  </a>
+                    {t('Open original')}</a>
                   {selectedUpload.delivery.canRetry ? (
                     <button
                       type="button"
@@ -201,30 +201,30 @@ export function AccountUploadsPanel({
                       disabled={uploadBusyId === selectedUpload.assetId}
                       onClick={() => void handleRetryUpload(selectedUpload)}
                     >
-                      {uploadBusyId === selectedUpload.assetId ? 'Retrying…' : 'Retry mirror'}
+                      {uploadBusyId === selectedUpload.assetId ? t('Retrying…') : t('Retry mirror')}
                     </button>
                   ) : null}
                 </div>
                 <div className="admin-detail-section">
-                  <strong>Referenced projects</strong>
+                  <strong>{t('Referenced projects')}</strong>
                   <div className="admin-mini-list">
                     {selectedUpload.referencedProjectTitles.length ? (
                       selectedUpload.referencedProjectTitles.map((title) => (
                         <article key={title} className="admin-mini-list__item">
-                          <span>Project</span>
+                          <span>{t('Project')}</span>
                           <strong>{title}</strong>
                         </article>
                       ))
                     ) : (
-                      <p className="panel-note">No saved project currently references this upload.</p>
+                      <p className="panel-note">{t('No saved project currently references this upload.')}</p>
                     )}
                   </div>
                 </div>
               </>
             ) : (
               <div className="admin-detail-card__empty">
-                <strong>Select an upload</strong>
-                <p>Choose an upload from the list to inspect its preview, metadata, and placement status.</p>
+                <strong>{t('Select an upload')}</strong>
+                <p>{t('Choose an upload from the list to inspect its preview, metadata, and placement status.')}</p>
               </div>
             )}
           </aside>

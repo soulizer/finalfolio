@@ -1,3 +1,4 @@
+import { useT } from '../i18n';
 import type { CSSProperties, RefObject } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -48,16 +49,16 @@ export function IssueViewUnavailableState({
   loadError: string | null;
   shellClassName: string;
 }) {
+  const t = useT();
   return (
     <div className={`editor-shell ${shellClassName}`}>
       <section className="editor-empty-state">
-        <p className="eyebrow">Unavailable</p>
-        <h1>Shared folio not available.</h1>
-        <p>{loadError ?? 'This share link is unavailable or has been turned off.'}</p>
+        <p className="eyebrow">{t('Unavailable')}</p>
+        <h1>{t('Shared folio not available.')}</h1>
+        <p>{loadError ?? t('This share link is unavailable or has been turned off.')}</p>
         <div className="editor-empty-state__actions">
           <Link to="/" className="button button--primary">
-            Back home
-          </Link>
+            {t('Back home')}</Link>
         </div>
       </section>
     </div>

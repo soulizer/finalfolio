@@ -1,3 +1,4 @@
+import { useT } from '../../i18n';
 import type { AdminProjectListItem, ProductConfigPayload } from '../../editor/api';
 import { templateMeta, templatePacks } from '../../editor/demoData';
 import type { SiteContent, TemplateGovernance } from '../../product/types';
@@ -46,13 +47,14 @@ export function AdminGovernancePanel({
   updateWorkflow,
   updateWorkflowStep,
 }: AdminGovernancePanelProps) {
+  const t = useT();
   return (
     <div className="admin-page admin-page--governance">
       <section className="editor-panel admin-panel">
         <div className="editor-panel__heading">
           <div>
-            <p className="eyebrow">Templates</p>
-            <h2>Govern page types and starter packs</h2>
+            <p className="eyebrow">{t('Templates')}</p>
+            <h2>{t('Govern page types and starter packs')}</h2>
           </div>
           <span className="panel-tag">{enabledTemplateCount + enabledPackCount}</span>
         </div>
@@ -62,32 +64,32 @@ export function AdminGovernancePanel({
               {Object.entries(templateMeta).map(([templateId, meta]) => (
                 <article key={templateId} className="admin-config-row">
                   <div className="admin-config-row__copy">
-                    <strong>{meta.label}</strong>
-                    <p>{meta.description}</p>
+                    <strong>{t(meta.label)}</strong>
+                    <p>{t(meta.description)}</p>
                   </div>
                   <div className="admin-config-row__controls">
                     <div className="admin-config-row__toggles">
                       <AdminToggleField
-                        label="Enabled"
+                        label={t('Enabled')}
                         checked={templateGovernanceDraft.templates[templateId]?.enabled ?? true}
                         onChange={(checked) => updateTemplateSetting('templates', templateId, 'enabled', checked)}
                       />
                     </div>
                     <div className="admin-inline-field-stack">
-                      <AdminInlineField label="Order">
+                      <AdminInlineField label={t('Order')}>
                         <input
                           type="number"
                           value={templateGovernanceDraft.templates[templateId]?.order ?? 0}
                           onChange={(event) => updateTemplateSetting('templates', templateId, 'order', Number(event.target.value) || 0)}
                         />
                       </AdminInlineField>
-                      <AdminInlineField label="Category">
+                      <AdminInlineField label={t('Category')}>
                         <input
                           value={templateGovernanceDraft.templates[templateId]?.category ?? ''}
                           onChange={(event) => updateTemplateSetting('templates', templateId, 'category', event.target.value)}
                         />
                       </AdminInlineField>
-                      <AdminInlineField label="Tag">
+                      <AdminInlineField label={t('Tag')}>
                         <input
                           value={templateGovernanceDraft.templates[templateId]?.tag ?? ''}
                           onChange={(event) => updateTemplateSetting('templates', templateId, 'tag', event.target.value)}
@@ -102,37 +104,37 @@ export function AdminGovernancePanel({
               {Object.entries(templatePacks).map(([packId, pack]) => (
                 <article key={packId} className="admin-config-row">
                   <div className="admin-config-row__copy">
-                    <strong>{pack.label}</strong>
-                    <p>{pack.description}</p>
+                    <strong>{t(pack.label)}</strong>
+                    <p>{t(pack.description)}</p>
                   </div>
                   <div className="admin-config-row__controls">
                     <div className="admin-config-row__toggles">
                       <AdminToggleField
-                        label="Enabled"
+                        label={t('Enabled')}
                         checked={templateGovernanceDraft.packs[packId]?.enabled ?? true}
                         onChange={(checked) => updateTemplateSetting('packs', packId, 'enabled', checked)}
                       />
                       <AdminToggleField
-                        label="Featured"
+                        label={t('Featured')}
                         checked={templateGovernanceDraft.packs[packId]?.featured ?? false}
                         onChange={(checked) => updateTemplateSetting('packs', packId, 'featured', checked)}
                       />
                     </div>
                     <div className="admin-inline-field-stack">
-                      <AdminInlineField label="Order">
+                      <AdminInlineField label={t('Order')}>
                         <input
                           type="number"
                           value={templateGovernanceDraft.packs[packId]?.order ?? 0}
                           onChange={(event) => updateTemplateSetting('packs', packId, 'order', Number(event.target.value) || 0)}
                         />
                       </AdminInlineField>
-                      <AdminInlineField label="Category">
+                      <AdminInlineField label={t('Category')}>
                         <input
                           value={templateGovernanceDraft.packs[packId]?.category ?? ''}
                           onChange={(event) => updateTemplateSetting('packs', packId, 'category', event.target.value)}
                         />
                       </AdminInlineField>
-                      <AdminInlineField label="Tag">
+                      <AdminInlineField label={t('Tag')}>
                         <input
                           value={templateGovernanceDraft.packs[packId]?.tag ?? ''}
                           onChange={(event) => updateTemplateSetting('packs', packId, 'tag', event.target.value)}
@@ -150,8 +152,7 @@ export function AdminGovernancePanel({
                 onClick={() => void handleSaveTemplateGovernance()}
                 disabled={configBusy}
               >
-                Save template governance
-              </button>
+                {t('Save template governance')}</button>
             </div>
           </>
         ) : null}
@@ -160,21 +161,21 @@ export function AdminGovernancePanel({
       <section className="editor-panel admin-panel">
         <div className="editor-panel__heading">
           <div>
-            <p className="eyebrow">Site settings</p>
-            <h2>Homepage content and featured folio</h2>
+            <p className="eyebrow">{t('Site settings')}</p>
+            <h2>{t('Homepage content and featured folio')}</h2>
           </div>
-          <span className="panel-tag">{productConfig?.homepagePreview?.source === 'project' ? 'live preview' : 'demo fallback'}</span>
+          <span className="panel-tag">{productConfig?.homepagePreview?.source === 'project' ? t('live preview') : t('demo fallback')}</span>
         </div>
         {siteContentDraft ? (
           <div className="admin-settings-stack">
             <div className="admin-form-grid">
-              <AdminInlineField label="Hero eyebrow">
+              <AdminInlineField label={t('Hero eyebrow')}>
                 <input value={siteContentDraft.hero.eyebrow} onChange={(event) => updateSiteHero('eyebrow', event.target.value)} />
               </AdminInlineField>
-              <AdminInlineField label="Hero title" multiline stacked>
+              <AdminInlineField label={t('Hero title')} multiline stacked>
                 <textarea value={siteContentDraft.hero.title} onChange={(event) => updateSiteHero('title', event.target.value)} rows={3} />
               </AdminInlineField>
-              <AdminInlineField label="Hero lede" multiline stacked>
+              <AdminInlineField label={t('Hero lede')} multiline stacked>
                 <textarea value={siteContentDraft.hero.lede} onChange={(event) => updateSiteHero('lede', event.target.value)} rows={4} />
               </AdminInlineField>
             </div>
@@ -184,10 +185,10 @@ export function AdminGovernancePanel({
                 <article key={feature.id} className="admin-inline-card">
                   <strong>{`Feature ${index + 1}`}</strong>
                   <div className="admin-inline-field-stack">
-                    <AdminInlineField label="Title">
+                    <AdminInlineField label={t('Title')}>
                       <input value={feature.title} onChange={(event) => updateSiteFeature(index, 'title', event.target.value)} />
                     </AdminInlineField>
-                    <AdminInlineField label="Copy" multiline stacked>
+                    <AdminInlineField label={t('Copy')} multiline stacked>
                       <textarea value={feature.copy} onChange={(event) => updateSiteFeature(index, 'copy', event.target.value)} rows={4} />
                     </AdminInlineField>
                   </div>
@@ -196,10 +197,10 @@ export function AdminGovernancePanel({
             </div>
 
             <div className="admin-form-grid">
-              <AdminInlineField label="Workflow title" multiline stacked>
+              <AdminInlineField label={t('Workflow title')} multiline stacked>
                 <textarea value={siteContentDraft.workflow.title} onChange={(event) => updateWorkflow('title', event.target.value)} rows={3} />
               </AdminInlineField>
-              <AdminInlineField label="Workflow body" multiline stacked>
+              <AdminInlineField label={t('Workflow body')} multiline stacked>
                 <textarea value={siteContentDraft.workflow.body} onChange={(event) => updateWorkflow('body', event.target.value)} rows={4} />
               </AdminInlineField>
               {siteContentDraft.workflow.steps.map((step, index) => (
@@ -210,15 +211,15 @@ export function AdminGovernancePanel({
             </div>
 
             <div className="admin-form-grid">
-              <AdminInlineField label="Featured title">
+              <AdminInlineField label={t('Featured title')}>
                 <input value={siteContentDraft.featuredIssue.title} onChange={(event) => updateFeaturedIssue('title', event.target.value)} />
               </AdminInlineField>
-              <AdminInlineField label="Featured body" multiline stacked>
+              <AdminInlineField label={t('Featured body')} multiline stacked>
                 <textarea value={siteContentDraft.featuredIssue.body} onChange={(event) => updateFeaturedIssue('body', event.target.value)} rows={4} />
               </AdminInlineField>
-              <AdminInlineField label="Featured project">
+              <AdminInlineField label={t('Featured project')}>
                 <select value={siteContentDraft.featuredIssue.projectId ?? ''} onChange={(event) => updateFeaturedProjectId(event.target.value)}>
-                  <option value="">Built-in demo preview</option>
+                  <option value="">{t('Built-in demo preview')}</option>
                   {projects.map((project) => (
                     <option key={project.id} value={project.id}>
                       {`${project.issue} · ${project.title}`}
@@ -226,9 +227,9 @@ export function AdminGovernancePanel({
                   ))}
                 </select>
               </AdminInlineField>
-              <AdminInlineField label="Featured page IDs">
+              <AdminInlineField label={t('Featured page IDs')}>
                 <input
-                  placeholder="page-cover, page-essay"
+                  placeholder={t('page-cover, page-essay')}
                   value={siteContentDraft.featuredIssue.pageIds.join(', ')}
                   onChange={(event) => updateFeaturedPageIds(event.target.value)}
                 />
@@ -236,16 +237,16 @@ export function AdminGovernancePanel({
             </div>
 
             <div className="admin-form-grid">
-              <AdminInlineField label="CTA title">
+              <AdminInlineField label={t('CTA title')}>
                 <input value={siteContentDraft.cta.title} onChange={(event) => updateSiteCta('title', event.target.value)} />
               </AdminInlineField>
-              <AdminInlineField label="CTA body" multiline stacked>
+              <AdminInlineField label={t('CTA body')} multiline stacked>
                 <textarea value={siteContentDraft.cta.body} onChange={(event) => updateSiteCta('body', event.target.value)} rows={4} />
               </AdminInlineField>
-              <AdminInlineField label="Primary CTA">
+              <AdminInlineField label={t('Primary CTA')}>
                 <input value={siteContentDraft.cta.primaryLabel} onChange={(event) => updateSiteCta('primaryLabel', event.target.value)} />
               </AdminInlineField>
-              <AdminInlineField label="Secondary CTA">
+              <AdminInlineField label={t('Secondary CTA')}>
                 <input value={siteContentDraft.cta.secondaryLabel} onChange={(event) => updateSiteCta('secondaryLabel', event.target.value)} />
               </AdminInlineField>
             </div>
@@ -257,8 +258,7 @@ export function AdminGovernancePanel({
                 onClick={() => void handleSaveSiteContent()}
                 disabled={configBusy}
               >
-                Save site settings
-              </button>
+                {t('Save site settings')}</button>
             </div>
           </div>
         ) : null}

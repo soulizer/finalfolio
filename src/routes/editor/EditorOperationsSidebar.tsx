@@ -1,3 +1,4 @@
+import { useT } from '../../i18n';
 import type { UserSession } from '../../editor/api';
 import { getUserPrimaryIdentity } from '../../editor/identity';
 import {
@@ -139,39 +140,39 @@ export function EditorOperationsSidebar({
   updateFrameRadius,
   updateProject,
 }: EditorOperationsSidebarProps) {
+  const t = useT();
   const frameRadiusRoundThreshold = Math.max(PROJECT_FRAME_RADIUS_DEFAULT + 10, PROJECT_FRAME_RADIUS_MAX - 12);
   const frameRadiusLabel =
-    project.frameRadius <= 2 ? 'Square' : project.frameRadius >= frameRadiusRoundThreshold ? 'Round' : `${project.frameRadius}px`;
+    project.frameRadius <= 2 ? t('Square') : project.frameRadius >= frameRadiusRoundThreshold ? t('Round') : `${project.frameRadius}px`;
 
   return (
     <aside className="editor-sidebar editor-sidebar--operations">
       <section className="editor-panel editor-panel--account">
         <div className="editor-panel__heading">
           <div>
-            <p className="eyebrow">Account</p>
-            <h2>{authReady ? (session ? getUserPrimaryIdentity(session) : 'Sign in required') : 'Account'}</h2>
+            <p className="eyebrow">{t('Account')}</p>
+            <h2>{authReady ? (session ? getUserPrimaryIdentity(session) : t('Sign in required')) : t('Account')}</h2>
           </div>
-          <span className="panel-tag">{authReady ? (session ? `${session.role}` : 'Guest') : 'Session'}</span>
+          <span className="panel-tag">{authReady ? (session ? t(session.role) : t('Guest')) : t('Session')}</span>
         </div>
         <p className="panel-note">
           {!authReady
-            ? 'Keeping the current workspace warm while the shared session finishes loading.'
+            ? t('Keeping the current workspace warm while the shared session finishes loading.')
             : session
               ? hasGuestUploadAssets
                 ? guestUploadTransferBusy
-                  ? 'Recovered local photos are being attached to this account now. Saving will unlock as soon as that finishes.'
-                  : 'This account can save links and keep uploads. Recovered local photos below stay visible and will be attached to this account before saving.'
-                : 'Uploads, saved project links, and deletion governance now stay tied to this account.'
-              : 'Guest mode can stage uploads locally on this device and export, but saved or shareable links still require sign-in.'}
+                  ? t('Recovered local photos are being attached to this account now. Saving will unlock as soon as that finishes.')
+                  : t('This account can save links and keep uploads. Recovered local photos below stay visible and will be attached to this account before saving.')
+                : t('Uploads, saved project links, and deletion governance now stay tied to this account.')
+              : t('Guest mode can stage uploads locally on this device and export, but saved or shareable links still require sign-in.')}
         </p>
         <div className="editor-panel__actions editor-panel__actions--tight">
           <button type="button" className="button button--ghost button--small" onClick={onOpenAccountPage}>
-            {session ? 'My Account' : 'Sign in'}
+            {session ? t('My Account') : t('Sign in')}
           </button>
           {session?.role === 'admin' ? (
             <button type="button" className="button button--ghost button--small" onClick={onOpenAdminPage}>
-              Open admin
-            </button>
+              {t('Open admin')}</button>
           ) : null}
         </div>
       </section>
@@ -179,39 +180,36 @@ export function EditorOperationsSidebar({
       <section className="editor-panel editor-panel--project-actions">
         <div className="editor-panel__heading">
           <div>
-            <p className="eyebrow">Project</p>
+            <p className="eyebrow">{t('Project')}</p>
             <h2>{project.issue}</h2>
           </div>
           <span className="panel-tag">{projectModeTag}</span>
         </div>
-        <p className="panel-note panel-note--status">{statusText}</p>
+        <p className="panel-note panel-note--status">{t(statusText)}</p>
         {saveConflict ? (
           <div className="editor-conflict-notice" role="alert">
             <p>{saveConflict}</p>
             <button type="button" className="button button--primary button--small" onClick={onReloadLatest}>
-              Reload latest
-            </button>
+              {t('Reload latest')}</button>
           </div>
         ) : null}
-        <div className="editor-history-row" role="group" aria-label="Edit history">
+        <div className="editor-history-row" role="group" aria-label={t('Edit history')}>
           <button
             type="button"
             className="button button--ghost button--small editor-history-button"
             disabled={!canUndo}
             onClick={onUndo}
-            title="Undo (Ctrl+Z)"
+            title={t('Undo (Ctrl+Z)')}
           >
-            Undo
-          </button>
+            {t('Undo')}</button>
           <button
             type="button"
             className="button button--ghost button--small editor-history-button"
             disabled={!canRedo}
             onClick={onRedo}
-            title="Redo (Ctrl+Shift+Z)"
+            title={t('Redo (Ctrl+Shift+Z)')}
           >
-            Redo
-          </button>
+            {t('Redo')}</button>
         </div>
         <div className="editor-panel__actions editor-panel__actions--tight">
           <button
@@ -236,7 +234,7 @@ export function EditorOperationsSidebar({
             disabled={!projectRecord || Boolean(projectActionBusy) || !session}
             onClick={onDuplicateProject}
           >
-            {projectActionBusy === 'duplicate' ? 'Duplicating…' : 'Duplicate'}
+            {projectActionBusy === 'duplicate' ? t('Duplicating…') : t('Duplicate')}
           </button>
           <button
             type="button"
@@ -252,23 +250,21 @@ export function EditorOperationsSidebar({
             disabled={libraryBusy || exportActionBusy}
             onClick={onStartNewDraft}
           >
-            New draft
-          </button>
+            {t('New draft')}</button>
           <button
             type="button"
             className="button button--ghost button--small editor-project-action editor-project-action--wide"
             disabled={!session || templateSaveBusy}
             onClick={onToggleTemplateComposer}
           >
-            Save as template
-          </button>
+            {t('Save as template')}</button>
         </div>
         <div className="editor-project-url">
           <input
-            aria-label="Project URL"
+            aria-label={t('Project URL')}
             className="editor-project-bar__input"
             readOnly
-            value={projectRecord ? shareUrl : 'Save this folio to get a permanent link.'}
+            value={projectRecord ? shareUrl : t('Save this folio to get a permanent link.')}
           />
           <button
             type="button"
@@ -288,56 +284,54 @@ export function EditorOperationsSidebar({
         <section className="editor-panel__section">
           <div className="editor-section-heading">
             <div>
-              <p className="eyebrow">Share project</p>
-              <h3>Public viewer</h3>
+              <p className="eyebrow">{t('Share project')}</p>
+              <h3>{t('Public viewer')}</h3>
             </div>
-            <span className="panel-tag">{!projectRecord ? 'Save first' : projectRecord.share.enabled ? 'Live' : 'Off'}</span>
+            <span className="panel-tag">{!projectRecord ? t('Save first') : projectRecord.share.enabled ? t('Live') : t('Off')}</span>
           </div>
           <label className="field">
-            <span>Share link</span>
+            <span>{t('Share link')}</span>
             <input
               readOnly
               value={
                 !projectRecord
-                  ? 'Save this folio first to create a public viewer link.'
+                  ? t('Save this folio first to create a public viewer link.')
                   : projectRecord.share.enabled
                     ? publicShareUrl
                     : projectMutationLocked
-                      ? 'Duplicate this legacy folio into your account before enabling public sharing.'
-                      : 'Enable sharing to publish a read-only viewer.'
+                      ? t('Duplicate this legacy folio into your account before enabling public sharing.')
+                      : t('Enable sharing to publish a read-only viewer.')
               }
             />
           </label>
           <p className="panel-note">
             {projectRecord?.share.enabled
-              ? 'The public route opens a read-only folio viewer with swipe, drag, keyboard, and button navigation.'
+              ? t('The public route opens a read-only folio viewer with swipe, drag, keyboard, and button navigation.')
               : projectMutationLocked
-                ? 'Legacy ownerless folios can still be read, but only an owned duplicate can publish or change sharing.'
-                : 'The saved editor URL remains private. Enable sharing when this folio should be viewable outside the editor.'}
+                ? t('Legacy ownerless folios can still be read, but only an owned duplicate can publish or change sharing.')
+                : t('The saved editor URL remains private. Enable sharing when this folio should be viewable outside the editor.')}
           </p>
           <div className="editor-panel__actions editor-panel__actions--tight">
             {!projectRecord ? (
               <button type="button" className="button button--ghost button--small" disabled>
-                Save to share
-              </button>
+                {t('Save to share')}</button>
             ) : projectRecord.share.enabled ? (
               <>
                 <button type="button" className="button button--primary button--small" disabled={shareBusy} onClick={onOpenSharedProject}>
-                  Open shared
-                </button>
+                  {t('Open shared')}</button>
                 <button type="button" className="button button--ghost button--small" disabled={shareBusy} onClick={onCopyPublicShareLink}>
                   {publicShareCopyLabel}
                 </button>
                 <button type="button" className="button button--ghost button--small" disabled={shareBusy || projectMutationLocked} onClick={onRegenerateShare}>
-                  {shareBusy ? 'Updating…' : 'Regenerate'}
+                  {shareBusy ? t('Updating…') : t('Regenerate')}
                 </button>
                 <button type="button" className="button button--ghost button--small" disabled={shareBusy || projectMutationLocked} onClick={onDisableShare}>
-                  {shareBusy ? 'Updating…' : 'Disable'}
+                  {shareBusy ? t('Updating…') : t('Disable')}
                 </button>
               </>
             ) : (
               <button type="button" className="button button--primary button--small" disabled={shareBusy || projectMutationLocked} onClick={onEnableShare}>
-                {shareBusy ? 'Sharing…' : 'Share project'}
+                {shareBusy ? t('Sharing…') : t('Share project')}
               </button>
             )}
           </div>
@@ -347,40 +341,39 @@ export function EditorOperationsSidebar({
           <section className="editor-panel__section">
             <div className="editor-section-heading">
               <div>
-                <p className="eyebrow">Template</p>
-                <h3>Save to My templates</h3>
+                <p className="eyebrow">{t('Template')}</p>
+                <h3>{t('Save to My templates')}</h3>
               </div>
-              <span className="panel-tag">{templateSaveKind === 'page' ? 'Page template' : 'Project template'}</span>
+              <span className="panel-tag">{templateSaveKind === 'page' ? t('Page template') : t('Project template')}</span>
             </div>
             <p className="panel-note">
-              Save the current page or the whole folio as a reusable template. Page templates change one page at a time; project templates keep the full sequence.
-            </p>
+              {t('Save the current page or the whole folio as a reusable template. Page templates change one page at a time; project templates keep the full sequence.')}</p>
             <div className="template-grid template-grid--compact">
               <button
                 type="button"
                 className={`template-card ${templateSaveKind === 'page' ? 'is-active' : ''}`}
                 onClick={() => onTemplateSaveKindChange('page')}
               >
-                <span>Page template</span>
+                <span>{t('Page template')}</span>
                 <strong>{selectedPagePositionLabel}</strong>
-                <small>Save the selected page layout, theme, and optional copy.</small>
+                <small>{t('Save the selected page layout, theme, and optional copy.')}</small>
               </button>
               <button
                 type="button"
                 className={`template-card ${templateSaveKind === 'project' ? 'is-active' : ''}`}
                 onClick={() => onTemplateSaveKindChange('project')}
               >
-                <span>Project template</span>
+                <span>{t('Project template')}</span>
                 <strong>{sequenceLabel}</strong>
-                <small>Save the current page order and reusable folio structure.</small>
+                <small>{t('Save the current page order and reusable folio structure.')}</small>
               </button>
             </div>
             <label className="field">
-              <span>Template name</span>
+              <span>{t('Template name')}</span>
               <input value={templateSaveName} onChange={(event) => onTemplateSaveNameChange(event.target.value)} />
             </label>
             <label className="field">
-              <span>Description</span>
+              <span>{t('Description')}</span>
               <textarea rows={3} value={templateSaveDescription} onChange={(event) => onTemplateSaveDescriptionChange(event.target.value)} />
             </label>
             <label className="checkbox-field">
@@ -389,7 +382,7 @@ export function EditorOperationsSidebar({
                 checked={templatePreserveCopy}
                 onChange={(event) => onTemplatePreserveCopyChange(event.target.checked)}
               />
-              <span>Preserve the current folio title and page copy inside the template.</span>
+              <span>{t('Preserve the current folio title and page copy inside the template.')}</span>
             </label>
             <div className="editor-panel__actions editor-panel__actions--tight">
               <button
@@ -401,8 +394,7 @@ export function EditorOperationsSidebar({
                 {templateSaveActionLabel}
               </button>
               <button type="button" className="button button--ghost button--small" onClick={onCloseTemplateComposer}>
-                Cancel
-              </button>
+                {t('Cancel')}</button>
             </div>
           </section>
         ) : null}
@@ -410,12 +402,12 @@ export function EditorOperationsSidebar({
         <section className="editor-panel__section">
           <div className="editor-section-heading">
             <div>
-              <p className="eyebrow">Project info</p>
-              <h3>Folio details</h3>
+              <p className="eyebrow">{t('Project info')}</p>
+              <h3>{t('Folio details')}</h3>
             </div>
           </div>
           <label className="field">
-            <span>Title</span>
+            <span>{t('Title')}</span>
             <input
               maxLength={PROJECT_TITLE_LIMIT}
               value={project.title}
@@ -423,7 +415,7 @@ export function EditorOperationsSidebar({
             />
           </label>
           <label className="field">
-            <span>Subtitle</span>
+            <span>{t('Subtitle')}</span>
             <textarea
               rows={2}
               maxLength={PROJECT_SUBTITLE_LIMIT}
@@ -432,7 +424,7 @@ export function EditorOperationsSidebar({
             />
           </label>
           <label className="field">
-            <span>Folio mark</span>
+            <span>{t('Folio mark')}</span>
             <input
               maxLength={PROJECT_ISSUE_LIMIT}
               value={project.issue}
@@ -444,32 +436,29 @@ export function EditorOperationsSidebar({
         <section className="editor-panel__section">
           <div className="editor-section-heading">
             <div>
-              <p className="eyebrow">Folio style</p>
-              <h3>Image corners</h3>
+              <p className="eyebrow">{t('Folio style')}</p>
+              <h3>{t('Image corners')}</h3>
             </div>
             <span className="panel-tag">{frameRadiusLabel}</span>
           </div>
-          <div className="segmented-control segmented-control--three" role="group" aria-label="Image corner presets">
+          <div className="segmented-control segmented-control--three" role="group" aria-label={t('Image corner presets')}>
             <button type="button" className={project.frameRadius <= 2 ? 'is-active' : ''} onClick={() => updateFrameRadius(0)}>
-              Square
-            </button>
+              {t('Square')}</button>
             <button
               type="button"
               className={project.frameRadius > 2 && project.frameRadius < frameRadiusRoundThreshold ? 'is-active' : ''}
               onClick={() => updateFrameRadius(PROJECT_FRAME_RADIUS_DEFAULT)}
             >
-              Soft
-            </button>
+              {t('Soft')}</button>
             <button
               type="button"
               className={project.frameRadius >= frameRadiusRoundThreshold ? 'is-active' : ''}
               onClick={() => updateFrameRadius(PROJECT_FRAME_RADIUS_MAX)}
             >
-              Round
-            </button>
+              {t('Round')}</button>
           </div>
           <label className="field field--range">
-            <span>Corner radius</span>
+            <span>{t('Corner radius')}</span>
             <input
               type="range"
               min={PROJECT_FRAME_RADIUS_MIN}

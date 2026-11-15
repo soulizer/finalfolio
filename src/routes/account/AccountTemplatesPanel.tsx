@@ -1,3 +1,4 @@
+import { useT } from '../../i18n';
 import { TemplateIssuePreview } from '../../components/TemplateIssuePreview';
 import type { UserTemplateRecord } from '../../editor/types';
 import { formatTimestamp } from './accountFormatting';
@@ -37,20 +38,21 @@ export function AccountTemplatesPanel({
   templateNameDraft,
   templateSearch,
 }: AccountTemplatesPanelProps) {
+  const t = useT();
   return (
     <div className="admin-page admin-page--single">
       <section className="editor-panel admin-panel">
         <div className="editor-panel__heading">
           <div>
-            <p className="eyebrow">Templates</p>
-            <h2>My templates</h2>
+            <p className="eyebrow">{t('Templates')}</p>
+            <h2>{t('My templates')}</h2>
           </div>
           <span className="panel-tag">{filteredTemplates.length}</span>
         </div>
         <label className="field admin-search-field">
-          <span>Search templates</span>
+          <span>{t('Search templates')}</span>
           <input
-            placeholder="Template name, description, or source project"
+            placeholder={t('Template name, description, or source project')}
             value={templateSearch}
             onChange={(event) => setTemplateSearch(event.target.value)}
           />
@@ -66,11 +68,11 @@ export function AccountTemplatesPanel({
                     {isEditing ? (
                       <div className="template-library-card__form">
                         <label className="field">
-                          <span>Name</span>
+                          <span>{t('Name')}</span>
                           <input value={templateNameDraft} onChange={(event) => setTemplateNameDraft(event.target.value)} />
                         </label>
                         <label className="field">
-                          <span>Description</span>
+                          <span>{t('Description')}</span>
                           <textarea
                             rows={3}
                             value={templateDescriptionDraft}
@@ -83,14 +85,14 @@ export function AccountTemplatesPanel({
                         <div className="template-library-card__header">
                           <strong>{template.name}</strong>
                           <span className="admin-pill admin-pill--strong">
-                            {template.kind === 'page' ? 'Page template' : 'Project template'}
+                            {template.kind === 'page' ? t('Page template') : t('Project template')}
                           </span>
                         </div>
                         <p className="template-library-card__description">
-                          {template.description || 'Saved from the editor as a reusable folio scaffold.'}
+                          {template.description || t('Saved from the editor as a reusable folio scaffold.')}
                         </p>
                         <p className="template-library-card__meta">
-                          {`${template.templatePayload.pages.length} pages · ${template.includesCopy ? 'Includes copy' : 'Structure first'} · Updated ${formatTimestamp(template.updatedAt)}`}
+                          {`${template.templatePayload.pages.length} pages · ${template.includesCopy ? t('Includes copy') : t('Structure first')} · Updated ${formatTimestamp(template.updatedAt)}`}
                         </p>
                         {template.sourceProjectId ? <p className="template-library-card__meta">{`Source project ${template.sourceProjectId}`}</p> : null}
                       </>
@@ -105,11 +107,10 @@ export function AccountTemplatesPanel({
                           disabled={templateBusyId === template.id}
                           onClick={() => void handleSaveTemplate(template)}
                         >
-                          {templateBusyId === template.id ? 'Saving…' : 'Save'}
+                          {templateBusyId === template.id ? t('Saving…') : t('Save')}
                         </button>
                         <button type="button" className="button button--ghost button--small" onClick={stopEditingTemplate}>
-                          Cancel
-                        </button>
+                          {t('Cancel')}</button>
                       </>
                     ) : (
                       <>
@@ -119,18 +120,17 @@ export function AccountTemplatesPanel({
                           disabled={templateBusyId === template.id}
                           onClick={() => void handleOpenTemplate(template)}
                         >
-                          {templateBusyId === template.id ? 'Opening…' : 'Use template'}
+                          {templateBusyId === template.id ? t('Opening…') : t('Use template')}
                         </button>
                         <button type="button" className="button button--ghost button--small" onClick={() => startEditingTemplate(template)}>
-                          Rename
-                        </button>
+                          {t('Rename')}</button>
                         <button
                           type="button"
                           className="button button--ghost button--small"
                           disabled={templateBusyId === template.id}
                           onClick={() => void handleDuplicateTemplate(template)}
                         >
-                          {templateBusyId === template.id ? 'Working…' : 'Duplicate'}
+                          {templateBusyId === template.id ? t('Working…') : t('Duplicate')}
                         </button>
                         <button
                           type="button"
@@ -138,7 +138,7 @@ export function AccountTemplatesPanel({
                           disabled={templateBusyId === template.id}
                           onClick={() => void handleDeleteTemplate(template)}
                         >
-                          {templateBusyId === template.id ? 'Deleting…' : 'Delete'}
+                          {templateBusyId === template.id ? t('Deleting…') : t('Delete')}
                         </button>
                       </>
                     )}
@@ -148,8 +148,8 @@ export function AccountTemplatesPanel({
             })
           ) : (
             <article className="admin-list__empty">
-              <strong>No templates yet</strong>
-              <p>Save the current folio as a template from the editor, then manage and reuse it here.</p>
+              <strong>{t('No templates yet')}</strong>
+              <p>{t('Save the current folio as a template from the editor, then manage and reuse it here.')}</p>
             </article>
           )}
         </div>

@@ -1,3 +1,4 @@
+import { useT } from '../../i18n';
 import type { UserSession } from '../../editor/api';
 import { getUserPrimaryIdentity, getUserSecondaryIdentity } from '../../editor/identity';
 import { formatTimestamp } from './adminFormatting';
@@ -44,21 +45,22 @@ export function AdminUsersPanel({
   userActionTargetId,
   userSearch,
 }: AdminUsersPanelProps) {
+  const t = useT();
   return (
     <div className="admin-page admin-page--users">
       <section className="editor-panel admin-panel">
         <div className="editor-panel__heading">
           <div>
-            <p className="eyebrow">Create user</p>
-            <h2>Provision an active account</h2>
+            <p className="eyebrow">{t('Create user')}</p>
+            <h2>{t('Provision an active account')}</h2>
           </div>
-          <span className="panel-tag">Admin action</span>
+          <span className="panel-tag">{t('Admin action')}</span>
         </div>
-        <p className="panel-note">Admin-created accounts are activated immediately and bypass email verification.</p>
+        <p className="panel-note">{t('Admin-created accounts are activated immediately and bypass email verification.')}</p>
         <div className="admin-form-grid admin-form-grid--compact">
-          <AdminInlineField label="Username">
+          <AdminInlineField label={t('Username')}>
             <input
-              placeholder="3-40 letters, numbers, hyphen, underscore"
+              placeholder={t('3-40 letters, numbers, hyphen, underscore')}
               value={createUsername}
               onChange={(event) => setCreateUsername(event.target.value)}
               minLength={3}
@@ -66,26 +68,26 @@ export function AdminUsersPanel({
               pattern="[A-Za-z0-9](?:[A-Za-z0-9_-]{1,38}[A-Za-z0-9])?"
             />
           </AdminInlineField>
-          <AdminInlineField label="Email">
+          <AdminInlineField label={t('Email')}>
             <input
               type="email"
-              placeholder="name@example.com"
+              placeholder={t('name@example.com')}
               value={createUserEmail}
               onChange={(event) => setCreateUserEmail(event.target.value)}
             />
           </AdminInlineField>
-          <AdminInlineField label="Password">
+          <AdminInlineField label={t('Password')}>
             <input
               type="password"
-              placeholder="At least 8 characters"
+              placeholder={t('At least 8 characters')}
               value={createUserPassword}
               onChange={(event) => setCreateUserPassword(event.target.value)}
             />
           </AdminInlineField>
-          <AdminInlineField label="Role">
+          <AdminInlineField label={t('Role')}>
             <select value={createUserRole} onChange={(event) => setCreateUserRole(event.target.value as UserSession['role'])}>
-              <option value="user">User</option>
-              <option value="admin">Admin</option>
+              <option value="user">{t('User')}</option>
+              <option value="admin">{t('Admin')}</option>
             </select>
           </AdminInlineField>
         </div>
@@ -96,7 +98,7 @@ export function AdminUsersPanel({
             onClick={() => void handleCreateUser()}
             disabled={userActionBusy}
           >
-            {userActionBusy && userActionKind === 'create' ? 'Creating…' : 'Create active user'}
+            {userActionBusy && userActionKind === 'create' ? t('Creating…') : t('Create active user')}
           </button>
         </div>
       </section>
@@ -104,14 +106,14 @@ export function AdminUsersPanel({
       <section className="editor-panel admin-panel">
         <div className="editor-panel__heading">
           <div>
-            <p className="eyebrow">Users</p>
-            <h2>Accounts</h2>
+            <p className="eyebrow">{t('Users')}</p>
+            <h2>{t('Accounts')}</h2>
           </div>
           <span className="panel-tag">{filteredUsers.length}</span>
         </div>
         <label className="field admin-search-field">
-          <span>Search users</span>
-          <input placeholder="Username, email, or user ID" value={userSearch} onChange={(event) => setUserSearch(event.target.value)} />
+          <span>{t('Search users')}</span>
+          <input placeholder={t('Username, email, or user ID')} value={userSearch} onChange={(event) => setUserSearch(event.target.value)} />
         </label>
         <div className="admin-list">
           {filteredUsers.length ? (
@@ -128,12 +130,12 @@ export function AdminUsersPanel({
                 </div>
                 <div className="admin-row__aside">
                   <div className="admin-row__meta">
-                    <span className={`admin-pill ${user.role === 'admin' ? 'admin-pill--strong' : ''}`}>{user.role}</span>
+                    <span className={`admin-pill ${user.role === 'admin' ? 'admin-pill--strong' : ''}`}>{t(user.role)}</span>
                     <span className={`admin-pill ${user.status === 'active' ? 'admin-pill--success' : 'admin-pill--danger'}`}>
-                      {user.status}
+                      {t(user.status)}
                     </span>
                     <span className={`admin-pill ${user.emailVerifiedAt ? 'admin-pill--success' : 'admin-pill--warning'}`}>
-                      {user.emailVerifiedAt ? 'verified' : 'verification pending'}
+                      {user.emailVerifiedAt ? 'verified' : t('verification pending')}
                     </span>
                   </div>
                   <div className="admin-row__actions">
@@ -144,12 +146,12 @@ export function AdminUsersPanel({
                       onClick={() => void handleToggleUser(user)}
                     >
                       {userActionBusy && userActionTargetId === user.id && userActionKind === 'toggle'
-                        ? 'Saving…'
+                        ? t('Saving…')
                         : user.id === currentUserId && user.status === 'active'
-                          ? 'Current admin'
+                          ? t('Current admin')
                           : user.status === 'active'
-                            ? 'Disable'
-                            : 'Activate'}
+                            ? t('Disable')
+                            : t('Activate')}
                     </button>
                     <button
                       type="button"
@@ -157,7 +159,7 @@ export function AdminUsersPanel({
                       disabled={userActionBusy || user.id === currentUserId}
                       onClick={() => void handleDeleteUser(user)}
                     >
-                      {userActionBusy && userActionTargetId === user.id && userActionKind === 'delete' ? 'Deleting…' : 'Delete'}
+                      {userActionBusy && userActionTargetId === user.id && userActionKind === 'delete' ? t('Deleting…') : t('Delete')}
                     </button>
                   </div>
                 </div>
@@ -165,8 +167,8 @@ export function AdminUsersPanel({
             ))
           ) : (
             <article className="admin-list__empty">
-              <strong>No matching users</strong>
-              <p>Try a different username, email, or user ID.</p>
+              <strong>{t('No matching users')}</strong>
+              <p>{t('Try a different username, email, or user ID.')}</p>
             </article>
           )}
         </div>

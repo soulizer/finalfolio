@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useT } from '../i18n';
 
 const DISMISS_DELAY_MS = 3_000;
 const DISMISS_EVENTS = ['pointerdown', 'keydown', 'wheel', 'focusin'] as const;
@@ -6,12 +7,13 @@ const DISMISS_EVENTS = ['pointerdown', 'keydown', 'wheel', 'focusin'] as const;
 export function TransientNotice({
   message,
   onDismiss,
-  label = 'Notice',
+  label,
 }: {
   message: string | null;
   onDismiss: () => void;
   label?: string;
 }) {
+  const t = useT();
   const dismissRef = useRef(onDismiss);
   dismissRef.current = onDismiss;
 
@@ -51,8 +53,8 @@ export function TransientNotice({
   return (
     <div className="admin-notice-overlay" role="status" aria-live="polite" aria-atomic="true">
       <div className="admin-notice cookie-bar message-bar">
-        <span className="admin-notice__label">{label}</span>
-        <p>{message}</p>
+        <span className="admin-notice__label">{t(label ?? t('Notice'))}</span>
+        <p>{t(message)}</p>
       </div>
     </div>
   );

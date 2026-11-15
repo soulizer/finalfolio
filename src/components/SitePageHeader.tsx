@@ -1,5 +1,7 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useT } from '../i18n';
+import { LanguageToggle } from '../i18n/LanguageToggle';
 
 type SitePageKey = 'home' | 'auth' | 'account' | 'admin' | 'terms' | 'privacy' | 'not-found';
 
@@ -34,6 +36,7 @@ export function SitePageHeader({
   canAccessAdmin?: boolean;
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const t = useT();
 
   useEffect(() => {
     setMobileMenuOpen(false);
@@ -65,23 +68,23 @@ export function SitePageHeader({
   }, []);
 
   const nav = (
-    <nav className="site-nav site-nav--page" aria-label="Site navigation">
+    <nav className="site-nav site-nav--page" aria-label={t('Site navigation')}>
       <Link to="/" aria-current={current === 'home' ? 'page' : undefined}>
-        Home
+        {t('Home')}
       </Link>
       <Link to={accountPath} aria-current={current === 'auth' || current === 'account' ? 'page' : undefined}>
-        Account
+        {t('Account')}
       </Link>
       {canAccessAdmin ? (
         <Link to="/admin" aria-current={current === 'admin' ? 'page' : undefined}>
-          Admin
+          {t('Admin')}
         </Link>
       ) : null}
       <Link to="/terms" aria-current={current === 'terms' ? 'page' : undefined}>
-        Terms
+        {t('Terms')}
       </Link>
       <Link to="/privacy" aria-current={current === 'privacy' ? 'page' : undefined}>
-        Privacy
+        {t('Privacy')}
       </Link>
     </nav>
   );
@@ -90,13 +93,13 @@ export function SitePageHeader({
     ? signedIn && onSignOut
       ? (
         <button type="button" className="button button--ghost button--small" onClick={() => void onSignOut()}>
-          Sign out
+          {t('Sign out')}
         </button>
         )
       : current !== 'auth'
         ? (
           <Link className="button button--ghost button--small" to="/auth">
-            Sign in
+            {t('Sign in')}
           </Link>
           )
         : null
@@ -104,7 +107,7 @@ export function SitePageHeader({
 
   const editorAction = (
     <Link className="button button--primary button--small" to="/editor">
-      Open editor
+      {t('Open editor')}
     </Link>
   );
 
@@ -127,7 +130,7 @@ export function SitePageHeader({
           aria-controls={menuId}
           onClick={() => setMobileMenuOpen((currentValue) => !currentValue)}
         >
-          Menu
+          {t('Menu')}
         </button>
         <div
           id={menuId}
@@ -136,6 +139,7 @@ export function SitePageHeader({
           {nav}
           <div className="site-page-header__actions">
             {actions}
+            <LanguageToggle />
             {sessionAction}
             {editorAction}
           </div>
@@ -144,7 +148,7 @@ export function SitePageHeader({
     );
   }
 
-  const resolvedSubtitle = subtitle ?? PAGE_SUBTITLE_BY_KEY[current] ?? '';
+  const resolvedSubtitle = subtitle ?? (PAGE_SUBTITLE_BY_KEY[current] ? t(PAGE_SUBTITLE_BY_KEY[current] as string) : '');
 
   return (
     <header className={`editor-topbar site-page-header site-page-header--editor ${mobileMenuOpen ? 'is-menu-open' : ''}`.trim()}>
@@ -164,6 +168,7 @@ export function SitePageHeader({
       <div id={menuId} className={`editor-topbar__actions site-page-header__editor-actions ${mobileMenuOpen ? 'is-open' : ''}`.trim()}>
         {nav}
         {actions}
+        <LanguageToggle />
         {sessionAction}
         {editorAction}
       </div>

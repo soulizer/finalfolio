@@ -881,6 +881,23 @@ export async function recordExportEvent(
   });
 }
 
+export async function importAssetFromUrl(url: string): Promise<Asset> {
+  const payload = await readJson<{ assets: Asset[] }>('/api/uploads/from-url', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ url }),
+  });
+
+  const asset = Array.isArray(payload?.assets) ? payload.assets[0] : null;
+  if (!asset) {
+    throw new Error('The import completed without returning an asset record.');
+  }
+
+  return asset;
+}
+
 export function uploadAssets(
   files: File[],
   metadata: UploadAssetMetadata[],

@@ -16,6 +16,7 @@ import {
 import { getUserIdentitySummary, getUserPrimaryIdentity } from '../editor/identity';
 import { LoadingStack } from '../components/LoadingStack';
 import { SiteLegalFooter } from '../components/SiteLegalFooter';
+import { useT } from '../i18n';
 import { SitePageHeader } from '../components/SitePageHeader';
 import { buildTermsPath, getPageLanguage, getTermsDocument } from '../legal/terms';
 import { useSession } from '../session';
@@ -24,6 +25,7 @@ import { useDelayedVisibility } from '../useDelayedVisibility';
 type Mode = 'login' | 'register' | 'forgot' | 'reset';
 
 export function AuthPage() {
+  const t = useT();
   const navigate = useNavigate();
   const location = useLocation();
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
@@ -103,7 +105,7 @@ export function AuthPage() {
     } catch (error) {
       setCaptcha(null);
       if (surfaceError) {
-        setMessage(error instanceof Error ? error.message : 'Unable to load captcha.');
+        setMessage(error instanceof Error ? error.message : t('Unable to load captcha.'));
       }
     } finally {
       setCaptchaBusy(false);
@@ -130,7 +132,7 @@ export function AuthPage() {
       .catch((error) => {
         if (!cancelled) {
           setCaptcha(null);
-          setMessage(error instanceof Error ? error.message : 'Unable to load captcha.');
+          setMessage(error instanceof Error ? error.message : t('Unable to load captcha.'));
         }
       })
       .finally(() => {
@@ -151,7 +153,7 @@ export function AuthPage() {
 
     let cancelled = false;
     setBusy(true);
-    setMessage('Verifying your email...');
+    setMessage(t('Verifying your email...'));
 
     void verifyEmailToken(verifyToken)
       .then((payload) => {
@@ -160,7 +162,7 @@ export function AuthPage() {
         }
 
         setSessionUser(payload.user);
-        setMessage('Email verified. You are now signed in.');
+        setMessage(t('Email verified. You are now signed in.'));
         replaceRoute(
           payload.user.needsTermsAcceptance
             ? buildTermsPath(nextPath ?? (payload.user.role === 'admin' ? '/admin' : '/account'))
@@ -172,7 +174,7 @@ export function AuthPage() {
           return;
         }
 
-        setMessage(error instanceof Error ? error.message : 'Unable to verify email.');
+        setMessage(error instanceof Error ? error.message : t('Unable to verify email.'));
       })
       .finally(() => {
         if (!cancelled) {
@@ -193,7 +195,7 @@ export function AuthPage() {
     try {
       if (mode === 'register') {
         if (!captcha) {
-          setMessage('Loading verification challenge. Refresh and try again.');
+          setMessage(t('Loading verification challenge. Refresh and try again.'));
           return;
         }
 
@@ -204,15 +206,15 @@ export function AuthPage() {
         setCaptchaAnswer('');
         setMessage(
           requiresBootstrap
-            ? 'Initial admin account created. Check your inbox to verify the email before signing in.'
-            : 'Account created. Check your inbox to verify your email before signing in.',
+            ? t('Initial admin account created. Check your inbox to verify the email before signing in.')
+            : t('Account created. Check your inbox to verify your email before signing in.'),
         );
         return;
       }
 
       if (mode === 'forgot') {
         await requestPasswordReset(email);
-        setMessage('If this email exists, a password reset link has been sent.');
+        setMessage(t('If this email exists, a password reset link has been sent.'));
         return;
       }
 
@@ -221,7 +223,7 @@ export function AuthPage() {
         setSessionUser(payload.user);
         setPendingVerificationEmail(null);
         setPassword('');
-        setMessage('Password reset complete. You are now signed in.');
+        setMessage(t('Password reset complete. You are now signed in.'));
         replaceRoute(
           payload.user.needsTermsAcceptance
             ? buildTermsPath(nextPath ?? (payload.user.role === 'admin' ? '/admin' : '/account'))
@@ -233,14 +235,14 @@ export function AuthPage() {
       const payload = await loginUser(identifier, password);
       setSessionUser(payload.user);
       setPassword('');
-      setMessage('Signed in.');
+      setMessage(t('Signed in.'));
       replaceRoute(
         payload.user.needsTermsAcceptance
           ? buildTermsPath(nextPath ?? (payload.user.role === 'admin' ? '/admin' : '/account'))
           : nextPath ?? (payload.user.role === 'admin' ? '/admin' : '/account'),
       );
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to continue.');
+      setMessage(error instanceof Error ? error.message : t('Unable to continue.'));
       if (mode === 'register') {
         void loadCaptcha({ clearAnswer: true, surfaceError: false });
       }
@@ -256,9 +258,9 @@ export function AuthPage() {
     try {
       await logoutUser();
       setSessionUser(null);
-      setMessage('Signed out.');
+      setMessage(t('Signed out.'));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to sign out.');
+      setMessage(error instanceof Error ? error.message : t('Unable to sign out.'));
     } finally {
       setBusy(false);
     }
@@ -267,7 +269,7 @@ export function AuthPage() {
   async function handleResendVerification() {
     const targetEmail = pendingVerificationEmail ?? email;
     if (!targetEmail) {
-      setMessage('Enter the email address that needs a new verification link.');
+      setMessage(t('Enter the email address that needs a new verification link.'));
       return;
     }
 
@@ -276,28 +278,28 @@ export function AuthPage() {
 
     try {
       await resendVerificationEmail(targetEmail);
-      setMessage('Verification email sent.');
+      setMessage(t('Verification email sent.'));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to resend verification email.');
+      setMessage(error instanceof Error ? t(error.message) : t('Unable to resend verification email.'));
     } finally {
       setBusy(false);
     }
   }
 
   const title = session
-    ? 'Account ready.'
+    ? t('Account ready.')
     : verifyToken
-      ? 'Verifying your email.'
+      ? t('Verifying your email.')
       : mode === 'register'
         ? bootstrapStatus?.requiresBootstrap
-          ? 'Create the first admin account.'
-          : 'Create your account.'
+          ? t('Create the first admin account.')
+          : t('Create your account.')
         : mode === 'forgot'
-          ? 'Reset your password.'
+          ? t('Reset your password.')
           : mode === 'reset'
-            ? 'Set a new password.'
-            : 'Sign in to FinalFolio.';
-  const registerActionLabel = bootstrapStatus?.requiresBootstrap ? 'Create admin account' : 'Register';
+            ? t('Set a new password.')
+            : t('Sign in to FinalFolio.');
+  const registerActionLabel = bootstrapStatus?.requiresBootstrap ? t('Create admin account') : t('Register');
   const showLoadingShell = useDelayedVisibility(!sessionReady || !bootstrapReady);
 
   if (!sessionReady || !bootstrapReady) {
@@ -315,9 +317,9 @@ export function AuthPage() {
         <SitePageHeader current="auth" accountPath="/auth" sessionReady={false} canAccessAdmin={false} />
 
         <section id="main-content" className="editor-empty-state" aria-busy="true">
-          <p className="eyebrow">Auth</p>
-          <h1>Account access</h1>
-          <p>Checking the current session and access state.</p>
+          <p className="eyebrow">{t('Auth')}</p>
+          <h1>{t('Account access')}</h1>
+          <p>{t('Checking the current session and access state.')}</p>
           <div className="auth-form">
             <LoadingStack lines={['line-full', 'line-full', 'line-medium', 'line-short']} />
           </div>
@@ -340,48 +342,48 @@ export function AuthPage() {
       />
 
       <section id="main-content" className="editor-empty-state">
-        <p className="eyebrow">Auth</p>
+        <p className="eyebrow">{t('Auth')}</p>
         <h1>{title}</h1>
         {!session && bootstrapStatus?.requiresBootstrap ? (
-          <p>No account exists yet. The first registered account will become the initial administrator after verification.</p>
+          <p>{t('No account exists yet. The first registered account will become the initial administrator after verification.')}</p>
         ) : null}
         {session ? (
           <>
-            <p>{`${getUserIdentitySummary(session)} · ${session.role} · ${session.emailVerifiedAt ? 'verified' : 'unverified'}`}</p>
+            <p>{`${getUserIdentitySummary(session)} · ${t(session.role)} · ${session.emailVerifiedAt ? 'verified' : 'unverified'}`}</p>
             <div className="editor-empty-state__actions">
               <button
                 type="button"
                 className="button button--primary"
                 onClick={() => openRoute(nextPath ?? (session.role === 'admin' ? '/admin' : '/account'))}
               >
-                {nextPath ? 'Continue' : session.role === 'admin' ? 'Open admin' : 'Open account'}
+                {nextPath ? t('Continue') : session.role === 'admin' ? t('Open admin') : t('Open account')}
               </button>
               {session.role !== 'admin' ? (
                 <button type="button" className="button button--primary" onClick={() => openRoute('/editor')}>
-                  Open editor
+                  {t('Open editor')}
                 </button>
               ) : (
                 <button type="button" className="button button--ghost" onClick={() => openRoute('/account')}>
-                  Open account
+                  {t('Open account')}
                 </button>
               )}
               <button type="button" className="button button--ghost" onClick={() => void handleLogout()} disabled={busy}>
-                Sign out
+                {t('Sign out')}
               </button>
             </div>
-            <p>Your projects, uploads, and account settings now live in the dedicated account dashboard instead of this auth screen.</p>
+            <p>{t('Your projects, uploads, and account settings now live in the dedicated account dashboard instead of this auth screen.')}</p>
           </>
         ) : verifyToken ? (
           <div className="editor-empty-state__actions">
             <button type="button" className="button button--ghost" onClick={() => openRoute('/auth')}>
-              Back to sign in
+              {t('Back to sign in')}
             </button>
           </div>
         ) : (
           <form className="auth-form" onSubmit={handleSubmit}>
             {mode === 'login' ? (
               <label className="field">
-                <span>Email or username</span>
+                <span>{t('Email or username')}</span>
                 <input
                   type="text"
                   value={identifier}
@@ -393,12 +395,12 @@ export function AuthPage() {
             ) : null}
             {mode === 'register' ? (
               <label className="field">
-                <span>Username</span>
+                <span>{t('Username')}</span>
                 <input
                   type="text"
                   value={username}
                   onChange={(event) => setUsername(event.target.value)}
-                  placeholder="3-40 letters, numbers, hyphen, underscore"
+                  placeholder={t('3-40 letters, numbers, hyphen, underscore')}
                   minLength={3}
                   maxLength={40}
                   pattern="[A-Za-z0-9](?:[A-Za-z0-9_-]{1,38}[A-Za-z0-9])?"
@@ -409,13 +411,13 @@ export function AuthPage() {
             ) : null}
             {mode !== 'login' && mode !== 'reset' ? (
               <label className="field">
-                <span>Email</span>
+                <span>{t('Email')}</span>
                 <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
               </label>
             ) : null}
             {mode !== 'forgot' ? (
               <label className="field">
-                <span>Password</span>
+                <span>{t('Password')}</span>
                 <input
                   type="password"
                   minLength={8}
@@ -427,19 +429,19 @@ export function AuthPage() {
               </label>
             ) : null}
             {mode === 'register' ? (
-              <section className="auth-captcha" aria-label="Registration verification">
+              <section className="auth-captcha" aria-label={t('Registration verification')}>
                 <div className="auth-captcha__header">
                   <div>
-                    <strong>Human check</strong>
-                    <p className="field-note">Usernames are unique across FinalFolio. Registration sends email and is rate-limited per IP to protect delivery reputation.</p>
+                    <strong>{t('Human check')}</strong>
+                    <p className="field-note">{t('Usernames are unique across FinalFolio. Registration sends email and is rate-limited per IP to protect delivery reputation.')}</p>
                   </div>
                 </div>
                 <div className="auth-captcha__panel">
                   <div className="auth-captcha__visual">
                     {captcha ? (
-                      <img className="auth-captcha__image" src={captcha.imageDataUrl} alt="Registration captcha challenge" />
+                      <img className="auth-captcha__image" src={captcha.imageDataUrl} alt={t('Registration captcha challenge')} />
                     ) : (
-                      <div className="auth-captcha__image auth-captcha__image--placeholder">Loading challenge…</div>
+                      <div className="auth-captcha__image auth-captcha__image--placeholder">{t('Loading challenge…')}</div>
                     )}
                     <button
                       type="button"
@@ -447,11 +449,11 @@ export function AuthPage() {
                       disabled={busy || captchaBusy}
                       onClick={() => void loadCaptcha()}
                     >
-                      {captchaBusy ? 'Refreshing…' : 'Refresh code'}
+                      {captchaBusy ? t('Refreshing…') : t('Refresh code')}
                     </button>
                   </div>
                   <label className="field auth-captcha__field">
-                    <span>{captcha?.prompt ?? 'Enter the characters shown above'}</span>
+                    <span>{captcha?.prompt ? t(captcha.prompt) : t('Enter the characters shown above')}</span>
                     <input
                       type="text"
                       value={captchaAnswer}
@@ -479,23 +481,23 @@ export function AuthPage() {
                   <span>{termsDocument.agreementLabel}</span>
                 </label>
                 <p className="auth-terms__linkline legal-inline-links">
-                  <Link to={buildTermsPath('/auth')}>Terms of Service</Link>
+                  <Link to={buildTermsPath('/auth')}>{t('Terms of Service')}</Link>
                   <span>·</span>
-                  <Link to="/privacy">Privacy Policy</Link>
+                  <Link to="/privacy">{t('Privacy Policy')}</Link>
                 </p>
               </section>
             ) : null}
             <div className="editor-empty-state__actions auth-form__actions">
               <button type="submit" className="button button--primary" disabled={busy || (mode === 'register' && !acceptTerms)}>
                 {busy
-                  ? 'Working…'
+                  ? t('Working…')
                   : mode === 'register'
                     ? registerActionLabel
                     : mode === 'forgot'
-                      ? 'Send reset link'
+                      ? t('Send reset link')
                       : mode === 'reset'
-                        ? 'Reset password'
-                        : 'Sign in'}
+                        ? t('Reset password')
+                        : t('Sign in')}
               </button>
               <button
                 type="button"
@@ -515,16 +517,16 @@ export function AuthPage() {
                   })
                 }
               >
-                {mode === 'login' ? 'Need an account?' : 'Back to sign in'}
+                {mode === 'login' ? t('Need an account?') : t('Back to sign in')}
               </button>
               {mode === 'login' ? (
                 <button type="button" className="button button--ghost" disabled={busy} onClick={() => setMode('forgot')}>
-                  Forgot password
+                  {t('Forgot password')}
                 </button>
               ) : null}
               {mode === 'register' || pendingVerificationEmail ? (
                 <button type="button" className="button button--ghost" disabled={busy} onClick={() => void handleResendVerification()}>
-                  Resend verification
+                  {t('Resend verification')}
                 </button>
               ) : null}
             </div>
@@ -534,8 +536,11 @@ export function AuthPage() {
         {!session && mode === 'register' ? (
           <p className="panel-note">
             {username.trim()
-              ? `${getUserPrimaryIdentity({ username, email }, 'This username')} will become your primary account identity after sign-in.`
-              : 'Choose a username to create your account. It becomes your primary account identity after sign-in.'}
+              ? t('%s will become your primary account identity after sign-in.').replace(
+                  '%s',
+                  getUserPrimaryIdentity({ username, email }, t('This username')),
+                )
+              : t('Choose a username to create your account. It becomes your primary account identity after sign-in.')}
           </p>
         ) : null}
       </section>

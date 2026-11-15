@@ -1,7 +1,9 @@
+import { useT } from '../../i18n';
 import { LoadingStack } from '../../components/LoadingStack';
 import type { AdminSectionKey } from './useAdminShellState';
 
 export function AdminLoadingState({ activeSection }: { activeSection: AdminSectionKey }) {
+  const t = useT();
   const inspectorSection = activeSection === 'projects' || activeSection === 'uploads';
 
   if (inspectorSection) {
@@ -10,13 +12,13 @@ export function AdminLoadingState({ activeSection }: { activeSection: AdminSecti
         <section className="editor-panel admin-panel">
           <div className="editor-panel__heading">
             <div>
-              <p className="eyebrow">{activeSection === 'projects' ? 'Projects' : 'Uploads'}</p>
-              <h2>{activeSection === 'projects' ? 'Folio governance' : 'Asset governance'}</h2>
+              <p className="eyebrow">{activeSection === 'projects' ? t('Projects') : t('Uploads')}</p>
+              <h2>{activeSection === 'projects' ? t('Folio governance') : t('Asset governance')}</h2>
             </div>
-            <span className="panel-tag">Loading</span>
+            <span className="panel-tag">{t('Loading')}</span>
           </div>
           <label className="field admin-search-field">
-            <span>{activeSection === 'projects' ? 'Search projects' : 'Search uploads'}</span>
+            <span>{activeSection === 'projects' ? t('Search projects') : t('Search uploads')}</span>
             <div className="loading-field" aria-hidden="true">
               <span className="loading-placeholder loading-placeholder--line-full" />
             </div>
@@ -37,21 +39,21 @@ export function AdminLoadingState({ activeSection }: { activeSection: AdminSecti
             <aside className="admin-detail-card admin-detail-card--loading">
               <div className="admin-detail-card__header">
                 <div>
-                  <p className="eyebrow">Inspect</p>
-                  <h2>{activeSection === 'projects' ? 'Project detail' : 'Upload detail'}</h2>
+                  <p className="eyebrow">{t('Inspect')}</p>
+                  <h2>{activeSection === 'projects' ? t('Project detail') : t('Upload detail')}</h2>
                 </div>
-                <span className="panel-tag">Loading</span>
+                <span className="panel-tag">{t('Loading')}</span>
               </div>
               <div className={activeSection === 'projects' ? 'admin-detail-preview' : 'admin-upload-preview'}>
                 <div
                   className={`loading-placeholder loading-placeholder--line-full ${
-                    activeSection === 'projects' ? 'admin-detail-preview__placeholder' : 'admin-upload-preview__placeholder'
+                    activeSection === 'projects' ? t('admin-detail-preview__placeholder') : t('admin-upload-preview__placeholder')
                   }`.trim()}
                 />
                 <p className="panel-note">
                   {activeSection === 'projects'
-                    ? 'Loading the selected folio into the inspector.'
-                    : 'Loading the selected asset into the inspector.'}
+                    ? t('Loading the selected folio into the inspector.')
+                    : t('Loading the selected asset into the inspector.')}
                 </p>
               </div>
             </aside>
@@ -67,10 +69,10 @@ export function AdminLoadingState({ activeSection }: { activeSection: AdminSecti
         <section className="editor-panel admin-panel">
           <div className="editor-panel__heading">
             <div>
-              <p className="eyebrow">Overview</p>
-              <h2>Operational snapshot</h2>
+              <p className="eyebrow">{t('Overview')}</p>
+              <h2>{t('Operational snapshot')}</h2>
             </div>
-            <span className="panel-tag">Loading</span>
+            <span className="panel-tag">{t('Loading')}</span>
           </div>
           <div className="admin-metric-grid">
             {Array.from({ length: 6 }).map((_, index) => (
@@ -84,10 +86,10 @@ export function AdminLoadingState({ activeSection }: { activeSection: AdminSecti
         <section className="editor-panel admin-panel">
           <div className="editor-panel__heading">
             <div>
-              <p className="eyebrow">Trends</p>
-              <h2>Recent backend activity</h2>
+              <p className="eyebrow">{t('Trends')}</p>
+              <h2>{t('Recent backend activity')}</h2>
             </div>
-            <span className="panel-tag">Loading</span>
+            <span className="panel-tag">{t('Loading')}</span>
           </div>
           <div className="admin-breakdown-list">
             {Array.from({ length: 4 }).map((_, index) => (
@@ -106,12 +108,12 @@ export function AdminLoadingState({ activeSection }: { activeSection: AdminSecti
         <section className="editor-panel admin-panel">
           <div className="editor-panel__heading">
             <div>
-              <p className="eyebrow">Admin</p>
-              <h2>Backend status</h2>
+              <p className="eyebrow">{t('Admin')}</p>
+              <h2>{t('Backend status')}</h2>
             </div>
-            <span className="panel-tag">Syncing</span>
+            <span className="panel-tag">{t('Syncing')}</span>
           </div>
-          <p className="panel-note">Live counts, failures, and governance controls will load in place.</p>
+          <p className="panel-note">{t('Live counts, failures, and governance controls will load in place.')}</p>
           <LoadingStack lines={['line-full', 'line-long', 'line-medium']} />
         </section>
       </div>
@@ -136,9 +138,10 @@ export function AdminUnavailableState({
   primaryFallbackDisabled,
   primaryFallbackLabel,
 }: AdminUnavailableStateProps) {
+  const t = useT();
   return (
     <section className="editor-empty-state">
-      <p className="eyebrow">Unavailable</p>
+      <p className="eyebrow">{t('Unavailable')}</p>
       <h1>{fallbackTitle}</h1>
       <p>{fallbackBody}</p>
       <div className="editor-empty-state__actions">
@@ -146,8 +149,7 @@ export function AdminUnavailableState({
           {primaryFallbackLabel}
         </button>
         <button type="button" className="button button--primary" onClick={onBackToEditor}>
-          Back to editor
-        </button>
+          {t('Back to editor')}</button>
       </div>
     </section>
   );
