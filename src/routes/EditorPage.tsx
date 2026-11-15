@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CustomLayoutMap } from '../components/CustomLayoutMap';
 import { MagazinePreview } from '../components/MagazinePreview';
 import { TemplateIssuePreview } from '../components/TemplateIssuePreview';
-import { TemplateLayoutPreview } from '../components/TemplateLayoutPreview';
+import { LayoutThumbnail } from '../components/LayoutThumbnail';
 import { AccountUploadListItem, importAssetFromUrl } from '../editor/api';
 import { getConfirmationMessage } from '../editor/confirmations';
 import { formatDateTime } from '../editor/dateFormat';
@@ -252,9 +252,7 @@ export function EditorPage() {
   const [templatePickerOpen, setTemplatePickerOpen] = useState(true);
   const [starterPacksOpen, setStarterPacksOpen] = useState(false);
   const [colorPickerPageId, setColorPickerPageId] = useState<string | null>(null);
-  const [textEditTarget, setTextEditTarget] = useState<{ field: 'kicker' | 'title' | 'deck' | 'body' | 'caption'; rect: { left: number; top: number; width: number } } | null>(null);
   const [importUrlBusy, setImportUrlBusy] = useState(false);
-  const [firstStepsDismissed, setFirstStepsDismissed] = useState(false);
   const [starterPacksAutoOpened, setStarterPacksAutoOpened] = useState(false);
   const lastSavedSnapshotRef = useRef('');
   const printAssetFingerprintRef = useRef('');
@@ -263,8 +261,6 @@ export function EditorPage() {
   const printStackRef = useRef<HTMLElement | null>(null);
   const printPageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const customLayoutBuilderRef = useRef<HTMLDivElement | null>(null);
-  const textEditPopoverRef = useRef<HTMLDivElement | null>(null);
-  const textEditStageRef = useRef<HTMLDivElement | null>(null);
   const editorStageRef = useRef<HTMLElement | null>(null);
   const previewScale = useEditorPreviewScale({
     loadState,
@@ -729,42 +725,27 @@ export function EditorPage() {
     [importUrlBusy, setMessage, t, updateProject],
   );
 
-  const handleTextEditRequest = useCallback(
-    (field: 'kicker' | 'title' | 'deck' | 'body' | 'caption', element: HTMLElement) => {
-      const canvasRect = canvasRef.current?.getBoundingClientRect();
-      const rect = element.getBoundingClientRect();
-      if (!canvasRect) {
-        return;
-      }
-      setSelectedSlot(null);
-      setTextEditTarget({
-        field,
-        rect: {
-          left: rect.left - canvasRect.left,
-          top: rect.top - canvasRect.top,
-          width: Math.max(rect.width, 220),
-        },
-      });
+  const handleTextEditCommit = useCallback(
+    (field: 'kicker' | 'title' | 'deck' | 'body' | 'caption', value: string) => {
+      updateSelectedPage((current) => ({ ...current, [field]: value }));
     },
-    [],
+    [updateSelectedPage],
   );
 
-  const closeTextEdit = useCallback(() => setTextEditTarget(null), []);
-
   useEffect(() => {
-    if (!textEditTarget) {
+    if (!colorPickerPageId) {
       return undefined;
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setTextEditTarget(null);
+        setColorPickerPageId(null);
       }
     };
     const handlePointerDown = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (!textEditPopoverRef.current?.contains(target) && !textEditStageRef.current?.contains(target)) {
-        setTextEditTarget(null);
+      const target = event.target as HTMLElement | null;
+      if (!target?.closest('.page-color-popover') && !target?.closest('.page-chip__dot')) {
+        setColorPickerPageId(null);
       }
     };
 
@@ -774,7 +755,7 @@ export function EditorPage() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('mousedown', handlePointerDown);
     };
-  }, [textEditTarget]);
+  }, [colorPickerPageId]);
 
   // Empty drafts open the starter packs so the first step is obvious; drafts with
   // real content keep them collapsed to protect the existing work.
@@ -983,11 +964,6 @@ export function EditorPage() {
       ? t('Current custom scaffold preview.')
       : hoveredTemplateMeta?.description ?? ''
     : '';
-  const hoveredTemplateSlotCount = templateHoverPreview
-    ? templateHoverPreview.templateId === 'custom'
-      ? customTemplateDraft.frames.length
-      : hoveredTemplateMeta?.slots.length ?? 0
-    : 0;
   const showInlineCustomLayoutOverview = customLayoutPreviewActive && !pinnedCustomLayoutPreview;
   const customLayoutOverview = showInlineCustomLayoutOverview ? (
     <div className="custom-layout-overview">
@@ -1001,7 +977,7 @@ export function EditorPage() {
     </div>
   ) : null;
   const protectedProjectLocked = authReady && !authRefreshFailed && !session && Boolean(projectRecord?.ownerUserId);
-  const projectTemplateSectionTag = `${visibleTemplatePackIds.length} ready`;
+  const projectTemplateSectionTag = t('%s ready').replace('%s', String(visibleTemplatePackIds.length));
   const showLoadingShell = useDelayedVisibility(loadState === 'loading');
 
   if (loadState === 'loading') {
@@ -1158,7 +1134,7 @@ export function EditorPage() {
           <section className="editor-panel editor-panel--layout">
             <div className="editor-panel__heading">
               <div>
-                <p className="eyebrow">{t('Page templates')}</p>
+                <p className="eyebrow">{t('Page layout')}</p>
                 <h2>{t(selectedTemplateLabel)}</h2>
               </div>
               <div className="editor-collapsible-meta">
@@ -1175,23 +1151,57 @@ export function EditorPage() {
             </div>
             {templatePickerOpen ? (
               <>
-                <div className="template-grid">
+                <div className="layout-grid">
                   {visibleTemplateIds.map((templateId) => {
                     const meta = templateMeta[templateId];
+                    const isCurrent = templateId === selectedPage.template && templateId !== 'custom';
                     return (
-                      <button
+                      <article
                         key={templateId}
-                        type="button"
-                        className={`template-card ${templateChoice === templateId ? 'is-active' : ''}`}
-                        onClick={() => setTemplateChoice(templateId)}
+                        className={`layout-card ${templateChoice === templateId ? 'is-active' : ''}`}
                         onMouseEnter={(event) => openTemplateHoverPreview(templateId, event.currentTarget)}
                         onMouseLeave={clearTemplateHoverPreview}
-                        onFocus={(event) => openTemplateHoverPreview(templateId, event.currentTarget)}
-                        onBlur={clearTemplateHoverPreview}
                       >
-                        <TemplateLayoutPreview templateId={templateId} className="template-card__thumb" />
-                        <span className="template-card__name">{t(meta.label)}</span>
-                      </button>
+                        <button
+                          type="button"
+                          className="layout-card__pick"
+                          aria-pressed={templateChoice === templateId}
+                          onClick={() => setTemplateChoice(templateId)}
+                          onFocus={(event) => openTemplateHoverPreview(templateId, event.currentTarget)}
+                          onBlur={clearTemplateHoverPreview}
+                        >
+                          <LayoutThumbnail templateId={templateId} />
+                          <span className="layout-card__name">{t(meta.label)}</span>
+                        </button>
+                        <div className="layout-card__actions">
+                          <button
+                            type="button"
+                            className="button button--primary button--small"
+                            disabled={isCurrent}
+                            title={t("Replaces this page's layout. Photos and text stay.")}
+                            onClick={() => {
+                              setTemplateChoice(templateId);
+                              if (templateId !== 'custom') {
+                                applyTemplateChoice(templateId);
+                              }
+                            }}
+                          >
+                            {t('Replace this page')}
+                          </button>
+                          <button
+                            type="button"
+                            className="button button--ghost button--small"
+                            disabled={project.pages.length >= PROJECT_PAGE_LIMIT}
+                            title={t('Adds this layout as a new page below the current one.')}
+                            onClick={() => {
+                              setTemplateChoice(templateId);
+                              addPage(templateId);
+                            }}
+                          >
+                            {t('Add page below')}
+                          </button>
+                        </div>
+                      </article>
                     );
                   })}
                 </div>
@@ -1366,23 +1376,16 @@ export function EditorPage() {
                     type="button"
                     className="button button--ghost button--small"
                     disabled={project.pages.length >= PROJECT_PAGE_LIMIT}
-                    title={
-                      project.pages.length >= PROJECT_PAGE_LIMIT
-                        ? `Maximum ${PROJECT_PAGE_LIMIT} pages per folio`
-                        : t('Add a page after the current one')
-                    }
+                    title={t('Add a page after the current one')}
                     onClick={() => addPage()}
                   >
                     {project.pages.length >= PROJECT_PAGE_LIMIT ? t('Page limit') : t('Add page')}
                   </button>
-                  <button
-                    type="button"
-                    className="button button--primary button--small"
-                    disabled={templateChoice === selectedPage.template && templateChoice !== 'custom'}
-                    onClick={applyTemplateChoice}
-                  >
-                    {templateChoice === selectedPage.template && templateChoice !== 'custom' ? t('Current') : t('Apply')}
-                  </button>
+                  {templateChoice === 'custom' ? (
+                    <button type="button" className="button button--primary button--small" onClick={() => applyTemplateChoice('custom')}>
+                      {t('Apply')}
+                    </button>
+                  ) : null}
                 </div>
               </>
             ) : null}
@@ -1396,16 +1399,14 @@ export function EditorPage() {
               }}
               aria-hidden="true"
             >
-              <TemplateLayoutPreview
-                templateId={templateHoverPreview.templateId}
-                customTemplate={templateHoverPreview.templateId === 'custom' ? customTemplateDraft : null}
-                className="template-hover-preview__map"
-              />
               <div className="template-hover-preview__meta">
-                <span>{hoveredTemplateLabel}</span>
-                <strong>{hoveredTemplateMeta?.summary ?? t('User-defined')}</strong>
-                <p>{hoveredTemplateDescription}</p>
-                <small>{`${hoveredTemplateSlotCount} image slot${hoveredTemplateSlotCount === 1 ? '' : 's'}`}</small>
+                <span>{t(hoveredTemplateLabel)}</span>
+                <p>{t(hoveredTemplateDescription)}</p>
+                {hoveredTemplateMeta?.useCase ? (
+                  <small>
+                    {t('Recommended for')} · {t(hoveredTemplateMeta.useCase)}
+                  </small>
+                ) : null}
               </div>
             </div>
           ) : null}
@@ -1464,7 +1465,9 @@ export function EditorPage() {
                         <p>{t(pack.description)}</p>
                       </div>
                       <p className="template-pack-card__sequence">
-                        {pack.pages.map((page) => getTemplateLabel(page.template, page.customTemplate)).join(' / ')}
+                        {pack.pages
+                          .map((page) => t(getTemplateLabel(page.template, page.customTemplate)))
+                          .join(' / ')}
                       </p>
                       <div className="template-pack-card__actions">
                         <button
@@ -1544,34 +1547,12 @@ export function EditorPage() {
 
         <main id="main-content" ref={editorStageRef} className="editor-stage" aria-label={t('Live page editor')}>
           <div className="editor-canvas" ref={canvasRef}>
-            {project.assets.length === 0 && !firstStepsDismissed ? (
-              <aside className="editor-first-steps surface-popover" aria-label={t('First steps')}>
-                <div className="editor-first-steps__header">
-                  <p className="eyebrow">{t('First steps')}</p>
-                  <button
-                    type="button"
-                    className="editor-first-steps__dismiss"
-                    aria-label={t('Dismiss')}
-                    onClick={() => setFirstStepsDismissed(true)}
-                  >
-                    ×
-                  </button>
-                </div>
-                <ul>
-                  <li>{t('Upload photos')}</li>
-                  <li>{t('Pick a layout')}</li>
-                  <li>{t('Write your text')}</li>
-                  <li>{t('Save & share')}</li>
-                </ul>
-                <p className="panel-note">{t('Upload photos, then pick a layout, write text, and save or export.')}</p>
-              </aside>
-            ) : null}
             <div ref={sheetProbeRef} className="magazine-sheet-probe" aria-hidden="true" />
-            <div className="magazine-sheet magazine-sheet--editor" style={previewStyle} ref={textEditStageRef}>
+            <div className="magazine-sheet magazine-sheet--editor" style={previewStyle}>
               <MagazinePreview
                 issue={project.issue}
                 page={selectedPage}
-                onTextEditRequest={textEditTarget ? undefined : handleTextEditRequest}
+                onTextEditCommit={handleTextEditCommit}
                 assets={assetsById}
                 frameRadius={project.frameRadius}
                 pageNumber={selectedPageIndex + 1}
@@ -1584,29 +1565,6 @@ export function EditorPage() {
               />
             </div>
           </div>
-            {textEditTarget ? (
-              <div
-                ref={textEditPopoverRef}
-                className="text-edit-popover surface-popover"
-                style={{ left: Math.max(12, textEditTarget.rect.left), top: Math.max(12, textEditTarget.rect.top), width: Math.max(240, textEditTarget.rect.width + 32) }}
-                onMouseDown={(event) => event.stopPropagation()}
-              >
-                <label className="field text-edit-popover__field">
-                  <span>{textEditTarget.field === 'kicker' ? t('Kicker') : textEditTarget.field === 'title' ? t('Title') : textEditTarget.field === 'deck' ? t('Deck') : textEditTarget.field === 'body' ? t('Body') : t('Caption')}</span>
-                  <textarea
-                    autoFocus
-                    rows={textEditTarget.field === 'title' ? 2 : 4}
-                    value={selectedPage[textEditTarget.field]}
-                    onChange={(event) => {
-                      const field = textEditTarget.field;
-                      const value = event.target.value;
-                      updateSelectedPage((current) => ({ ...current, [field]: value }));
-                    }}
-                    onBlur={() => setTextEditTarget(null)}
-                  />
-                </label>
-              </div>
-            ) : null}
         </main>
 
         <EditorContentSidebar

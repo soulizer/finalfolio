@@ -1456,3 +1456,27 @@
 
 - Machine-translated copy should get a native review pass, especially long marketing sentences and admin-only labels.
 - The URL importer depends on outbound network access from the server; failures surface as a toast and never create partial uploads.
+
+## 2026-11-15 Chinese Copy Rewrite and Editor Refinement
+
+### What changed
+
+- Replaced the literal Chinese translation with a rewritten product vocabulary (作品集 / 页面排版 / 引题 / 导语 / 图注 / 图库 …), covering the whole interface, confirmations, activity labels, legal pages and the homepage demo content. Account and admin timestamps now use `zh-CN` formatting.
+- Self-hosted LXGW WenKai (霞鹜文楷) for Chinese text and removed every Songti fallback, so headings and body copy keep a designed, calligraphic tone while Latin text still uses Newsreader/Manrope.
+- Removed the "quick start" card. Empty states now explain themselves: the photo library shows a direct upload hint, and empty frames keep their drop target.
+- Paper-colour popover now anchors to the colour dot, uses round swatches, and closes on Escape or an outside click.
+- "Page templates" became 页面排版: A4-proportion schematics with the real page margins, three per row, centred labels. Hover shows only the description plus a recommended use case, and exposes two direct actions — replace the current page (keeping its photos and copy) or add the layout as a new page below.
+- Fixed the danger button's stray light rim and switched focus rings to an outline so they no longer read as extra borders.
+- Text editing now happens directly on the page: page text is `contenteditable`, commits on blur/Escape, and no longer opens a floating dialog.
+- Unsaved project/share links use muted placeholders instead of dark inline copy.
+
+### Validation
+
+- `npm run validate:mvp`
+- `./node_modules/.bin/playwright test` (13 specs)
+- zh/en screenshot sweep at 390/768/1024/1440
+
+### Remaining risk
+
+- LXGW WenKai adds ~9 MB of subsetted WOFF2 to the build; subsets load on demand via `unicode-range`, so first paint stays light.
+- Existing drafts keep the language they were created in; only new pages pick up Chinese starter copy.

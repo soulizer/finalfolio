@@ -96,7 +96,7 @@
   --export-sheet-scale-factor: 1;
   color: var(--ink);
   background: var(--bg);
-  font-family: 'Manrope', sans-serif;
+  font-family: 'Manrope', 'LXGW WenKai', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
   line-height: 1.5;
   font-weight: 400;
   font-synthesis: none;
@@ -157,10 +157,8 @@ input:focus-visible,
 textarea:focus-visible,
 select:focus-visible,
 a:focus-visible {
-  outline: 0;
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.96),
-    0 0 0 4px var(--focus-ring);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 [data-reveal] {
@@ -315,7 +313,7 @@ a:focus-visible {
 .cta-panel h2,
 .feature-card h2,
 .magazine-page h2 {
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-weight: 500;
   line-height: 1.04;
   letter-spacing: -0.028em;
@@ -473,7 +471,7 @@ a:focus-visible {
 .hero-proof__header strong,
 .hero-proof__footer strong {
   display: block;
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 1.38rem;
   font-weight: 500;
   line-height: 1.02;
@@ -567,7 +565,7 @@ a:focus-visible {
 }
 
 .hero-proof__caption strong {
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 1.15rem;
   font-weight: 500;
   line-height: 1.04;
@@ -873,7 +871,7 @@ a:focus-visible {
 
 .browser-stage__toolbar strong {
   display: -webkit-box;
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 1.14rem;
   font-weight: 500;
   line-height: 1.05;
@@ -1008,7 +1006,7 @@ a:focus-visible {
 
 .browser-stage__copy strong {
   display: -webkit-box;
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 1.44rem;
   font-weight: 500;
   line-height: 1.05;
@@ -1413,7 +1411,7 @@ a:focus-visible {
 
 .editor-panel h2 {
   margin: 4px 0 0;
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 1.65rem;
   font-weight: 500;
   line-height: 1.08;
@@ -1432,7 +1430,7 @@ a:focus-visible {
 
 .editor-section-heading h3 {
   margin: 4px 0 0;
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 1.18rem;
   font-weight: 500;
   line-height: 1.05;
@@ -1674,7 +1672,7 @@ a:focus-visible {
 }
 
 .upload-progress__meta strong {
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 1.05rem;
   font-weight: 500;
 }
@@ -2068,7 +2066,7 @@ a:focus-visible {
 
 .editor-empty-state h1 {
   margin: 0;
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: clamp(2.8rem, 5vw, 4.6rem);
   font-weight: 500;
   line-height: 1.04;
@@ -2271,7 +2269,7 @@ a:focus-visible {
 .auth-terms__notice strong,
 .terms-risk-notice strong,
 .terms-gate__copy strong {
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 1.05rem;
   font-weight: 600;
 }
@@ -2318,7 +2316,7 @@ a:focus-visible {
 
 .auth-captcha__header strong {
   display: block;
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 1.22rem;
   font-weight: 500;
   line-height: 1;
@@ -2415,7 +2413,7 @@ a:focus-visible {
 
 .terms-section h2 {
   margin: 0;
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 1.22rem;
   font-weight: 600;
 }
@@ -2548,7 +2546,7 @@ a:focus-visible {
 
 .admin-notice p {
   margin: 0;
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 1.28rem;
   line-height: 1.14;
 }
@@ -2618,7 +2616,7 @@ a:focus-visible {
 
 .admin-overview-card__header strong,
 .admin-detail-card__header h2 {
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 1.2rem;
   font-weight: 500;
   line-height: 1.04;
@@ -2664,7 +2662,7 @@ a:focus-visible {
 }
 
 .admin-list__empty strong {
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 1.1rem;
   font-weight: 500;
   line-height: 1.05;
@@ -2779,7 +2777,7 @@ a:focus-visible {
 }
 
 .admin-row__title {
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 1.06rem;
   font-weight: 500;
   line-height: 1.04;
@@ -2948,7 +2946,7 @@ a:focus-visible {
 }
 
 .admin-detail-preview__caption strong {
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 0.98rem;
   font-weight: 500;
   line-height: 1.08;
@@ -3047,7 +3045,7 @@ a:focus-visible {
 .admin-config-row__copy strong,
 .admin-detail-card__empty strong {
   min-width: 0;
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 1.04rem;
   font-weight: 500;
   line-height: 1.04;
@@ -3076,7 +3074,7 @@ a:focus-visible {
 }
 
 .admin-breakdown-row strong {
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 1.08rem;
   font-weight: 500;
   line-height: 1.04;
@@ -3304,7 +3302,7 @@ a:focus-visible {
 }
 
 .admin-collapsible summary span {
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 1.02rem;
   font-weight: 500;
   line-height: 1.04;
@@ -3604,7 +3602,7 @@ a:focus-visible {
 
 .magazine-page h2 {
   margin: 0;
-  font-family: 'Newsreader', 'Songti SC', 'Noto Serif CJK SC', 'Source Han Serif SC', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: clamp(2.2rem, 4vw, 4.4rem);
   white-space: pre-line;
   overflow-wrap: anywhere;
@@ -4020,7 +4018,7 @@ button.asset-frame {
 
 .page-strip-panel__header h2 {
   margin: 0;
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 1.6rem;
   font-weight: 500;
   line-height: 1.08;
@@ -4096,7 +4094,7 @@ button.asset-frame {
 }
 
 .page-chip strong {
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 1.18rem;
   font-weight: 500;
   line-height: 1;
@@ -4281,7 +4279,7 @@ button.asset-frame {
 }
 
 .template-card strong {
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 1.12rem;
   font-weight: 500;
   line-height: 1;
@@ -4349,7 +4347,7 @@ button.asset-frame {
 }
 
 .template-hover-preview__meta strong {
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 1.18rem;
   font-weight: 500;
   line-height: 1;
@@ -4486,7 +4484,7 @@ button.asset-frame {
 }
 
 .template-library-card__header strong {
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 1.2rem;
   font-weight: 500;
   line-height: 1;
@@ -4704,7 +4702,7 @@ button.asset-frame {
 }
 
 .issue-view-copy h1 {
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: clamp(2rem, 4vw, 3.3rem);
   font-weight: 500;
   line-height: 1.05;
@@ -5529,7 +5527,7 @@ button.asset-frame {
 
 .issue-view-tools__section h2 {
   margin: 0;
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 1.42rem;
   font-weight: 500;
   line-height: 1.02;
@@ -6094,7 +6092,7 @@ button.asset-frame {
 
 .custom-layout-overview__copy h3 {
   margin: 0;
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 1.24rem;
   font-weight: 500;
   line-height: 1.05;
@@ -6244,7 +6242,7 @@ button.asset-frame {
 }
 
 .template-pack-card__copy strong {
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 1.16rem;
   font-weight: 500;
   line-height: 1;
@@ -7136,7 +7134,7 @@ button.asset-frame {
 
 .product-brief__intro h2 {
   margin: 0;
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: clamp(2.6rem, 4vw, 4.4rem);
   font-weight: 500;
   line-height: 1.05;
@@ -7182,7 +7180,7 @@ button.asset-frame {
 
 .product-brief-card strong,
 .product-brief-note strong {
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 1.32rem;
   font-weight: 500;
   line-height: 1.06;
@@ -7400,7 +7398,7 @@ html:lang(zh-CN) .magazine-page h2,
 
 .confirm-dialog h2 {
   margin: 0;
-  font-family: 'Newsreader', serif;
+  font-family: 'Newsreader', 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif;
   font-size: 1.6rem;
   line-height: 1.1;
 }
@@ -7562,36 +7560,42 @@ html:lang(zh-CN) .magazine-page h2,
 .page-color-popover {
   position: absolute;
   z-index: 30;
-  top: calc(100% + 6px);
-  left: 0;
-  width: min(200px, calc(100vw - 48px));
+  top: calc(100% + 2px);
+  right: 4px;
+  width: min(188px, calc(100vw - 48px));
   padding: 10px;
   display: grid;
-  gap: 8px;
-  border-radius: 12px;
+  gap: 10px;
+  border-radius: 14px;
 }
 
 .page-color-popover__swatches {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
+  gap: 8px;
+  justify-items: center;
 }
 
 .page-color-popover__swatch {
-  width: 100%;
-  height: auto;
+  width: 24px;
+  height: 24px;
   min-height: 0;
-  aspect-ratio: 1;
   padding: 0;
-  border-radius: 8px;
+  border-radius: 999px;
   border: 1px solid rgba(17, 17, 17, 0.16);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
   cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.page-color-popover__swatch:hover {
+  transform: scale(1.08);
 }
 
 .page-color-popover__swatch.is-active {
-  outline: 2px solid var(--ink);
-  outline-offset: 1px;
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.9),
+    0 0 0 3px var(--ink);
 }
 
 .page-color-popover__apply-all {
@@ -7635,30 +7639,8 @@ html:lang(zh-CN) .magazine-page h2,
   font-size: 0.82rem;
 }
 
-.text-edit-popover {
-  position: absolute;
-  z-index: 40;
-  padding: 10px;
-  border-radius: 12px;
-  box-shadow: var(--pressed-card-shadow);
-}
 
-.text-edit-popover__field {
-  display: grid;
-  gap: 6px;
-}
 
-.text-edit-popover textarea {
-  width: 100%;
-  resize: vertical;
-  min-height: 64px;
-  padding: 8px 9px;
-  border-radius: 8px;
-  border: 1px solid rgba(17, 17, 17, 0.18);
-  background: rgba(255, 255, 255, 0.92);
-  font: inherit;
-  line-height: 1.4;
-}
 
 .magazine-editable {
   cursor: text;
@@ -7673,61 +7655,337 @@ html:lang(zh-CN) .magazine-page h2,
   outline: none;
 }
 
-.editor-first-steps {
-  position: absolute;
-  top: 14px;
-  left: 14px;
-  z-index: 12;
-  width: min(260px, 70%);
-  padding: 12px 14px;
-  border-radius: 12px;
+
+
+
+
+
+
+/* ---------------------------------------------------------------------------
+   Layout picker: A4-proportion schematics with the real page margins.
+   --------------------------------------------------------------------------- */
+.layout-thumb {
+  width: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.layout-thumb__page {
+  width: 100%;
+  aspect-ratio: 210 / 297;
+  padding: 5.39% 7.62% 6.06%;
+  border-radius: 3px;
+  background: #ffffff;
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  box-shadow: 0 4px 10px rgba(17, 17, 17, 0.08);
+  overflow: hidden;
+}
+
+.layout-thumb__inner {
+  display: grid;
+  height: 100%;
+  column-gap: 2.25%;
+  row-gap: 1.6%;
+  align-items: stretch;
+}
+
+.layout-thumb--cover .layout-thumb__inner {
+  grid-template-rows: minmax(0, 1fr) 21%;
+}
+
+.layout-thumb--essay .layout-thumb__inner {
+  grid-template-columns: 1.04fr 0.82fr;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.layout-thumb--folio .layout-thumb__inner {
+  grid-template-rows: 12% minmax(0, 1fr) 6.5%;
+}
+
+.layout-thumb--grid .layout-thumb__inner {
+  grid-template-rows: 15% minmax(0, 1fr) 12%;
+}
+
+.layout-thumb--diptych .layout-thumb__inner {
+  grid-template-rows: 13% minmax(0, 1fr) 8%;
+}
+
+.layout-thumb--panorama .layout-thumb__inner {
+  grid-template-rows: 13% minmax(0, 1fr) 6.5%;
+}
+
+.layout-thumb--mosaic .layout-thumb__inner {
+  grid-template-rows: minmax(0, 1fr) 23%;
+}
+
+.layout-thumb--triptych .layout-thumb__inner {
+  grid-template-rows: minmax(0, 1fr) 14%;
+}
+
+.layout-thumb--custom .layout-thumb__inner {
+  grid-template-rows: minmax(0, 1fr) 20%;
+}
+
+.layout-thumb__image {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  min-width: 0;
+  border-radius: 2px;
+  background: #e6e0d5;
+  border: 1px solid rgba(17, 17, 17, 0.07);
+  overflow: hidden;
+}
+
+.layout-thumb__image svg {
+  width: 34%;
+  max-width: 22px;
+  min-width: 10px;
+  height: auto;
+  fill: rgba(17, 17, 17, 0.18);
+}
+
+.layout-thumb__stack {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 6%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.layout-thumb__stack--tight {
+  gap: 9%;
+  justify-content: center;
+}
+
+.layout-thumb__text {
+  display: grid;
+  gap: 3px;
+  align-content: start;
+}
+
+.layout-thumb__text.is-short .layout-thumb__line:last-child {
+  width: 62%;
+}
+
+.layout-thumb__line {
+  display: block;
+  height: 2px;
+  width: 100%;
+  border-radius: 999px;
+  background: rgba(17, 17, 17, 0.16);
+}
+
+.layout-thumb__line--title {
+  height: 4px;
+  width: 78%;
+  background: rgba(17, 17, 17, 0.34);
+}
+
+.layout-thumb__line--title.is-short {
+  width: 54%;
+}
+
+.layout-thumb__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 2.25%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.layout-thumb--triptych .layout-thumb__row {
+  grid-template-columns: 1.2fr 0.8fr 0.8fr;
+}
+
+.layout-thumb__frames {
+  display: grid;
+  gap: 2.25%;
+  min-height: 0;
+  min-width: 0;
+}
+
+.layout-thumb__frames--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.layout-thumb__frames--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.layout-thumb__frames--2x2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+.layout-thumb__frames--rows {
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+.layout-thumb__frames--mosaic {
+  grid-template-columns: 1.08fr 0.92fr;
+}
+
+.layout-thumb__frames--custom {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+}
+
+/* Danger buttons should read as one solid shape, without the base highlight ring. */
+.button--danger::before,
+.editor-shell .button--danger::before {
+  display: none;
+}
+
+.button--danger,
+.editor-shell .button--danger {
+  border: 0;
+  box-shadow: none;
+}
+
+.editor-shell .button--danger:hover,
+.editor-shell .button--danger:active {
+  box-shadow: 0 10px 22px rgba(92, 28, 28, 0.2);
+}
+
+/* Muted placeholder text for links that do not exist yet. */
+.editor-project-url input::placeholder,
+.editor-panel .field input::placeholder {
+  color: rgba(17, 17, 17, 0.34);
+  font-weight: 400;
+}
+
+/* Layout picker cards */
+.layout-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.layout-card {
+  position: relative;
   display: grid;
   gap: 6px;
-  box-shadow: 0 12px 28px rgba(17, 17, 17, 0.12);
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(246, 241, 233, 0.6));
+  transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
-.editor-first-steps ul {
-  margin: 0;
-  padding-left: 18px;
+.layout-card.is-active {
+  border-color: rgba(17, 17, 17, 0.34);
+  box-shadow: var(--pressed-card-shadow);
+}
+
+.layout-card__pick {
   display: grid;
-  gap: 2px;
-  font-size: 0.88rem;
-}
-
-.editor-first-steps .panel-note {
-  margin: 0;
-  font-size: 0.8rem;
-}
-
-.editor-first-steps__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.editor-first-steps__dismiss {
-  padding: 0 4px;
+  gap: 6px;
+  padding: 0;
   border: 0;
   background: transparent;
   font: inherit;
-  font-size: 1rem;
-  line-height: 1;
-  color: var(--muted);
+  color: var(--ink);
   cursor: pointer;
+  text-align: center;
 }
 
-@media (max-width: 760px) {
-  .editor-first-steps {
-    top: auto;
-    bottom: 12px;
-    left: 12px;
-    width: min(230px, calc(100% - 24px));
-    padding: 10px 12px;
-    font-size: 0.86rem;
-  }
+.layout-card__name {
+  display: block;
+  text-align: center;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
 
-  .editor-first-steps .panel-note {
-    display: none;
+.layout-card__name em {
+  font-style: normal;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.layout-card__actions {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 4px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 3px;
+  padding: 4px;
+  border-radius: 8px;
+  background: rgba(252, 250, 246, 0.94);
+  box-shadow: 0 6px 16px rgba(17, 17, 17, 0.12);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease;
+}
+
+.layout-card:hover .layout-card__actions,
+.layout-card:focus-within .layout-card__actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.layout-card__actions .button {
+  width: 100%;
+  justify-content: center;
+  font-size: 0.7rem;
+  min-height: 27px;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
+
+
+.asset-rail__empty {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.asset-rail__empty svg {
+  width: 34px;
+  height: 34px;
+  fill: none;
+  stroke: rgba(17, 17, 17, 0.28);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.asset-rail__empty span {
+  max-width: 220px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+/* In-place text editing on the page */
+.magazine-editable[contenteditable='true'] {
+  cursor: text;
+}
+
+.magazine-editable[contenteditable='true']:focus {
+  outline: none;
+  background: rgba(255, 226, 150, 0.3);
+  box-shadow: 0 0 0 2px rgba(214, 168, 64, 0.4);
+  border-radius: 2px;
+}
+
+@media (hover: none) {
+  .layout-card__actions {
+    position: static;
+    opacity: 1;
+    pointer-events: auto;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
   }
 }

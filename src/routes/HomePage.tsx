@@ -17,38 +17,38 @@ const MOBILE_HOME_PREVIEW_MEDIA_QUERY = '(max-width: 760px) and (hover: none) an
 const productCapabilityCards = [
   {
     step: '01',
-    title: tModule('Upload real selects'),
-    copy: tModule('Bring in source images and keep them attached to a real project instead of a temporary demo state.'),
+    title: 'Upload real selects',
+    copy: 'Bring in source images and keep them attached to a real project instead of a temporary demo state.',
   },
   {
     step: '02',
-    title: tModule('Arrange page rhythm'),
-    copy: tModule('Sequence cover, essay, grid, panorama, and custom pages while the folio stays visible.'),
+    title: 'Arrange page rhythm',
+    copy: 'Sequence cover, essay, grid, panorama, and custom pages while the folio stays visible.',
   },
   {
     step: '03',
-    title: tModule('Save the project'),
-    copy: tModule('Keep the working state on the server so you can reopen the same project URL and continue editing later.'),
+    title: 'Save the project',
+    copy: 'Keep the working state on the server so you can reopen the same project URL and continue editing later.',
   },
   {
     step: '04',
-    title: tModule('Share or export'),
-    copy: tModule('Publish a read-only folio for review or export the same page model for print and PDF output.'),
+    title: 'Share or export',
+    copy: 'Publish a read-only folio for review or export the same page model for print and PDF output.',
   },
 ];
 
 const productTrustNotes = [
   {
-    title: tModule('Project-backed editing'),
-    copy: tModule('Uploads, pages, and exports stay attached to named projects instead of disappearing into a one-shot canvas.'),
+    title: 'Project-backed editing',
+    copy: 'Uploads, pages, and exports stay attached to named projects instead of disappearing into a one-shot canvas.',
   },
   {
-    title: tModule('Operational storage'),
-    copy: tModule('Uploaded images are stored through object storage delivery today, and CDN acceleration may be layered on later for public viewing.'),
+    title: 'Operational storage',
+    copy: 'Uploaded images are stored through object storage delivery today, and CDN acceleration may be layered on later for public viewing.',
   },
   {
-    title: tModule('Account and recovery'),
-    copy: tModule('Session cookies keep accounts signed in, while email verification and password reset flows protect account ownership.'),
+    title: 'Account and recovery',
+    copy: 'Session cookies keep accounts signed in, while email verification and password reset flows protect account ownership.',
   },
 ];
 
@@ -547,7 +547,7 @@ export function HomePage() {
               <div className="browser-stage__rail">
                 <div className="browser-stage__rail-head">
                   <span>{t('Sequence')}</span>
-                  <strong>{homepagePreview.issue}</strong>
+                  <strong>{t(homepagePreview.issue)}</strong>
                 </div>
                 {browserStageDetails.map((detail, index) => (
                   <button
@@ -567,7 +567,7 @@ export function HomePage() {
               </div>
               <div className="browser-stage__workspace">
                 <div className="browser-stage__toolbar">
-                  <strong>{browserStageActiveDetail?.pageTitle ?? homepagePreview.title}</strong>
+                  <strong>{t(browserStageActiveDetail?.pageTitle ?? homepagePreview.title)}</strong>
                   <div className="browser-stage__toolbar-actions">
                     <span>{browserStagePaused ? t('Paused') : t('Auto')}</span>
                     <span>{t('Preview')}</span>
@@ -626,7 +626,7 @@ export function HomePage() {
                 </div>
                 <div className="browser-stage__field">
                   <span>{t('Page')}</span>
-                  <strong>{browserStageActiveDetail ? `${browserStageActiveDetail.number} · ${browserStageActiveDetail.pageTitle}` : homepagePreview.title}</strong>
+                  <strong>{browserStageActiveDetail ? `${browserStageActiveDetail.number} · ${t(browserStageActiveDetail.pageTitle)}` : t(homepagePreview.title)}</strong>
                 </div>
                 <div className="browser-stage__field">
                   <span>{t('Role')}</span>

@@ -35,6 +35,7 @@ export interface TemplateDefinition {
   label: string;
   summary: string;
   description: string;
+  useCase: string;
   slots: string[];
 }
 
@@ -320,54 +321,63 @@ export const templateMeta: Record<TemplateId, TemplateDefinition> = {
   cover: {
     label: 'Cover',
     summary: 'Lead opener',
+    useCase: 'Cover opener',
     description: 'One lead image with restrained copy for the opening page.',
     slots: ['hero'],
   },
   essay: {
     label: 'Essay',
     summary: 'Image + text',
+    useCase: 'Text and image pairing',
     description: 'A single image paired with a text column for opening notes, credits, or context.',
     slots: ['hero'],
   },
   folio: {
     label: 'Folio',
     summary: 'Hero page',
+    useCase: 'Single hero image',
     description: 'A large image page with a slim editorial header and caption band.',
     slots: ['hero'],
   },
   grid: {
     label: 'Grid',
     summary: 'Four-up rhythm',
+    useCase: 'Multi-image comparison',
     description: 'A quiet four-frame page for pacing, details, or contact-sheet rhythm.',
     slots: ['a', 'b', 'c', 'd'],
   },
   diptych: {
     label: 'Diptych',
     summary: 'Balanced pair',
+    useCase: 'Two-image transitions',
     description: 'Two balanced frames for comparison, transitions, or a quieter ending.',
     slots: ['left', 'right'],
   },
   panorama: {
     label: 'Panorama',
     summary: 'Wide pair',
+    useCase: 'Wide landscape sets',
     description: 'Two wide horizontal frames for landscapes, establishing shots, or top-and-tail pacing.',
     slots: ['top', 'bottom'],
   },
   mosaic: {
     label: 'Mosaic',
     summary: 'Lead + details',
+    useCase: 'Lead image with details',
     description: 'A dominant image with two secondary frames and a compact editorial band.',
     slots: ['lead', 'top', 'bottom'],
   },
   triptych: {
     label: 'Triptych',
     summary: 'Three-up set',
+    useCase: 'Portrait series',
     description: 'Three tall frames with a restrained editorial rail for portrait runs and repeated subjects.',
     slots: ['a', 'b', 'c'],
   },
   custom: {
     label: 'Custom',
     summary: 'User-defined',
+    useCase: 'User-defined',
     description: 'Define your own image and text arrangement, then apply it as a page preset.',
     slots: [],
   },

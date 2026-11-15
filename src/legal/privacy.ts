@@ -138,11 +138,11 @@ const PRIVACY_DOCUMENT_ZH: PrivacyDocument = {
   shortTitle: '隐私',
   intro: [
     '本隐私政策说明 FinalFolio 收集哪些信息、服务如何使用这些信息，以及如何申请删除账户或数据。',
-    'FinalFolio 处理账户注册、登录会话、上传图片、项目存储、邮箱验证、密码重置流程以及公开画册分享。如果你不同意本政策，请勿继续使用本服务。',
+    'FinalFolio 处理账户注册、登录会话、上传图片、项目存储、邮箱验证、密码重置流程以及公开作品集分享。如果你不同意本政策，请勿继续使用本服务。',
   ],
   storageNoticeTitle: '存储与访问提示',
   storageNoticeBody:
-    'FinalFolio 将上传内容存储在对象存储上用于产品交付。公开画册链接用于阅读，应视为公开内容。后续可能加入 CDN 以加速公开访问。',
+    'FinalFolio 将上传内容存储在对象存储上用于产品交付。公开作品集链接用于阅读，应视为公开内容。后续可能加入 CDN 以加速公开访问。',
   sections: [
     {
       title: '1. 我们收集的信息',
@@ -178,7 +178,7 @@ const PRIVACY_DOCUMENT_ZH: PrivacyDocument = {
         {
           type: 'paragraph',
           text:
-            '图片和相关项目资产会为编辑、预览生成、导出和公开画册交付而存储。FinalFolio 目前使用对象存储进行镜像资产交付，后续可能增加 CDN 交付以加快公开访问。',
+            '图片和相关项目资产会为编辑、预览生成、导出和公开作品集交付而存储。FinalFolio 目前使用对象存储进行镜像资产交付，后续可能增加 CDN 交付以加快公开访问。',
         },
         {
           type: 'paragraph',
@@ -213,7 +213,7 @@ const PRIVACY_DOCUMENT_ZH: PrivacyDocument = {
         {
           type: 'list',
           items: [
-            '运营账户、会话、上传、编辑器功能、导出和公开画册页面',
+            '运营账户、会话、上传、编辑器功能、导出和公开作品集页面',
             '防止滥用，对注册和认证流程限流，并排查运维故障',
             '维护存储、预览、备份和产品管理',
           ],

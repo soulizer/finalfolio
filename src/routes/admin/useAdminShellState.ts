@@ -113,7 +113,7 @@ export function useAdminShellState({
     : !session
       ? 'This backend is restricted to administrators. Sign in with an existing admin account to govern projects, uploads, templates, and site content.'
       : blocked
-        ? `The current account (${sessionIdentity}) is signed in but does not have the admin role. Use an administrator account instead.`
+        ? 'The current account (%s) is signed in but does not have the admin role. Use an administrator account instead.'
         : message ?? 'This account is an administrator, but the backend did not finish loading its live data.';
   const adminLoading = !sessionReady || (canAccessAdmin && !summary && !loadFailed && !requiresBootstrap);
   const showLoadingShell = useDelayedVisibility(adminLoading);

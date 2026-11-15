@@ -13,6 +13,10 @@ const LOCALE_STORAGE_KEY = 'finalfolio-locale';
  */
 let activeLocale: Locale | null = null;
 
+export function getActiveLocale(): Locale {
+  return activeLocale ?? readInitialLocale();
+}
+
 export function translate(text: string) {
   const locale = activeLocale ?? readInitialLocale();
   return locale === 'zh' ? getChineseText(text) : text;

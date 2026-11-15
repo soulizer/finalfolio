@@ -182,14 +182,14 @@ export function createEditorPageActions({
     setTemplateChoice(nextState.nextPage.template);
   }
 
-  function applyTemplateChoice() {
-    if (!selectedPage || (templateChoice === selectedPage.template && templateChoice !== 'custom')) {
+  function applyTemplateChoice(nextTemplate: TemplateId = templateChoice) {
+    if (!selectedPage || (nextTemplate === selectedPage.template && nextTemplate !== 'custom')) {
       return;
     }
 
     const nextState = applyTemplateChoiceToPage({
       selectedPage,
-      templateChoice,
+      templateChoice: nextTemplate,
       customTemplateDraft,
     });
     updateSelectedPage(() => nextState.nextPage);

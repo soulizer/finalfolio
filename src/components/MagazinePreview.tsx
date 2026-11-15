@@ -35,7 +35,7 @@ interface MagazinePreviewProps {
   onAssignDroppedAsset?: (slot: string, assetId: string) => void;
   onUpdateCrop?: (slot: string, updater: (crop: CropSettings) => CropSettings) => void;
   onCropMetricsChange?: (slot: string, metrics: { maxOffsetX: number; maxOffsetY: number } | null) => void;
-  onTextEditRequest?: (field: 'kicker' | 'title' | 'deck' | 'body' | 'caption', element: HTMLElement) => void;
+  onTextEditCommit?: (field: 'kicker' | 'title' | 'deck' | 'body' | 'caption', value: string) => void;
   localizeContent?: boolean;
 }
 
@@ -508,26 +508,37 @@ export function MagazinePreview({
   onAssignDroppedAsset,
   onUpdateCrop,
   onCropMetricsChange,
-  onTextEditRequest,
+  onTextEditCommit,
   localizeContent,
 }: MagazinePreviewProps) {
   const t = useT();
   const customTemplate = page.customTemplate;
 
-  // Inline stage editing: when the editor passes a text-edit callback, clicking a
-  // text block opens the anchored field editor instead of being static copy.
+  // Inline stage editing: in the editor the text itself becomes editable, so the
+  // copy is typed directly on the page. Blur or Escape commits the new value.
   const renderText = (field: PageTextField) => {
-    if (!onTextEditRequest) {
+    if (!onTextEditCommit) {
       return localizeContent ? t(page[field]) : page[field];
     }
     return (
       <span
         className="magazine-editable"
-        role="button"
-        tabIndex={-1}
-        onClick={(event) => {
-          event.stopPropagation();
-          onTextEditRequest(field, event.currentTarget);
+        contentEditable
+        suppressContentEditableWarning
+        role="textbox"
+        tabIndex={0}
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            event.currentTarget.blur();
+          }
+        }}
+        onBlur={(event) => {
+          const value = event.currentTarget.innerText.replace(/\u00a0/g, ' ');
+          if (value !== page[field]) {
+            onTextEditCommit(field, value);
+          }
         }}
       >
         {page[field]}

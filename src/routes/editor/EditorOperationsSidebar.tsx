@@ -264,7 +264,8 @@ export function EditorOperationsSidebar({
             aria-label={t('Project URL')}
             className="editor-project-bar__input"
             readOnly
-            value={projectRecord ? shareUrl : t('Save this folio to get a permanent link.')}
+            value={projectRecord ? shareUrl : ''}
+            placeholder={projectRecord ? undefined : t('Save this folio to get a permanent link.')}
           />
           <button
             type="button"
@@ -293,11 +294,12 @@ export function EditorOperationsSidebar({
             <span>{t('Share link')}</span>
             <input
               readOnly
-              value={
+              value={!projectRecord || !projectRecord.share.enabled ? '' : publicShareUrl}
+              placeholder={
                 !projectRecord
                   ? t('Save this folio first to create a public viewer link.')
                   : projectRecord.share.enabled
-                    ? publicShareUrl
+                    ? undefined
                     : projectMutationLocked
                       ? t('Duplicate this legacy folio into your account before enabling public sharing.')
                       : t('Enable sharing to publish a read-only viewer.')

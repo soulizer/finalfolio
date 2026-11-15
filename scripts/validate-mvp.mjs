@@ -1707,7 +1707,7 @@ try {
     assert.match(editorPage, /CustomLayoutMap/);
     assert.match(editorPage, /templateUsesDeck/);
     assert.match(editorPage, /templateUsesBody/);
-    assert.match(editorPageOperations, /Replaced the page stack with the \$\{pack\.label\} pack/);
+    assert.match(editorPageOperations, /Replaced every page with the \$\{pack\.label\} template/);
     assert.match(editorPage, /Move page up/);
     assert.match(editorPage, /Delete page/);
     assert.match(editorPage, /Text block geometry/);

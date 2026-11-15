@@ -106,7 +106,7 @@ export function duplicateProjectPage({
   const duplicatedPageLabel = duplicate.title.trim() || `Page ${insertAt + 1}`;
 
   return {
-    message: `Duplicated ${sourcePageLabel}. You are now editing the new page ${duplicatedPageLabel} at Page ${insertAt + 1} of ${project.pages.length + 1}.`,
+    message: `Duplicated the page. Now editing "${duplicatedPageLabel}" at position ${insertAt + 1} of ${project.pages.length + 1}.`,
     nextPage: duplicate,
     nextProject: {
       ...project,
@@ -180,8 +180,8 @@ export function applyTemplatePackToProject({
   return {
     message:
       mode === 'replace'
-        ? `Replaced the page stack with the ${pack.label} pack. Uploaded photos stayed in the folio library.`
-        : `Inserted the ${pack.label} pack after the current page. Each inserted page stays editable on its own.`,
+        ? `Replaced every page with the ${pack.label} template. Uploaded photos stayed in the library.`
+        : `Inserted the ${pack.label} template after the current page. Every inserted page stays editable.`,
     nextPage,
     nextProject,
   };
@@ -193,8 +193,8 @@ export function applyTemplateChoiceToPage({ selectedPage, templateChoice, custom
   return {
     message:
       templateChoice === 'custom'
-        ? 'Custom layout applied. Existing placed images were carried into the new frame order.'
-        : 'Preset applied. Existing placed images were carried into the new slot order.',
+        ? 'Applied the custom layout. Existing photos and copy were kept.'
+        : 'Applied the new layout. Existing photos and copy were kept.',
     nextPage,
   };
 }

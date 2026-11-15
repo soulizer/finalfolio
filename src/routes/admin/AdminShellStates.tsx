@@ -142,11 +142,11 @@ export function AdminUnavailableState({
   return (
     <section className="editor-empty-state">
       <p className="eyebrow">{t('Unavailable')}</p>
-      <h1>{fallbackTitle}</h1>
-      <p>{fallbackBody}</p>
+      <h1>{t(fallbackTitle)}</h1>
+      <p>{t(fallbackBody)}</p>
       <div className="editor-empty-state__actions">
         <button type="button" className="button button--primary" disabled={primaryFallbackDisabled} onClick={onPrimaryAction}>
-          {primaryFallbackLabel}
+          {t(primaryFallbackLabel)}
         </button>
         <button type="button" className="button button--primary" onClick={onBackToEditor}>
           {t('Back to editor')}</button>

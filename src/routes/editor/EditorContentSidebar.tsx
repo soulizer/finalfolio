@@ -291,7 +291,13 @@ export function EditorContentSidebar({
             })
           ) : (
             <div className="asset-rail__empty">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
+                <circle cx="8.5" cy="9.5" r="1.8" />
+                <path d="M4.5 17.5 10 12l3.2 3.4 2.6-2.6 3.7 4.7" />
+              </svg>
               <strong>{t('No photos yet.')}</strong>
+              <span>{t('Use the upload button above, or drag photos straight onto the page.')}</span>
             </div>
           )}
         </div>
