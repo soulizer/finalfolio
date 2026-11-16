@@ -8366,3 +8366,156 @@ html[lang='zh-CN'] body {
 .asset-frame__upload:hover {
   background: #fff;
 }
+
+/* Unified sequence chip: meta row + dot, optional title and actions. */
+.page-chip {
+  display: grid;
+  grid-template-columns: none;
+  grid-template-areas: none;
+  gap: 8px;
+  padding: 12px;
+}
+
+.page-chip__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.page-chip__select {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: grab;
+}
+
+.page-chip__select:active {
+  cursor: grabbing;
+}
+
+.page-chip__index {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.page-chip__select em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: normal;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.page-chip__title {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--ink);
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.page-chip__dot {
+  position: static;
+  grid-area: auto;
+  align-self: center;
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.page-chip__actions {
+  grid-area: auto;
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.editor-panel__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 28px;
+}
+
+.editor-panel__label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+.editor-panel__value {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.editor-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.editor-section-heading h3 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* Unified editor panel rhythm: every sidebar panel uses the same 12px grid. */
+.editor-panel,
+.page-strip-panel {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.editor-panel > .field,
+.editor-panel > .editor-panel__actions,
+.editor-panel > .panel-note,
+.editor-panel > .editor-panel__section {
+  margin-top: 0;
+}
+
+.editor-panel__section + .editor-panel__section {
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.editor-panel__toolbar {
+  min-height: 32px;
+}
+
+.editor-toggle-button {
+  min-width: 64px;
+  min-height: 26px;
+  height: 26px;
+  padding: 0 10px;
+  font-size: 0.72rem;
+}

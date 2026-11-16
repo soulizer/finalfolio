@@ -1,4 +1,4 @@
-import { useT } from '../i18n';
+import { countLabel, useT } from '../i18n';
 import { CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CustomLayoutMap } from '../components/CustomLayoutMap';
@@ -931,15 +931,7 @@ export function EditorPage() {
   const selectedPagePositionLabel = t('Page %s of %s')
     .replace('%s', String(selectedPageIndex + 1))
     .replace('%s', String(project.pages.length));
-  const selectedTemplateMeta = templateMeta[templateChoice];
   const selectedTemplateLabel = getTemplateLabel(templateChoice, templateChoice === 'custom' ? customTemplateDraft : null);
-  const chosenThemeMeta = pageThemeMeta[themeChoice];
-  const templatePanelTag =
-    templateChoice === 'custom'
-      ? customTemplateDraft.frames.length === 1
-        ? t('1 frame')
-        : t('%s frames').replace('%s', String(customTemplateDraft.frames.length))
-      : t(selectedTemplateMeta.summary);
   const selectedAssetId = selectedSlot ? selectedPage.slots[selectedSlot] : null;
   const selectedPageUsesKicker = templateUsesKicker(selectedPage.template);
   const selectedPageUsesDeck = templateUsesDeck(selectedPage.template);
@@ -1056,10 +1048,8 @@ export function EditorPage() {
       <div className="editor-layout">
         <aside className="editor-sidebar editor-sidebar--navigation">
           <section className="page-strip-panel">
-            <div className="page-strip-panel__header page-strip-panel__header--compact">
-              <div>
-                <p className="eyebrow">{t('Sequence')}</p>
-              </div>
+            <div className="editor-panel__toolbar">
+              <span className="editor-panel__label">{t('Sequence')}</span>
               <span className="panel-tag">{sequenceLabel}</span>
             </div>
 
@@ -1094,44 +1084,55 @@ export function EditorPage() {
                       setDragOverPageId(null);
                     }}
                   >
-                    <button
-                      type="button"
-                      className="page-chip__main"
-                      draggable
-                      title={t('Drag to reorder pages')}
-                      onDragStart={(event) => {
-                        setDraggedPageId(page.id);
-                        event.dataTransfer.effectAllowed = 'move';
-                        event.dataTransfer.setData('text/plain', page.id);
-                      }}
-                      onDragEnd={() => {
-                        setDraggedPageId(null);
-                        setDragOverPageId(null);
-                      }}
-                      onClick={() => {
-                        selectPage(page.id);
-                        setColorPickerPageId(null);
-                      }}
-                    >
-                      <span className="page-chip__row">
-                        <span>{pagePositionLabel}</span>
-                        <em>{t(getTemplateLabel(page.template, page.customTemplate))}</em>
-                      </span>
-                      {isActive ? <strong>{page.title}</strong> : null}
-                    </button>
-                    <button
-                      type="button"
-                      className={`page-chip__dot theme-card__swatch--${page.theme}`}
-                      title={t('Paper color')}
-                      aria-label={t('Paper color')}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        if (!isActive) {
+                    <div className="page-chip__head">
+                      <button
+                        type="button"
+                        className="page-chip__select"
+                        draggable
+                        title={t('Drag to reorder pages')}
+                        onDragStart={(event) => {
+                          setDraggedPageId(page.id);
+                          event.dataTransfer.effectAllowed = 'move';
+                          event.dataTransfer.setData('text/plain', page.id);
+                        }}
+                        onDragEnd={() => {
+                          setDraggedPageId(null);
+                          setDragOverPageId(null);
+                        }}
+                        onClick={() => {
                           selectPage(page.id);
-                        }
-                        setColorPickerPageId((current) => (current === page.id ? null : page.id));
-                      }}
-                    />
+                          setColorPickerPageId(null);
+                        }}
+                      >
+                        <span className="page-chip__index">{pagePositionLabel}</span>
+                        <em>{t(getTemplateLabel(page.template, page.customTemplate))}</em>
+                      </button>
+                      <button
+                        type="button"
+                        className={`page-chip__dot theme-card__swatch--${page.theme}`}
+                        title={t('Paper color')}
+                        aria-label={t('Paper color')}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          if (!isActive) {
+                            selectPage(page.id);
+                          }
+                          setColorPickerPageId((current) => (current === page.id ? null : page.id));
+                        }}
+                      />
+                    </div>
+                    {isActive ? (
+                      <button
+                        type="button"
+                        className="page-chip__title"
+                        onClick={() => {
+                          selectPage(page.id);
+                          setColorPickerPageId(null);
+                        }}
+                      >
+                        {page.title}
+                      </button>
+                    ) : null}
                     {colorPickerPageId === page.id ? (
                       <div className="page-color-popover surface-popover" role="group" aria-label={t('Paper color')}>
                         <div className="page-color-popover__swatches">
@@ -1232,13 +1233,10 @@ export function EditorPage() {
           </section>
 
           <section className="editor-panel editor-panel--layout">
-            <div className="editor-panel__heading">
-              <div>
-                <p className="eyebrow">{t('Page layout')}</p>
-                <h2>{t(selectedTemplateLabel)}</h2>
-              </div>
+            <div className="editor-panel__toolbar">
+              <span className="editor-panel__label">{t('Page layout')}</span>
               <div className="editor-collapsible-meta">
-                <span className="panel-tag">{templatePanelTag}</span>
+                <span className="panel-tag">{t(selectedTemplateLabel)}</span>
                 <button
                   type="button"
                   className="button button--ghost button--small editor-toggle-button"
@@ -1320,11 +1318,8 @@ export function EditorPage() {
                     onFocus={handleCustomLayoutPreviewFocus}
                     onBlur={handleCustomLayoutPreviewBlur}
                   >
-                    <div className="editor-panel__heading">
-                      <div>
-                        <p className="eyebrow">{t('Custom layout')}</p>
-                        <h2>{customTemplateDraft.name}</h2>
-                      </div>
+                    <div className="editor-panel__toolbar">
+                      <span className="editor-panel__label">{t('Custom layout')}</span>
                       <span className="panel-tag">
                         {customTemplateDraft.frames.length === 1
                           ? t('1 frame')
@@ -1401,11 +1396,10 @@ export function EditorPage() {
                     <div className="custom-frame-list">
                       {customTemplateDraft.frames.map((frame, frameIndex) => (
                         <section key={frame.slot} className="custom-frame-card">
-                          <div className="editor-panel__heading">
-                            <div>
-                              <p className="eyebrow">{t('Frame')}{frameIndex + 1}</p>
-                              <h2>{frame.label}</h2>
-                            </div>
+                          <div className="editor-panel__toolbar">
+                            <span className="editor-panel__label">
+                              {t('Frame')} {frameIndex + 1}
+                            </span>
                             <span className="panel-tag">{frame.slot.toUpperCase()}</span>
                           </div>
                           <label className="field">
@@ -1541,11 +1535,8 @@ export function EditorPage() {
           ) : null}
 
           <section className="editor-panel editor-panel--starter-packs">
-            <div className="editor-panel__heading">
-              <div>
-                <p className="eyebrow">{t('Project templates')}</p>
-                <h2>{t('Built-in folio starters')}</h2>
-              </div>
+            <div className="editor-panel__toolbar">
+              <span className="editor-panel__label">{t('Project templates')}</span>
               <div className="editor-collapsible-meta">
                 <span className="panel-tag">{projectTemplateSectionTag}</span>
                 <button
@@ -1597,13 +1588,12 @@ export function EditorPage() {
           </section>
 
           <section className="editor-panel editor-panel--user-templates">
-            <div className="editor-panel__heading">
-              <div>
-                <p className="eyebrow">{t('My templates')}</p>
-                <h2>{t('Reusable folios')}</h2>
-              </div>
+            <div className="editor-panel__toolbar">
+              <span className="editor-panel__label">{t('My templates')}</span>
               <div className="editor-collapsible-meta">
-                <span className="panel-tag">{session ? `${userTemplates.length} saved` : t('Sign in')}</span>
+                <span className="panel-tag">
+                  {session ? countLabel(userTemplates.length, '1 saved', '%s saved') : t('Sign in')}
+                </span>
                 {session ? (
                   <Link to="/account?section=templates" className="button button--ghost button--small editor-toggle-button">
                     {t('Manage')}</Link>

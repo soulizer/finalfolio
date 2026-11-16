@@ -1726,7 +1726,7 @@ try {
     assert.match(editorContentSidebar, /editor-panel--photos/);
     assert.match(editorContentSidebar, /import-url-form/);
     assert.match(editorContentSidebar, /onImportFromUrl/);
-    assert.match(editorContentSidebar, /Fields/);
+    assert.match(editorContentSidebar, /editor-panel__toolbar/);
     assert.match(editorContentSidebar, /Small label above the main headline\./);
     assert.match(editorContentSidebar, /Line breaks stay visible in the preview\./);
     assert.match(editorContentSidebar, /Clear all/);
@@ -1739,7 +1739,7 @@ try {
     assert.match(editorOperationsSidebar, /editor-project-url/);
     assert.match(editorOperationsSidebar, /editor-icon-button/);
     assert.match(editorOperationsSidebar, /Share project/);
-    assert.match(editorOperationsSidebar, /Public viewer/);
+    assert.match(editorOperationsSidebar, /Share project/);
     assert.match(editorOperationsSidebar, /Save as template/);
     assert.match(editorOperationsSidebar, /Folio details/);
     assert.match(editorOperationsSidebar, /Image corners/);

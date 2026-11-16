@@ -1586,3 +1586,20 @@
 - `npm run validate:mvp`
 - `./node_modules/.bin/playwright test` (14 specs)
 - No horizontal overflow at 360/390/768/1024
+
+## 2026-11-16 Editor Design System Pass
+
+### What changed
+
+- Unified every editor sidebar panel on one compact header pattern: a 12 px semibold label plus an optional tag/action, all exactly 32 px tall. Large serif panel headings are gone.
+- Applied a single spacing rhythm: every panel uses 14 px padding and a 12 px grid gap; section dividers and direct-child margins no longer fight each other.
+- Rebuilt sequence chips as a meta row (page number + layout + colour dot) with an optional title and action row, so collapsed and expanded states share the same alignment.
+- Moved the project title into the project panel under its mark, and kept subtitle/mark/corners in the collapsible details.
+- Photos panel: compact label, side-by-side upload/URL actions, URL field on demand.
+- Localised the last dynamic strings (upload/restore toasts, template/theme messages, page limits, selected frame, upload progress) and admin trend dates/hours.
+
+### Validation
+
+- `npm run validate:mvp`
+- `./node_modules/.bin/playwright test` (14 specs)
+- No horizontal overflow at 360/390/768/1024

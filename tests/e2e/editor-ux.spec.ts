@@ -66,9 +66,9 @@ test('pages can be reordered by dragging', async ({ page }) => {
 
   const chips = page.locator('.page-chip');
   await expect(chips.first()).toBeVisible();
-  const movedTitle = await chips.first().locator('.page-chip__main strong').innerText();
+  const movedTitle = await chips.first().locator('.page-chip__title').innerText();
 
-  await chips.first().locator('.page-chip__main').dragTo(chips.nth(2));
+  await chips.first().locator('.page-chip__select').dragTo(chips.nth(2));
   await expect(chips.nth(2)).toContainText(movedTitle);
 });
 

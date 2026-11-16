@@ -339,19 +339,14 @@ export function EditorContentSidebar({
         </div>
       </section>
       <section className="editor-panel editor-panel--content-work">
-        <div className="editor-panel__heading editor-panel__heading--compact">
-          <div>
-            <p className="eyebrow">{t('Page content')}</p>
-          </div>
+        <div className="editor-panel__toolbar">
+          <span className="editor-panel__label">{t('Page content')}</span>
           <span className="panel-tag">{selectedPagePositionLabel}</span>
         </div>
 
         <section className="editor-panel__section">
-          <div className="editor-section-heading">
-            <div>
-              <p className="eyebrow">{t('Text')}</p>
-              <h3>{t('Fields')}</h3>
-            </div>
+          <div className="editor-panel__toolbar">
+            <span className="editor-panel__label">{t('Text')}</span>
           </div>
           {selectedPageUsesKicker ? (
             <label className="field">
@@ -419,15 +414,15 @@ export function EditorContentSidebar({
         </section>
 
         <section className="editor-panel__section">
-          <div className="editor-section-heading">
-            <div>
-              <p className="eyebrow">{t('Selected frame')}</p>
-              <h3>{selectedFrameLabel ?? t('No frame selected')}</h3>
-            </div>
+          <div className="editor-panel__toolbar">
+            <span className="editor-panel__label">{t('Selected frame')}</span>
             {selectedAsset ? <span className="panel-tag">{currentCrop?.fit === 'contain' ? t('Fit') : t('Fill')}</span> : null}
           </div>
+          <p className="editor-panel__value">{selectedFrameLabel ?? t('No frame selected')}</p>
           <p className="selected-frame-status">
-            {selectedAsset ? `Assigned image: ${selectedAsset.name}` : t('No image assigned to this frame yet.')}
+            {selectedAsset
+              ? t('Assigned image: %s').replace('%s', selectedAsset.name)
+              : t('No image assigned to this frame yet.')}
           </p>
           {selectedAssetPlacements.length ? (
             <div className="placement-list" aria-label={t('Asset placements')}>

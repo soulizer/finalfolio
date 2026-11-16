@@ -150,13 +150,13 @@ export function EditorOperationsSidebar({
   return (
     <aside className="editor-sidebar editor-sidebar--operations">
       <section className="editor-panel editor-panel--account">
-        <div className="editor-panel__heading">
-          <div>
-            <p className="eyebrow">{t('Account')}</p>
-            <h2>{authReady ? (session ? getUserPrimaryIdentity(session) : t('Sign in required')) : t('Account')}</h2>
-          </div>
+        <div className="editor-panel__toolbar">
+          <span className="editor-panel__label">{t('Account')}</span>
           <span className="panel-tag">{authReady ? (session ? t(session.role) : t('Guest')) : t('Session')}</span>
         </div>
+        <p className="editor-panel__value">
+          {authReady ? (session ? getUserPrimaryIdentity(session) : t('Sign in required')) : t('Account')}
+        </p>
         <p className="panel-note">
           {!authReady
             ? t('Keeping the current workspace warm while the shared session finishes loading.')
@@ -180,13 +180,19 @@ export function EditorOperationsSidebar({
       </section>
 
       <section className="editor-panel editor-panel--project-actions">
-        <div className="editor-panel__heading">
-          <div>
-            <p className="eyebrow">{t('Project')}</p>
-            <h2>{project.issue}</h2>
-          </div>
+        <div className="editor-panel__toolbar">
+          <span className="editor-panel__label">{t('Project')}</span>
           <span className="panel-tag">{projectModeTag}</span>
         </div>
+        <p className="editor-panel__value">{project.issue}</p>
+        <label className="field">
+          <span>{t('Title')}</span>
+          <input
+            maxLength={PROJECT_TITLE_LIMIT}
+            value={project.title}
+            onChange={(event) => updateProject((current) => ({ ...current, title: event.target.value }))}
+          />
+        </label>
         <p className="panel-note panel-note--status">{t(statusText)}</p>
         {saveConflict ? (
           <div className="editor-conflict-notice" role="alert">
@@ -285,11 +291,8 @@ export function EditorOperationsSidebar({
         </div>
 
         <section className="editor-panel__section">
-          <div className="editor-section-heading">
-            <div>
-              <p className="eyebrow">{t('Share project')}</p>
-              <h3>{t('Public viewer')}</h3>
-            </div>
+          <div className="editor-panel__toolbar">
+            <span className="editor-panel__label">{t('Share project')}</span>
             <span className="panel-tag">{!projectRecord ? t('Save first') : projectRecord.share.enabled ? t('Live') : t('Off')}</span>
           </div>
           <label className="field">
@@ -340,11 +343,8 @@ export function EditorOperationsSidebar({
 
         {templateComposerOpen ? (
           <section className="editor-panel__section">
-            <div className="editor-section-heading">
-              <div>
-                <p className="eyebrow">{t('Template')}</p>
-                <h3>{t('Save to My templates')}</h3>
-              </div>
+            <div className="editor-panel__toolbar">
+              <span className="editor-panel__label">{t('Template')}</span>
               <span className="panel-tag">{templateSaveKind === 'page' ? t('Page template') : t('Project template')}</span>
             </div>
             <p className="panel-note">
@@ -400,15 +400,6 @@ export function EditorOperationsSidebar({
           </section>
         ) : null}
 
-        <label className="field editor-project-title-field">
-          <span>{t('Title')}</span>
-          <input
-            maxLength={PROJECT_TITLE_LIMIT}
-            value={project.title}
-            onChange={(event) => updateProject((current) => ({ ...current, title: event.target.value }))}
-          />
-        </label>
-
         <details
           className="editor-project-details"
           open={projectDetailsOpen}
@@ -439,11 +430,8 @@ export function EditorOperationsSidebar({
         </section>
 
         <section className="editor-panel__section">
-          <div className="editor-section-heading">
-            <div>
-              <p className="eyebrow">{t('Folio style')}</p>
-              <h3>{t('Image corners')}</h3>
-            </div>
+          <div className="editor-panel__toolbar">
+            <span className="editor-panel__label">{t('Image corners')}</span>
             <span className="panel-tag">{frameRadiusLabel}</span>
           </div>
           <div className="segmented-control segmented-control--three" role="group" aria-label={t('Image corner presets')}>

@@ -76,6 +76,8 @@ const zh: Record<string, string> = {
   '1 event': '1 个事件',
   '1 image': '1 张图片',
   '1 project reference': '引用 1 个项目',
+  '1 saved': '已保存 1 个',
+  '%s saved': '已保存 %s 个',
   '%s uses': '%s 处使用',
   '%s frames': '%s 个图框',
   '1 page': '1 页',
