@@ -1603,3 +1603,19 @@
 - `npm run validate:mvp`
 - `./node_modules/.bin/playwright test` (14 specs)
 - No horizontal overflow at 360/390/768/1024
+
+## 2026-11-16 Template Localisation and Empty-Frame CTA
+
+### What changed
+
+- Custom layout templates now localise their names and frame labels (编辑分栏 / 主图 / 细节 A …) when created, loaded from presets, or cloned for an existing project; previews and labels translate known stored names too.
+- The empty-frame upload CTA no longer nests a button inside the frame button; it renders as a standard control overlaid on the frame, centred under the “drop a photo” hint with a consistent radius, height and shadow.
+- Removed the last technical frame-slot tags (FRAME1 …) from the custom layout editor.
+- Editor sidebars now share one compact 32 px header row and a single 14 px padding / 12 px gap rhythm; sequence chips share one aligned meta-row structure.
+- Layout card hover actions no longer block clicking the card itself (only the buttons capture pointer events).
+
+### Validation
+
+- `npm run validate:mvp`
+- `./node_modules/.bin/playwright test` (14 specs)
+- No horizontal overflow at 360/390/768/1024

@@ -7925,6 +7925,10 @@ html:lang(zh-CN) .magazine-page h2,
   transition: opacity 140ms ease;
 }
 
+.layout-card__actions .button {
+  pointer-events: auto;
+}
+
 .layout-card::after {
   content: '';
   position: absolute;
@@ -8347,25 +8351,7 @@ html[lang='zh-CN'] body {
   text-transform: none;
 }
 
-.asset-frame__upload {
-  position: absolute;
-  left: 50%;
-  bottom: 12px;
-  transform: translateX(-50%);
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(17, 17, 17, 0.16);
-  background: rgba(252, 250, 246, 0.94);
-  color: var(--ink);
-  font: inherit;
-  font-size: 0.76rem;
-  cursor: pointer;
-  z-index: 2;
-}
 
-.asset-frame__upload:hover {
-  background: #fff;
-}
 
 /* Unified sequence chip: meta row + dot, optional title and actions. */
 .page-chip {
@@ -8518,4 +8504,28 @@ html[lang='zh-CN'] body {
   height: 26px;
   padding: 0 10px;
   font-size: 0.72rem;
+}
+
+.asset-slot {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+}
+
+.asset-slot > .asset-frame {
+  height: 100%;
+}
+
+.asset-slot__upload {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 30px);
+  transform: translateX(-50%);
+  z-index: 2;
+  white-space: nowrap;
+  min-height: 50px;
+  padding: 0 18px;
+  font-size: 1rem;
+  border-radius: var(--control-radius);
+  box-shadow: 0 10px 22px rgba(17, 17, 17, 0.12);
 }

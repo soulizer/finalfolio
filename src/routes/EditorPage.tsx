@@ -1332,7 +1332,7 @@ export function EditorPage() {
                         <button
                           key={preset.id}
                           type="button"
-                          className={`template-card ${customTemplateDraft.name === preset.template.name ? 'is-active' : ''}`}
+                          className={`template-card ${customTemplateDraft.name === t(preset.template.name) ? 'is-active' : ''}`}
                           onClick={() => loadCustomLayoutPreset(preset.id)}
                         >
                           <CustomLayoutMap template={preset.template} className="custom-layout-map--card" />
@@ -1400,7 +1400,6 @@ export function EditorPage() {
                             <span className="editor-panel__label">
                               {t('Frame')} {frameIndex + 1}
                             </span>
-                            <span className="panel-tag">{frame.slot.toUpperCase()}</span>
                           </div>
                           <label className="field">
                             <span>{t('Label')}</span>

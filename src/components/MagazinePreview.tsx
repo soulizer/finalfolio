@@ -436,21 +436,7 @@ function AssetFrame({
             }
           />
         ) : interactive ? (
-          <>
-            <span className="asset-frame__placeholder">{t('Drop a photo here')}</span>
-            {onRequestUpload ? (
-              <button
-                type="button"
-                className="asset-frame__upload"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onRequestUpload(slot);
-                }}
-              >
-                {t('Upload photo')}
-              </button>
-            ) : null}
-          </>
+          <span className="asset-frame__placeholder">{t('Drop a photo here')}</span>
         ) : null}
       </div>
       {interactive ? <span className="asset-frame__hint">{slotHint}</span> : null}
@@ -583,25 +569,46 @@ export function MagazinePreview({
   const hasBody = templateUsesBody(page.template, page.customTemplate) && Boolean(page.body.trim());
   const hasCaption = Boolean(page.caption.trim());
   const hasTriptychAside = hasDeck || hasBody || hasCaption;
-  const renderSlot = (slot: string, options: { className?: string; hintLabel?: string } = {}) => (
-    <AssetFrame
-      key={`${page.id}:${slot}`}
-      slot={slot}
-      page={page}
-      assets={assets}
-      assetVariant={assetVariant}
-      imageDecoding={imageDecoding}
-      selectedSlot={selectedSlot}
-      interactive={interactive}
-      onSelectSlot={onSelectSlot}
-      onAssignDroppedAsset={onAssignDroppedAsset}
-      onUpdateCrop={onUpdateCrop}
-      onCropMetricsChange={onCropMetricsChange}
-      onRequestUpload={onRequestUpload}
-      className={options.className}
-      hintLabel={options.hintLabel}
-    />
-  );
+  const renderSlot = (slot: string, options: { className?: string; hintLabel?: string } = {}) => {
+    const frame = (
+      <AssetFrame
+        key={`${page.id}:${slot}`}
+        slot={slot}
+        page={page}
+        assets={assets}
+        assetVariant={assetVariant}
+        imageDecoding={imageDecoding}
+        selectedSlot={selectedSlot}
+        interactive={interactive}
+        onSelectSlot={onSelectSlot}
+        onAssignDroppedAsset={onAssignDroppedAsset}
+        onUpdateCrop={onUpdateCrop}
+        onCropMetricsChange={onCropMetricsChange}
+        className={options.className}
+        hintLabel={options.hintLabel}
+      />
+    );
+
+    if (!interactive || page.slots[slot] || !onRequestUpload) {
+      return frame;
+    }
+
+    return (
+      <div key={`${page.id}:${slot}:slot`} className="asset-slot">
+        {frame}
+        <button
+          type="button"
+          className="button button--ghost button--small asset-slot__upload"
+          onClick={(event) => {
+            event.stopPropagation();
+            onRequestUpload(slot);
+          }}
+        >
+          {t('Upload photo')}
+        </button>
+      </div>
+    );
+  };
 
   return (
     <article className={pageClassName} style={pageStyle}>
@@ -763,11 +770,11 @@ export function MagazinePreview({
           <div className="magazine-custom__canvas">
             {customTemplate.frames.map((frame) => (
               <div key={frame.slot} className="magazine-custom__frame" style={areaStyle(frame)}>
-                {renderSlot(frame.slot, { className: t('magazine-custom__asset-frame'), hintLabel: frame.label })}
+                {renderSlot(frame.slot, { className: t('magazine-custom__asset-frame'), hintLabel: t(frame.label) })}
               </div>
             ))}
             <section className="magazine-custom__text" style={areaStyle(customTemplate.text)}>
-              <span className="magazine-custom__label">{customTemplate.name}</span>
+              <span className="magazine-custom__label">{t(customTemplate.name)}</span>
               <div className="magazine-heading-block">
                 {hasKicker ? <p className="magazine-kicker">{renderText('kicker')}</p> : null}
                 <h2>{renderText('title')}</h2>

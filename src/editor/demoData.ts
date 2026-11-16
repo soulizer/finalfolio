@@ -782,17 +782,27 @@ function normalizeFrame(frame: unknown, index: number): CustomTemplateFrame {
   };
 }
 
+export function localizeCustomTemplateDefinition(template: CustomTemplateDefinition): CustomTemplateDefinition {
+  return {
+    ...template,
+    name: translate(template.name),
+    frames: template.frames.map((frame) => ({ ...frame, label: translate(frame.label) })),
+  };
+}
+
 export function createCustomTemplateDefinition(overrides: Partial<CustomTemplateDefinition> = {}): CustomTemplateDefinition {
-  return normalizeCustomTemplateDefinition({
-    ...defaultCustomTemplateSource,
-    ...overrides,
-    text: overrides.text ?? defaultCustomTemplateSource.text,
-    frames: overrides.frames ?? defaultCustomTemplateSource.frames,
-  });
+  return localizeCustomTemplateDefinition(
+    normalizeCustomTemplateDefinition({
+      ...defaultCustomTemplateSource,
+      ...overrides,
+      text: overrides.text ?? defaultCustomTemplateSource.text,
+      frames: overrides.frames ?? defaultCustomTemplateSource.frames,
+    }),
+  );
 }
 
 export function cloneCustomTemplateDefinition(template?: CustomTemplateDefinition | null) {
-  return normalizeCustomTemplateDefinition(template ?? defaultCustomTemplateSource);
+  return localizeCustomTemplateDefinition(normalizeCustomTemplateDefinition(template ?? defaultCustomTemplateSource));
 }
 
 export function normalizeCustomTemplateDefinition(value: unknown): CustomTemplateDefinition {
