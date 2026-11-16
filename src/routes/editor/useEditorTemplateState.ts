@@ -1,3 +1,4 @@
+import { translate } from '../../i18n';
 import { useEffect, useState } from 'react';
 import { fetchAccountPreferences, fetchTemplateGovernance, type UserSession } from '../../editor/api';
 import type { AccountPreferences, ExportSettings, ProjectState, UserTemplateKind, UserTemplateRecord } from '../../editor/types';
@@ -25,7 +26,7 @@ function createExportSettingsFromPreferences(preferences: AccountPreferences): E
 }
 
 function createDefaultTemplateSaveName(project: ProjectState) {
-  return `${project.title.trim() || project.issue.trim() || 'Untitled folio'} Template`;
+  return `${project.title.trim() || project.issue.trim() || translate('Untitled folio')} ${translate('Template')}`;
 }
 
 export function useEditorTemplateState({

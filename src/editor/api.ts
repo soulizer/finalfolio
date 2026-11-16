@@ -92,11 +92,13 @@ export interface AdminSummary {
   trends: {
     last24Hours: Array<{
       label: string;
+      start?: string;
       total: number;
       failures: number;
     }>;
     last7Days: Array<{
       label: string;
+      start?: string;
       total: number;
       failures: number;
     }>;

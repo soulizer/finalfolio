@@ -253,6 +253,9 @@ export function EditorPage() {
   const [starterPacksOpen, setStarterPacksOpen] = useState(false);
   const [colorPickerPageId, setColorPickerPageId] = useState<string | null>(null);
   const [draggedPageId, setDraggedPageId] = useState<string | null>(null);
+  const pendingUploadSlotRef = useRef<string | null>(null);
+  const quickUploadInputRef = useRef<HTMLInputElement | null>(null);
+  const assetCountRef = useRef(0);
   const [dragOverPageId, setDragOverPageId] = useState<string | null>(null);
   const [importUrlBusy, setImportUrlBusy] = useState(false);
   const [starterPacksAutoOpened, setStarterPacksAutoOpened] = useState(false);
@@ -728,6 +731,24 @@ export function EditorPage() {
     [importUrlBusy, setMessage, t, updateProject],
   );
 
+  const handleRequestUpload = useCallback((slot: string) => {
+    pendingUploadSlotRef.current = slot;
+    quickUploadInputRef.current?.click();
+  }, []);
+
+  const assignAssetRef = useRef(assignAsset);
+  assignAssetRef.current = assignAsset;
+
+  useEffect(() => {
+    const previousCount = assetCountRef.current;
+    assetCountRef.current = project.assets.length;
+    const pendingSlot = pendingUploadSlotRef.current;
+    if (pendingSlot && project.assets.length > previousCount && project.assets[0]) {
+      assignAssetRef.current(pendingSlot, project.assets[0].id);
+      pendingUploadSlotRef.current = null;
+    }
+  }, [project.assets]);
+
   const handleTextEditCommit = useCallback(
     (field: 'kicker' | 'title' | 'deck' | 'body' | 'caption', value: string) => {
       updateSelectedPage((current) => ({ ...current, [field]: value }));
@@ -848,10 +869,24 @@ export function EditorPage() {
     );
   }
 
+  const slotLabelKeys: Record<string, string> = {
+    hero: 'Hero',
+    lead: 'Lead frame',
+    left: 'Left frame',
+    right: 'Right frame',
+    top: 'Top frame',
+    bottom: 'Bottom frame',
+    a: 'Frame A',
+    b: 'Frame B',
+    c: 'Frame C',
+    d: 'Frame D',
+  };
   const selectedFrameLabel =
     selectedSlot && selectedPage?.template === 'custom'
       ? selectedPage.customTemplate?.frames.find((frame) => frame.slot === selectedSlot)?.label ?? selectedSlot
-      : selectedSlot;
+      : selectedSlot
+        ? t(slotLabelKeys[selectedSlot] ?? selectedSlot)
+        : null;
   const fallbackStatus = !projectRecord
     ? hasGuestUploadAssets
       ? session
@@ -1003,6 +1038,21 @@ export function EditorPage() {
   return (
     <div className="editor-shell">
       <h1 className="sr-only">{t('Folio editor')}</h1>
+      <input
+        ref={quickUploadInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
+        multiple
+        hidden
+        onChange={(event) => {
+          const input = event.currentTarget;
+          const files = Array.from(input.files ?? []);
+          if (files.length) {
+            void handleUploadFilesWithLimit(files);
+          }
+          input.value = '';
+        }}
+      />
       <div className="editor-layout">
         <aside className="editor-sidebar editor-sidebar--navigation">
           <section className="page-strip-panel">
@@ -1608,6 +1658,7 @@ export function EditorPage() {
                 issue={project.issue}
                 page={selectedPage}
                 onTextEditCommit={handleTextEditCommit}
+                onRequestUpload={handleRequestUpload}
                 assets={assetsById}
                 frameRadius={project.frameRadius}
                 pageNumber={selectedPageIndex + 1}

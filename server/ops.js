@@ -17,6 +17,7 @@ function createTrendBuckets({
     const bucketStartMs = startMs + spanMs * index;
     return {
       label: formatter(new Date(bucketStartMs)),
+      start: new Date(bucketStartMs).toISOString(),
       total: 0,
       failures: 0,
     };

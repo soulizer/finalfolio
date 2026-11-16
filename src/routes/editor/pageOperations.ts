@@ -6,6 +6,7 @@ import {
   templatePacks,
   type TemplatePackId,
 } from '../../editor/demoData';
+import { translate } from '../../i18n';
 import { PAGE_TITLE_LIMIT } from '../../editor/limits';
 import type { CustomTemplateDefinition, PageData, PageThemeId, ProjectState, TemplateId } from '../../editor/types';
 
@@ -106,7 +107,10 @@ export function duplicateProjectPage({
   const duplicatedPageLabel = duplicate.title.trim() || `Page ${insertAt + 1}`;
 
   return {
-    message: `Duplicated the page. Now editing "${duplicatedPageLabel}" at position ${insertAt + 1} of ${project.pages.length + 1}.`,
+    message: translate('Duplicated the page. Now editing "%s" at position %s of %s.')
+      .replace('%s', duplicatedPageLabel)
+      .replace('%s', String(insertAt + 1))
+      .replace('%s', String(project.pages.length + 1)),
     nextPage: duplicate,
     nextProject: {
       ...project,

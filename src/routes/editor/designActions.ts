@@ -1,3 +1,4 @@
+import { translate } from '../../i18n';
 import {
   cloneCustomTemplateDefinition,
   customLayoutPresets,
@@ -81,7 +82,9 @@ export function createEditorDesignActions({
 
     setTemplateChoice('custom');
     setCustomTemplateDraft(cloneCustomTemplateDefinition(preset.template));
-    setMessage(`Loaded the ${preset.label} scaffold. Apply it when the structure feels right.`);
+    setMessage(
+      translate('Loaded the %s scaffold. Apply it when the structure feels right.').replace('%s', translate(preset.label)),
+    );
   }
 
   function addCustomFrame() {
@@ -131,7 +134,7 @@ export function createEditorDesignActions({
           theme: themeId,
         })),
       }));
-      setMessage(`Applied ${themeLabel} across the full folio.`);
+      setMessage(translate('Applied %s across the full folio.').replace('%s', translate(themeLabel)));
       return;
     }
 
@@ -139,7 +142,7 @@ export function createEditorDesignActions({
       ...page,
       theme: themeId,
     }));
-    setMessage(`Applied ${themeLabel} to this page.`);
+    setMessage(translate('Applied %s to this page.').replace('%s', translate(themeLabel)));
   }
 
   function updateFrameRadius(frameRadius: number) {

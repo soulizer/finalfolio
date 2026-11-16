@@ -119,6 +119,7 @@ export function EditorContentSidebar({
   const t = useT();
   const [importUrlValue, setImportUrlValue] = useState('');
   const [assetSearch, setAssetSearch] = useState('');
+  const [importUrlOpen, setImportUrlOpen] = useState(false);
   const uploadTrackWidth = `${
     uploadBusy ? uploadProgressPercent : Math.round((uploadState.completedFiles / Math.max(uploadState.totalFiles, 1)) * 100)
   }%`;
@@ -126,37 +127,14 @@ export function EditorContentSidebar({
   return (
     <aside className="editor-sidebar editor-sidebar--content">
       <section className="editor-panel editor-panel--photos">
-        <div className="editor-panel__heading">
-          <div>
-            <h2>{t('Media library')}</h2>
-          </div>
-          <span className="panel-tag">{libraryAssets.length === 0 ? t('Empty') : countLabel(libraryAssets.length, '1 photo', '%s photos')}</span>
+        <div className="editor-panel__toolbar">
+          <span className="editor-panel__label">{t('Media library')}</span>
+          <span className="panel-tag">
+            {libraryAssets.length === 0 ? t('Empty') : countLabel(libraryAssets.length, '1 photo', '%s photos')}
+          </span>
         </div>
-        <form
-          className="import-url-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const value = importUrlValue.trim();
-            if (!value || importUrlBusy) {
-              return;
-            }
-            void Promise.resolve(onImportFromUrl(value)).finally(() => setImportUrlValue(''));
-          }}
-        >
-          <input
-            type="url"
-            value={importUrlValue}
-            placeholder={t('Paste an image URL (http/https)')}
-            aria-label={t('Add from URL')}
-            disabled={importUrlBusy || !canUploadAssets}
-            onChange={(event) => setImportUrlValue(event.target.value)}
-          />
-          <button type="submit" className="button button--ghost button--small" disabled={importUrlBusy || !importUrlValue.trim() || !canUploadAssets}>
-            {importUrlBusy ? t('Importing…') : t('Import')}
-          </button>
-        </form>
-        <div className="editor-panel__actions editor-panel__actions--tight">
-          <label className={`upload-button upload-button--dark ${uploadBusy ? 'is-busy' : ''}`.trim()}>
+        <div className="editor-panel__actions editor-panel__actions--tight photo-actions">
+          <label className={`upload-button upload-button--dark upload-button--compact ${uploadBusy ? 'is-busy' : ''}`.trim()}>
             {uploadProgressLabel}
             <input
               type="file"
@@ -177,6 +155,14 @@ export function EditorContentSidebar({
               }}
             />
           </label>
+          <button
+            type="button"
+            className="button button--ghost button--small"
+            aria-expanded={importUrlOpen}
+            onClick={() => setImportUrlOpen((current) => !current)}
+          >
+            {t('Add from URL')}
+          </button>
           {unusedAssetCount > 0 ? (
             <button
               type="button"
@@ -185,15 +171,49 @@ export function EditorContentSidebar({
               title={assetMutationBusy || uploadBusy ? t('Wait for the current library mutation to finish.') : undefined}
               onClick={() => void removeUnusedAssetsFromIssue()}
             >
-              {countLabel(unusedAssetCount, '1 unused', 'Clear %s unused')}
+              {countLabel(unusedAssetCount, 'Clear 1 unused', 'Clear %s unused')}
             </button>
           ) : null}
         </div>
+        {importUrlOpen ? (
+          <form
+            className="import-url-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const value = importUrlValue.trim();
+              if (!value || importUrlBusy) {
+                return;
+              }
+              void Promise.resolve(onImportFromUrl(value)).finally(() => {
+                setImportUrlValue('');
+                setImportUrlOpen(false);
+              });
+            }}
+          >
+            <input
+              type="url"
+              value={importUrlValue}
+              placeholder={t('Paste an image URL (http/https)')}
+              aria-label={t('Add from URL')}
+              disabled={importUrlBusy || !canUploadAssets}
+              onChange={(event) => setImportUrlValue(event.target.value)}
+            />
+            <button type="submit" className="button button--ghost button--small" disabled={importUrlBusy || !importUrlValue.trim() || !canUploadAssets}>
+              {importUrlBusy ? t('Importing…') : t('Import')}
+            </button>
+          </form>
+        ) : null}
         {uploadBusy ? (
           <div className="upload-progress" role="status" aria-live="polite">
             <div className="upload-progress__meta">
               <strong>{uploadBusy ? uploadProgressLabel : t('Upload finished')}</strong>
-              <span>{uploadBusy ? `${uploadProgressPercent}%` : `${uploadState.completedFiles}/${Math.max(uploadState.totalFiles, 1)} complete`}</span>
+              <span>
+                {uploadBusy
+                  ? `${uploadProgressPercent}%`
+                  : t('%s of %s complete')
+                      .replace('%s', String(uploadState.completedFiles))
+                      .replace('%s', String(Math.max(uploadState.totalFiles, 1)))}
+              </span>
             </div>
             <div className="upload-progress__track">
               <span style={{ width: uploadTrackWidth }} />

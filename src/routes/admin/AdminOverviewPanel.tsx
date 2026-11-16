@@ -1,7 +1,8 @@
 import { useT } from '../../i18n';
 import type { AdminSummary, ProductConfigPayload } from '../../editor/api';
 import { getUserPrimaryIdentity, getUserSecondaryIdentity } from '../../editor/identity';
-import { formatBytes, formatHourLabel, formatTimestamp } from './adminFormatting';
+import { countLabel } from '../../i18n';
+import { formatBytes, formatTimestamp, formatTrendLabel } from './adminFormatting';
 import type { AdminSectionKey } from './useAdminShellState';
 
 type AdminOverviewPanelProps = {
@@ -119,10 +120,10 @@ export function AdminOverviewPanel({
           <div className="admin-breakdown-list">
             {summary.trends.last7Days.map((bucket) => (
               <article key={bucket.label} className="admin-breakdown-row">
-                <strong>{bucket.label}</strong>
+                <strong>{formatTrendLabel(bucket, 'day')}</strong>
                 <div className="admin-breakdown-row__stats">
-                  <span>{t('%s events').replace('%s', String(bucket.total))}</span>
-                  <span>{t('%s failures').replace('%s', String(bucket.failures))}</span>
+                  <span>{countLabel(bucket.total, '1 event', '%s events')}</span>
+                  <span>{countLabel(bucket.failures, '1 failure', '%s failures')}</span>
                 </div>
               </article>
             ))}
@@ -166,7 +167,7 @@ export function AdminOverviewPanel({
             <div className="admin-trend-grid">
               {activeHourlyTrend.map((bucket) => (
                 <article key={bucket.label} className="admin-stat-card admin-stat-card--static">
-                  <span>{formatHourLabel(bucket.label)}</span>
+                  <span>{formatTrendLabel(bucket, 'hour')}</span>
                   <strong>{bucket.total}</strong>
                   {bucket.failures > 0 ? (
                     <small>{bucket.failures === 1 ? t('1 failure') : t('%s failures').replace('%s', String(bucket.failures))}</small>

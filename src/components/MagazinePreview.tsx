@@ -35,6 +35,7 @@ interface MagazinePreviewProps {
   onAssignDroppedAsset?: (slot: string, assetId: string) => void;
   onUpdateCrop?: (slot: string, updater: (crop: CropSettings) => CropSettings) => void;
   onCropMetricsChange?: (slot: string, metrics: { maxOffsetX: number; maxOffsetY: number } | null) => void;
+  onRequestUpload?: (slot: string) => void;
   onTextEditCommit?: (field: 'kicker' | 'title' | 'deck' | 'body' | 'caption', value: string) => void;
   localizeContent?: boolean;
 }
@@ -134,6 +135,7 @@ function AssetFrame({
   onAssignDroppedAsset,
   onUpdateCrop,
   onCropMetricsChange,
+  onRequestUpload,
   assetVariant = 'original',
   imageDecoding,
   className,
@@ -150,6 +152,7 @@ function AssetFrame({
   onAssignDroppedAsset?: (slot: string, assetId: string) => void;
   onUpdateCrop?: (slot: string, updater: (crop: CropSettings) => CropSettings) => void;
   onCropMetricsChange?: (slot: string, metrics: { maxOffsetX: number; maxOffsetY: number } | null) => void;
+  onRequestUpload?: (slot: string) => void;
   className?: string;
   hintLabel?: string;
 }) {
@@ -433,7 +436,21 @@ function AssetFrame({
             }
           />
         ) : interactive ? (
-          <span className="asset-frame__placeholder">{t('Drop a photo here')}</span>
+          <>
+            <span className="asset-frame__placeholder">{t('Drop a photo here')}</span>
+            {onRequestUpload ? (
+              <button
+                type="button"
+                className="asset-frame__upload"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onRequestUpload(slot);
+                }}
+              >
+                {t('Upload photo')}
+              </button>
+            ) : null}
+          </>
         ) : null}
       </div>
       {interactive ? <span className="asset-frame__hint">{slotHint}</span> : null}
@@ -508,6 +525,7 @@ export function MagazinePreview({
   onAssignDroppedAsset,
   onUpdateCrop,
   onCropMetricsChange,
+  onRequestUpload,
   onTextEditCommit,
   localizeContent,
 }: MagazinePreviewProps) {
@@ -579,6 +597,7 @@ export function MagazinePreview({
       onAssignDroppedAsset={onAssignDroppedAsset}
       onUpdateCrop={onUpdateCrop}
       onCropMetricsChange={onCropMetricsChange}
+      onRequestUpload={onRequestUpload}
       className={options.className}
       hintLabel={options.hintLabel}
     />

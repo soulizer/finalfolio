@@ -32,7 +32,7 @@ test('upload, save, reopen, share, and export the editor flow', async ({ page })
   const projectTitleInput = page.getByRole('textbox', { name: 'Title', exact: true });
   await expect(projectTitleInput).toBeVisible();
   await projectTitleInput.fill(title);
-  await page.locator('input[type="file"]').setInputFiles({
+  await page.locator('.editor-panel--photos input[type="file"]').setInputFiles({
     name: 'icon-192.png',
     mimeType: 'image/png',
     buffer: uploadFixtureBuffer,

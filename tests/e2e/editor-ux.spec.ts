@@ -8,7 +8,8 @@ test('editor leads with photos and the new layout picker', async ({ page }) => {
   const sidebarSections = page.locator('.editor-sidebar--content > .editor-panel');
   await expect(sidebarSections.first()).toHaveClass(/editor-panel--photos/);
 
-  // URL import control exists and validates empty submissions client-side.
+  // URL import is available behind a compact toggle and validates empty input.
+  await page.getByRole('button', { name: 'Add from URL' }).click();
   const importForm = page.locator('.import-url-form');
   await expect(importForm).toBeVisible();
   await expect(importForm.getByRole('button', { name: /Import/ })).toBeDisabled();

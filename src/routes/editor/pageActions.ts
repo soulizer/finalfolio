@@ -4,6 +4,7 @@ import {
 } from '../../editor/demoData';
 import { getConfirmationMessage } from '../../editor/confirmations';
 import { PROJECT_PAGE_LIMIT } from '../../editor/limits';
+import { translate } from '../../i18n';
 import { confirmAction } from '../../ui/confirm';
 import type {
   CustomTemplateDefinition,
@@ -102,7 +103,7 @@ export function createEditorPageActions({
     }
 
     if (project.pages.length >= PROJECT_PAGE_LIMIT) {
-      setMessage(`This folio already has the maximum of ${PROJECT_PAGE_LIMIT} pages.`);
+      setMessage(translate('This folio already has the maximum of %s pages.').replace('%s', String(PROJECT_PAGE_LIMIT)));
       return;
     }
 

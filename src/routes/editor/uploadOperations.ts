@@ -5,6 +5,7 @@ import {
   uploadAssets,
   type UserSession,
 } from '../../editor/api';
+import { countLabel, translate } from '../../i18n';
 import { getUserPrimaryIdentity } from '../../editor/identity';
 import { optimizeUploadFiles, type PreparedUploadItem, readImageIntrinsicSize } from '../../editor/imageOptimization';
 import {
@@ -240,7 +241,9 @@ export function createRecoveredGuestUploadTransferState(guestAssets: Asset[]): U
 }
 
 export function createRecoveredGuestUploadTransferIntro(guestAssets: Asset[], session: UserSession) {
-  return `Restored ${guestAssets.length} local photo${guestAssets.length === 1 ? '' : 's'}. Attaching them to ${getUserPrimaryIdentity(session)} now...`;
+  return translate('Restored %s. Attaching them to %s now...')
+    .replace('%s', countLabel(guestAssets.length, '1 local photo', '%s local photos'))
+    .replace('%s', getUserPrimaryIdentity(session));
 }
 
 export function createRecoveredGuestUploadTransferSummary(
@@ -249,11 +252,18 @@ export function createRecoveredGuestUploadTransferSummary(
 ) {
   if (result.failedFiles > 0) {
     return result.completedFiles > 0
-      ? `Attached ${result.completedFiles} recovered photo${result.completedFiles === 1 ? '' : 's'} to your account. ${result.failedFiles} still need attention.`
-      : `Recovered local photos are still here, but ${result.failedFiles} could not be attached to your account automatically.`;
+      ? translate('Attached %s to your account. %s still need attention.')
+          .replace('%s', countLabel(result.completedFiles, '1 recovered photo', '%s recovered photos'))
+          .replace('%s', countLabel(result.failedFiles, '1 photo', '%s photos'))
+      : translate('Recovered local photos are still here, but %s could not be attached to your account automatically.').replace(
+          '%s',
+          countLabel(result.failedFiles, '1 photo', '%s photos'),
+        );
   }
 
-  return `Attached ${result.completedFiles} recovered photo${result.completedFiles === 1 ? '' : 's'} to ${getUserPrimaryIdentity(session)}. You can save this folio now.`;
+  return translate('Attached %s to %s. You can save this folio now.')
+    .replace('%s', countLabel(result.completedFiles, '1 recovered photo', '%s recovered photos'))
+    .replace('%s', getUserPrimaryIdentity(session));
 }
 
 export async function promoteGuestDraftUploads({
@@ -482,7 +492,10 @@ export async function uploadFilesIntoProject({
           }),
         }));
         setMessage(
-          `Added ${file.name} locally. ${completedFiles}/${files.length} photo${files.length === 1 ? '' : 's'} ready in this local draft.`,
+          translate('Added %s locally. %s/%s photos ready in this local draft.')
+            .replace('%s', file.name)
+            .replace('%s', String(completedFiles))
+            .replace('%s', String(files.length)),
         );
         continue;
       }
@@ -541,7 +554,12 @@ export async function uploadFilesIntoProject({
           error: null,
         }),
       }));
-      setMessage(`Added ${file.name}. ${completedFiles}/${files.length} photo${files.length === 1 ? '' : 's'} ready in the library.`);
+      setMessage(
+        translate('Added %s. %s/%s photos ready in the library.')
+          .replace('%s', file.name)
+          .replace('%s', String(completedFiles))
+          .replace('%s', String(files.length)),
+      );
     } catch (error) {
       if ((error as Error & { code?: string })?.code === 'terms_required') {
         redirectToTerms(navigate);
@@ -564,23 +582,31 @@ export async function uploadFilesIntoProject({
           error: errorMessage,
         }),
       }));
-      setMessage(`${file.name} failed. Continuing with the remaining uploads.`);
+      setMessage(translate('%s failed. Continuing with the remaining uploads.').replace('%s', file.name));
     }
   }
 
   if (failedFiles > 0) {
     setMessage(
       completedFiles > 0
-        ? `${completedFiles} photo${completedFiles === 1 ? '' : 's'} added. ${failedFiles} failed without blocking the rest.`
-        : `${failedFiles} photo${failedFiles === 1 ? '' : 's'} failed. No uploads were added.`,
+        ? translate('%s added. %s failed without blocking the rest.')
+            .replace('%s', countLabel(completedFiles, '1 photo', '%s photos'))
+            .replace('%s', countLabel(failedFiles, '1 photo', '%s photos'))
+        : translate('%s failed. No uploads were added.').replace(
+            '%s',
+            countLabel(failedFiles, '1 photo', '%s photos'),
+          ),
     );
     return;
   }
 
   setMessage(
     guestMode
-      ? `${completedFiles} photo${completedFiles === 1 ? '' : 's'} added locally for this session.`
-      : `${completedFiles} photo${completedFiles === 1 ? '' : 's'} added.`,
+      ? translate('%s added locally for this session.').replace(
+          '%s',
+          countLabel(completedFiles, '1 photo', '%s photos'),
+        )
+      : translate('%s added.').replace('%s', countLabel(completedFiles, '1 photo', '%s photos')),
   );
 }
 

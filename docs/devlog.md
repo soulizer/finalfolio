@@ -1570,3 +1570,19 @@
 - `npm run validate:mvp`
 - `./node_modules/.bin/playwright test` (14 specs)
 - No horizontal overflow at 360/390/768/1024
+
+## 2026-11-16 Compact Panels, Chip Alignment, and Copy Sweep
+
+### What changed
+
+- Photos panel: removed the oversized panel heading in favour of a compact label + count; upload and “add from URL” now sit side by side, with the URL field revealed on demand; the clear-unused action reads as an action again.
+- Sequence chips: switched to a grid so the template label and colour dot align in both collapsed and expanded states; the four page actions now sit on their own row with breathing room instead of touching the title.
+- Empty frames in the editor now expose a direct “上传照片” action that opens the picker and assigns the uploaded image to that frame.
+- Localised the remaining dynamic copy: upload/restore toasts, template save/open messages, theme/scaffold confirmations, page-limit and duplicate messages, selected-frame labels, upload completion text, and admin trend dates/hours (server now returns ISO bucket starts).
+- Layout hover preview follows the pointer on both axes and flips near viewport edges.
+
+### Validation
+
+- `npm run validate:mvp`
+- `./node_modules/.bin/playwright test` (14 specs)
+- No horizontal overflow at 360/390/768/1024

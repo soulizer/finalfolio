@@ -7,6 +7,7 @@ export function formatBytes(bytes: number) {
 }
 
 import { formatCompactDateTime, formatDateTime } from '../../editor/dateFormat';
+import { getActiveLocale } from '../../i18n';
 
 export function formatTimestamp(value: string | null | undefined) {
   return formatDateTime(value);
@@ -37,4 +38,24 @@ export function formatHourLabel(label: string) {
 
 export function formatCompactTimestamp(value: string | null | undefined) {
   return formatCompactDateTime(value);
+}
+
+export function formatTrendLabel(
+  bucket: { label: string; start?: string },
+  mode: 'day' | 'hour',
+) {
+  if (bucket.start) {
+    const date = new Date(bucket.start);
+    if (!Number.isNaN(date.getTime())) {
+      const locale = getActiveLocale() === 'zh' ? 'zh-CN' : 'en-CA';
+      return new Intl.DateTimeFormat(
+        locale,
+        mode === 'hour'
+          ? { hour: '2-digit', minute: '2-digit', hour12: false }
+          : { month: '2-digit', day: '2-digit' },
+      ).format(date);
+    }
+  }
+
+  return mode === 'hour' ? formatHourLabel(bucket.label) : bucket.label;
 }

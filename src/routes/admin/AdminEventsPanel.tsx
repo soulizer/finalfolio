@@ -2,7 +2,7 @@ import { translate as tModule } from '../../i18n';
 import { countLabel, useT } from '../../i18n';
 import type { AdminProjectListItem, AdminSummary, UserSession } from '../../editor/api';
 import { getUserPrimaryIdentity } from '../../editor/identity';
-import { formatHourLabel, formatTimestamp } from './adminFormatting';
+import { formatTimestamp, formatTrendLabel } from './adminFormatting';
 
 type AdminEventRecord = AdminSummary['events'][number];
 
@@ -200,7 +200,7 @@ export function AdminEventsPanel({
                 <div className="admin-breakdown-list">
                   {(activeDailyTrend.length ? activeDailyTrend : summary.trends.last7Days).map((bucket) => (
                     <article key={bucket.label} className="admin-breakdown-row">
-                      <strong>{formatHourLabel(bucket.label)}</strong>
+                      <strong>{formatTrendLabel(bucket, 'day')}</strong>
                       <div className="admin-breakdown-row__stats">
                         <span>{countLabel(bucket.total, '1 event', '%s events')}</span>
                         <span>{countLabel(bucket.failures, '1 failure', '%s failures')}</span>
@@ -214,7 +214,7 @@ export function AdminEventsPanel({
                 <div className="admin-breakdown-list">
                   {(activeHourlyTrend.length ? activeHourlyTrend : summary.trends.last24Hours).map((bucket) => (
                     <article key={bucket.label} className="admin-breakdown-row">
-                      <strong>{formatHourLabel(bucket.label)}</strong>
+                      <strong>{formatTrendLabel(bucket, 'hour')}</strong>
                       <div className="admin-breakdown-row__stats">
                         <span>{countLabel(bucket.total, '1 event', '%s events')}</span>
                         <span>{countLabel(bucket.failures, '1 failure', '%s failures')}</span>

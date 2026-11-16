@@ -1,4 +1,5 @@
 import type { NavigateFunction } from 'react-router-dom';
+import { translate } from '../../i18n';
 import {
   createProjectFromUserTemplate,
   createUserTemplate,
@@ -147,7 +148,12 @@ export async function saveProjectAsTemplate({
 
   const nextName = templateSaveName.trim() || project.title.trim() || project.issue.trim() || 'Untitled template';
   setTemplateSaveBusy(true);
-  setMessage(`Saving this ${templateSaveKind === 'page' ? 'page' : 'project'} as a reusable template...`);
+  setMessage(
+    translate('Saving this %s as a reusable template...').replace(
+      '%s',
+      templateSaveKind === 'page' ? translate('page') : translate('project'),
+    ),
+  );
 
   try {
     const payload = await createUserTemplate({
@@ -180,7 +186,7 @@ export async function openUserTemplateProject({
   setMessage,
 }: OpenUserTemplateProjectOptions) {
   setTemplateActionBusyId(template.id);
-  setMessage(`Opening ${template.name} as a new project...`);
+  setMessage(translate('Opening %s as a new project...').replace('%s', template.name));
 
   try {
     const record = await createProjectFromUserTemplate(template.id);
