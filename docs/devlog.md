@@ -1619,3 +1619,23 @@
 - `npm run validate:mvp`
 - `./node_modules/.bin/playwright test` (14 specs)
 - No horizontal overflow at 360/390/768/1024
+
+## 2026-11-16 Fix Wrapped CTA and Hover Jump
+
+### Root causes
+
+- `.editor-shell .button` set `white-space: normal` and `overflow-wrap: anywhere`, so the four-character “上传照片” CTA wrapped inside narrow frames.
+- The CTA was centred with `left: 50%; transform: translateX(-50%)`, while the shared `.button:hover` rule sets `transform: translateY(-1px)`. Hovering replaced the centring transform, so the button jumped sideways and escaped the pointer.
+
+### Fixes and audit
+
+- Centre the frame CTA with auto margins and `width: max-content`; force `white-space: nowrap` with an editor-scoped rule; disable hover transforms on that control.
+- Buttons no longer wrap by default (`.button` and editor buttons use `nowrap`); only explicit multi-line status buttons opt into wrapping.
+- Audited every visible button on home/auth/editor/account/admin at 1440 and 390 for hover displacement and short-label wrapping: no remaining horizontal jumps or wrapped short labels.
+- Localised custom template names/frame labels and removed technical frame-slot tags in the same pass.
+
+### Validation
+
+- `npm run validate:mvp`
+- `./node_modules/.bin/playwright test` (14 specs)
+- No horizontal overflow at 360/390/768/1024
