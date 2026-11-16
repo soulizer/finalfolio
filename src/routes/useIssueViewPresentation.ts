@@ -1,3 +1,4 @@
+import { translate, useLocale } from '../i18n';
 import { useMemo } from 'react';
 import type { PageData } from '../editor/types';
 import {
@@ -36,6 +37,7 @@ export function useIssueViewPresentation({
   pages,
   shareId,
 }: UseIssueViewPresentationOptions) {
+  const { locale } = useLocale();
   const sheetMetrics = useMemo(() => readSheetMetrics(), []);
 
   return useMemo(() => {
@@ -72,7 +74,9 @@ export function useIssueViewPresentation({
     const viewerReady = pageCount > 0 && pageWidth > 0 && pageHeight > 0;
     const showDesktopSidebar = !mobileSinglePageActive && !fullscreenActive;
     const showMobileChrome = mobileSinglePageActive && !fullscreenActive;
-    const mobileStatusLabel = pageCount ? `Page ${normalizedMobileVisiblePage} of ${pageCount}` : 'No pages';
+    const mobileStatusLabel = pageCount
+      ? translate('Page %s of %s').replace('%s', String(normalizedMobileVisiblePage)).replace('%s', String(pageCount))
+      : translate('No pages');
     const mobileStageSide = getMobileStageSide(normalizedMobileVisiblePage, pageCount);
     const mobileBoundaryViewActive = normalizedView[0] === 0 || normalizedView[1] === 0;
     const mobileStageTranslateX =
@@ -80,8 +84,8 @@ export function useIssueViewPresentation({
         ? (mobileStageSide === 'left' ? pageWidth / 2 : -pageWidth / 2)
         : 0;
     const viewerHint = mobileSinglePageActive
-      ? 'Swipe across the page or use the controls below to move through the folio one page at a time.'
-      : 'Use left/right keys, drag the outer page, or click the page edge to turn the book.';
+      ? translate('Swipe across the page or use the controls below to move through the folio one page at a time.')
+      : translate('Use left/right keys, drag the outer page, or click the page edge to turn the book.');
     const bookKey = `${shareId}:${pageCount}:${mobileSinglePageActive ? 'mobile' : 'desktop'}`;
 
     return {
@@ -104,6 +108,7 @@ export function useIssueViewPresentation({
       viewerStageWidth,
     };
   }, [
+    locale,
     currentViewPages,
     effectiveViewerViewportSize.height,
     effectiveViewerViewportSize.width,

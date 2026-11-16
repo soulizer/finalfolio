@@ -8170,3 +8170,50 @@ html[lang='zh-CN'] body {
     min-height: 44px;
   }
 }
+
+/* Public viewer: long project titles must never escape the sidebar. */
+.issue-view-copy h1 {
+  font-size: clamp(1.6rem, 2.4vw, 2.6rem);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  hyphens: auto;
+}
+
+.issue-view-copy {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.admin-split-panel--inspector.is-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.admin-list__empty .button {
+  margin-top: 10px;
+  justify-self: start;
+}
+
+@media (min-width: 900px) {
+  .admin-page--preferences .admin-settings-stack .admin-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.admin-mini-list {
+  gap: 8px;
+}
+
+.admin-mini-list__item {
+  padding: 10px 12px;
+  gap: 3px;
+}
+
+.button--danger:disabled,
+.editor-shell .button--danger:disabled {
+  background: rgba(17, 17, 17, 0.06);
+  border: 1px solid rgba(17, 17, 17, 0.1);
+  color: var(--muted);
+  opacity: 1;
+  box-shadow: none;
+}

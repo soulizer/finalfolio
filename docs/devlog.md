@@ -1537,3 +1537,19 @@
 - `npm run validate:mvp`
 - `./node_modules/.bin/playwright test` (13 specs)
 - No horizontal overflow at 360/390/768/1024 across home, auth, terms, privacy and editor.
+
+## 2026-11-16 Admin/Viewer/Account Polish
+
+### What changed
+
+- Fixed a critical public-reader regression: turn.js renders pages in a detached React root, which threw “useLocale must be used inside LocaleProvider” and left the book blank. The detached root now mounts inside `LocaleProvider`, and `useT()` falls back to the module translator instead of throwing.
+- Localised the reader chrome end to end: page labels, ranges, hints, page counts and endpapers; long project titles now wrap inside the sidebar; mobile reader verified at 390px.
+- Admin: translated row descriptions, health/status pills, event types/status/actions, storage sync summaries and counts; counts use a new `countLabel()` helper so English gets real singular forms; hour buckets stay 24-hour; event rows are denser and no longer repeat the event type as a title.
+- Account: preferences now use a full-width two-column form; empty project lists replace the empty master-detail pane with a single call-to-action; list rows use compact timestamps.
+- Added tooltips explaining why destructive buttons are disabled (referenced uploads, signed-in admin).
+
+### Validation
+
+- `npm run validate:mvp`
+- `./node_modules/.bin/playwright test` (13 specs; editor flow now asserts the public reader renders pages without page errors)
+- No horizontal overflow at 360/390/768/1024

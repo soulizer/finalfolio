@@ -1,9 +1,9 @@
-import { useT } from '../../i18n';
+import { countLabel, useT } from '../../i18n';
 import type { CSSProperties } from 'react';
 import { MagazinePreview } from '../../components/MagazinePreview';
 import { getTemplateLabel } from '../../editor/demoData';
 import type { Asset, ProjectRecord } from '../../editor/types';
-import { formatTimestamp } from './accountFormatting';
+import { formatCompactTimestamp, formatTimestamp } from './accountFormatting';
 import type { ProjectVisibilityFilter } from './useAccountWorkspace';
 
 const accountPreviewStyle = {
@@ -92,7 +92,7 @@ export function AccountProjectsPanel({
             onChange={(event) => setProjectSearch(event.target.value)}
           />
         </label>
-        <div className="admin-split-panel admin-split-panel--inspector">
+        <div className={`admin-split-panel admin-split-panel--inspector ${filteredProjects.length ? '' : 'is-single'}`.trim()}>
           <div className="admin-list">
             {filteredProjects.length ? (
               filteredProjects.map((project) => {
@@ -124,7 +124,11 @@ export function AccountProjectsPanel({
                           </div>
                           <p className="admin-row__subline">{project.id}</p>
                           <p className="admin-row__description">
-                            {`${project.project.issue} · ${project.project.pages.length} pages · ${project.project.assets.length} assets · Updated ${formatTimestamp(project.updatedAt)}`}
+                            {t('%s · %s · %s · Updated %s')
+                              .replace('%s', project.project.issue)
+                              .replace('%s', countLabel(project.project.pages.length, '1 page', '%s pages'))
+                              .replace('%s', countLabel(project.project.assets.length, '1 image', '%s images'))
+                              .replace('%s', formatCompactTimestamp(project.updatedAt))}
                           </p>
                         </>
                       )}
@@ -197,10 +201,14 @@ export function AccountProjectsPanel({
               <article className="admin-list__empty">
                 <strong>{t('No matching projects')}</strong>
                 <p>{t('Try a different title, folio mark, or project ID.')}</p>
+                <button type="button" className="button button--primary button--small" onClick={() => openRoute('/editor')}>
+                  {t('Create a folio')}
+                </button>
               </article>
             )}
           </div>
 
+          {filteredProjects.length ? (
           <aside className="admin-detail-card">
             {selectedProject ? (
               <>
@@ -284,6 +292,7 @@ export function AccountProjectsPanel({
               </div>
             )}
           </aside>
+          ) : null}
         </div>
       </section>
     </div>

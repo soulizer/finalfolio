@@ -17,6 +17,15 @@ export function getActiveLocale(): Locale {
   return activeLocale ?? readInitialLocale();
 }
 
+/**
+ * Count-aware label: English needs a real singular form, Chinese does not.
+ * Call sites pass both keys so the English UI reads "1 page" / "2 pages".
+ */
+export function countLabel(count: number, singular: string, plural: string) {
+  const template = count === 1 ? singular : plural;
+  return translate(template).replace('%s', String(count));
+}
+
 export function translate(text: string) {
   const locale = activeLocale ?? readInitialLocale();
   return locale === 'zh' ? getChineseText(text) : text;
@@ -89,5 +98,8 @@ export function useLocale() {
 }
 
 export function useT() {
-  return useLocale().t;
+  const context = useContext(LocaleContext);
+  // Detached React roots (turn.js page markup) are not always wrapped by the
+  // provider; fall back to the module-level translator instead of throwing.
+  return context ? context.t : translate;
 }

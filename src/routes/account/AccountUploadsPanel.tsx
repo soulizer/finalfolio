@@ -1,11 +1,11 @@
-import { useT } from '../../i18n';
+import { countLabel, useT } from '../../i18n';
 import {
   getAssetDeliveryLabel,
   getAssetDeliveryTooltip,
   getAssetDeliveryTone,
 } from '../../editor/assetDelivery';
 import type { AccountUploadListItem } from '../../editor/api';
-import { formatBytes, formatDimensions, formatTimestamp } from './accountFormatting';
+import { formatBytes, formatCompactTimestamp, formatDimensions, formatTimestamp } from './accountFormatting';
 
 type AccountUploadsPanelProps = {
   filteredUploads: AccountUploadListItem[];
@@ -75,16 +75,22 @@ export function AccountUploadsPanel({
                     </div>
                     <p className="admin-row__subline">{upload.filename}</p>
                     <p className="admin-row__description">
-                      {`${formatDimensions(upload.width, upload.height)} · ${formatBytes(upload.bytes)} · ${upload.referencedProjectCount} project refs${
-                        upload.lastUsedAt ? ` · used ${formatTimestamp(upload.lastUsedAt)}` : ''
-                      }`}
+                      {t('%s · %s · %s')
+                        .replace('%s', formatDimensions(upload.width, upload.height))
+                        .replace('%s', formatBytes(upload.bytes))
+                        .replace('%s', countLabel(upload.referencedProjectCount, '1 project reference', '%s project references'))}
+                      {upload.lastUsedAt
+                        ? ` · ${t('Last used %s').replace('%s', formatCompactTimestamp(upload.lastUsedAt))}`
+                        : ''}
                     </p>
                   </div>
                   <div className="admin-row__aside">
                     <div className="admin-row__meta">
                       <span className="admin-pill admin-pill--strong">{formatBytes(upload.bytes)}</span>
                       <span className={`admin-pill ${upload.referencedProjectCount ? 'admin-pill--warning' : 'admin-pill--success'}`}>
-                        {upload.referencedProjectCount ? `${upload.referencedProjectCount} refs` : 'unused'}
+                        {upload.referencedProjectCount
+                          ? countLabel(upload.referencedProjectCount, '1 ref', '%s refs')
+                          : t('unused')}
                       </span>
                     </div>
                     <div className="admin-row__actions" onClick={(event) => event.stopPropagation()}>
@@ -109,6 +115,11 @@ export function AccountUploadsPanel({
                         type="button"
                         className="button button--danger button--small"
                         disabled={uploadBusyId === upload.assetId || upload.referencedProjectCount > 0}
+                        title={
+                          upload.referencedProjectCount > 0
+                            ? t('This image is used by a project. Remove it from the project first.')
+                            : undefined
+                        }
                         onClick={() => void handleDeleteUpload(upload)}
                       >
                         {uploadBusyId === upload.assetId ? t('Deleting…') : t('Delete')}

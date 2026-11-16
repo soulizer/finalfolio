@@ -1,3 +1,4 @@
+import { translate } from '../i18n';
 import type { PageData } from '../editor/types';
 
 export type ViewerPositionMode = 'single-right' | 'spread' | 'single-left';
@@ -71,14 +72,17 @@ function pickViewLabel(...candidates: Array<string | null | undefined>) {
 
 function buildRangeLabel(start: number | null, end: number | null, total: number) {
   if (typeof start !== 'number') {
-    return `Pages unavailable of ${total}`;
+    return translate('Pages unavailable of %s').replace('%s', String(total));
   }
 
   if (typeof end === 'number' && end !== start) {
-    return `Pages ${start}-${end} of ${total}`;
+    return translate('Pages %s-%s of %s')
+      .replace('%s', String(start))
+      .replace('%s', String(end))
+      .replace('%s', String(total));
   }
 
-  return `Page ${start} of ${total}`;
+  return translate('Page %s of %s').replace('%s', String(start)).replace('%s', String(total));
 }
 
 export function buildRenderedViewerPages(pages: PageData[]) {
@@ -86,7 +90,7 @@ export function buildRenderedViewerPages(pages: PageData[]) {
     id: page.id,
     page,
     pageNumber: index + 1,
-    blankLabel: 'Blank page',
+    blankLabel: translate('Blank page'),
     decorativeBlank: false,
   }));
 }
@@ -142,7 +146,7 @@ export function describeVisibleView(view: VisibleTurnView, pages: PageData[]): I
 
   if (!leftPage && rightPage) {
     return {
-      label: pickViewLabel(rightPage.title, 'Cover'),
+      label: pickViewLabel(rightPage.title, translate('Cover')),
       rangeLabel: buildRangeLabel(rightPageNumber, null, totalPages),
       mode: 'single-right',
       canGoPrev: false,
@@ -152,7 +156,7 @@ export function describeVisibleView(view: VisibleTurnView, pages: PageData[]): I
 
   if (leftPage && !rightPage) {
     return {
-      label: pickViewLabel(leftPage.title, `Page ${leftPageNumber}`),
+      label: pickViewLabel(leftPage.title, translate('Page %s').replace('%s', String(leftPageNumber))),
       rangeLabel: buildRangeLabel(leftPageNumber, null, totalPages),
       mode: 'single-left',
       canGoPrev: leftPageNumber !== null && leftPageNumber > 1,
@@ -164,7 +168,7 @@ export function describeVisibleView(view: VisibleTurnView, pages: PageData[]): I
     typeof leftPageNumber === 'number' && typeof rightPageNumber === 'number'
       ? `Pages ${leftPageNumber}-${rightPageNumber}`
       : typeof leftPageNumber === 'number'
-        ? `Page ${leftPageNumber}`
+        ? translate('Page %s').replace('%s', String(leftPageNumber))
         : 'Spread';
 
   return {
@@ -183,7 +187,10 @@ export function describeSinglePageView(pageNumber: number, pages: PageData[]): I
   const side = getRenderedPageSide(normalizedPageNumber, totalPages);
 
   return {
-    label: pickViewLabel(page?.title, normalizedPageNumber === 1 ? 'Cover' : `Page ${normalizedPageNumber}`),
+    label: pickViewLabel(
+      page?.title,
+      normalizedPageNumber === 1 ? translate('Cover') : translate('Page %s').replace('%s', String(normalizedPageNumber)),
+    ),
     rangeLabel: buildRangeLabel(normalizedPageNumber, null, totalPages),
     mode: side === 'left' ? 'single-left' : 'single-right',
     canGoPrev: normalizedPageNumber > 1,

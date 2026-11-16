@@ -1,4 +1,4 @@
-import { useT } from '../i18n';
+import { countLabel, useT } from '../i18n';
 import type { CSSProperties } from 'react';
 import type { UserSession } from '../editor/api';
 import type { PublicIssuePayload } from '../editor/types';
@@ -68,7 +68,7 @@ function IssueViewSharedFolioSection({
       <div className="issue-view-copy__meta">
         <span className="panel-tag">{t('Read only')}</span>
         <span className="panel-tag">{issue.issue || t('Folio')}</span>
-        <span className="panel-tag">{`${pageCount} pages`}</span>
+        <span className="panel-tag">{countLabel(pageCount, '1 page', '%s pages')}</span>
       </div>
       {issue.subtitle ? <p>{issue.subtitle}</p> : null}
       {sessionReady && !session ? (

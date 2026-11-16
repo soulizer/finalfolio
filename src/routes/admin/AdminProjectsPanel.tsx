@@ -1,10 +1,10 @@
-import { useT } from '../../i18n';
+import { countLabel, useT } from '../../i18n';
 import type { CSSProperties } from 'react';
 import { MagazinePreview } from '../../components/MagazinePreview';
 import type { AdminProjectDetail, AdminProjectListItem } from '../../editor/api';
 import { getTemplateLabel, templateMeta } from '../../editor/demoData';
 import type { Asset } from '../../editor/types';
-import { formatTimestamp } from './adminFormatting';
+import { formatCompactTimestamp, formatTimestamp } from './adminFormatting';
 
 const adminPreviewStyle = {
   '--page-scale': 0.32,
@@ -55,7 +55,7 @@ export function AdminProjectsPanel({
             onChange={(event) => setProjectSearch(event.target.value)}
           />
         </label>
-        <div className="admin-split-panel admin-split-panel--inspector">
+        <div className={`admin-split-panel admin-split-panel--inspector ${filteredProjects.length ? '' : 'is-single'}`.trim()}>
           <div className="admin-list">
             {filteredProjects.length ? (
               filteredProjects.map((project) => {
@@ -72,7 +72,11 @@ export function AdminProjectsPanel({
                       </div>
                       <p className="admin-row__subline">{project.id}</p>
                       <p className="admin-row__description">
-                        {`${project.ownerDisplay ?? 'unowned'} · ${metrics.pageCount} pages · ${metrics.assetCount} assets · Updated ${formatTimestamp(project.updatedAt)}`}
+                        {t('%s · %s · %s · Updated %s')
+                          .replace('%s', project.ownerDisplay ?? t('unowned'))
+                          .replace('%s', countLabel(metrics.pageCount, '1 page', '%s pages'))
+                          .replace('%s', countLabel(metrics.assetCount, '1 image', '%s images'))
+                          .replace('%s', formatCompactTimestamp(project.updatedAt))}
                       </p>
                     </div>
                     <div className="admin-row__aside">
@@ -82,7 +86,7 @@ export function AdminProjectsPanel({
                           {project.ownerDisplay ?? 'unowned'}
                         </span>
                         <span className={`admin-pill ${project.health === 'healthy' ? 'admin-pill--success' : 'admin-pill--warning'}`}>
-                          {project.health}
+                          {t(project.health)}
                         </span>
                       </div>
                       <div className="admin-row__actions">
@@ -126,6 +130,7 @@ export function AdminProjectsPanel({
             )}
           </div>
 
+          {filteredProjects.length ? (
           <aside className="admin-detail-card">
             {selectedProjectDetail && selectedProjectMetrics ? (
               <>
@@ -234,6 +239,7 @@ export function AdminProjectsPanel({
               </div>
             )}
           </aside>
+          ) : null}
         </div>
       </section>
     </div>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useT } from '../../i18n';
+import { countLabel, useT } from '../../i18n';
 import type { ChangeEvent } from 'react';
 import {
   getAssetDeliveryLabel,
@@ -130,7 +130,7 @@ export function EditorContentSidebar({
             <p className="eyebrow">{t('Photos')}</p>
             <h2>{t('Media library')}</h2>
           </div>
-          <span className="panel-tag">{libraryAssets.length === 0 ? t('Empty') : t('%s photos').replace('%s', String(libraryAssets.length))}</span>
+          <span className="panel-tag">{libraryAssets.length === 0 ? t('Empty') : countLabel(libraryAssets.length, '1 photo', '%s photos')}</span>
         </div>
         <form
           className="import-url-form"
@@ -257,7 +257,7 @@ export function EditorContentSidebar({
                       </div>
                       <span>
                         {placements
-                          ? t('%s uses').replace('%s', String(placements))
+                          ? countLabel(placements, '1 use', '%s uses')
                           : isInCurrentProject
                             ? t('Unused in this folio')
                             : t('Saved in account')}

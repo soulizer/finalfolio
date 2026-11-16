@@ -1,4 +1,4 @@
-import { formatDateTime } from '../../editor/dateFormat';
+import { formatCompactDateTime, formatDateTime } from '../../editor/dateFormat';
 
 export function formatTimestamp(value: string | null | undefined) {
   return formatDateTime(value);
@@ -30,4 +30,8 @@ export function buildAbsoluteUrl(path: string | null | undefined) {
   }
 
   return new URL(path, window.location.origin).toString();
+}
+
+export function formatCompactTimestamp(value: string | null | undefined) {
+  return formatCompactDateTime(value);
 }

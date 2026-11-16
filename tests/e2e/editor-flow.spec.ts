@@ -57,8 +57,14 @@ test('upload, save, reopen, share, and export the editor flow', async ({ page })
   const publicShareUrl = await page.getByLabel('Share link').inputValue();
   expect(publicShareUrl).toContain('/project/');
 
+  const viewerErrors: string[] = [];
+  page.on('pageerror', (error) => viewerErrors.push(error.message));
   await page.goto(publicShareUrl);
   await expect(page.getByText(title).first()).toBeVisible();
+  // The public reader renders its pages inside a detached React root; this
+  // guards against provider/context regressions that used to blank the book.
+  await expect(page.locator('.magazine-page').first()).toBeVisible();
+  expect(viewerErrors).toEqual([]);
 
   await page.goto(editorUrl);
   await page.getByRole('button', { name: 'Export Center' }).click();

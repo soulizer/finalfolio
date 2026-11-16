@@ -38,3 +38,34 @@ export function formatDateTime(value: string | number | Date | null | undefined,
 
   return getDateTimeFormatter().format(date);
 }
+
+const compactFormatters = new Map<string, Intl.DateTimeFormat>();
+
+/** Compact timestamp for dense list rows: 2026-11-14 22:47. */
+export function formatCompactDateTime(value: string | number | Date | null | undefined, fallback = '—') {
+  if (value === null || value === undefined || value === '') {
+    return fallback;
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return typeof value === 'string' ? value : fallback;
+  }
+
+  const locale = getActiveLocale() === 'zh' ? 'zh-CN' : 'en-CA';
+  const key = locale;
+  let formatter = compactFormatters.get(key);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(locale, {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+    compactFormatters.set(key, formatter);
+  }
+
+  return formatter.format(date);
+}

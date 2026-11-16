@@ -18,7 +18,7 @@ export function AccountPreferencesPanel({
 }: AccountPreferencesPanelProps) {
   const t = useT();
   return (
-    <div className="admin-page admin-page--users">
+    <div className="admin-page admin-page--preferences">
       <section className="editor-panel admin-panel">
         <div className="editor-panel__heading">
           <div>

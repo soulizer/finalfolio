@@ -1,5 +1,5 @@
 import { translate as tModule } from '../../i18n';
-import { useT } from '../../i18n';
+import { countLabel, useT } from '../../i18n';
 import type { AdminProjectListItem, AdminSummary, UserSession } from '../../editor/api';
 import { getUserPrimaryIdentity } from '../../editor/identity';
 import { formatHourLabel, formatTimestamp } from './adminFormatting';
@@ -30,6 +30,7 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   project: tModule('Projects'),
   share: tModule('Sharing'),
   upload: tModule('Uploads'),
+  request: tModule('Request'),
 };
 
 function getEventTypeLabel(type: string) {
@@ -116,15 +117,15 @@ export function AdminEventsPanel({
               <p className="eyebrow">{t('Events')}</p>
               <h2>{t('Recent errors and activity')}</h2>
             </div>
-            <span className="panel-tag">{summary.failures.length ? `${summary.failures.length} failures` : t('No current failures')}</span>
+            <span className="panel-tag">{summary.failures.length ? countLabel(summary.failures.length, '1 failure', '%s failures') : t('No current failures')}</span>
           </div>
           <div className="admin-breakdown-list">
             {rankedEventBreakdown.map(([type, counts]) => (
               <article key={type} className="admin-breakdown-row">
                 <strong>{getEventTypeLabel(type)}</strong>
                 <div className="admin-breakdown-row__stats">
-                  <span>{`${counts.total} events`}</span>
-                  <span>{`${counts.failures} failures`}</span>
+                  <span>{countLabel(counts.total, '1 event', '%s events')}</span>
+                  <span>{countLabel(counts.failures, '1 failure', '%s failures')}</span>
                 </div>
               </article>
             ))}
@@ -166,16 +167,21 @@ export function AdminEventsPanel({
           </div>
           <div className="admin-mini-list">
             {summary.events.length ? (
-              summary.events.slice(0, 8).map((event) => (
-                <article key={event.id} className="admin-mini-list__item">
-                  <div className="admin-inline-meta">
-                    <span>{getEventTypeLabel(event.type)}</span>
-                    <span className={`admin-pill ${getEventStatusClass(event)}`}>{getEventStatusLabel(event)}</span>
-                  </div>
-                  <strong>{formatDetailSummary(event.detail, event.status)}</strong>
-                  <p className="panel-note">{buildEventContext(event, usersById, projectsById)}</p>
-                </article>
-              ))
+              summary.events.slice(0, 8).map((event) => {
+                const action = typeof event.detail?.action === 'string' ? event.detail.action.trim() : '';
+                const actionLabel = action ? t(action) : '';
+                const typeLabel = getEventTypeLabel(event.type);
+                return (
+                  <article key={event.id} className="admin-mini-list__item">
+                    <div className="admin-inline-meta">
+                      <span>{typeLabel}</span>
+                      <span className={`admin-pill ${getEventStatusClass(event)}`}>{getEventStatusLabel(event)}</span>
+                    </div>
+                    {actionLabel && actionLabel !== typeLabel ? <strong>{actionLabel}</strong> : null}
+                    <p className="panel-note">{buildEventContext(event, usersById, projectsById)}</p>
+                  </article>
+                );
+              })
             ) : (
               <p className="panel-note">{t('No recent operations recorded.')}</p>
             )}
@@ -196,8 +202,8 @@ export function AdminEventsPanel({
                     <article key={bucket.label} className="admin-breakdown-row">
                       <strong>{formatHourLabel(bucket.label)}</strong>
                       <div className="admin-breakdown-row__stats">
-                        <span>{`${bucket.total} events`}</span>
-                        <span>{`${bucket.failures} failures`}</span>
+                        <span>{countLabel(bucket.total, '1 event', '%s events')}</span>
+                        <span>{countLabel(bucket.failures, '1 failure', '%s failures')}</span>
                       </div>
                     </article>
                   ))}
@@ -210,8 +216,8 @@ export function AdminEventsPanel({
                     <article key={bucket.label} className="admin-breakdown-row">
                       <strong>{formatHourLabel(bucket.label)}</strong>
                       <div className="admin-breakdown-row__stats">
-                        <span>{`${bucket.total} events`}</span>
-                        <span>{`${bucket.failures} failures`}</span>
+                        <span>{countLabel(bucket.total, '1 event', '%s events')}</span>
+                        <span>{countLabel(bucket.failures, '1 failure', '%s failures')}</span>
                       </div>
                     </article>
                   ))}

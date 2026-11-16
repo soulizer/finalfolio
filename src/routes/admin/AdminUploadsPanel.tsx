@@ -1,11 +1,11 @@
-import { useT } from '../../i18n';
+import { countLabel, useT } from '../../i18n';
 import {
   getAssetDeliveryLabel,
   getAssetDeliveryTooltip,
   getAssetDeliveryTone,
 } from '../../editor/assetDelivery';
 import type { AdminUploadDetail, AdminUploadListItem } from '../../editor/api';
-import { formatBytes, formatDimensions, formatTimestamp } from './adminFormatting';
+import { formatBytes, formatCompactTimestamp, formatDimensions, formatTimestamp } from './adminFormatting';
 
 type AdminUploadsPanelProps = {
   filteredUploads: AdminUploadListItem[];
@@ -47,7 +47,7 @@ export function AdminUploadsPanel({
             onChange={(event) => setUploadSearch(event.target.value)}
           />
         </label>
-        <div className="admin-split-panel admin-split-panel--inspector">
+        <div className={`admin-split-panel admin-split-panel--inspector ${filteredUploads.length ? '' : 'is-single'}`.trim()}>
           <div className="admin-list">
             {filteredUploads.length ? (
               filteredUploads.map((upload) => (
@@ -77,14 +77,20 @@ export function AdminUploadsPanel({
                     </div>
                     <p className="admin-row__subline">{upload.src}</p>
                     {upload.ownerEmails.length ? (
-                      <p className="admin-row__description">{`${upload.ownerDisplayNames.join(' / ')} · ${upload.referencedProjectCount} project refs`}</p>
+                      <p className="admin-row__description">
+                        {t('%s · %s')
+                          .replace('%s', upload.ownerDisplayNames.join(' / '))
+                          .replace('%s', countLabel(upload.referencedProjectCount, '1 project reference', '%s project references'))}
+                      </p>
                     ) : null}
                   </div>
                   <div className="admin-row__aside">
                     <div className="admin-row__meta">
                       <span className="admin-pill admin-pill--strong">{formatBytes(upload.bytes)}</span>
                       <span className={`admin-pill ${upload.referencedProjectCount ? 'admin-pill--warning' : 'admin-pill--success'}`}>
-                        {upload.referencedProjectCount ? `${upload.referencedProjectCount} refs` : 'orphan'}
+                        {upload.referencedProjectCount
+                          ? countLabel(upload.referencedProjectCount, '1 ref', '%s refs')
+                          : t('orphan')}
                       </span>
                       <span className="admin-pill">{formatDimensions(upload.width, upload.height)}</span>
                     </div>
@@ -112,6 +118,11 @@ export function AdminUploadsPanel({
                         type="button"
                         className="button button--danger button--small"
                         disabled={upload.referencedProjectCount > 0}
+                        title={
+                          upload.referencedProjectCount > 0
+                            ? t('This image is used by a project. Remove it from the project first.')
+                            : undefined
+                        }
                         onClick={(event) => {
                           event.stopPropagation();
                           void handleDeleteUpload(upload.filename);
@@ -130,6 +141,7 @@ export function AdminUploadsPanel({
             )}
           </div>
 
+          {filteredUploads.length ? (
           <aside className="admin-detail-card">
             {selectedUploadDetail ? (
               <>
@@ -248,6 +260,7 @@ export function AdminUploadsPanel({
               </div>
             )}
           </aside>
+          ) : null}
         </div>
       </section>
     </div>

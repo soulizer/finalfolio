@@ -1,7 +1,7 @@
 import { useT } from '../../i18n';
 import type { UserSession } from '../../editor/api';
 import { getUserPrimaryIdentity, getUserSecondaryIdentity } from '../../editor/identity';
-import { formatTimestamp } from './adminFormatting';
+import { formatCompactTimestamp, formatTimestamp } from './adminFormatting';
 import { AdminInlineField } from './AdminFormFields';
 
 type AdminUsersPanelProps = {
@@ -60,13 +60,15 @@ export function AdminUsersPanel({
         <div className="admin-form-grid admin-form-grid--compact">
           <AdminInlineField label={t('Username')}>
             <input
-              placeholder={t('3-40 letters, numbers, hyphen, underscore')}
+              placeholder={t('3–40 characters')}
+              title={t('3-40 letters, numbers, hyphen, underscore')}
               value={createUsername}
               onChange={(event) => setCreateUsername(event.target.value)}
               minLength={3}
               maxLength={40}
               pattern="[A-Za-z0-9](?:[A-Za-z0-9_-]{1,38}[A-Za-z0-9])?"
             />
+            <p className="field-note">{t('Letters, numbers, hyphen, or underscore.')}</p>
           </AdminInlineField>
           <AdminInlineField label={t('Email')}>
             <input
@@ -126,7 +128,11 @@ export function AdminUsersPanel({
                   <p className="admin-row__subline">
                     {getUserSecondaryIdentity(user) ? `${getUserSecondaryIdentity(user)} · ${user.id}` : user.id}
                   </p>
-                  <p className="admin-row__description">{`Created ${formatTimestamp(user.createdAt)} · Last active ${formatTimestamp(user.lastActiveAt)}`}</p>
+                  <p className="admin-row__description">
+                    {t('Created %s · Last active %s')
+                      .replace('%s', formatCompactTimestamp(user.createdAt))
+                      .replace('%s', formatCompactTimestamp(user.lastActiveAt))}
+                  </p>
                 </div>
                 <div className="admin-row__aside">
                   <div className="admin-row__meta">
@@ -135,7 +141,7 @@ export function AdminUsersPanel({
                       {t(user.status)}
                     </span>
                     <span className={`admin-pill ${user.emailVerifiedAt ? 'admin-pill--success' : 'admin-pill--warning'}`}>
-                      {user.emailVerifiedAt ? 'verified' : t('verification pending')}
+                      {user.emailVerifiedAt ? t('Verified') : t('Pending')}
                     </span>
                   </div>
                   <div className="admin-row__actions">
@@ -157,6 +163,7 @@ export function AdminUsersPanel({
                       type="button"
                       className="button button--danger button--small"
                       disabled={userActionBusy || user.id === currentUserId}
+                      title={user.id === currentUserId ? t('You cannot delete the signed-in account.') : undefined}
                       onClick={() => void handleDeleteUser(user)}
                     >
                       {userActionBusy && userActionTargetId === user.id && userActionKind === 'delete' ? t('Deleting…') : t('Delete')}

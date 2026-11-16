@@ -2,6 +2,7 @@ import type { CSSProperties, ReactElement } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { MagazinePreview } from '../components/MagazinePreview';
+import { LocaleProvider, translate } from '../i18n';
 import type { Asset, PageData } from '../editor/types';
 
 type RenderedViewerPage = {
@@ -22,7 +23,9 @@ type RenderTurnJsPageMarkupOptions = {
 };
 
 function formatPageNumber(pageNumber: number | null | undefined) {
-  return typeof pageNumber === 'number' ? `Page ${String(pageNumber).padStart(2, '0')}` : 'Endpaper';
+  return typeof pageNumber === 'number'
+    ? translate('Page %s').replace('%s', String(pageNumber).padStart(2, '0'))
+    : translate('Endpaper');
 }
 
 function getRenderedPageSide(pageNumber: number | null, totalPages: number): 'single' | 'left' | 'right' {
@@ -134,7 +137,7 @@ function renderDetachedMarkup(element: ReactElement) {
   const root = createRoot(container);
 
   flushSync(() => {
-    root.render(element);
+    root.render(<LocaleProvider>{element}</LocaleProvider>);
   });
 
   const markup = container.innerHTML;

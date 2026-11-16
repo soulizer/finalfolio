@@ -2,7 +2,7 @@ import { useT } from '../../i18n';
 import type { AccountSummary, UserSession } from '../../editor/api';
 import { getUserPrimaryIdentity } from '../../editor/identity';
 import type { AccountActivityItem, AccountPreferences } from '../../editor/types';
-import { formatTimestamp } from './accountFormatting';
+import { formatCompactTimestamp, formatTimestamp } from './accountFormatting';
 import type { AccountSectionKey } from './accountSections';
 
 function formatPreferenceValue(t: (text: string) => string, value: string) {
@@ -113,7 +113,9 @@ export function AccountOverviewPanel({
                       <strong className="admin-row__title">{project.title}</strong>
                     </div>
                     <p className="admin-row__subline">{project.id}</p>
-                    <p className="admin-row__description">{`${project.issue} · Updated ${formatTimestamp(project.updatedAt)}`}</p>
+                    <p className="admin-row__description">
+                      {t('%s · Updated %s').replace('%s', project.issue).replace('%s', formatCompactTimestamp(project.updatedAt))}
+                    </p>
                   </div>
                   <div className="admin-row__aside">
                     <div className="admin-row__meta">

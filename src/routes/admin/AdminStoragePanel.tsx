@@ -38,7 +38,7 @@ export function AdminStoragePanel({
             <p className="eyebrow">{t('Object storage')}</p>
             <h2>{t('Bitiful S3 delivery and upload mirroring')}</h2>
           </div>
-          <span className="panel-tag">{productConfig?.objectStorage.enabled ? 'enabled' : t('local only')}</span>
+          <span className="panel-tag">{productConfig?.objectStorage.enabled ? t('Enabled') : t('local only')}</span>
         </div>
         {objectStorageDraft ? (
           <div className="admin-settings-stack">
@@ -50,7 +50,10 @@ export function AdminStoragePanel({
                 </div>
                 <p>
                   {productConfig?.objectStorage.enabled
-                    ? `Remote delivery enabled with ${productConfig.objectStorage.syncStats.mirroredUploads} mirrored uploads, ${productConfig.objectStorage.syncStats.pendingUploads} pending mirrors, and ${productConfig.objectStorage.syncStats.failedUploads} failed mirrors.`
+                    ? t('Remote delivery enabled with %s mirrored uploads, %s pending mirrors, and %s failed mirrors.')
+                        .replace('%s', String(productConfig.objectStorage.syncStats.mirroredUploads))
+                        .replace('%s', String(productConfig.objectStorage.syncStats.pendingUploads))
+                        .replace('%s', String(productConfig.objectStorage.syncStats.failedUploads))
                     : t('Uploads still resolve locally until remote delivery is enabled.')}
                 </p>
               </article>
@@ -59,7 +62,13 @@ export function AdminStoragePanel({
                   <strong>{t('Mirror coverage')}</strong>
                   <span>{productConfig?.objectStorage.bucket ?? t('Bucket')}</span>
                 </div>
-                <p>{`${productConfig?.objectStorage.syncStats.mirroredUploads ?? 0} mirrored · ${productConfig?.objectStorage.syncStats.pendingUploads ?? 0} pending · ${productConfig?.objectStorage.syncStats.failedUploads ?? 0} failed · ${productConfig?.objectStorage.syncStats.localOnlyUploads ?? 0} local only`}</p>
+                <p>
+                  {t('%s mirrored · %s pending · %s failed · %s local only')
+                    .replace('%s', String(productConfig?.objectStorage.syncStats.mirroredUploads ?? 0))
+                    .replace('%s', String(productConfig?.objectStorage.syncStats.pendingUploads ?? 0))
+                    .replace('%s', String(productConfig?.objectStorage.syncStats.failedUploads ?? 0))
+                    .replace('%s', String(productConfig?.objectStorage.syncStats.localOnlyUploads ?? 0))}
+                </p>
               </article>
               <article className="admin-overview-card">
                 <div className="admin-overview-card__header">
@@ -79,7 +88,14 @@ export function AdminStoragePanel({
                   <strong>{t('Latest sync')}</strong>
                   <span>{productConfig?.objectStorage.updatedAt ? formatTimestamp(productConfig.objectStorage.updatedAt) : t('Never saved')}</span>
                 </div>
-                <p>{productConfig?.objectStorage.syncStats.latestSyncAt ? `Last mirrored upload ${formatTimestamp(productConfig.objectStorage.syncStats.latestSyncAt)}.` : t('No upload has been mirrored yet.')}</p>
+                <p>
+                  {productConfig?.objectStorage.syncStats.latestSyncAt
+                    ? t('Last mirrored upload %s.').replace(
+                        '%s',
+                        formatTimestamp(productConfig.objectStorage.syncStats.latestSyncAt),
+                      )
+                    : t('No upload has been mirrored yet.')}
+                </p>
               </article>
             </div>
 

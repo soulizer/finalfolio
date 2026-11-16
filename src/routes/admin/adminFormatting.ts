@@ -6,7 +6,7 @@ export function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(bytes >= 100 * 1024 * 1024 ? 0 : 1)} MB`;
 }
 
-import { formatDateTime } from '../../editor/dateFormat';
+import { formatCompactDateTime, formatDateTime } from '../../editor/dateFormat';
 
 export function formatTimestamp(value: string | null | undefined) {
   return formatDateTime(value);
@@ -33,4 +33,8 @@ export function formatHourLabel(label: string) {
   }
 
   return `${String(hour).padStart(2, '0')}:${match[2]}`;
+}
+
+export function formatCompactTimestamp(value: string | null | undefined) {
+  return formatCompactDateTime(value);
 }

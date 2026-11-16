@@ -1,7 +1,7 @@
-import { useT } from '../../i18n';
+import { countLabel, useT } from '../../i18n';
 import { TemplateIssuePreview } from '../../components/TemplateIssuePreview';
 import type { UserTemplateRecord } from '../../editor/types';
-import { formatTimestamp } from './accountFormatting';
+import { formatCompactTimestamp, formatTimestamp } from './accountFormatting';
 
 type AccountTemplatesPanelProps = {
   filteredTemplates: UserTemplateRecord[];
@@ -92,9 +92,16 @@ export function AccountTemplatesPanel({
                           {template.description || t('Saved from the editor as a reusable folio scaffold.')}
                         </p>
                         <p className="template-library-card__meta">
-                          {`${template.templatePayload.pages.length} pages · ${template.includesCopy ? t('Includes copy') : t('Structure first')} · Updated ${formatTimestamp(template.updatedAt)}`}
+                          {t('%s · %s · Updated %s')
+                            .replace('%s', countLabel(template.templatePayload.pages.length, '1 page', '%s pages'))
+                            .replace('%s', template.includesCopy ? t('Includes copy') : t('Structure first'))
+                            .replace('%s', formatCompactTimestamp(template.updatedAt))}
                         </p>
-                        {template.sourceProjectId ? <p className="template-library-card__meta">{`Source project ${template.sourceProjectId}`}</p> : null}
+                        {template.sourceProjectId ? (
+                          <p className="template-library-card__meta">
+                            {t('Source project %s').replace('%s', template.sourceProjectId)}
+                          </p>
+                        ) : null}
                       </>
                     )}
                   </div>
