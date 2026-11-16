@@ -252,6 +252,8 @@ export function EditorPage() {
   const [templatePickerOpen, setTemplatePickerOpen] = useState(true);
   const [starterPacksOpen, setStarterPacksOpen] = useState(false);
   const [colorPickerPageId, setColorPickerPageId] = useState<string | null>(null);
+  const [draggedPageId, setDraggedPageId] = useState<string | null>(null);
+  const [dragOverPageId, setDragOverPageId] = useState<string | null>(null);
   const [importUrlBusy, setImportUrlBusy] = useState(false);
   const [starterPacksAutoOpened, setStarterPacksAutoOpened] = useState(false);
   const lastSavedSnapshotRef = useRef('');
@@ -684,6 +686,7 @@ export function EditorPage() {
     duplicatePage,
     moveSelectedPage,
     removeSelectedPage,
+    reorderPages,
   } = createEditorPageActions({
     project,
     selectedPage,
@@ -1018,11 +1021,43 @@ export function EditorPage() {
                 return (
                   <article
                     key={page.id}
-                    className={`page-chip page-chip--theme-${page.theme} ${isActive ? 'is-active' : ''}`.trim()}
+                    className={`page-chip page-chip--theme-${page.theme} ${isActive ? 'is-active' : ''} ${
+                      draggedPageId === page.id ? 'is-dragging' : ''
+                    } ${dragOverPageId === page.id && draggedPageId !== page.id ? 'is-drop-target' : ''}`.trim()}
+                    onDragOver={(event) => {
+                      if (!draggedPageId) {
+                        return;
+                      }
+                      event.preventDefault();
+                      setDragOverPageId(page.id);
+                    }}
+                    onDragLeave={() => {
+                      setDragOverPageId((current) => (current === page.id ? null : current));
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      const fromIndex = project.pages.findIndex((entry) => entry.id === draggedPageId);
+                      if (fromIndex >= 0) {
+                        reorderPages(fromIndex, index);
+                      }
+                      setDraggedPageId(null);
+                      setDragOverPageId(null);
+                    }}
                   >
                     <button
                       type="button"
                       className="page-chip__main"
+                      draggable
+                      title={t('Drag to reorder pages')}
+                      onDragStart={(event) => {
+                        setDraggedPageId(page.id);
+                        event.dataTransfer.effectAllowed = 'move';
+                        event.dataTransfer.setData('text/plain', page.id);
+                      }}
+                      onDragEnd={() => {
+                        setDraggedPageId(null);
+                        setDragOverPageId(null);
+                      }}
                       onClick={() => {
                         selectPage(page.id);
                         setColorPickerPageId(null);
@@ -1174,7 +1209,12 @@ export function EditorPage() {
                       <article
                         key={templateId}
                         className={`layout-card ${templateChoice === templateId ? 'is-active' : ''}`}
-                        onMouseEnter={(event) => openTemplateHoverPreview(templateId, event.currentTarget)}
+                        onMouseEnter={(event) =>
+                          openTemplateHoverPreview(templateId, event.currentTarget, { x: event.clientX, y: event.clientY })
+                        }
+                        onMouseMove={(event) =>
+                          openTemplateHoverPreview(templateId, event.currentTarget, { x: event.clientX, y: event.clientY })
+                        }
                         onMouseLeave={clearTemplateHoverPreview}
                       >
                         <button
@@ -1252,7 +1292,6 @@ export function EditorPage() {
                         >
                           <CustomLayoutMap template={preset.template} className="custom-layout-map--card" />
                           <span>{t(preset.label)}</span>
-                          <strong>{preset.template.name}</strong>
                           <small>{t(preset.summary)}</small>
                         </button>
                       ))}

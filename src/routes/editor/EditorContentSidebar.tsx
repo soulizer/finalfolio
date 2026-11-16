@@ -118,6 +118,7 @@ export function EditorContentSidebar({
 }: EditorContentSidebarProps) {
   const t = useT();
   const [importUrlValue, setImportUrlValue] = useState('');
+  const [assetSearch, setAssetSearch] = useState('');
   const uploadTrackWidth = `${
     uploadBusy ? uploadProgressPercent : Math.round((uploadState.completedFiles / Math.max(uploadState.totalFiles, 1)) * 100)
   }%`;
@@ -127,7 +128,6 @@ export function EditorContentSidebar({
       <section className="editor-panel editor-panel--photos">
         <div className="editor-panel__heading">
           <div>
-            <p className="eyebrow">{t('Photos')}</p>
             <h2>{t('Media library')}</h2>
           </div>
           <span className="panel-tag">{libraryAssets.length === 0 ? t('Empty') : countLabel(libraryAssets.length, '1 photo', '%s photos')}</span>
@@ -177,15 +177,17 @@ export function EditorContentSidebar({
               }}
             />
           </label>
-          <button
-            type="button"
-            className="button button--ghost button--small"
-            disabled={assetMutationBusy || uploadBusy || unusedAssetCount === 0}
-            title={assetMutationBusy || uploadBusy ? t('Wait for the current library mutation to finish.') : undefined}
-            onClick={() => void removeUnusedAssetsFromIssue()}
-          >
-            {unusedAssetCount === 0 ? t('No unused') : `Clear ${unusedAssetCount} unused`}
-          </button>
+          {unusedAssetCount > 0 ? (
+            <button
+              type="button"
+              className="button button--ghost button--small"
+              disabled={assetMutationBusy || uploadBusy}
+              title={assetMutationBusy || uploadBusy ? t('Wait for the current library mutation to finish.') : undefined}
+              onClick={() => void removeUnusedAssetsFromIssue()}
+            >
+              {countLabel(unusedAssetCount, '1 unused', 'Clear %s unused')}
+            </button>
+          ) : null}
         </div>
         {uploadBusy ? (
           <div className="upload-progress" role="status" aria-live="polite">
@@ -219,9 +221,23 @@ export function EditorContentSidebar({
             ) : null}
           </div>
         ) : null}
+        {libraryAssets.length > 6 ? (
+          <label className="field asset-search-field">
+            <span>{t('Search photos')}</span>
+            <input
+              type="search"
+              value={assetSearch}
+              placeholder={t('Search by file name')}
+              onChange={(event) => setAssetSearch(event.target.value)}
+            />
+          </label>
+        ) : null}
         <div className="asset-rail asset-rail--gallery">
           {libraryAssets.length ? (
-            libraryAssets.map((asset) => {
+            (assetSearch.trim()
+              ? libraryAssets.filter((asset) => asset.name.toLowerCase().includes(assetSearch.trim().toLowerCase()))
+              : libraryAssets
+            ).map((asset) => {
               const placements = assetUsageCounts[asset.id] ?? 0;
               const isSelected = selectedAssetId === asset.id;
               const isInCurrentProject = projectAssetIds.has(asset.id);

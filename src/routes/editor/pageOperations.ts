@@ -131,6 +131,31 @@ export function moveProjectPage({ project, selectedPageIndex, offset }: MoveProj
   };
 }
 
+export function reorderProjectPage({
+  project,
+  fromIndex,
+  toIndex,
+}: {
+  project: ProjectState;
+  fromIndex: number;
+  toIndex: number;
+}) {
+  if (
+    fromIndex === toIndex ||
+    fromIndex < 0 ||
+    toIndex < 0 ||
+    fromIndex >= project.pages.length ||
+    toIndex >= project.pages.length
+  ) {
+    return null;
+  }
+
+  return {
+    ...project,
+    pages: moveItem(project.pages, fromIndex, toIndex),
+  };
+}
+
 export function removeProjectPage({ project, selectedPage, selectedPageIndex }: RemoveProjectPageOptions) {
   const nextPage = project.pages[selectedPageIndex + 1] ?? project.pages[selectedPageIndex - 1];
   if (!nextPage) {

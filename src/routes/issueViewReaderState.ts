@@ -21,7 +21,7 @@ export type RenderedViewerPage = {
   decorativeBlank: boolean;
 };
 
-export const MOBILE_SINGLE_PAGE_MEDIA_QUERY = '(max-width: 760px) and (orientation: portrait) and (hover: none) and (pointer: coarse)';
+export const MOBILE_SINGLE_PAGE_MEDIA_QUERY = '(max-width: 900px) and (orientation: portrait) and (hover: none) and (pointer: coarse)';
 
 export function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));

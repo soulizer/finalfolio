@@ -18,6 +18,7 @@ import {
   duplicateProjectPage,
   moveProjectPage,
   removeProjectPage,
+  reorderProjectPage,
 } from './pageOperations';
 
 type UpdateProject = (updater: (current: ProjectState) => ProjectState) => void;
@@ -120,6 +121,16 @@ export function createEditorPageActions({
     setTemplateChoice(nextState.nextPage.template);
   }
 
+  function reorderPages(fromIndex: number, toIndex: number) {
+    const nextProject = reorderProjectPage({ project, fromIndex, toIndex });
+    if (!nextProject) {
+      return;
+    }
+
+    updateProject(() => nextProject);
+    setMessage('Page order updated.');
+  }
+
   function duplicatePage() {
     if (!selectedPage) {
       return;
@@ -207,5 +218,6 @@ export function createEditorPageActions({
     duplicatePage,
     moveSelectedPage,
     removeSelectedPage,
+    reorderPages,
   };
 }

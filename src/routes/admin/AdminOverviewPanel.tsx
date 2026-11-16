@@ -78,7 +78,9 @@ export function AdminOverviewPanel({
           <article className="admin-overview-card">
             <div className="admin-overview-card__header">
               <strong>{productConfig?.homepagePreview?.title ?? t('Built-in demo preview')}</strong>
-              <span>{productConfig?.homepagePreview?.issue ?? t('demo folio')}</span>
+              {productConfig?.homepagePreview?.source === 'project' ? (
+                <span>{productConfig.homepagePreview.issue}</span>
+              ) : null}
             </div>
             <p>
               {productConfig?.homepagePreview

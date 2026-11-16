@@ -60,6 +60,7 @@ export function AdminGovernancePanel({
         </div>
         {templateGovernanceDraft ? (
           <>
+            <h3 className="admin-subsection-title">{t('Page layouts')}</h3>
             <div className="admin-config-list">
               {Object.entries(templateMeta).map(([templateId, meta]) => (
                 <article key={templateId} className="admin-config-row">
@@ -75,7 +76,7 @@ export function AdminGovernancePanel({
                         onChange={(checked) => updateTemplateSetting('templates', templateId, 'enabled', checked)}
                       />
                     </div>
-                    <div className="admin-inline-field-stack">
+                    <div className="admin-config-row__fields">
                       <AdminInlineField label={t('Order')}>
                         <input
                           type="number"
@@ -100,6 +101,7 @@ export function AdminGovernancePanel({
                 </article>
               ))}
             </div>
+            <h3 className="admin-subsection-title">{t('Starter packs')}</h3>
             <div className="admin-config-list">
               {Object.entries(templatePacks).map(([packId, pack]) => (
                 <article key={packId} className="admin-config-row">
@@ -120,7 +122,7 @@ export function AdminGovernancePanel({
                         onChange={(checked) => updateTemplateSetting('packs', packId, 'featured', checked)}
                       />
                     </div>
-                    <div className="admin-inline-field-stack">
+                    <div className="admin-config-row__fields">
                       <AdminInlineField label={t('Order')}>
                         <input
                           type="number"
@@ -145,7 +147,7 @@ export function AdminGovernancePanel({
                 </article>
               ))}
             </div>
-            <div className="editor-panel__actions admin-panel__actions--end">
+            <div className="editor-panel__actions admin-panel__actions--end admin-save-bar">
               <button
                 type="button"
                 className="button button--primary button--small"
@@ -183,7 +185,7 @@ export function AdminGovernancePanel({
             <div className="admin-form-grid">
               {siteContentDraft.features.map((feature, index) => (
                 <article key={feature.id} className="admin-inline-card">
-                  <strong>{`Feature ${index + 1}`}</strong>
+                  <strong>{t('Feature %s').replace('%s', String(index + 1))}</strong>
                   <div className="admin-inline-field-stack">
                     <AdminInlineField label={t('Title')}>
                       <input value={feature.title} onChange={(event) => updateSiteFeature(index, 'title', event.target.value)} />
@@ -204,7 +206,7 @@ export function AdminGovernancePanel({
                 <textarea value={siteContentDraft.workflow.body} onChange={(event) => updateWorkflow('body', event.target.value)} rows={4} />
               </AdminInlineField>
               {siteContentDraft.workflow.steps.map((step, index) => (
-                <AdminInlineField key={index} label={`Workflow step ${index + 1}`}>
+                <AdminInlineField key={index} label={t('Workflow step %s').replace('%s', String(index + 1))}>
                   <input value={step} onChange={(event) => updateWorkflowStep(index, event.target.value)} />
                 </AdminInlineField>
               ))}
@@ -251,7 +253,7 @@ export function AdminGovernancePanel({
               </AdminInlineField>
             </div>
 
-            <div className="editor-panel__actions admin-panel__actions--end">
+            <div className="editor-panel__actions admin-panel__actions--end admin-save-bar">
               <button
                 type="button"
                 className="button button--primary button--small"

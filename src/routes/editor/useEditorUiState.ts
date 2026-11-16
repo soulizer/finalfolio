@@ -4,7 +4,7 @@ import { cropValueToPixelOffset, pixelOffsetToCropValue } from '../../editor/ima
 import type { CropSettings, TemplateId } from '../../editor/types';
 
 const TEMPLATE_HOVER_PREVIEW_WIDTH = 214;
-const TEMPLATE_HOVER_PREVIEW_HEIGHT = 292;
+const TEMPLATE_HOVER_PREVIEW_HEIGHT = 180;
 const TEMPLATE_HOVER_PREVIEW_GAP = 16;
 const CUSTOM_LAYOUT_PREVIEW_WIDTH = 236;
 
@@ -149,23 +149,20 @@ export function useEditorUiState({
     };
   }, [templateHoverPreview]);
 
-  function openTemplateHoverPreview(templateId: TemplateId, element: HTMLElement) {
+  function openTemplateHoverPreview(templateId: TemplateId, element: HTMLElement, point?: { x: number; y: number }) {
     const bounds = element.getBoundingClientRect();
-    // Anchor the preview outside the whole sidebar so it never covers the
-    // neighbouring layout cards.
-    const sidebarBounds = element.closest('.editor-sidebar')?.getBoundingClientRect();
     const viewportPadding = 16;
-    const preferredLeft = (sidebarBounds?.right ?? bounds.right) + TEMPLATE_HOVER_PREVIEW_GAP;
+    const anchorX = point?.x ?? bounds.left + bounds.width / 2;
+    const anchorY = point?.y ?? bounds.top + bounds.height / 2;
+    // Follow the pointer, flipping to the other side when the preview would
+    // leave the viewport.
+    const preferredLeft = anchorX + TEMPLATE_HOVER_PREVIEW_GAP;
     const left =
       preferredLeft + TEMPLATE_HOVER_PREVIEW_WIDTH > window.innerWidth - viewportPadding
-        ? Math.max(viewportPadding, bounds.left - TEMPLATE_HOVER_PREVIEW_WIDTH - TEMPLATE_HOVER_PREVIEW_GAP)
+        ? Math.max(viewportPadding, anchorX - TEMPLATE_HOVER_PREVIEW_WIDTH - TEMPLATE_HOVER_PREVIEW_GAP)
         : preferredLeft;
     const maxTop = Math.max(viewportPadding, window.innerHeight - TEMPLATE_HOVER_PREVIEW_HEIGHT - viewportPadding);
-    const top = clamp(
-      bounds.top + bounds.height / 2 - TEMPLATE_HOVER_PREVIEW_HEIGHT / 2,
-      viewportPadding,
-      maxTop,
-    );
+    const top = clamp(anchorY + TEMPLATE_HOVER_PREVIEW_GAP, viewportPadding, maxTop);
 
     setTemplateHoverPreview({
       templateId,

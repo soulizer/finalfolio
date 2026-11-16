@@ -480,28 +480,11 @@ a:focus-visible {
 .hero-proof__grid {
   position: relative;
   overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 26px, #000 calc(100% - 26px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 26px, #000 calc(100% - 26px), transparent 100%);
 }
 
-.hero-proof__grid::before,
-.hero-proof__grid::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  z-index: 1;
-  width: 28px;
-  pointer-events: none;
-}
 
-.hero-proof__grid::before {
-  left: 0;
-  background: linear-gradient(90deg, rgba(246, 241, 233, 0.92), rgba(246, 241, 233, 0));
-}
-
-.hero-proof__grid::after {
-  right: 0;
-  background: linear-gradient(-90deg, rgba(246, 241, 233, 0.92), rgba(246, 241, 233, 0));
-}
 
 .hero-proof__track {
   display: flex;
@@ -8216,4 +8199,127 @@ html[lang='zh-CN'] body {
   color: var(--muted);
   opacity: 1;
   box-shadow: none;
+}
+
+.page-chip.is-dragging {
+  opacity: 0.45;
+}
+
+.page-chip.is-drop-target {
+  border-color: rgba(17, 17, 17, 0.5);
+  box-shadow: 0 0 0 2px rgba(17, 17, 17, 0.16);
+}
+
+.page-chip__main[draggable='true'] {
+  cursor: grab;
+}
+
+.page-chip__main[draggable='true']:active {
+  cursor: grabbing;
+}
+
+.asset-search-field {
+  margin: 0;
+}
+
+.asset-search-field input {
+  width: 100%;
+}
+
+.admin-subsection-title {
+  margin: 6px 0 -6px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.admin-config-row__fields {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: end;
+}
+
+.admin-save-bar {
+  position: sticky;
+  bottom: 10px;
+  z-index: 4;
+  padding: 10px 0 4px;
+  background: linear-gradient(180deg, rgba(244, 241, 235, 0), rgba(244, 241, 235, 0.96) 40%);
+}
+
+@media (max-width: 760px) {
+  .admin-config-row__fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Governance rows: stack the field label above its input so values stay readable. */
+.admin-config-row__fields .admin-inline-field {
+  grid-template-columns: 1fr;
+  gap: 4px;
+  align-items: start;
+}
+
+.admin-config-row__fields .admin-inline-field__label {
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+}
+
+/* Project info disclosure in the editor operations sidebar */
+.editor-project-details {
+  display: grid;
+  gap: 10px;
+}
+
+.editor-project-details > summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--control-radius);
+  border: 1px solid rgba(17, 17, 17, 0.1);
+  background: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  list-style: none;
+}
+
+.editor-project-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.editor-project-details > summary::marker {
+  content: '';
+}
+
+.editor-project-details > summary::after {
+  content: '＋';
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.editor-project-details[open] > summary::after {
+  content: '－';
+}
+
+.editor-project-details > summary span {
+  flex: 0 0 auto;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.editor-project-details > summary small {
+  margin-left: auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.editor-project-title-field {
+  margin-top: 4px;
 }

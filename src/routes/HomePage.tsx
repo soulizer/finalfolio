@@ -433,7 +433,9 @@ export function HomePage() {
               <div className="hero-proof__meta">
                 <span>{homepagePreview.source === 'project' ? t('Pinned live folio') : t('Built-in demo')}</span>
                 <strong>{t(homepagePreview.title)}</strong>
-                <small>{t(formatTimestamp(homepagePreview.updatedAt))}</small>
+                {homepagePreview.source === 'project' ? (
+                  <small>{t(formatTimestamp(homepagePreview.updatedAt))}</small>
+                ) : null}
               </div>
             </div>
 

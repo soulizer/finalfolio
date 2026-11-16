@@ -1553,3 +1553,20 @@
 - `npm run validate:mvp`
 - `./node_modules/.bin/playwright test` (13 specs; editor flow now asserts the public reader renders pages without page errors)
 - No horizontal overflow at 360/390/768/1024
+
+## 2026-11-16 Interaction Round: Follow Cursor, Reorder, Density
+
+### What changed
+
+- Layout hover preview now follows the pointer (with viewport flipping) instead of anchoring to a fixed card position.
+- Removed duplicated headings/labels: the Photos eyebrow, the second English preset name on custom layout cards, the duplicate demo label on the homepage, and the repeated “no unused” button when there is nothing to clear.
+- Added page drag-and-drop reordering in the sequence panel (with a Playwright regression test) and a photo search field once the library exceeds six images.
+- Editor project info now keeps the title visible and moves subtitle/mark/image-corner controls into a collapsible disclosure.
+- Admin governance: subsection headings, readable stacked fields, sticky save bars, localised feature/workflow-step labels, and denser rows.
+- Public reader: portrait tablets up to 900px now use the large single-page reader; the homepage preview gets a proper edge mask instead of hard-clipped cards.
+
+### Validation
+
+- `npm run validate:mvp`
+- `./node_modules/.bin/playwright test` (14 specs)
+- No horizontal overflow at 360/390/768/1024

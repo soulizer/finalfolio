@@ -60,6 +60,17 @@ test('applying a layout from the card keeps the current page and adds pages belo
   await expect(page.locator('.layout-card').nth(1)).toHaveClass(/is-active/);
 });
 
+test('pages can be reordered by dragging', async ({ page }) => {
+  await signIn(page, '/editor');
+
+  const chips = page.locator('.page-chip');
+  await expect(chips.first()).toBeVisible();
+  const movedTitle = await chips.first().locator('.page-chip__main strong').innerText();
+
+  await chips.first().locator('.page-chip__main').dragTo(chips.nth(2));
+  await expect(chips.nth(2)).toContainText(movedTitle);
+});
+
 test('typing directly on the page commits copy without a popover', async ({ page }) => {
   await signIn(page, '/editor');
 

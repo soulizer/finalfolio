@@ -35,7 +35,7 @@ export function EditorLoadingState() {
           <section className="editor-panel">
             <div className="editor-panel__heading">
               <div>
-                <p className="eyebrow">{t('Page style')}</p>
+                <p className="eyebrow">{t('Page layout')}</p>
                 <h2>{t('Preparing controls')}</h2>
               </div>
               <span className="panel-tag">{t('Syncing')}</span>

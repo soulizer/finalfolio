@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useT } from '../../i18n';
 import type { UserSession } from '../../editor/api';
 import { getUserPrimaryIdentity } from '../../editor/identity';
@@ -141,6 +142,7 @@ export function EditorOperationsSidebar({
   updateProject,
 }: EditorOperationsSidebarProps) {
   const t = useT();
+  const [projectDetailsOpen, setProjectDetailsOpen] = useState(false);
   const frameRadiusRoundThreshold = Math.max(PROJECT_FRAME_RADIUS_DEFAULT + 10, PROJECT_FRAME_RADIUS_MAX - 12);
   const frameRadiusLabel =
     project.frameRadius <= 2 ? t('Square') : project.frameRadius >= frameRadiusRoundThreshold ? t('Round') : `${project.frameRadius}px`;
@@ -314,10 +316,7 @@ export function EditorOperationsSidebar({
                 : t('The saved editor URL remains private. Enable sharing when this folio should be viewable outside the editor.')}
           </p>
           <div className="editor-panel__actions editor-panel__actions--tight">
-            {!projectRecord ? (
-              <button type="button" className="button button--ghost button--small" disabled>
-                {t('Save to share')}</button>
-            ) : projectRecord.share.enabled ? (
+            {!projectRecord ? null : projectRecord.share.enabled ? (
               <>
                 <button type="button" className="button button--primary button--small" disabled={shareBusy} onClick={onOpenSharedProject}>
                   {t('Open shared')}</button>
@@ -401,21 +400,25 @@ export function EditorOperationsSidebar({
           </section>
         ) : null}
 
-        <section className="editor-panel__section">
-          <div className="editor-section-heading">
-            <div>
-              <p className="eyebrow">{t('Project info')}</p>
-              <h3>{t('Folio details')}</h3>
-            </div>
-          </div>
-          <label className="field">
-            <span>{t('Title')}</span>
-            <input
-              maxLength={PROJECT_TITLE_LIMIT}
-              value={project.title}
-              onChange={(event) => updateProject((current) => ({ ...current, title: event.target.value }))}
-            />
-          </label>
+        <label className="field editor-project-title-field">
+          <span>{t('Title')}</span>
+          <input
+            maxLength={PROJECT_TITLE_LIMIT}
+            value={project.title}
+            onChange={(event) => updateProject((current) => ({ ...current, title: event.target.value }))}
+          />
+        </label>
+
+        <details
+          className="editor-project-details"
+          open={projectDetailsOpen}
+          onToggle={(event) => setProjectDetailsOpen(event.currentTarget.open)}
+        >
+          <summary>
+            <span>{t('Folio details')}</span>
+            <small>{project.title}</small>
+          </summary>
+          <section className="editor-panel__section">
           <label className="field">
             <span>{t('Subtitle')}</span>
             <textarea
@@ -471,6 +474,7 @@ export function EditorOperationsSidebar({
             />
           </label>
         </section>
+        </details>
       </section>
     </aside>
   );
