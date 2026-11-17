@@ -52,5 +52,18 @@ jobs:
             const escaped = message.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
             console.log(`::error title=playwright-install::${escaped}`);
           '
-      - run: npx playwright test
+      - name: Run Playwright tests
+        run: npx playwright test 2>&1 | tee /tmp/playwright.log
+      - name: Report Playwright test failure
+        if: failure()
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const file = "/tmp/playwright.log";
+            if (!fs.existsSync(file)) process.exit(0);
+            const lines = fs.readFileSync(file, "utf8").trim().split("\n");
+            const message = lines.slice(-60).join(" | ").slice(0, 7000);
+            const escaped = message.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
+            console.log(`::error title=playwright-tests::${escaped}`);
+          '
       - run: npm audit --audit-level=high
