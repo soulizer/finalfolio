@@ -556,6 +556,7 @@ const zh: Record<string, string> = {
   'Only the first %s photos were added.': '只添加了前 %s 张照片。',
   'None of the selected photos could be uploaded.': '所选照片全部上传失败。',
   'No photos selected yet.': '还没有选择照片。',
+  '%s selected. Click a checked photo to remove it.': '已选择 %s 张，点击带勾的图片可取消。',
   'No interfaces yet. Add the first one to enable AI arrangement.': '还没有接口。添加第一个接口后即可启用 AI 排列。',
   'Move up': '上移',
   'Move down': '下移',

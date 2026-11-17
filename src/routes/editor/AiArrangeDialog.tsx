@@ -710,8 +710,8 @@ export function AiArrangeDialog({
                             }}
                           >
                             <img src={getAssetSource(asset, 'thumb')} alt={asset.name} />
-                            <span>{asset.name}</span>
-                            {selected ? <span className="ai-library-item__check">✓</span> : null}
+                            <span className="ai-library-item__name">{asset.name}</span>
+                            {selected ? <span className="ai-library-item__check" aria-hidden="true">✓</span> : null}
                           </button>
                         );
                       })}
@@ -753,7 +753,15 @@ export function AiArrangeDialog({
                   </p>
                 ) : null}
 
-                {photos.length ? (
+                {sourceTab === 'library' ? (
+                  photos.length ? (
+                    <p className="panel-note">
+                      {t('%s selected. Click a checked photo to remove it.').replace('%s', String(photos.length))}
+                    </p>
+                  ) : (
+                    <p className="panel-note">{t('No photos selected yet.')}</p>
+                  )
+                ) : photos.length ? (
                   <div className="ai-photo-grid">
                     {photos.map((photo, index) => (
                       <figure className="ai-photo-card" key={photo.id}>
