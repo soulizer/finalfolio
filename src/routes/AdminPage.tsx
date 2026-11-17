@@ -19,7 +19,7 @@ import { AdminLoadingState, AdminUnavailableState } from './admin/AdminShellStat
 import { useAdminShellState } from './admin/useAdminShellState';
 import { useAdminConfigState } from './admin/useAdminConfigState';
 import { useAdminUserManagement } from './admin/useAdminUserManagement';
-import { useAdminWorkspace } from './admin/useAdminWorkspace';
+import { createAdminObjectStorageDraft, useAdminWorkspace } from './admin/useAdminWorkspace';
 
 export function AdminPage() {
   const t = useT();
@@ -146,15 +146,12 @@ export function AdminPage() {
     setMessage,
   });
   const {
-    addProvider,
     aiBusy,
     aiTestBusyId,
     handleSaveAiConfig,
     handleTestAiProvider,
-    moveProvider,
-    removeProvider,
+    saveAiConfig,
     updateField: updateAiField,
-    updateProvider: updateAiProvider,
   } = useAdminAiConfig({
     aiConfigDraft,
     refreshAll,
@@ -260,16 +257,13 @@ export function AdminPage() {
 
             {activeSection === 'ai' ? (
               <AdminAiPanel
-                addProvider={addProvider}
                 aiBusy={aiBusy}
                 aiConfigDraft={aiConfigDraft}
                 aiTestBusyId={aiTestBusyId}
                 handleSaveAiConfig={handleSaveAiConfig}
                 handleTestAiProvider={handleTestAiProvider}
-                moveProvider={moveProvider}
-                removeProvider={removeProvider}
+                saveAiConfig={saveAiConfig}
                 updateField={updateAiField}
-                updateProvider={updateAiProvider}
               />
             ) : null}
 
@@ -281,6 +275,9 @@ export function AdminPage() {
                 handleTestObjectStorage={handleTestObjectStorage}
                 objectStorageBusy={objectStorageBusy}
                 objectStorageDraft={objectStorageDraft}
+                onResetObjectStorageDraft={() =>
+                  setObjectStorageDraft(productConfig ? createAdminObjectStorageDraft(productConfig.objectStorage) : null)
+                }
                 productConfig={productConfig}
                 updateObjectStorageDraftField={updateObjectStorageDraftField}
               />

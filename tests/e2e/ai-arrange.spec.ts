@@ -102,6 +102,47 @@ test('AI arrangement previews three plans and applies the chosen one', async ({ 
 });
 
 
+test('AI arrangement accepts URL imports and reuses them from the library', async ({ page }) => {
+  await page.route('**/api/ai/status', (route) => route.fulfill({ json: status }));
+  await page.route('**/api/ai/plans', (route) => route.fulfill({ json: bundle }));
+  await page.route('**/api/uploads/from-url', (route) =>
+    route.fulfill({
+      json: {
+        assets: [
+          {
+            id: 'asset-url-check',
+            name: 'URL photo',
+            src: '/icon-192.png',
+            note: '',
+            width: 192,
+            height: 192,
+          },
+        ],
+      },
+    }),
+  );
+  await signIn(page, '/editor');
+
+  await page.getByRole('button', { name: 'Arrange with AI' }).click();
+  const dialog = page.locator('.ai-dialog');
+  await expect(dialog).toBeVisible();
+
+  await dialog.getByRole('tab', { name: 'URL import' }).click();
+  await dialog.getByLabel('Image URL').fill('https://example.com/photo.jpg');
+  await dialog.getByRole('button', { name: 'Import URL' }).click();
+  await expect(page.locator('.ai-photo-card')).toHaveCount(1);
+
+  await dialog.getByRole('tab', { name: 'Choose from library' }).click();
+  await expect(dialog.locator('.ai-library-item.is-selected')).toHaveCount(1);
+  await expect(dialog.locator('.ai-library-item.is-selected')).toContainText('URL photo');
+
+  await page.getByRole('button', { name: 'Generate 3 plans' }).click();
+  await expect(page.locator('.ai-plan-card')).toHaveCount(3);
+  await page.getByRole('button', { name: 'Apply this plan' }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.locator('.page-chip')).toHaveCount(2, { timeout: 20_000 });
+});
+
 test('AI arrangement asks guests to sign in first', async ({ page }) => {
   await page.goto('/editor');
   await expect(page.getByRole('button', { name: 'Arrange with AI' })).toBeVisible();
@@ -115,14 +156,23 @@ test('admin AI pool saves a provider and its ordering fields', async ({ page }) 
   await page.getByRole('button', { name: 'AI', exact: true }).click();
   await expect(page.locator('.admin-page--ai')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Add interface' }).click();
-  const card = page.locator('.admin-ai-provider-card').last();
-  await card.getByLabel('Name').fill('Mock provider');
-  await card.getByLabel('Model').fill('mock-model');
-  await card.getByLabel('Base URL').fill('http://127.0.0.1:4180/v1');
-  await card.getByLabel('API key').fill('sk-mock-1234');
-  await page.getByRole('button', { name: 'Save AI settings' }).click();
+  const prompt = page.locator('.admin-ai-prompt__textarea');
+  await expect(prompt).toHaveJSProperty('readOnly', true);
+  await page.getByRole('button', { name: 'Edit prompt' }).click();
+  await expect(prompt).toHaveJSProperty('readOnly', false);
+  await page.getByRole('button', { name: 'Done editing' }).click();
+  await expect(prompt).toHaveJSProperty('readOnly', true);
 
+  await page.getByRole('button', { name: 'Add interface' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Add interface' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel('Name').fill('Mock provider');
+  await dialog.getByLabel('Model').fill('mock-model');
+  await dialog.getByLabel('Base URL').fill('http://127.0.0.1:4180/v1');
+  await dialog.getByLabel('API key').fill('sk-mock-1234');
+  await dialog.getByRole('button', { name: 'Save interface' }).click();
+
+  await expect(dialog).toHaveCount(0);
   await expect(page.locator('.admin-notice')).toContainText('AI settings saved.');
   await expect(page.locator('.admin-ai-provider-card').filter({ hasText: 'Mock provider' })).toBeVisible();
 });

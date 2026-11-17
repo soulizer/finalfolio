@@ -1,10 +1,105 @@
+import type { ReactNode } from 'react';
 import { useT } from '../../i18n';
 import type { AdminProjectListItem, ProductConfigPayload } from '../../editor/api';
 import { templateMeta, templatePacks } from '../../editor/demoData';
-import type { SiteContent, TemplateGovernance } from '../../product/types';
-import { AdminInlineField, AdminToggleField } from './AdminFormFields';
+import type { SiteContent, TemplateGovernance, TemplateGovernanceEntry } from '../../product/types';
+import { AdminInlineField } from './AdminFormFields';
 
 type TemplateSettingField = 'enabled' | 'order' | 'category' | 'tag' | 'featured';
+
+type GovernanceRow = {
+  id: string;
+  label: string;
+  description: string;
+  entry: TemplateGovernanceEntry | undefined;
+};
+
+function GovernanceCell({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="admin-config-table__cell">
+      <span className="admin-config-table__cell-label">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function GovernanceTable({
+  group,
+  onChange,
+  rows,
+  showFeatured,
+}: {
+  group: keyof TemplateGovernance;
+  onChange: (group: keyof TemplateGovernance, id: string, field: TemplateSettingField, value: boolean | number | string) => void;
+  rows: GovernanceRow[];
+  showFeatured: boolean;
+}) {
+  const t = useT();
+  return (
+    <div className={`admin-config-table ${showFeatured ? 'admin-config-table--packs' : 'admin-config-table--templates'}`}>
+      <div className="admin-config-table__head">
+        <span>{t('Template')}</span>
+        <span>{t('Enabled')}</span>
+        {showFeatured ? <span>{t('Featured')}</span> : null}
+        <span>{t('Order')}</span>
+        <span>{t('Category')}</span>
+        <span>{t('Tag')}</span>
+      </div>
+      {rows.map((row) => {
+        const name = t(row.label);
+        return (
+          <div className="admin-config-table__row" key={row.id}>
+            <div className="admin-config-table__copy">
+              <strong>{name}</strong>
+              <p>{t(row.description)}</p>
+            </div>
+            <GovernanceCell label={t('Enabled')}>
+              <input
+                type="checkbox"
+                aria-label={`${t('Enabled')} · ${name}`}
+                checked={row.entry?.enabled ?? true}
+                onChange={(event) => onChange(group, row.id, 'enabled', event.target.checked)}
+              />
+            </GovernanceCell>
+            {showFeatured ? (
+              <GovernanceCell label={t('Featured')}>
+                <input
+                  type="checkbox"
+                  aria-label={`${t('Featured')} · ${name}`}
+                  checked={row.entry?.featured ?? false}
+                  onChange={(event) => onChange(group, row.id, 'featured', event.target.checked)}
+                />
+              </GovernanceCell>
+            ) : null}
+            <GovernanceCell label={t('Order')}>
+              <input
+                type="number"
+                aria-label={`${t('Order')} · ${name}`}
+                value={row.entry?.order ?? 0}
+                onChange={(event) => onChange(group, row.id, 'order', Number(event.target.value) || 0)}
+              />
+            </GovernanceCell>
+            <GovernanceCell label={t('Category')}>
+              <input
+                aria-label={`${t('Category')} · ${name}`}
+                value={row.entry?.category ?? ''}
+                onChange={(event) => onChange(group, row.id, 'category', event.target.value)}
+              />
+            </GovernanceCell>
+            <GovernanceCell label={t('Tag')}>
+              <input
+                aria-label={`${t('Tag')} · ${name}`}
+                value={row.entry?.tag ?? ''}
+                onChange={(event) => onChange(group, row.id, 'tag', event.target.value)}
+              />
+            </GovernanceCell>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 
 type AdminGovernancePanelProps = {
   configBusy: boolean;
@@ -61,92 +156,29 @@ export function AdminGovernancePanel({
         {templateGovernanceDraft ? (
           <>
             <h3 className="admin-subsection-title">{t('Page layouts')}</h3>
-            <div className="admin-config-list">
-              {Object.entries(templateMeta).map(([templateId, meta]) => (
-                <article key={templateId} className="admin-config-row">
-                  <div className="admin-config-row__copy">
-                    <strong>{t(meta.label)}</strong>
-                    <p>{t(meta.description)}</p>
-                  </div>
-                  <div className="admin-config-row__controls">
-                    <div className="admin-config-row__toggles">
-                      <AdminToggleField
-                        label={t('Enabled')}
-                        checked={templateGovernanceDraft.templates[templateId]?.enabled ?? true}
-                        onChange={(checked) => updateTemplateSetting('templates', templateId, 'enabled', checked)}
-                      />
-                    </div>
-                    <div className="admin-config-row__fields">
-                      <AdminInlineField label={t('Order')}>
-                        <input
-                          type="number"
-                          value={templateGovernanceDraft.templates[templateId]?.order ?? 0}
-                          onChange={(event) => updateTemplateSetting('templates', templateId, 'order', Number(event.target.value) || 0)}
-                        />
-                      </AdminInlineField>
-                      <AdminInlineField label={t('Category')}>
-                        <input
-                          value={templateGovernanceDraft.templates[templateId]?.category ?? ''}
-                          onChange={(event) => updateTemplateSetting('templates', templateId, 'category', event.target.value)}
-                        />
-                      </AdminInlineField>
-                      <AdminInlineField label={t('Tag')}>
-                        <input
-                          value={templateGovernanceDraft.templates[templateId]?.tag ?? ''}
-                          onChange={(event) => updateTemplateSetting('templates', templateId, 'tag', event.target.value)}
-                        />
-                      </AdminInlineField>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
+            <GovernanceTable
+              group="templates"
+              onChange={updateTemplateSetting}
+              rows={Object.entries(templateMeta).map(([templateId, meta]) => ({
+                id: templateId,
+                label: meta.label,
+                description: meta.description,
+                entry: templateGovernanceDraft.templates[templateId],
+              }))}
+              showFeatured={false}
+            />
             <h3 className="admin-subsection-title">{t('Starter packs')}</h3>
-            <div className="admin-config-list">
-              {Object.entries(templatePacks).map(([packId, pack]) => (
-                <article key={packId} className="admin-config-row">
-                  <div className="admin-config-row__copy">
-                    <strong>{t(pack.label)}</strong>
-                    <p>{t(pack.description)}</p>
-                  </div>
-                  <div className="admin-config-row__controls">
-                    <div className="admin-config-row__toggles">
-                      <AdminToggleField
-                        label={t('Enabled')}
-                        checked={templateGovernanceDraft.packs[packId]?.enabled ?? true}
-                        onChange={(checked) => updateTemplateSetting('packs', packId, 'enabled', checked)}
-                      />
-                      <AdminToggleField
-                        label={t('Featured')}
-                        checked={templateGovernanceDraft.packs[packId]?.featured ?? false}
-                        onChange={(checked) => updateTemplateSetting('packs', packId, 'featured', checked)}
-                      />
-                    </div>
-                    <div className="admin-config-row__fields">
-                      <AdminInlineField label={t('Order')}>
-                        <input
-                          type="number"
-                          value={templateGovernanceDraft.packs[packId]?.order ?? 0}
-                          onChange={(event) => updateTemplateSetting('packs', packId, 'order', Number(event.target.value) || 0)}
-                        />
-                      </AdminInlineField>
-                      <AdminInlineField label={t('Category')}>
-                        <input
-                          value={templateGovernanceDraft.packs[packId]?.category ?? ''}
-                          onChange={(event) => updateTemplateSetting('packs', packId, 'category', event.target.value)}
-                        />
-                      </AdminInlineField>
-                      <AdminInlineField label={t('Tag')}>
-                        <input
-                          value={templateGovernanceDraft.packs[packId]?.tag ?? ''}
-                          onChange={(event) => updateTemplateSetting('packs', packId, 'tag', event.target.value)}
-                        />
-                      </AdminInlineField>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
+            <GovernanceTable
+              group="packs"
+              onChange={updateTemplateSetting}
+              rows={Object.entries(templatePacks).map(([packId, pack]) => ({
+                id: packId,
+                label: pack.label,
+                description: pack.description,
+                entry: templateGovernanceDraft.packs[packId],
+              }))}
+              showFeatured
+            />
             <div className="editor-panel__actions admin-panel__actions--end admin-save-bar">
               <button
                 type="button"

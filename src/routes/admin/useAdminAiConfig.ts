@@ -109,16 +109,12 @@ export function useAdminAiConfig({
     });
   }
 
-  async function handleSaveAiConfig() {
-    if (!aiConfigDraft) {
-      return;
-    }
-
+  async function saveAiConfig(nextDraft: AdminAiConfigDraft) {
     setAiBusy(true);
     setMessage(null);
 
     try {
-      const payload = await updateAdminAiConfig(aiConfigDraft);
+      const payload = await updateAdminAiConfig(nextDraft);
       setAiConfigDraft({
         enabled: payload.ai.enabled,
         userTotalLimit: payload.ai.userTotalLimit,
@@ -142,9 +138,18 @@ export function useAdminAiConfig({
       setMessage('AI settings saved.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to save AI settings.');
+      throw error;
     } finally {
       setAiBusy(false);
     }
+  }
+
+  async function handleSaveAiConfig() {
+    if (!aiConfigDraft) {
+      return;
+    }
+
+    await saveAiConfig(aiConfigDraft);
   }
 
   async function handleTestAiProvider(index: number) {
@@ -181,6 +186,7 @@ export function useAdminAiConfig({
     handleTestAiProvider,
     moveProvider,
     removeProvider,
+    saveAiConfig,
     updateField,
     updateProvider,
   };

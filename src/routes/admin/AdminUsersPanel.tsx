@@ -58,7 +58,7 @@ export function AdminUsersPanel({
         </div>
         <p className="panel-note">{t('Admin-created accounts are activated immediately and bypass email verification.')}</p>
         <div className="admin-form-grid admin-form-grid--compact">
-          <AdminInlineField label={t('Username')}>
+          <AdminInlineField label={t('Username')} stacked>
             <input
               placeholder={t('3–40 characters')}
               title={t('3-40 letters, numbers, hyphen, underscore')}
@@ -70,7 +70,7 @@ export function AdminUsersPanel({
             />
             <p className="field-note">{t('Letters, numbers, hyphen, or underscore.')}</p>
           </AdminInlineField>
-          <AdminInlineField label={t('Email')}>
+          <AdminInlineField label={t('Email')} stacked>
             <input
               type="email"
               placeholder={t('name@example.com')}
@@ -78,7 +78,7 @@ export function AdminUsersPanel({
               onChange={(event) => setCreateUserEmail(event.target.value)}
             />
           </AdminInlineField>
-          <AdminInlineField label={t('Password')}>
+          <AdminInlineField label={t('Password')} stacked>
             <input
               type="password"
               placeholder={t('At least 8 characters')}
@@ -86,7 +86,7 @@ export function AdminUsersPanel({
               onChange={(event) => setCreateUserPassword(event.target.value)}
             />
           </AdminInlineField>
-          <AdminInlineField label={t('Role')}>
+          <AdminInlineField label={t('Role')} stacked>
             <select value={createUserRole} onChange={(event) => setCreateUserRole(event.target.value as UserSession['role'])}>
               <option value="user">{t('User')}</option>
               <option value="admin">{t('Admin')}</option>
@@ -147,7 +147,7 @@ export function AdminUsersPanel({
                   <div className="admin-row__actions">
                     <button
                       type="button"
-                      className={`button button--small ${user.status === 'active' ? 'button--danger' : 'button--primary'}`}
+                      className={`button button--small ${user.status === 'active' ? 'button--danger-ghost' : 'button--primary'}`}
                       disabled={userActionBusy || (user.id === currentUserId && user.status === 'active')}
                       onClick={() => void handleToggleUser(user)}
                     >

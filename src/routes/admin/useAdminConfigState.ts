@@ -107,7 +107,7 @@ export function useAdminConfigState({
 
   async function handleSaveObjectStorage() {
     if (!objectStorageDraft) {
-      return;
+      return false;
     }
 
     const confirmed = await confirmAction({
@@ -117,7 +117,7 @@ export function useAdminConfigState({
       tone: 'danger',
     });
     if (!confirmed) {
-      return;
+      return false;
     }
 
     setObjectStorageBusy(true);
@@ -128,8 +128,10 @@ export function useAdminConfigState({
       setObjectStorageDraft(createAdminObjectStorageDraft(payload.objectStorage));
       await refreshAll();
       setMessage('Object storage config saved.');
+      return true;
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to save object storage config.');
+      return false;
     } finally {
       setObjectStorageBusy(false);
     }

@@ -52,7 +52,7 @@ import { EditorContentSidebar } from './editor/EditorContentSidebar';
 import { EditorExportCenter } from './editor/EditorExportCenter';
 import { EditorOperationsSidebar } from './editor/EditorOperationsSidebar';
 import { EditorLoadingState, EditorLockedState, EditorUnavailableState } from './editor/EditorShellStates';
-import { AiArrangeDialog } from './editor/AiArrangeDialog';
+import { AiArrangeDialog, type AiPhoto } from './editor/AiArrangeDialog';
 import { LayoutEditorDialog } from './editor/LayoutEditorDialog';
 import { createEditorExportActions } from './editor/exportFlow';
 import { createEditorProjectShellActions } from './editor/projectActions';
@@ -936,29 +936,55 @@ export function EditorPage() {
     setAiDialogOpen(true);
   }, [aiPhotoCapacity, navigate, session, setMessage, t]);
 
+  const handleImportUrlForAi = useCallback(
+    async (url: string) => {
+      const asset = await importAssetFromUrl(url);
+      updateProject((current) => ({
+        ...current,
+        assets: [asset, ...current.assets.filter((entry) => entry.id !== asset.id)],
+      }));
+      setMessage(t('Added %s from the URL.').replace('%s', asset.name));
+      return asset;
+    },
+    [setMessage, t, updateProject],
+  );
+
   const handleApplyAiPlan = useCallback(
-    async (bundle: AiPlanBundle, plan: AiPlan, files: File[]) => {
-      const uploaded = await handleUploadFiles(files);
-      if (!uploaded) {
-        throw new Error(t('Unable to upload the selected photos.'));
+    async (bundle: AiPlanBundle, plan: AiPlan, photos: AiPhoto[]) => {
+      const localPhotos = photos.filter((photo) => photo.kind === 'local' && photo.file);
+      let uploaded: Array<Asset | null> | undefined = [];
+      if (localPhotos.length) {
+        uploaded = await handleUploadFiles(localPhotos.map((photo) => photo.file!));
+        if (!uploaded) {
+          throw new Error(t('Unable to upload the selected photos.'));
+        }
       }
 
-      const uploadedAssets = uploaded.filter((asset): asset is Asset => Boolean(asset));
-      if (!uploadedAssets.length) {
+      let localIndex = 0;
+      const resolvedAssets: Array<Asset | null> = photos.map((photo) => {
+        if (photo.kind === 'asset') {
+          return photo.asset ?? assetsById[photo.assetId ?? ''] ?? null;
+        }
+        const asset = uploaded?.[localIndex] ?? null;
+        localIndex += 1;
+        return asset;
+      });
+      const availableAssets = resolvedAssets.filter((asset): asset is Asset => Boolean(asset));
+      if (!availableAssets.length) {
         throw new Error(t('None of the selected photos could be uploaded.'));
       }
 
       const latestProject = getProject();
-      const uploadedIds = new Set(uploadedAssets.map((asset) => asset.id));
+      const resolvedIds = new Set(availableAssets.map((asset) => asset.id));
       const projectWithUploads = {
         ...latestProject,
-        assets: [...uploadedAssets, ...latestProject.assets.filter((asset) => !uploadedIds.has(asset.id))],
+        assets: [...availableAssets, ...latestProject.assets.filter((asset) => !resolvedIds.has(asset.id))],
       };
       const nextProject = applyAiPlanToProject({
         project: projectWithUploads,
         bundle,
         plan,
-        assets: uploaded,
+        assets: resolvedAssets,
         createPageId,
       });
       updateProject(() => nextProject);
@@ -970,7 +996,7 @@ export function EditorPage() {
         setTemplateChoice(firstPage.template);
       }
 
-      const failedCount = files.length - uploadedAssets.length;
+      const failedCount = resolvedAssets.filter((asset) => !asset).length;
       setMessage(
         failedCount > 0
           ? t('AI arrangement applied. %s photos could not be uploaded and their frames are empty.').replace(
@@ -981,6 +1007,7 @@ export function EditorPage() {
       );
     },
     [
+      assetsById,
       getProject,
       handleUploadFiles,
       setMessage,
@@ -1928,6 +1955,9 @@ export function EditorPage() {
           maxPhotos={Math.min(50, aiPhotoCapacity)}
           onApply={handleApplyAiPlan}
           onClose={() => setAiDialogOpen(false)}
+          onImportUrl={handleImportUrlForAi}
+          onUploadPhotos={handleUploadFiles}
+          projectAssets={project.assets}
         />
       ) : null}
 

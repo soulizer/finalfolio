@@ -5,6 +5,8 @@ import {
   generateAiPlans,
   type AiStatus,
 } from '../../editor/api';
+import { getAssetSource } from '../../editor/assetResources';
+import type { Asset } from '../../editor/types';
 import {
   aiTemplateLabel,
   normalizeAiPlanBundle,
@@ -12,9 +14,13 @@ import {
   type AiPlanBundle,
 } from '../../editor/aiPlans';
 
-type AiPhoto = {
+export type AiPhoto = {
   id: string;
-  file: File;
+  kind: 'local' | 'asset';
+  file?: File;
+  asset?: Asset;
+  assetId?: string;
+  name: string;
   previewUrl: string;
   width: number;
   height: number;
@@ -23,8 +29,11 @@ type AiPhoto = {
 
 type AiArrangeDialogProps = {
   maxPhotos?: number;
-  onApply: (bundle: AiPlanBundle, plan: AiPlan, files: File[]) => Promise<void>;
+  onApply: (bundle: AiPlanBundle, plan: AiPlan, photos: AiPhoto[]) => Promise<void>;
   onClose: () => void;
+  onImportUrl: (url: string) => Promise<Asset>;
+  onUploadPhotos: (files: File[]) => Promise<Array<Asset | null> | undefined>;
+  projectAssets: Asset[];
 };
 
 type Phase = 'select' | 'generating' | 'results' | 'applying';
@@ -36,41 +45,77 @@ function createPhotoId(file: File) {
   return `${file.name}:${file.size}:${file.lastModified}:${Math.random().toString(36).slice(2, 7)}`;
 }
 
-function loadImageElement(url: string) {
+function loadImageElement(url: string, crossOrigin = false) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
+    if (crossOrigin) {
+      image.crossOrigin = 'anonymous';
+    }
     image.onload = () => resolve(image);
     image.onerror = () => reject(new Error('Unable to read this image.'));
     image.src = url;
   });
 }
 
+function createThumbnail(image: HTMLImageElement) {
+  const width = image.naturalWidth || image.width;
+  const height = image.naturalHeight || image.height;
+  const scale = Math.min(1, MAX_THUMBNAIL_SIZE / Math.max(width, height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(width * scale));
+  canvas.height = Math.max(1, Math.round(height * scale));
+  const context = canvas.getContext('2d');
+  if (!context) {
+    throw new Error('Unable to prepare this image.');
+  }
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return {
+    width,
+    height,
+    thumbnail: canvas.toDataURL('image/jpeg', THUMBNAIL_QUALITY),
+  };
+}
+
 async function readPhoto(file: File): Promise<AiPhoto> {
   const previewUrl = URL.createObjectURL(file);
   try {
     const image = await loadImageElement(previewUrl);
-    const width = image.naturalWidth || image.width;
-    const height = image.naturalHeight || image.height;
-    const scale = Math.min(1, MAX_THUMBNAIL_SIZE / Math.max(width, height));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(width * scale));
-    canvas.height = Math.max(1, Math.round(height * scale));
-    const context = canvas.getContext('2d');
-    if (!context) {
-      throw new Error('Unable to prepare this image.');
-    }
-    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const thumbnail = createThumbnail(image);
     return {
       id: createPhotoId(file),
+      kind: 'local',
       file,
+      name: file.name,
       previewUrl,
-      width,
-      height,
-      thumbnail: canvas.toDataURL('image/jpeg', THUMBNAIL_QUALITY),
+      ...thumbnail,
     };
   } catch (error) {
     URL.revokeObjectURL(previewUrl);
     throw error;
+  }
+}
+
+async function readAssetPhoto(asset: Asset): Promise<AiPhoto> {
+  const previewUrl = getAssetSource(asset, 'thumb') || getAssetSource(asset, 'preview') || asset.src;
+  let image: HTMLImageElement;
+  try {
+    image = await loadImageElement(previewUrl, true);
+  } catch {
+    image = await loadImageElement(previewUrl);
+  }
+  try {
+    const thumbnail = createThumbnail(image);
+    return {
+      id: `asset:${asset.id}`,
+      kind: 'asset',
+      asset,
+      assetId: asset.id,
+      name: asset.name,
+      previewUrl,
+      ...thumbnail,
+    };
+  } catch {
+    throw new Error('Unable to read this image thumbnail. Upload the file instead.');
   }
 }
 
@@ -90,12 +135,20 @@ function formatElapsed(seconds: number) {
   return minutes > 0 ? `${minutes}:${String(rest).padStart(2, '0')}` : `${rest}s`;
 }
 
-export function AiArrangeDialog({ maxPhotos: maxPhotosProp, onApply, onClose }: AiArrangeDialogProps) {
+export function AiArrangeDialog({
+  maxPhotos: maxPhotosProp,
+  onApply,
+  onClose,
+  onImportUrl,
+  onUploadPhotos,
+  projectAssets,
+}: AiArrangeDialogProps) {
   const t = useT();
   const [status, setStatus] = useState<AiStatus | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [photos, setPhotos] = useState<AiPhoto[]>([]);
   const [readingFiles, setReadingFiles] = useState(false);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
   const [prompt, setPrompt] = useState('');
   const [promptEditing, setPromptEditing] = useState(false);
   const [phase, setPhase] = useState<Phase>('select');
@@ -104,6 +157,10 @@ export function AiArrangeDialog({ maxPhotos: maxPhotosProp, onApply, onClose }: 
   const [error, setError] = useState<string | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [dragging, setDragging] = useState(false);
+  const [sourceTab, setSourceTab] = useState<'upload' | 'library' | 'url'>('upload');
+  const [importUrlValue, setImportUrlValue] = useState('');
+  const [importBusy, setImportBusy] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const photosRef = useRef<AiPhoto[]>([]);
@@ -118,6 +175,10 @@ export function AiArrangeDialog({ maxPhotos: maxPhotosProp, onApply, onClose }: 
     ? (status.remaining.total !== null && status.remaining.total <= 0) ||
       (status.remaining.daily !== null && status.remaining.daily <= 0)
     : false;
+  const selectedAssetIds = useMemo(
+    () => new Set(photos.filter((photo) => photo.kind === 'asset').map((photo) => photo.assetId).filter(Boolean)),
+    [photos],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -185,12 +246,20 @@ export function AiArrangeDialog({ maxPhotos: maxPhotosProp, onApply, onClose }: 
   }, [onClose, phase]);
 
   async function addFiles(fileList: FileList | File[]) {
+    if (readingFiles || uploadingFiles) {
+      return;
+    }
+
     const incoming = Array.from(fileList).filter((file) => file.type.startsWith('image/'));
     if (!incoming.length) {
       return;
     }
 
-    const existingKeys = new Set(photos.map((photo) => `${photo.file.name}:${photo.file.size}:${photo.file.lastModified}`));
+    const existingKeys = new Set(
+      photos
+        .filter((photo) => photo.kind === 'local' && photo.file)
+        .map((photo) => `${photo.file!.name}:${photo.file!.size}:${photo.file!.lastModified}`),
+    );
     const unique = incoming.filter((file) => !existingKeys.has(`${file.name}:${file.size}:${file.lastModified}`));
     const available = Math.max(0, maxPhotos - photos.length);
     const accepted = unique.slice(0, available);
@@ -203,8 +272,9 @@ export function AiArrangeDialog({ maxPhotos: maxPhotosProp, onApply, onClose }: 
 
     setReadingFiles(true);
     setError(null);
+    let nextPhotos: AiPhoto[] = [];
     try {
-      const nextPhotos = await Promise.all(accepted.map(readPhoto));
+      nextPhotos = await Promise.all(accepted.map(readPhoto));
       setPhotos((current) => [...current, ...nextPhotos]);
       if (unique.length > accepted.length) {
         setError(t('Only the first %s photos were added.').replace('%s', String(accepted.length)));
@@ -214,16 +284,92 @@ export function AiArrangeDialog({ maxPhotos: maxPhotosProp, onApply, onClose }: 
     } finally {
       setReadingFiles(false);
     }
+
+    if (!nextPhotos.length) {
+      return;
+    }
+
+    // Upload immediately so applying a plan stays fast. If an upload fails, the
+    // photo remains local and the apply step can retry it.
+    setUploadingFiles(true);
+    try {
+      const uploaded = await onUploadPhotos(accepted);
+      if (uploaded) {
+        setPhotos((current) =>
+          current.map((photo) => {
+            const index = nextPhotos.findIndex((entry) => entry.id === photo.id);
+            const asset = index >= 0 ? uploaded[index] : null;
+            if (!asset) {
+              return photo;
+            }
+            URL.revokeObjectURL(photo.previewUrl);
+            return {
+              ...photo,
+              kind: 'asset',
+              asset,
+              assetId: asset.id,
+              file: undefined,
+              name: asset.name,
+              previewUrl: getAssetSource(asset, 'thumb') || getAssetSource(asset, 'preview') || asset.src,
+            };
+          }),
+        );
+      }
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? t(uploadError.message) : t('Unable to upload the selected photos.'));
+    } finally {
+      setUploadingFiles(false);
+    }
   }
 
   function removePhoto(id: string) {
     setPhotos((current) => {
       const photo = current.find((entry) => entry.id === id);
-      if (photo) {
+      if (photo?.kind === 'local') {
         URL.revokeObjectURL(photo.previewUrl);
       }
       return current.filter((entry) => entry.id !== id);
     });
+  }
+
+  async function addAssetPhoto(asset: Asset) {
+    if (photos.length >= maxPhotos) {
+      setError(t('You can select up to %s photos.').replace('%s', String(maxPhotos)));
+      return;
+    }
+    if (photos.some((photo) => photo.assetId === asset.id)) {
+      return;
+    }
+
+    setReadingFiles(true);
+    setError(null);
+    try {
+      const photo = await readAssetPhoto(asset);
+      setPhotos((current) => [...current, photo]);
+    } catch (readError) {
+      setError(readError instanceof Error ? t(readError.message) : t('Unable to read one of the selected photos.'));
+    } finally {
+      setReadingFiles(false);
+    }
+  }
+
+  async function handleImportUrl() {
+    const url = importUrlValue.trim();
+    if (!url || importBusy) {
+      return;
+    }
+
+    setImportBusy(true);
+    setImportError(null);
+    try {
+      const asset = await onImportUrl(url);
+      await addAssetPhoto(asset);
+      setImportUrlValue('');
+    } catch (importFailure) {
+      setImportError(importFailure instanceof Error ? localizeAiError(importFailure.message, t) : t('Unable to import this URL.'));
+    } finally {
+      setImportBusy(false);
+    }
   }
 
   async function handleGenerate() {
@@ -242,7 +388,7 @@ export function AiArrangeDialog({ maxPhotos: maxPhotosProp, onApply, onClose }: 
       const response = await generateAiPlans(
         {
           images: photos.map((photo) => ({
-            name: photo.file.name,
+            name: photo.name,
             width: photo.width,
             height: photo.height,
             dataUrl: photo.thumbnail,
@@ -275,7 +421,7 @@ export function AiArrangeDialog({ maxPhotos: maxPhotosProp, onApply, onClose }: 
     setPhase('applying');
     setError(null);
     try {
-      await onApply(bundle, selectedPlan, photos.map((photo) => photo.file));
+      await onApply(bundle, selectedPlan, photos);
       onClose();
     } catch (applyError) {
       setError(applyError instanceof Error ? localizeAiError(applyError.message, t) : t('Unable to apply this AI plan.'));
@@ -436,8 +582,8 @@ export function AiArrangeDialog({ maxPhotos: maxPhotosProp, onApply, onClose }: 
           <div className="ai-dialog__body ai-dialog__body--message">
             <div className="ai-waiting" role="status" aria-live="polite">
               <span className="ai-waiting__spinner" aria-hidden="true" />
-              <h3>{t('Uploading photos and building pages')}</h3>
-              <p>{t('Keep this window open while the selected plan is written into the editor.')}</p>
+              <h3>{t('Applying the plan and building pages')}</h3>
+              <p>{t('Photos are already prepared. This usually takes only a few seconds.')}</p>
             </div>
           </div>
         ) : (
@@ -453,56 +599,162 @@ export function AiArrangeDialog({ maxPhotos: maxPhotosProp, onApply, onClose }: 
                     {photos.length}/{maxPhotos}
                   </span>
                 </div>
-                <div
-                  className={`ai-dropzone ${dragging ? 'is-dragging' : ''}`}
-                  onDragOver={(event) => {
-                    event.preventDefault();
-                    setDragging(true);
-                  }}
-                  onDragLeave={() => setDragging(false)}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    setDragging(false);
-                    void addFiles(event.dataTransfer.files);
-                  }}
-                  onClick={() => fileInputRef.current?.click()}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      fileInputRef.current?.click();
-                    }
-                  }}
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 16V4M7 9l5-5 5 5M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4" />
-                  </svg>
-                  <strong>{readingFiles ? t('Reading photos…') : t('Drop photos here or choose files')}</strong>
-                  <span>{t('JPEG, PNG, WebP, GIF or AVIF. Up to %s photos.').replace('%s', String(maxPhotos))}</span>
+                <div className="ai-source-tabs" role="tablist" aria-label={t('Photo source')}>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={sourceTab === 'upload'}
+                    className={`ai-source-tab ${sourceTab === 'upload' ? 'is-active' : ''}`}
+                    onClick={() => setSourceTab('upload')}
+                  >
+                    {t('Upload photos')}
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={sourceTab === 'library'}
+                    className={`ai-source-tab ${sourceTab === 'library' ? 'is-active' : ''}`}
+                    onClick={() => setSourceTab('library')}
+                  >
+                    {t('Choose from library')}
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={sourceTab === 'url'}
+                    className={`ai-source-tab ${sourceTab === 'url' ? 'is-active' : ''}`}
+                    onClick={() => setSourceTab('url')}
+                  >
+                    {t('URL import')}
+                  </button>
                 </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
-                  multiple
-                  hidden
-                  aria-label={t('Photos')}
-                  onChange={(event) => {
-                    if (event.currentTarget.files) {
-                      void addFiles(event.currentTarget.files);
-                    }
-                    event.currentTarget.value = '';
-                  }}
-                />
+
+                {sourceTab === 'upload' ? (
+                  <>
+                    <div
+                      className={`ai-dropzone ${dragging ? 'is-dragging' : ''}`}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        setDragging(true);
+                      }}
+                      onDragLeave={() => setDragging(false)}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        setDragging(false);
+                        void addFiles(event.dataTransfer.files);
+                      }}
+                      onClick={() => fileInputRef.current?.click()}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          fileInputRef.current?.click();
+                        }
+                      }}
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 16V4M7 9l5-5 5 5M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4" />
+                      </svg>
+                      <strong>
+                        {uploadingFiles
+                          ? t('Uploading photos…')
+                          : readingFiles
+                            ? t('Reading photos…')
+                            : t('Drop photos here or choose files')}
+                      </strong>
+                      <span>{t('JPEG, PNG, WebP, GIF or AVIF. Up to %s photos.').replace('%s', String(maxPhotos))}</span>
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
+                      multiple
+                      hidden
+                      aria-label={t('Photos')}
+                      onChange={(event) => {
+                        if (event.currentTarget.files) {
+                          void addFiles(event.currentTarget.files);
+                        }
+                        event.currentTarget.value = '';
+                      }}
+                    />
+                  </>
+                ) : null}
+
+                {sourceTab === 'library' ? (
+                  projectAssets.length ? (
+                    <div className="ai-library-grid">
+                      {projectAssets.map((asset) => {
+                        const selected = selectedAssetIds.has(asset.id);
+                        const disabled = !selected && photos.length >= maxPhotos;
+                        return (
+                          <button
+                            key={asset.id}
+                            type="button"
+                            className={`ai-library-item ${selected ? 'is-selected' : ''}`}
+                            aria-pressed={selected}
+                            disabled={disabled || readingFiles}
+                            onClick={() => {
+                              if (selected) {
+                                removePhoto(`asset:${asset.id}`);
+                              } else {
+                                void addAssetPhoto(asset);
+                              }
+                            }}
+                          >
+                            <img src={getAssetSource(asset, 'thumb')} alt={asset.name} />
+                            <span>{asset.name}</span>
+                            {selected ? <span className="ai-library-item__check">✓</span> : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="panel-note">{t('No photos in the media library yet. Upload or import a URL first.')}</p>
+                  )
+                ) : null}
+
+                {sourceTab === 'url' ? (
+                  <form
+                    className="ai-url-import"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void handleImportUrl();
+                    }}
+                  >
+                    <label className="field">
+                      <span>{t('Image URL')}</span>
+                      <input
+                        value={importUrlValue}
+                        placeholder="https://example.com/photo.jpg"
+                        onChange={(event) => setImportUrlValue(event.target.value)}
+                      />
+                    </label>
+                    <button
+                      type="submit"
+                      className="button button--primary button--small"
+                      disabled={!importUrlValue.trim() || importBusy}
+                    >
+                      {importBusy ? t('Importing…') : t('Import URL')}
+                    </button>
+                  </form>
+                ) : null}
+
+                {importError ? (
+                  <p className="ai-dialog__error" role="alert">
+                    {importError}
+                  </p>
+                ) : null}
+
                 {photos.length ? (
                   <div className="ai-photo-grid">
                     {photos.map((photo, index) => (
                       <figure className="ai-photo-card" key={photo.id}>
-                        <img src={photo.previewUrl} alt={photo.file.name} />
+                        <img src={photo.previewUrl} alt={photo.name} />
                         <figcaption>
                           <span>{index + 1}</span>
-                          <small>{photo.file.name}</small>
+                          <small>{photo.name}</small>
                         </figcaption>
                         <button
                           type="button"
@@ -595,7 +847,7 @@ export function AiArrangeDialog({ maxPhotos: maxPhotosProp, onApply, onClose }: 
                 <button
                   type="button"
                   className="button button--primary button--small"
-                  disabled={!photos.length || !status?.enabled || quotaExhausted || readingFiles}
+                  disabled={!photos.length || !status?.enabled || quotaExhausted || readingFiles || uploadingFiles}
                   onClick={() => void handleGenerate()}
                 >
                   {t('Generate 3 plans')}

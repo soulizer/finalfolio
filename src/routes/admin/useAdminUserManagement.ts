@@ -30,6 +30,18 @@ export function useAdminUserManagement({ refreshAll, setMessage }: UseAdminUserM
   const [userActionKind, setUserActionKind] = useState<UserActionKind>(null);
 
   async function handleToggleUser(user: UserSession) {
+    if (user.status === 'active') {
+      const confirmed = await confirmAction({
+        title: 'Disable this account?',
+        body: 'The user will be signed out and cannot sign in again until an administrator activates the account.',
+        confirmLabel: 'Disable account',
+        tone: 'danger',
+      });
+      if (!confirmed) {
+        return;
+      }
+    }
+
     setUserActionBusy(true);
     setUserActionTargetId(user.id);
     setUserActionKind('toggle');

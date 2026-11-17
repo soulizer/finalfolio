@@ -1684,3 +1684,15 @@
 - Usage is counted only after success and stored separately for a future
   recharge flow.
 - Added `tests/e2e/ai-arrange.spec.ts` and `docs/ai-arrangement.md`.
+
+## 2026-11-17 Admin Layout Audit and AI Source Choices
+
+- Governance rows replaced with aligned table grids; object storage is now a
+  read-only summary with an explicit **Edit configuration** mode and a collapsed
+  high-risk operations section.
+- Admin AI prompt is read-only until **Edit prompt**; saved interfaces are compact
+  summary rows, and add/edit uses a focused dialog so typing cannot be interrupted.
+- Fixed global helper-text spacing and added a custom select arrow with safe right
+  padding.
+- AI photos can now come from upload, the existing media library, or URL import.
+  Local uploads happen at selection time, keeping plan application fast.
