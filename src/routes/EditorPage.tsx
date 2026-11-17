@@ -1,7 +1,6 @@
 import { countLabel, useT } from '../i18n';
 import { CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { CustomLayoutMap } from '../components/CustomLayoutMap';
 import { MagazinePreview } from '../components/MagazinePreview';
 import { TemplateIssuePreview } from '../components/TemplateIssuePreview';
 import { LayoutThumbnail } from '../components/LayoutThumbnail';
@@ -10,6 +9,9 @@ import { getConfirmationMessage } from '../editor/confirmations';
 import { formatDateTime } from '../editor/dateFormat';
 import { getAssetSource } from '../editor/assetResources';
 import {
+  cloneCustomTemplateDefinition,
+  countImageSlots,
+  createCustomTemplateDefinition,
   createDefaultProject,
   defaultTemplatePackId,
   getPageSlotOrder,
@@ -25,19 +27,17 @@ import {
   TemplatePackId,
 } from '../editor/demoData';
 import {
-  CUSTOM_TEMPLATE_FRAME_LIMIT,
-  CUSTOM_TEMPLATE_FRAME_LABEL_LIMIT,
-  CUSTOM_TEMPLATE_NAME_LIMIT,
   PROJECT_ASSET_LIMIT,
   PROJECT_PAGE_LIMIT,
 } from '../editor/limits';
-import { customTemplatesEqual } from '../editor/customLayouts';
+import { applyAiPlanToProject, type AiPlan, type AiPlanBundle } from '../editor/aiPlans';
+import { customTemplatesEqual, type CustomLayoutRecord } from '../editor/customLayouts';
 import { buildExportAdvisories } from '../editor/export';
 import { readDraftProject } from '../editor/storage';
 import {
   Asset,
+  CustomTemplateDefinition,
   ExportSettings,
-  LayoutArea,
   PageData,
   ProjectRecord,
   ProjectState,
@@ -52,6 +52,8 @@ import { EditorContentSidebar } from './editor/EditorContentSidebar';
 import { EditorExportCenter } from './editor/EditorExportCenter';
 import { EditorOperationsSidebar } from './editor/EditorOperationsSidebar';
 import { EditorLoadingState, EditorLockedState, EditorUnavailableState } from './editor/EditorShellStates';
+import { AiArrangeDialog } from './editor/AiArrangeDialog';
+import { LayoutEditorDialog } from './editor/LayoutEditorDialog';
 import { createEditorExportActions } from './editor/exportFlow';
 import { createEditorProjectShellActions } from './editor/projectActions';
 import { createEditorPageActions } from './editor/pageActions';
@@ -91,13 +93,6 @@ const DEFAULT_EXPORT_SETTINGS: ExportSettings = {
   quality: 'standard',
   jpgMode: 'separate',
 };
-const customAreaFields: Array<{ key: keyof LayoutArea; label: string; min: number; max: number }> = [
-  { key: 'x', label: 'X', min: 0, max: 88 },
-  { key: 'y', label: 'Y', min: 0, max: 88 },
-  { key: 'width', label: 'W', min: 12, max: 100 },
-  { key: 'height', label: 'H', min: 12, max: 100 },
-];
-
 function createPageId() {
   return `page-${crypto.randomUUID()}`;
 }
@@ -192,19 +187,14 @@ export function EditorPage() {
   const {
     activeCustomLayout,
     activeCustomLayoutId,
-    customLayoutDirty,
     customLayouts,
-    deleteCustomLayout,
+    deleteCustomLayoutById,
     layoutsExpanded,
-    resetCustomLayoutBase,
-    saveCustomLayout,
-    saveCustomLayoutAsNew,
     selectBuiltinLayout,
     selectCustomLayout,
     setLayoutsExpanded,
-    startNewCustomLayout,
+    upsertCustomLayout,
   } = useCustomLayoutLibrary({
-    customTemplateDraft,
     selectedPage,
     selectedPageId,
     templateChoice,
@@ -276,6 +266,13 @@ export function EditorPage() {
   const [shareCopyState, setShareCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
   const [loadError, setLoadError] = useState<string | null>(null);
   const [templatePickerOpen, setTemplatePickerOpen] = useState(true);
+  const [aiDialogOpen, setAiDialogOpen] = useState(false);
+  const [layoutEditor, setLayoutEditor] = useState<{
+    mode: 'new' | 'edit';
+    layoutId: string | null;
+    template: CustomTemplateDefinition;
+    name: string;
+  } | null>(null);
   const [starterPacksOpen, setStarterPacksOpen] = useState(false);
   const [colorPickerPageId, setColorPickerPageId] = useState<string | null>(null);
   const [draggedPageId, setDraggedPageId] = useState<string | null>(null);
@@ -542,12 +539,7 @@ export function EditorPage() {
   });
 
   const {
-    addCustomFrame,
     applyTheme,
-    removeCustomFrame,
-    updateCustomArea,
-    updateCustomFrameArea,
-    updateCustomTemplateDraft,
     updateFrameRadius,
   } = createEditorDesignActions({
     updateProject,
@@ -747,6 +739,56 @@ export function EditorPage() {
     getInitialSlot,
   });
 
+  const openNewLayoutEditor = useCallback(() => {
+    setLayoutEditor({
+      mode: 'new',
+      layoutId: null,
+      template: createCustomTemplateDefinition({ name: t('Untitled layout') }),
+      name: '',
+    });
+  }, [t]);
+
+  const openEditLayoutEditor = useCallback(
+    (layout: CustomLayoutRecord) => {
+      const template = cloneCustomTemplateDefinition(layout.template);
+      selectCustomLayout(layout);
+      setLayoutEditor({
+        mode: 'edit',
+        layoutId: layout.id,
+        template,
+        name: template.name,
+      });
+    },
+    [selectCustomLayout],
+  );
+
+  const handleSaveLayoutEditor = useCallback(
+    (template: CustomTemplateDefinition, applyToPage: boolean) => {
+      const record = upsertCustomLayout(layoutEditor?.layoutId ?? null, template);
+      if (applyToPage) {
+        applyTemplateChoice('custom', record.template);
+      }
+      setLayoutEditor(null);
+    },
+    [applyTemplateChoice, layoutEditor?.layoutId, upsertCustomLayout],
+  );
+
+  const handleDeleteLayoutEditor = useCallback(async () => {
+    if (!layoutEditor?.layoutId) {
+      return;
+    }
+
+    const deleted = await deleteCustomLayoutById(layoutEditor.layoutId);
+    if (deleted) {
+      setLayoutEditor(null);
+    }
+  }, [deleteCustomLayoutById, layoutEditor?.layoutId]);
+
+  const handleOpenProjectTemplateComposer = useCallback(() => {
+    setTemplateSaveKind('project');
+    setTemplateComposerOpen(true);
+  }, [setTemplateComposerOpen, setTemplateSaveKind]);
+
   const handleImportFromUrl = useCallback(
     async (rawUrl: string) => {
       const url = rawUrl.trim();
@@ -872,6 +914,84 @@ export function EditorPage() {
     },
     [handleUploadFiles, project.assets.length, setMessage],
   );
+
+  const aiPhotoCapacity = Math.max(0, PROJECT_ASSET_LIMIT - project.assets.length);
+
+  const openAiDialog = useCallback(() => {
+    if (!session) {
+      navigate(`/auth?next=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}`);
+      return;
+    }
+
+    if (aiPhotoCapacity <= 0) {
+      setMessage(
+        t('This folio is full. Remove unused photos before using AI arrangement.').replace(
+          '%s',
+          String(PROJECT_ASSET_LIMIT),
+        ),
+      );
+      return;
+    }
+
+    setAiDialogOpen(true);
+  }, [aiPhotoCapacity, navigate, session, setMessage, t]);
+
+  const handleApplyAiPlan = useCallback(
+    async (bundle: AiPlanBundle, plan: AiPlan, files: File[]) => {
+      const uploaded = await handleUploadFiles(files);
+      if (!uploaded) {
+        throw new Error(t('Unable to upload the selected photos.'));
+      }
+
+      const uploadedAssets = uploaded.filter((asset): asset is Asset => Boolean(asset));
+      if (!uploadedAssets.length) {
+        throw new Error(t('None of the selected photos could be uploaded.'));
+      }
+
+      const latestProject = getProject();
+      const uploadedIds = new Set(uploadedAssets.map((asset) => asset.id));
+      const projectWithUploads = {
+        ...latestProject,
+        assets: [...uploadedAssets, ...latestProject.assets.filter((asset) => !uploadedIds.has(asset.id))],
+      };
+      const nextProject = applyAiPlanToProject({
+        project: projectWithUploads,
+        bundle,
+        plan,
+        assets: uploaded,
+        createPageId,
+      });
+      updateProject(() => nextProject);
+
+      const firstPage = nextProject.pages[0];
+      if (firstPage) {
+        setSelectedPageId(firstPage.id);
+        setSelectedSlot(getInitialSlot(firstPage));
+        setTemplateChoice(firstPage.template);
+      }
+
+      const failedCount = files.length - uploadedAssets.length;
+      setMessage(
+        failedCount > 0
+          ? t('AI arrangement applied. %s photos could not be uploaded and their frames are empty.').replace(
+              '%s',
+              String(failedCount),
+            )
+          : t('AI arrangement applied.'),
+      );
+    },
+    [
+      getProject,
+      handleUploadFiles,
+      setMessage,
+      setSelectedPageId,
+      setSelectedSlot,
+      setTemplateChoice,
+      t,
+      updateProject,
+    ],
+  );
+
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -1098,6 +1218,17 @@ export function EditorPage() {
             <LayoutThumbnail templateId="custom" customTemplate={layout.template} />
             <span className="layout-card__name">{t(layout.name)}</span>
           </button>
+          <button
+            type="button"
+            className="layout-card__edit"
+            aria-label={t('Edit layout')}
+            title={t('Edit layout')}
+            onClick={() => openEditLayoutEditor(layout)}
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M9.6 3.1l3.3 3.3M3.2 12.8l1.1-3.4 6-6a1.4 1.4 0 0 1 2 0l.3.3a1.4 1.4 0 0 1 0 2l-6 6-3.4 1.1Z" />
+            </svg>
+          </button>
         </article>
       );
     }
@@ -1157,6 +1288,14 @@ export function EditorPage() {
               <span className="editor-panel__label">{t('Sequence')}</span>
               <span className="panel-tag">{sequenceLabel}</span>
             </div>
+
+            <button type="button" className="button button--primary button--small ai-arrange-button" onClick={openAiDialog}>
+              <svg viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M8 1.8l1.2 3.3 3.3 1.2-3.3 1.2L8 10.8 6.8 7.5 3.5 6.3l3.3-1.2L8 1.8Z" />
+                <path d="M12.6 9.4l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8Z" />
+              </svg>
+              {t('Arrange with AI')}
+            </button>
 
             <div className="page-strip">
               {project.pages.map((page, index) => {
@@ -1344,11 +1483,15 @@ export function EditorPage() {
                 <span className="panel-tag">{t(selectedTemplateLabel)}</span>
                 <button
                   type="button"
-                  className="button button--ghost button--small editor-toggle-button"
+                  className="editor-toggle-icon"
                   onClick={() => setTemplatePickerOpen((current) => !current)}
                   aria-expanded={templatePickerOpen}
+                  aria-label={templatePickerOpen ? t('Collapse page layouts') : t('Expand page layouts')}
+                  title={templatePickerOpen ? t('Collapse page layouts') : t('Expand page layouts')}
                 >
-                  {templatePickerOpen ? t('Hide') : t('Show')}
+                  <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path d={templatePickerOpen ? 'M4 10l4-4 4 4' : 'M4 6l4 4 4-4'} />
+                  </svg>
                 </button>
               </div>
             </div>
@@ -1366,7 +1509,7 @@ export function EditorPage() {
                   <button
                     type="button"
                     className="button button--ghost button--small"
-                    onClick={() => void startNewCustomLayout()}
+                    onClick={openNewLayoutEditor}
                   >
                     {t('New custom layout')}
                   </button>
@@ -1388,223 +1531,45 @@ export function EditorPage() {
                   {t('Saved layouts stay in this browser.')}
                 </p>
                 <div className="layout-selection-actions">
-                  <span className="layout-selection-actions__label">{t(selectedTemplateLabel)}</span>
+                  <div className="layout-selection-actions__label-row">
+                    <span className="layout-selection-actions__label">{t(selectedTemplateLabel)}</span>
+                    {activeCustomLayout ? (
+                      <button
+                        type="button"
+                        className="button button--ghost button--small layout-selection-actions__edit"
+                        onClick={() => openEditLayoutEditor(activeCustomLayout)}
+                      >
+                        {t('Edit layout')}
+                      </button>
+                    ) : null}
+                  </div>
                   <div className="layout-selection-actions__buttons">
-                  <button
-                    type="button"
-                    className="button button--ghost button--small"
-                    disabled={project.pages.length >= PROJECT_PAGE_LIMIT}
-                    onClick={() => insertPage(templateChoice, 'before')}
-                  >
-                    {t('Insert above')}
-                  </button>
-                  <button
-                    type="button"
-                    className="button button--primary button--small"
-                    disabled={isCurrentLayoutSelected}
-                    onClick={() => applyTemplateChoice(templateChoice)}
-                  >
-                    {t('Replace this page')}
-                  </button>
-                  <button
-                    type="button"
-                    className="button button--ghost button--small"
-                    disabled={project.pages.length >= PROJECT_PAGE_LIMIT}
-                    onClick={() => insertPage(templateChoice, 'after')}
-                  >
-                    {t('Insert below')}
-                  </button>
+                    <button
+                      type="button"
+                      className="button button--ghost button--small"
+                      disabled={project.pages.length >= PROJECT_PAGE_LIMIT}
+                      onClick={() => insertPage(templateChoice, 'before')}
+                    >
+                      {t('Insert above')}
+                    </button>
+                    <button
+                      type="button"
+                      className="button button--ghost button--small"
+                      disabled={isCurrentLayoutSelected}
+                      onClick={() => applyTemplateChoice(templateChoice)}
+                    >
+                      {t('Replace this page')}
+                    </button>
+                    <button
+                      type="button"
+                      className="button button--ghost button--small"
+                      disabled={project.pages.length >= PROJECT_PAGE_LIMIT}
+                      onClick={() => insertPage(templateChoice, 'after')}
+                    >
+                      {t('Insert below')}
+                    </button>
                   </div>
                 </div>
-                {templateChoice === 'custom' ? (
-                  <div
-                    className="custom-layout-builder"
-                  >
-                    <div className="editor-panel__toolbar">
-                      <span className="editor-panel__label">
-                        {activeCustomLayout ? t('Edit layout') : t('New custom layout')}
-                        {customLayoutDirty ? (
-                          <span
-                            className="unsaved-dot"
-                            role="status"
-                            aria-label={t('Unsaved changes')}
-                            title={t('Unsaved changes')}
-                          />
-                        ) : null}
-                      </span>
-                      <span className="panel-tag">
-                        {customTemplateDraft.frames.length === 1
-                          ? t('1 frame')
-                          : t('%s frames').replace('%s', String(customTemplateDraft.frames.length))}
-                      </span>
-                    </div>
-                    <p className="panel-note">
-                      {activeCustomLayout
-                        ? t('Save changes updates this layout in your library. Use Replace this page above to apply it to the page.')
-                        : t('Save the layout to reuse it later. Use Replace this page above to apply it now.')}
-                    </p>
-                    <details className="custom-layout-details">
-                      <summary>{t('Layout map')}</summary>
-                      <div className="custom-layout-map-wrap">
-                        <CustomLayoutMap template={customTemplateDraft} highlightedSlot={selectedSlot} />
-                      </div>
-                    </details>
-                    <label className="field">
-                      <span>{t('Layout name')}</span>
-                      <input
-                        maxLength={CUSTOM_TEMPLATE_NAME_LIMIT}
-                        value={customTemplateDraft.name}
-                        onChange={(event) =>
-                          updateCustomTemplateDraft((current) => ({
-                            ...current,
-                            name: event.target.value,
-                          }))
-                        }
-                      />
-                    </label>
-                    <div className="editor-panel__actions editor-panel__actions--tight">
-                      <button
-                        type="button"
-                        className="button button--primary button--small"
-                        onClick={saveCustomLayout}
-                      >
-                        {activeCustomLayout ? t('Save changes') : t('Save layout')}
-                      </button>
-                      {activeCustomLayout ? (
-                        <button
-                          type="button"
-                          className="button button--ghost button--small"
-                          onClick={saveCustomLayoutAsNew}
-                        >
-                          {t('Save as new layout')}
-                        </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        className="button button--ghost button--small"
-                        onClick={resetCustomLayoutBase}
-                      >
-                        {t('Reset base')}
-                      </button>
-                      <button
-                        type="button"
-                        className="button button--ghost button--small"
-                        disabled={customTemplateDraft.frames.length >= CUSTOM_TEMPLATE_FRAME_LIMIT}
-                        onClick={addCustomFrame}
-                      >
-                        {customTemplateDraft.frames.length >= CUSTOM_TEMPLATE_FRAME_LIMIT ? t('Frame limit') : t('Add frame')}
-                      </button>
-                    </div>
-                    {activeCustomLayout ? (
-                      <div className="editor-panel__actions editor-panel__actions--tight">
-                        <button
-                          type="button"
-                          className="button button--danger-ghost button--small"
-                          onClick={() => void deleteCustomLayout()}
-                        >
-                          {t('Delete layout')}
-                        </button>
-                      </div>
-                    ) : null}
-                    <details className="custom-layout-details">
-                      <summary>{t('Text block geometry')}</summary>
-                      <div className="custom-layout-grid">
-                        {customAreaFields.map((field) => (
-                          <label className="field" key={`text-${field.key}`}>
-                            <span>{field.label}</span>
-                            <input
-                              type="number"
-                              min={field.min}
-                              max={field.max}
-                              step="1"
-                              value={Math.round(customTemplateDraft.text[field.key])}
-                              onChange={(event) =>
-                                updateCustomTemplateDraft((current) => ({
-                                  ...current,
-                                  text: updateCustomArea(current.text, field.key, Number(event.target.value)),
-                                }))
-                              }
-                            />
-                          </label>
-                        ))}
-                      </div>
-                    </details>
-                    <div className="custom-frame-list">
-                      {customTemplateDraft.frames.map((frame, frameIndex) => (
-                        <section key={frame.slot} className="custom-frame-card">
-                          <div className="editor-panel__toolbar">
-                            <span className="editor-panel__label">
-                              {t('Frame')} {frameIndex + 1}
-                            </span>
-                          </div>
-                          <label className="field">
-                            <span>{t('Label')}</span>
-                            <input
-                              maxLength={CUSTOM_TEMPLATE_FRAME_LABEL_LIMIT}
-                              value={frame.label}
-                              onChange={(event) =>
-                                updateCustomTemplateDraft((current) => ({
-                                  ...current,
-                                  frames: current.frames.map((entry) =>
-                                    entry.slot === frame.slot
-                                      ? {
-                                          ...entry,
-                                          label: event.target.value,
-                                        }
-                                      : entry,
-                                  ),
-                                }))
-                              }
-                            />
-                          </label>
-                          <div className="editor-panel__actions editor-panel__actions--tight">
-                            <button
-                              type="button"
-                              className="button button--ghost button--small"
-                              disabled={customTemplateDraft.frames.length === 1}
-                              onClick={() => removeCustomFrame(frame.slot)}
-                            >
-                              {customTemplateDraft.frames.length === 1 ? t('Keep one') : t('Remove')}
-                            </button>
-                            <button
-                              type="button"
-                              className="button button--ghost button--small"
-                              onClick={() => setSelectedSlot(frame.slot)}
-                            >
-                              {t('Focus')}</button>
-                          </div>
-                          <details className="custom-layout-details">
-                            <summary>{t('Advanced frame geometry')}</summary>
-                            <div className="custom-layout-grid">
-                              {customAreaFields.map((field) => (
-                                <label className="field" key={`${frame.slot}-${field.key}`}>
-                                  <span>{field.label}</span>
-                                  <input
-                                    type="number"
-                                    min={field.min}
-                                    max={field.max}
-                                    step="1"
-                                    value={Math.round(frame[field.key])}
-                                    onChange={(event) =>
-                                      updateCustomTemplateDraft((current) => ({
-                                        ...current,
-                                        frames: current.frames.map((entry) =>
-                                          entry.slot === frame.slot
-                                            ? updateCustomFrameArea(entry, field.key, Number(event.target.value))
-                                            : entry,
-                                        ),
-                                      }))
-                                    }
-                                  />
-                                </label>
-                              ))}
-                            </div>
-                          </details>
-                        </section>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
               </>
             ) : null}
           </section>
@@ -1636,11 +1601,15 @@ export function EditorPage() {
                 <span className="panel-tag">{projectTemplateSectionTag}</span>
                 <button
                   type="button"
-                  className="button button--ghost button--small editor-toggle-button"
+                  className="editor-toggle-icon"
                   onClick={() => setStarterPacksOpen((current) => !current)}
                   aria-expanded={starterPacksOpen}
+                  aria-label={starterPacksOpen ? t('Collapse project templates') : t('Expand project templates')}
+                  title={starterPacksOpen ? t('Collapse project templates') : t('Expand project templates')}
                 >
-                  {starterPacksOpen ? t('Hide') : t('Show')}
+                  <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path d={starterPacksOpen ? 'M4 10l4-4 4 4' : 'M4 6l4 4 4-4'} />
+                  </svg>
                 </button>
               </div>
             </div>
@@ -1655,6 +1624,11 @@ export function EditorPage() {
                         <strong>{t(pack.summary)}</strong>
                         <p>{t(pack.description)}</p>
                       </div>
+                      <p className="template-pack-card__stats">
+                        {t('%s pages · %s image areas')
+                          .replace('%s', String(pack.pages.length))
+                          .replace('%s', String(countImageSlots(pack.pages)))}
+                      </p>
                       <p className="template-pack-card__sequence">
                         {pack.pages
                           .map((page) => t(getTemplateLabel(page.template, page.customTemplate)))
@@ -1663,7 +1637,7 @@ export function EditorPage() {
                       <div className="template-pack-card__actions">
                         <button
                           type="button"
-                          className="button button--danger button--small"
+                          className="button button--danger-ghost button--small"
                           title={t('Replaces every page in this folio. Photos stay in the media library.')}
                           onClick={() => applyTemplatePack(packId, 'replace')}
                         >
@@ -1680,6 +1654,15 @@ export function EditorPage() {
                 })}
               </div>
             ) : null}
+            <button
+              type="button"
+              className="button button--ghost button--small template-pack-save"
+              disabled={!session}
+              title={!session ? t('Sign in to save project templates.') : t('Save the current folio as a reusable project template.')}
+              onClick={handleOpenProjectTemplateComposer}
+            >
+              {t('Save current project as template')}
+            </button>
           </section>
 
           <section className="editor-panel editor-panel--user-templates">
@@ -1690,8 +1673,16 @@ export function EditorPage() {
                   {session ? countLabel(userTemplates.length, '1 saved', '%s saved') : t('Sign in')}
                 </span>
                 {session ? (
-                  <Link to="/account?section=templates" className="button button--ghost button--small editor-toggle-button">
-                    {t('Manage')}</Link>
+                  <Link
+                    to="/account?section=templates"
+                    className="editor-icon-link"
+                    aria-label={t('Manage templates')}
+                    title={t('Manage templates')}
+                  >
+                    <svg viewBox="0 0 16 16" aria-hidden="true">
+                      <path d="M9.6 3.1l3.3 3.3M3.2 12.8l1.1-3.4 6-6a1.4 1.4 0 0 1 2 0l.3.3a1.4 1.4 0 0 1 0 2l-6 6-3.4 1.1Z" />
+                    </svg>
+                  </Link>
                 ) : null}
               </div>
             </div>
@@ -1707,10 +1698,17 @@ export function EditorPage() {
                     <div className="template-library-card__body">
                       <div className="template-library-card__header">
                         <strong>{template.name}</strong>
-                        <span className="admin-pill admin-pill--strong">{`${template.templatePayload.pages.length} pages`}</span>
+                        <span className="admin-pill admin-pill--strong">
+                          {countLabel(template.templatePayload.pages.length, '1 page', '%s pages')}
+                        </span>
                       </div>
                       <p className="template-library-card__description">
                         {template.description || t('Reusable folio structure saved from your editor.')}
+                      </p>
+                      <p className="template-library-card__meta">
+                        {t('%s pages · %s image areas')
+                          .replace('%s', String(template.templatePayload.pages.length))
+                          .replace('%s', String(countImageSlots(template.templatePayload.pages)))}
                       </p>
                       <p className="template-library-card__meta">
                         {template.preserveCopy ? t('Includes saved copy') : t('Structure and style only')}
@@ -1924,6 +1922,24 @@ export function EditorPage() {
             </div>
           ))}
         </section>
+      ) : null}
+      {aiDialogOpen ? (
+        <AiArrangeDialog
+          maxPhotos={Math.min(50, aiPhotoCapacity)}
+          onApply={handleApplyAiPlan}
+          onClose={() => setAiDialogOpen(false)}
+        />
+      ) : null}
+
+      {layoutEditor ? (
+        <LayoutEditorDialog
+          mode={layoutEditor.mode}
+          initialTemplate={layoutEditor.template}
+          initialName={layoutEditor.name}
+          onClose={() => setLayoutEditor(null)}
+          onDelete={layoutEditor.mode === 'edit' ? () => void handleDeleteLayoutEditor() : undefined}
+          onSave={handleSaveLayoutEditor}
+        />
       ) : null}
     </div>
   );

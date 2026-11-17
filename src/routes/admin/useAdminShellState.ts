@@ -10,10 +10,10 @@ import { getUserPrimaryIdentity } from '../../editor/identity';
 import { buildTermsPath } from '../../legal/terms';
 import { useDelayedVisibility } from '../../useDelayedVisibility';
 
-export type AdminSectionKey = 'overview' | 'projects' | 'uploads' | 'governance' | 'storage' | 'users' | 'events';
+export type AdminSectionKey = 'overview' | 'projects' | 'uploads' | 'governance' | 'ai' | 'storage' | 'users' | 'events';
 
 function normalizeAdminSection(value: string | null): AdminSectionKey {
-  const validSections: AdminSectionKey[] = ['overview', 'projects', 'uploads', 'governance', 'storage', 'users', 'events'];
+  const validSections: AdminSectionKey[] = ['overview', 'projects', 'uploads', 'governance', 'ai', 'storage', 'users', 'events'];
   return validSections.includes(value as AdminSectionKey) ? (value as AdminSectionKey) : 'overview';
 }
 

@@ -74,13 +74,15 @@ test('custom layouts can be renamed and the name persists', async ({ page }) => 
 
   const customCard = page.locator('.layout-card--custom').first();
   await customCard.locator('.layout-card__pick').click();
+  await page.locator('.layout-selection-actions').getByRole('button', { name: 'Edit layout' }).click();
 
-  const builder = page.locator('.custom-layout-builder');
-  await expect(builder).toBeVisible();
-  const nameInput = builder.locator('label:has(span:text-is("Layout name")) input');
+  const dialog = page.locator('.layout-editor-dialog');
+  await expect(dialog).toBeVisible();
+  const nameInput = dialog.locator('label:has(span:text-is("Template name")) input');
   const nextName = `Studio Notes ${Date.now()}`;
   await nameInput.fill(nextName);
-  await builder.getByRole('button', { name: 'Save changes' }).click();
+  await dialog.getByRole('button', { name: 'Save layout' }).click();
+  await expect(dialog).toHaveCount(0);
   await expect(page.locator('.layout-card__name', { hasText: nextName })).toBeVisible();
 
   await page.reload();
@@ -91,45 +93,44 @@ test('saving a new custom layout adds it to the visible grid', async ({ page }) 
   await signIn(page, '/editor');
 
   await page.getByRole('button', { name: 'New custom layout' }).click();
-  const builder = page.locator('.custom-layout-builder');
-  await expect(builder).toContainText('New custom layout');
+  const dialog = page.locator('.layout-editor-dialog');
+  await expect(dialog).toBeVisible();
 
-  const nameInput = builder.locator('label:has(span:text-is("Layout name")) input');
+  const nameInput = dialog.locator('label:has(span:text-is("Template name")) input');
   await nameInput.fill('Fresh Layout');
-  await builder.getByRole('button', { name: 'Save layout' }).click();
+  await dialog.getByRole('button', { name: 'Save layout' }).click();
 
+  await expect(dialog).toHaveCount(0);
   await expect(page.locator('.layout-grid').first().locator('.layout-card__name', { hasText: 'Fresh Layout' })).toBeVisible();
-  await expect(builder).toContainText('Edit layout');
 });
 
-test('switching layouts warns before discarding unsaved layout edits', async ({ page }) => {
+test('layout editor warns before discarding unsaved edits', async ({ page }) => {
   await signIn(page, '/editor');
 
-  await expect(page.locator('.layout-card').first()).toBeVisible();
   await page.locator('.layout-card--custom').first().locator('.layout-card__pick').click();
-  const builder = page.locator('.custom-layout-builder');
-  await expect(builder).toContainText('Edit layout');
-  const nameInput = builder.locator('label:has(span:text-is("Layout name")) input');
-  await nameInput.fill('Draft name');
-
-  await page.locator('.layout-card').first().locator('.layout-card__pick').click();
-  const dialog = page.getByRole('dialog');
+  await page.locator('.layout-selection-actions').getByRole('button', { name: 'Edit layout' }).click();
+  const dialog = page.locator('.layout-editor-dialog');
   await expect(dialog).toBeVisible();
-  await expect(dialog).toContainText('Discard unsaved layout changes?');
-  await dialog.getByRole('button', { name: 'Cancel' }).click();
-  await expect(builder).toBeVisible();
+
+  const nameInput = dialog.locator('label:has(span:text-is("Template name")) input');
+  await nameInput.fill('Draft name');
+  await dialog.getByRole('button', { name: 'Close' }).click();
+
+  const confirm = page.locator('.confirm-dialog');
+  await expect(confirm).toContainText('Discard unsaved layout changes?');
+  await confirm.getByRole('button', { name: 'Cancel' }).click();
+  await expect(dialog).toBeVisible();
 });
 
-test('inserting a saved layout keeps the builder linked to it', async ({ page }) => {
+test('inserting a saved layout keeps the layout selected', async ({ page }) => {
   await signIn(page, '/editor');
 
   const customCard = page.locator('.layout-card--custom').first();
   await customCard.locator('.layout-card__pick').click();
   await page.locator('.layout-selection-actions').getByRole('button', { name: 'Insert below' }).click();
 
-  const builder = page.locator('.custom-layout-builder');
-  await expect(builder).toBeVisible();
-  await expect(builder).toContainText('Edit layout');
+  await expect(page.locator('.layout-selection-actions').getByRole('button', { name: 'Edit layout' })).toBeVisible();
+  await expect(page.locator('.layout-card--custom.is-active')).toHaveCount(1);
 });
 
 test('custom layouts can be deleted without touching the current page', async ({ page }) => {
@@ -138,11 +139,14 @@ test('custom layouts can be deleted without touching the current page', async ({
   const customCard = page.locator('.layout-card--custom').first();
   const name = (await customCard.locator('.layout-card__name').innerText()).trim();
   await customCard.locator('.layout-card__pick').click();
+  await page.locator('.layout-selection-actions').getByRole('button', { name: 'Edit layout' }).click();
 
-  await page.locator('.custom-layout-builder').getByRole('button', { name: 'Delete layout' }).click();
-  const dialog = page.getByRole('dialog');
-  await expect(dialog).toBeVisible();
+  const dialog = page.locator('.layout-editor-dialog');
   await dialog.getByRole('button', { name: 'Delete layout' }).click();
+  const confirm = page.locator('.confirm-dialog');
+  await expect(confirm).toContainText('Delete this layout?');
+  await confirm.getByRole('button', { name: 'Delete layout' }).click();
+  await expect(dialog).toHaveCount(0);
   await expect(page.locator('.layout-card__name', { hasText: name })).toHaveCount(0);
 });
 

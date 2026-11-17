@@ -142,11 +142,11 @@ export async function saveProjectAsTemplate({
   setMessage,
 }: SaveProjectAsTemplateOptions) {
   if (!session) {
-    setMessage('Sign in to save reusable templates to your account.');
+    setMessage(translate('Sign in to save reusable templates to your account.'));
     return;
   }
 
-  const nextName = templateSaveName.trim() || project.title.trim() || project.issue.trim() || 'Untitled template';
+  const nextName = templateSaveName.trim() || project.title.trim() || project.issue.trim() || translate('Untitled template');
   setTemplateSaveBusy(true);
   setMessage(
     translate('Saving this %s as a reusable template...').replace(
@@ -171,9 +171,9 @@ export async function saveProjectAsTemplate({
     setUserTemplates((current) => sortTemplatesByUpdatedAt([payload.template, ...current.filter((template) => template.id !== payload.template.id)]));
     setTemplateComposerOpen(false);
     setTemplateSaveName(nextName);
-    setMessage('Template saved to My templates.');
+    setMessage(translate('Template saved to My templates.'));
   } catch (error) {
-    setMessage(error instanceof Error ? error.message : 'Unable to save this template.');
+    setMessage(error instanceof Error ? error.message : translate('Unable to save this template.'));
   } finally {
     setTemplateSaveBusy(false);
   }
@@ -192,7 +192,7 @@ export async function openUserTemplateProject({
     const record = await createProjectFromUserTemplate(template.id);
     navigate(record.sharePath);
   } catch (error) {
-    setMessage(error instanceof Error ? error.message : 'Unable to open this template as a new project.');
+    setMessage(error instanceof Error ? error.message : translate('Unable to open this template as a new project.'));
   } finally {
     setTemplateActionBusyId(null);
   }

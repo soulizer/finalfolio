@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { translate } from '../../i18n';
 import { fetchProject } from '../../editor/api';
 import {
   clearDraftProject,
@@ -106,7 +107,7 @@ export function useEditorProjectLifecycle({
 
       setLoadState('loading');
       setSaveState('saving');
-      setMessage('Loading the saved folio from the server...');
+      setMessage(translate('Loading the saved folio from the server...'));
       setLoadError(null);
       setCopyState('idle');
       setShareCopyState('idle');

@@ -29,6 +29,10 @@ npm run uploads:manage -- list
 - Custom layouts live in the same **Page layout** grid as the built-in layouts.
   They can be renamed, duplicated and deleted; the library is stored in this
   browser (`localStorage`) so it is available without a server round-trip.
+- Signed-in users can use **Arrange with AI** to turn up to 50 photos into three
+  proposed folio sequences. AI only writes to the editor after a plan is chosen.
+  Admin → **AI** owns the interface pool, ordering, connection tests, default
+  prompt and per-user usage limits. See `docs/ai-arrangement.md`.
 - The rendered page, the exported PDF/JPG files and the public viewer all use the
   same `MagazinePreview` page renderer.
 - Drafts stay local until you save; guest uploads can be recovered and attached

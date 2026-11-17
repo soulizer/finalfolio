@@ -11,6 +11,7 @@ import {
   UserTemplatePayload,
   UserTemplateRecord,
 } from './types';
+import type { AiPlanBundle } from './aiPlans';
 import { HomepagePreviewPayload, SiteContent, TemplateGovernance } from '../product/types';
 import { buildTermsPath, redirectToTerms } from '../legal/terms';
 
@@ -105,9 +106,76 @@ export interface AdminSummary {
   };
 }
 
+export interface AdminAiProviderConfig {
+  id: string;
+  name: string;
+  model: string;
+  baseUrl: string;
+  order: number;
+  enabled: boolean;
+  hasApiKey: boolean;
+  apiKeyHint: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminAiProviderDraft {
+  id?: string;
+  name: string;
+  model: string;
+  baseUrl: string;
+  apiKey?: string;
+  order: number;
+  enabled: boolean;
+  hasApiKey?: boolean;
+  apiKeyHint?: string | null;
+}
+
+export interface AdminAiConfig {
+  enabled: boolean;
+  userTotalLimit: number;
+  dailyLimit: number;
+  maxImages: number;
+  requestTimeoutMs: number;
+  prompt: string;
+  providers: AdminAiProviderConfig[];
+}
+
+export interface AdminAiConfigDraft {
+  enabled: boolean;
+  userTotalLimit: number;
+  dailyLimit: number;
+  maxImages: number;
+  requestTimeoutMs: number;
+  prompt: string;
+  providers: AdminAiProviderDraft[];
+}
+
+export interface AiStatus {
+  enabled: boolean;
+  prompt: string;
+  maxImages: number;
+  userTotalLimit: number;
+  dailyLimit: number;
+  usage: {
+    total: number;
+    daily: number;
+    day: string;
+  };
+  remaining: {
+    total: number | null;
+    daily: number | null;
+  };
+}
+
+export interface AiPlanResponse extends AiPlanBundle {
+  providerName?: string;
+}
+
 export interface ProductConfigPayload {
   siteContent: SiteContent;
   templateGovernance: TemplateGovernance;
+  ai: AdminAiConfig;
   homepagePreview: HomepagePreviewPayload | null;
   objectStorage: AdminObjectStorageConfig;
 }
@@ -699,6 +767,57 @@ export function updateAdminTemplateGovernance(templateGovernance: TemplateGovern
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ templateGovernance }),
+  });
+}
+
+export function updateAdminAiConfig(ai: AdminAiConfigDraft) {
+  return readJson<{ ai: AdminAiConfig }>('/api/admin/product-config/ai', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ ai }),
+  });
+}
+
+export function testAdminAiProvider(payload: { providerId?: string; provider: AdminAiProviderDraft }) {
+  return readJson<{
+    ok: boolean;
+    message: string;
+    latencyMs: number;
+    model: string;
+  }>('/api/admin/product-config/ai/test', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function fetchAiStatus() {
+  return readJson<AiStatus>('/api/ai/status');
+}
+
+export function generateAiPlans(
+  payload: {
+    images: Array<{
+      name: string;
+      width: number | null;
+      height: number | null;
+      dataUrl: string;
+    }>;
+    prompt?: string;
+  },
+  signal?: AbortSignal,
+) {
+  return readJson<AiPlanResponse>('/api/ai/plans', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+    signal,
   });
 }
 

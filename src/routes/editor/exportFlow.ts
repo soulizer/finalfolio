@@ -1,3 +1,4 @@
+import { countLabel, translate } from '../../i18n';
 import { recordExportEvent } from '../../editor/api';
 import { getAssetSource, getAssetVariant } from '../../editor/assetResources';
 import {
@@ -267,7 +268,7 @@ export async function preparePrintAssetsForExport({
     originalBytes: 0,
     optimizedBytes: 0,
   });
-  setMessage('Preparing print-ready pages...');
+  setMessage(translate('Preparing print-ready pages...'));
 
   const nextAssetsById: Record<string, Asset> = { ...assetsById };
   let originalBytes = 0;
@@ -312,8 +313,10 @@ export async function preparePrintAssetsForExport({
   setPrintState({ phase: 'idle' });
   setMessage(
     optimizedBytes > 0 && optimizedBytes < originalBytes
-      ? `Print pages prepared from ${formatBytes(originalBytes)} down to ${formatBytes(optimizedBytes)}.`
-      : 'Print-ready pages prepared.',
+      ? translate('Print pages prepared from %s down to %s.')
+          .replace('%s', formatBytes(originalBytes))
+          .replace('%s', formatBytes(optimizedBytes))
+      : translate('Print-ready pages prepared.'),
   );
   return nextAssetsById;
 }
@@ -366,19 +369,19 @@ export async function runPrintExport({
   };
 
   try {
-    setExportDialogMessage('Preparing PDF...');
+    setExportDialogMessage(translate('Preparing PDF...'));
     await preparePrintAssets(settings);
     document.title = nextTitle;
     window.addEventListener('afterprint', restoreTitle, { once: true });
     await waitForRenderFrame();
     await waitForPrintSurfaceReady(getPrintStackRoot());
-    setExportDialogMessage('Opening print dialog...');
+    setExportDialogMessage(translate('Opening print dialog...'));
     await recordExportEvent(exportProjectRecordId, 'requested', undefined, settings);
     window.print();
-    setMessage('Print dialog opened. Final PDF save or print happens in the browser dialog.');
+    setMessage(translate('Print dialog opened. Final PDF save or print happens in the browser dialog.'));
     window.setTimeout(restoreTitle, 2000);
   } catch (error) {
-    const errorMessage = getErrorMessage(error, 'Unable to prepare print pages.');
+    const errorMessage = getErrorMessage(error, translate('Unable to prepare print pages.'));
     void recordExportEvent(exportProjectRecordId, 'error', errorMessage, settings);
     restoreTitle();
     setPrintState({ phase: 'idle' });
@@ -401,8 +404,8 @@ export async function captureJpgPages({
   setExportCaptureActive(true);
 
   try {
-    setExportDialogMessage('Preparing JPG...');
-    setMessage('Rendering JPG export pages...');
+    setExportDialogMessage(translate('Preparing JPG...'));
+    setMessage(translate('Rendering JPG export pages...'));
     await preparePrintAssets(settings);
     await waitForFontsReady();
     await waitForRenderFrame();
@@ -413,7 +416,7 @@ export async function captureJpgPages({
     const renderedPages = [];
     for (let index = 0; index < project.pages.length; index += 1) {
       const page = project.pages[index];
-      setExportDialogMessage(`Rendering ${index + 1}/${project.pages.length}...`);
+      setExportDialogMessage(translate('Rendering %s/%s...').replace('%s', String(index + 1)).replace('%s', String(project.pages.length)));
       const node = printPageRefs[page.id];
       if (!node) {
         throw new Error('One or more export pages are not ready yet.');
@@ -450,7 +453,7 @@ export async function runPdfExport({
   setExportCaptureActive(true);
 
   try {
-    setExportDialogMessage('Preparing PDF...');
+    setExportDialogMessage(translate('Preparing PDF...'));
     await preparePrintAssets(settings);
     await waitForRenderFrame();
     await waitForFontsReady();
@@ -459,7 +462,7 @@ export async function runPdfExport({
 
     const blob = await createPdfFromJpegPages(project.pages.length, settings, async (index) => {
       const page = project.pages[index];
-      setExportDialogMessage(`Rendering page ${index + 1}/${project.pages.length}...`);
+      setExportDialogMessage(translate('Rendering page %s/%s...').replace('%s', String(index + 1)).replace('%s', String(project.pages.length)));
       const node = printPageRefs[page.id];
       if (!node) {
         throw new Error('One or more export pages are not ready yet.');
@@ -503,17 +506,17 @@ export async function runProjectExportFlow({
 
   try {
     if (exportSettings.format === 'jpg') {
-      setExportDialogMessage('Preparing JPG...');
+      setExportDialogMessage(translate('Preparing JPG...'));
       const renderedPages = await captureJpgPages(exportSettings);
       if (exportSettings.jpgMode === 'combined') {
-        setExportDialogMessage('Building stitched JPG...');
+        setExportDialogMessage(translate('Building stitched JPG...'));
         const combinedBlob = await createCombinedJpeg(
           renderedPages.map((page) => page.dataUrl),
           exportSettings,
         );
         downloadBlob(`${buildExportFilenameBase(project)}_strip.jpg`, combinedBlob);
       } else {
-        setExportDialogMessage('Packaging ZIP...');
+        setExportDialogMessage(translate('Packaging ZIP...'));
         const zipBlob = await createJpegZip(renderedPages, project);
         downloadBlob(`${buildExportFilenameBase(project)}_pages.zip`, zipBlob);
       }
@@ -521,25 +524,33 @@ export async function runProjectExportFlow({
       await recordExportEvent(exportProjectRecordId, 'ok', undefined, exportSettings);
       setMessage(
         nextIssues.length
-          ? `JPG export finished with ${nextIssues.length} preflight warning${nextIssues.length === 1 ? '' : 's'}.`
-          : exportSettings.jpgMode === 'combined'
-            ? 'Stitched JPG export downloaded.'
-            : 'JPG page set downloaded.',
+          ? translate('JPG export finished with %s.').replace(
+              '%s',
+              countLabel(nextIssues.length, '1 preflight warning', '%s preflight warnings'),
+            )
+          : translate(
+              exportSettings.jpgMode === 'combined'
+                ? 'Stitched JPG export downloaded.'
+                : 'JPG page set downloaded.',
+            ),
       );
       setExportCenterOpen(false);
       return;
     }
 
     if (exportSettings.format === 'project') {
-      setExportDialogMessage('Preparing project...');
+      setExportDialogMessage(translate('Preparing project...'));
       const filename = `${buildExportFilenameBase(project)}.finalfolio.json`;
       const blob = createProjectExportBlob(project, exportSettings);
       downloadBlob(filename, blob);
       await recordExportEvent(exportProjectRecordId, 'ok', undefined, exportSettings);
       setMessage(
         nextIssues.length
-          ? `Project export downloaded with ${nextIssues.length} preflight warning${nextIssues.length === 1 ? '' : 's'}.`
-          : 'Project export downloaded.',
+          ? translate('Project export downloaded with %s.').replace(
+              '%s',
+              countLabel(nextIssues.length, '1 preflight warning', '%s preflight warnings'),
+            )
+          : translate('Project export downloaded.'),
       );
       setExportCenterOpen(false);
       return;
@@ -549,8 +560,11 @@ export async function runProjectExportFlow({
       await runPdfExport(exportSettings);
       setMessage(
         nextIssues.length
-          ? `PDF downloaded with ${nextIssues.length} preflight warning${nextIssues.length === 1 ? '' : 's'}.`
-          : 'PDF downloaded.',
+          ? translate('PDF downloaded with %s.').replace(
+              '%s',
+              countLabel(nextIssues.length, '1 preflight warning', '%s preflight warnings'),
+            )
+          : translate('PDF downloaded.'),
       );
       setExportCenterOpen(false);
       return;
@@ -559,12 +573,15 @@ export async function runProjectExportFlow({
     await runPrintExport(exportSettings);
     setMessage(
       nextIssues.length
-        ? `Print dialog opened with ${nextIssues.length} preflight warning${nextIssues.length === 1 ? '' : 's'}.`
-        : 'Print dialog opened. Save as PDF or print from the browser dialog.',
+        ? translate('Print dialog opened with %s.').replace(
+            '%s',
+            countLabel(nextIssues.length, '1 preflight warning', '%s preflight warnings'),
+          )
+        : translate('Print dialog opened. Save as PDF or print from the browser dialog.'),
     );
     setExportCenterOpen(false);
   } catch (error) {
-    const errorMessage = getErrorMessage(error, 'Unable to run export.');
+    const errorMessage = getErrorMessage(error, translate('Unable to run export.'));
     setExportDialogMessage(errorMessage, 'error');
     void recordExportEvent(exportProjectRecordId, 'error', errorMessage, exportSettings);
     setMessage(errorMessage);

@@ -1,5 +1,6 @@
 import { countLabel, useT } from '../../i18n';
 import { TemplateIssuePreview } from '../../components/TemplateIssuePreview';
+import { countImageSlots } from '../../editor/demoData';
 import type { UserTemplateRecord } from '../../editor/types';
 import { formatCompactTimestamp, formatTimestamp } from './accountFormatting';
 
@@ -92,8 +93,9 @@ export function AccountTemplatesPanel({
                           {template.description || t('Saved from the editor as a reusable folio scaffold.')}
                         </p>
                         <p className="template-library-card__meta">
-                          {t('%s · %s · Updated %s')
+                          {t('%s · %s image areas · %s · Updated %s')
                             .replace('%s', countLabel(template.templatePayload.pages.length, '1 page', '%s pages'))
+                            .replace('%s', String(countImageSlots(template.templatePayload.pages)))
                             .replace('%s', template.includesCopy ? t('Includes copy') : t('Structure first'))
                             .replace('%s', formatCompactTimestamp(template.updatedAt))}
                         </p>

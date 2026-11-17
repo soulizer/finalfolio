@@ -8,6 +8,7 @@ import {
   fetchAdminUploads,
   fetchAdminUsers,
   fetchBootstrapStatus,
+  type AdminAiConfigDraft,
   type AdminObjectStorageDraft,
   type AdminProjectDetail,
   type AdminProjectListItem,
@@ -20,6 +21,28 @@ import {
 } from '../../editor/api';
 import type { Asset } from '../../editor/types';
 import type { SiteContent, TemplateGovernance } from '../../product/types';
+
+export function createAdminAiDraft(ai: ProductConfigPayload['ai']): AdminAiConfigDraft {
+  return {
+    enabled: ai.enabled,
+    userTotalLimit: ai.userTotalLimit,
+    dailyLimit: ai.dailyLimit,
+    maxImages: ai.maxImages,
+    requestTimeoutMs: ai.requestTimeoutMs,
+    prompt: ai.prompt,
+    providers: ai.providers.map((provider) => ({
+      id: provider.id,
+      name: provider.name,
+      model: provider.model,
+      baseUrl: provider.baseUrl,
+      apiKey: '',
+      order: provider.order,
+      enabled: provider.enabled,
+      hasApiKey: provider.hasApiKey,
+      apiKeyHint: provider.apiKeyHint,
+    })),
+  };
+}
 
 export function createAdminObjectStorageDraft(objectStorage: ProductConfigPayload['objectStorage']): AdminObjectStorageDraft {
   return {
@@ -88,6 +111,7 @@ export function useAdminWorkspace({ session, setMessage }: UseAdminWorkspaceOpti
   const [siteContentDraft, setSiteContentDraft] = useState<SiteContent | null>(null);
   const [templateGovernanceDraft, setTemplateGovernanceDraft] = useState<TemplateGovernance | null>(null);
   const [objectStorageDraft, setObjectStorageDraft] = useState<AdminObjectStorageDraft | null>(null);
+  const [aiConfigDraft, setAiConfigDraft] = useState<AdminAiConfigDraft | null>(null);
   const [busy, setBusy] = useState(false);
   const [userSearch, setUserSearch] = useState('');
   const [projectSearch, setProjectSearch] = useState('');
@@ -108,6 +132,7 @@ export function useAdminWorkspace({ session, setMessage }: UseAdminWorkspaceOpti
     setSiteContentDraft(null);
     setTemplateGovernanceDraft(null);
     setObjectStorageDraft(null);
+    setAiConfigDraft(null);
   }, []);
 
   const loadAdminData = useCallback(
@@ -141,6 +166,7 @@ export function useAdminWorkspace({ session, setMessage }: UseAdminWorkspaceOpti
         setSiteContentDraft(configPayload.siteContent);
         setTemplateGovernanceDraft(configPayload.templateGovernance);
         setObjectStorageDraft(createAdminObjectStorageDraft(configPayload.objectStorage));
+        setAiConfigDraft(createAdminAiDraft(configPayload.ai));
         setSelectedProjectId((current) => current ?? projectPayload.projects[0]?.id ?? null);
         setSelectedUploadFilename((current) => current ?? uploadPayload.uploads[0]?.filename ?? null);
       } catch (error) {
@@ -274,6 +300,7 @@ export function useAdminWorkspace({ session, setMessage }: UseAdminWorkspaceOpti
 
   return {
     activeDailyTrend,
+    aiConfigDraft,
     activeHourlyTrend,
     bootstrapStatus,
     busy,
@@ -299,6 +326,7 @@ export function useAdminWorkspace({ session, setMessage }: UseAdminWorkspaceOpti
     selectedProjectMetrics,
     selectedUpload,
     selectedUploadDetail,
+    setAiConfigDraft,
     setObjectStorageDraft,
     setProjectSearch,
     setSelectedProjectId,

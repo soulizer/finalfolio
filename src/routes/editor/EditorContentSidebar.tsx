@@ -134,7 +134,7 @@ export function EditorContentSidebar({
           </span>
         </div>
         <div className="editor-panel__actions editor-panel__actions--tight photo-actions">
-          <label className={`upload-button upload-button--dark upload-button--compact ${uploadBusy ? 'is-busy' : ''}`.trim()}>
+          <label className={`button button--primary button--small upload-button upload-button--compact ${uploadBusy ? 'is-busy' : ''}`.trim()}>
             {uploadProgressLabel}
             <input
               type="file"

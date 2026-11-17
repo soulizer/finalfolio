@@ -1,3 +1,4 @@
+import { countLabel, translate } from '../../i18n';
 import {
   cloneCustomTemplateDefinition,
   createCustomTemplateDefinition,
@@ -84,15 +85,18 @@ export function buildServerProjectHydration(record: ProjectRecord, getInitialSlo
 
 export function createDraftLoadMessage(summary: DraftLoadSummary) {
   if (summary.missingAssetCount > 0) {
-    return `Restored this local draft, but ${summary.missingAssetCount} cached photo${
-      summary.missingAssetCount === 1 ? '' : 's'
-    } could not be recovered and ${summary.clearedPlacementCount > 0 ? 'were removed from the affected frames.' : 'were removed.'}`;
+    return translate(
+      summary.clearedPlacementCount > 0
+        ? 'Restored this local draft, but %s could not be recovered and were removed from the affected frames.'
+        : 'Restored this local draft, but %s could not be recovered and were removed.',
+    ).replace('%s', countLabel(summary.missingAssetCount, '1 cached photo', '%s cached photos'));
   }
 
   if (summary.restoredAssetCount > 0) {
-    return `Recovered ${summary.restoredAssetCount} local photo${
-      summary.restoredAssetCount === 1 ? '' : 's'
-    } from this device. Sign in to attach them to your account before creating a saved link.`;
+    return translate('Recovered %s from this device. Sign in to attach them to your account before creating a saved link.').replace(
+      '%s',
+      countLabel(summary.restoredAssetCount, '1 local photo', '%s local photos'),
+    );
   }
 
   return DRAFT_ONLY_MESSAGE;

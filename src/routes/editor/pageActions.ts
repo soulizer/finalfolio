@@ -155,7 +155,7 @@ export function createEditorPageActions({
     }
 
     updateProject(() => nextProject);
-    setMessage('Page order updated.');
+    setMessage(translate('Page order updated.'));
   }
 
   function duplicatePage() {
@@ -220,7 +220,7 @@ export function createEditorPageActions({
     setTemplateChoice(nextState.nextPage.template);
   }
 
-  function applyTemplateChoice(nextTemplate: TemplateId = templateChoice) {
+  function applyTemplateChoice(nextTemplate: TemplateId = templateChoice, templateOverride?: CustomTemplateDefinition) {
     if (!selectedPage || (nextTemplate === selectedPage.template && nextTemplate !== 'custom')) {
       return;
     }
@@ -228,7 +228,7 @@ export function createEditorPageActions({
     const nextState = applyTemplateChoiceToPage({
       selectedPage,
       templateChoice: nextTemplate,
-      customTemplateDraft,
+      customTemplateDraft: templateOverride ?? customTemplateDraft,
     });
     updateSelectedPage(() => nextState.nextPage);
     setSelectedSlot(getInitialSlot(nextState.nextPage));

@@ -407,6 +407,7 @@ export async function uploadFilesIntoProject({
   let completedFiles = 0;
   let optimizedBytes = 0;
   let failedFiles = 0;
+  const uploadedAssetsByIndex: Array<Asset | null> = Array.from({ length: files.length }, () => null);
 
   setUploadState({
     ...createIdleUploadState(),
@@ -418,9 +419,11 @@ export async function uploadFilesIntoProject({
     queue,
   });
   setMessage(
-    guestMode
-      ? `Adding ${files.length} photo${files.length === 1 ? '' : 's'} to this local draft...`
-      : `Uploading ${files.length} photo${files.length === 1 ? '' : 's'} one by one...`,
+    translate(
+      guestMode
+        ? 'Adding %s to this local draft...'
+        : 'Uploading %s one by one...',
+    ).replace('%s', countLabel(files.length, '1 photo', '%s photos')),
   );
 
   for (let index = 0; index < files.length; index += 1) {
@@ -472,6 +475,7 @@ export async function uploadFilesIntoProject({
           height: preparedItem.height,
         });
         const localAsset = createGuestDraftUploadAsset(preparedItem, assetId);
+        uploadedAssetsByIndex[index] = localAsset;
         updateProject((current) => ({
           ...current,
           assets: [localAsset, ...current.assets],
@@ -535,6 +539,7 @@ export async function uploadFilesIntoProject({
         width: preparedItem.width ?? uploadedAsset.width,
         height: preparedItem.height ?? uploadedAsset.height,
       };
+      uploadedAssetsByIndex[index] = hydratedUpload;
       updateProject((current) => ({
         ...current,
         assets: [hydratedUpload, ...current.assets],
@@ -597,7 +602,7 @@ export async function uploadFilesIntoProject({
             countLabel(failedFiles, '1 photo', '%s photos'),
           ),
     );
-    return;
+    return uploadedAssetsByIndex;
   }
 
   setMessage(
@@ -608,6 +613,7 @@ export async function uploadFilesIntoProject({
         )
       : translate('%s added.').replace('%s', countLabel(completedFiles, '1 photo', '%s photos')),
   );
+  return uploadedAssetsByIndex;
 }
 
 export function createEditorUploadActions({
@@ -633,7 +639,7 @@ export function createEditorUploadActions({
   }
 
   async function handleUploadFiles(files: File[]) {
-    await uploadFilesIntoProject({
+    return uploadFilesIntoProject({
       files,
       navigate,
       session,

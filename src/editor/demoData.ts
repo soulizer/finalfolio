@@ -14,6 +14,10 @@ import {
   PROJECT_SUBTITLE_LIMIT,
   PROJECT_TITLE_LIMIT,
 } from './limits';
+import {
+  CUSTOM_LAYOUT_GAP_X_PERCENT,
+  CUSTOM_LAYOUT_GAP_Y_PERCENT,
+} from './layoutGeometry';
 import { translate } from '../i18n';
 import {
   Asset,
@@ -144,6 +148,28 @@ export const pageThemeOrder: PageThemeId[] = [
   'pearl-blush',
 ];
 
+const GAP_X = CUSTOM_LAYOUT_GAP_X_PERCENT;
+const GAP_Y = CUSTOM_LAYOUT_GAP_Y_PERCENT;
+const EDITORIAL_FRAME_X = 32 + GAP_X;
+const EDITORIAL_FRAME_W = 100 - EDITORIAL_FRAME_X;
+const EDITORIAL_HALF_W = (EDITORIAL_FRAME_W - GAP_X) / 2;
+const EDITORIAL_DETAIL_Y = 58 + GAP_Y;
+const EDITORIAL_DETAIL_H = 100 - EDITORIAL_DETAIL_Y;
+
+const RIBBON_FRAMES_Y = 24 + GAP_Y;
+const RIBBON_FRAMES_H = 100 - RIBBON_FRAMES_Y;
+const RIBBON_INSET_X = 62 + GAP_X;
+const RIBBON_INSET_W = 100 - RIBBON_INSET_X;
+const RIBBON_INSET_H = (RIBBON_FRAMES_H - GAP_Y) / 2;
+
+const CAPTION_START_X = 24 + GAP_X;
+const CAPTION_FRAME_W = (100 - CAPTION_START_X - GAP_X * 2) / 3;
+
+const CONTACT_FRAME_W = (100 - GAP_X) / 2;
+const CONTACT_FRAME_H = (74 - GAP_Y * 2) / 2;
+const CONTACT_SECOND_X = CONTACT_FRAME_W + GAP_X;
+const CONTACT_SECOND_Y = CONTACT_FRAME_H + GAP_Y;
+
 const defaultCustomTemplateSource: CustomTemplateDefinition = {
   name: 'Editorial Split',
   text: {
@@ -156,26 +182,26 @@ const defaultCustomTemplateSource: CustomTemplateDefinition = {
     {
       slot: 'frame1',
       label: 'Lead',
-      x: 36,
+      x: EDITORIAL_FRAME_X,
       y: 0,
-      width: 64,
+      width: EDITORIAL_FRAME_W,
       height: 58,
     },
     {
       slot: 'frame2',
       label: 'Detail A',
-      x: 36,
-      y: 62,
-      width: 30,
-      height: 38,
+      x: EDITORIAL_FRAME_X,
+      y: EDITORIAL_DETAIL_Y,
+      width: EDITORIAL_HALF_W,
+      height: EDITORIAL_DETAIL_H,
     },
     {
       slot: 'frame3',
       label: 'Detail B',
-      x: 70,
-      y: 62,
-      width: 30,
-      height: 38,
+      x: EDITORIAL_FRAME_X + EDITORIAL_HALF_W + GAP_X,
+      y: EDITORIAL_DETAIL_Y,
+      width: EDITORIAL_HALF_W,
+      height: EDITORIAL_DETAIL_H,
     },
   ],
 };
@@ -204,25 +230,25 @@ const customLayoutPresetSource = [
           slot: 'frame1',
           label: 'Lead',
           x: 0,
-          y: 28,
+          y: RIBBON_FRAMES_Y,
           width: 62,
-          height: 72,
+          height: RIBBON_FRAMES_H,
         },
         {
           slot: 'frame2',
           label: 'Inset A',
-          x: 66,
-          y: 28,
-          width: 34,
-          height: 34,
+          x: RIBBON_INSET_X,
+          y: RIBBON_FRAMES_Y,
+          width: RIBBON_INSET_W,
+          height: RIBBON_INSET_H,
         },
         {
           slot: 'frame3',
           label: 'Inset B',
-          x: 66,
-          y: 66,
-          width: 34,
-          height: 34,
+          x: RIBBON_INSET_X,
+          y: RIBBON_FRAMES_Y + RIBBON_INSET_H + GAP_Y,
+          width: RIBBON_INSET_W,
+          height: RIBBON_INSET_H,
         },
       ],
     },
@@ -243,25 +269,25 @@ const customLayoutPresetSource = [
         {
           slot: 'frame1',
           label: 'Frame A',
-          x: 28,
+          x: CAPTION_START_X,
           y: 0,
-          width: 22,
+          width: CAPTION_FRAME_W,
           height: 100,
         },
         {
           slot: 'frame2',
           label: 'Frame B',
-          x: 53,
+          x: CAPTION_START_X + CAPTION_FRAME_W + GAP_X,
           y: 0,
-          width: 22,
+          width: CAPTION_FRAME_W,
           height: 100,
         },
         {
           slot: 'frame3',
           label: 'Frame C',
-          x: 78,
+          x: CAPTION_START_X + (CAPTION_FRAME_W + GAP_X) * 2,
           y: 0,
-          width: 22,
+          width: CAPTION_FRAME_W,
           height: 100,
         },
       ],
@@ -285,32 +311,32 @@ const customLayoutPresetSource = [
           label: 'Frame A',
           x: 0,
           y: 0,
-          width: 48,
-          height: 34,
+          width: CONTACT_FRAME_W,
+          height: CONTACT_FRAME_H,
         },
         {
           slot: 'frame2',
           label: 'Frame B',
-          x: 52,
+          x: CONTACT_SECOND_X,
           y: 0,
-          width: 48,
-          height: 34,
+          width: CONTACT_FRAME_W,
+          height: CONTACT_FRAME_H,
         },
         {
           slot: 'frame3',
           label: 'Frame C',
           x: 0,
-          y: 38,
-          width: 48,
-          height: 32,
+          y: CONTACT_SECOND_Y,
+          width: CONTACT_FRAME_W,
+          height: CONTACT_FRAME_H,
         },
         {
           slot: 'frame4',
           label: 'Frame D',
-          x: 52,
-          y: 38,
-          width: 48,
-          height: 32,
+          x: CONTACT_SECOND_X,
+          y: CONTACT_SECOND_Y,
+          width: CONTACT_FRAME_W,
+          height: CONTACT_FRAME_H,
         },
       ],
     },
@@ -883,6 +909,16 @@ export function getTemplateSlots(template: TemplateId, customTemplate?: CustomTe
 
 export function getPageSlotOrder(page: Pick<PageData, 'template' | 'customTemplate'>) {
   return getTemplateSlots(page.template, page.customTemplate);
+}
+
+export function countImageSlots(
+  pages: Array<{ template: TemplateId; customTemplate?: CustomTemplateDefinition | null }>,
+) {
+  return pages.reduce(
+    (total, page) =>
+      total + getPageSlotOrder({ template: page.template, customTemplate: page.customTemplate ?? null }).length,
+    0,
+  );
 }
 
 export function getTemplateLabel(template: TemplateId, customTemplate?: CustomTemplateDefinition | null) {

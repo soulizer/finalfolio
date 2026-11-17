@@ -1,3 +1,4 @@
+import { countLabel, translate } from '../../i18n';
 import type { UserSession } from '../../editor/api';
 import { getConfirmationMessage } from '../../editor/confirmations';
 import { confirmAction } from '../../ui/confirm';
@@ -96,12 +97,17 @@ export function createEditorAssetActions({
   function clearAssetPlacements(assetId: string) {
     const { nextProject, clearedCount } = clearAssetPlacementsInProject(project, assetId);
     if (!clearedCount) {
-      setMessage('This image is not placed on any page.');
+      setMessage(translate('This image is not placed on any page.'));
       return;
     }
 
     updateProject(() => nextProject);
-    setMessage('Image cleared from ' + clearedCount + ' frame' + (clearedCount === 1 ? '' : 's') + ' across this folio.');
+    setMessage(
+      translate('Image cleared from %s across this folio.').replace(
+        '%s',
+        countLabel(clearedCount, '1 frame', '%s frames'),
+      ),
+    );
   }
 
   function clearSelectedSlot() {
@@ -142,23 +148,20 @@ export function createEditorAssetActions({
 
     setAssetDeleteBusy(true);
     setAssetDeleteTargetId(asset.id);
-    setMessage('Removing ' + asset.name + '...');
+    setMessage(translate('Removing %s...').replace('%s', asset.name));
 
     try {
       const removal = await removeAssetFromIssue(asset);
       setMessage(
         removal.clearedPlacementCount > 0
-          ? 'Removed ' +
-              asset.name +
-              ' from this folio and cleared ' +
-              removal.clearedPlacementCount +
-              ' frame' +
-              (removal.clearedPlacementCount === 1 ? '' : 's') +
-              '.'
-          : 'Removed ' + asset.name + ' from this folio.',
+          ? translate('Removed %s from this folio and cleared %s.').replace('%s', asset.name).replace(
+              '%s',
+              countLabel(removal.clearedPlacementCount, '1 frame', '%s frames'),
+            )
+          : translate('Removed %s from this folio.').replace('%s', asset.name),
       );
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to remove this photo.');
+      setMessage(error instanceof Error ? error.message : translate('Unable to remove this photo.'));
     } finally {
       setAssetDeleteBusy(false);
       setAssetDeleteTargetId(null);
@@ -167,13 +170,13 @@ export function createEditorAssetActions({
 
   async function handleRetryAssetMirror(asset: Asset) {
     setAssetRetryTargetId(asset.id);
-    setMessage('Retrying remote delivery for ' + asset.name + '...');
+    setMessage(translate('Retrying remote delivery for %s...').replace('%s', asset.name));
 
     try {
       await retryAssetMirrorForProject(asset, updateProject);
-      setMessage('Remote delivery retry queued.');
+      setMessage(translate('Remote delivery retry queued.'));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to retry remote delivery.');
+      setMessage(error instanceof Error ? error.message : translate('Unable to retry remote delivery.'));
     } finally {
       setAssetRetryTargetId(null);
     }
@@ -183,7 +186,7 @@ export function createEditorAssetActions({
     const removableAssets = getUnusedProjectAssets(project, assetUsageCounts);
 
     if (!removableAssets.length) {
-      setMessage('No unused uploads to remove from this folio.');
+      setMessage(translate('No unused uploads to remove from this folio.'));
       return;
     }
 
@@ -199,7 +202,7 @@ export function createEditorAssetActions({
 
     setAssetDeleteBusy(true);
     setAssetDeleteTargetId(null);
-    setMessage('Removing ' + removableAssets.length + ' unused photo' + (removableAssets.length === 1 ? '' : 's') + '...');
+    setMessage(translate('Removing %s...').replace('%s', countLabel(removableAssets.length, '1 unused photo', '%s unused photos')));
 
     try {
       await removeUnusedAssetsFromProject({
@@ -209,9 +212,9 @@ export function createEditorAssetActions({
         updateProject,
         applyServerProjectRecord,
       });
-      setMessage('Removed ' + removableAssets.length + ' unused photo' + (removableAssets.length === 1 ? '' : 's') + ' from this folio.');
+      setMessage(translate('Removed %s from this folio.').replace('%s', countLabel(removableAssets.length, '1 unused photo', '%s unused photos')));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to remove unused photos.');
+      setMessage(error instanceof Error ? error.message : translate('Unable to remove unused photos.'));
     } finally {
       setAssetDeleteBusy(false);
       setAssetDeleteTargetId(null);

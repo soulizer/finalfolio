@@ -9,6 +9,7 @@ const ADMIN_SECTIONS: Array<{ id: AdminSectionKey; label: string }> = [
   { id: 'projects', label: 'Projects' },
   { id: 'uploads', label: 'Uploads' },
   { id: 'governance', label: 'Governance' },
+  { id: 'ai', label: 'AI' },
   { id: 'storage', label: 'Storage' },
   { id: 'users', label: 'Users' },
   { id: 'events', label: 'Events' },

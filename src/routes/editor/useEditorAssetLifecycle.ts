@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { countLabel, translate } from '../../i18n';
 import { type AccountUploadListItem, fetchAccountUploads, type UserSession } from '../../editor/api';
 import { getAssetSource } from '../../editor/assetResources';
 import { readImageIntrinsicSize } from '../../editor/imageOptimization';
@@ -77,10 +78,13 @@ export function useEditorAssetLifecycle({
       setProject(nextProject.project);
       setMessage(
         nextProject.clearedPlacementCount > 0
-          ? `This photo was deleted from My uploads, so it was also removed from this draft and cleared from ${nextProject.clearedPlacementCount} frame${
-              nextProject.clearedPlacementCount === 1 ? '' : 's'
-            }.`
-          : 'This photo was deleted from My uploads, so it was also removed from this draft.'
+          ? translate(
+              'This photo was deleted from My uploads, so it was also removed from this draft and cleared from %s.',
+            ).replace(
+              '%s',
+              countLabel(nextProject.clearedPlacementCount, '1 frame', '%s frames'),
+            )
+          : translate('This photo was deleted from My uploads, so it was also removed from this draft.'),
       );
     });
   }, [project, setMessage, setProject]);
@@ -127,7 +131,7 @@ export function useEditorAssetLifecycle({
       })
       .catch((error) => {
         if (!cancelled) {
-          setMessage(error instanceof Error ? error.message : 'Unable to attach recovered uploads.');
+          setMessage(error instanceof Error ? error.message : translate('Unable to attach recovered uploads.'));
         }
       })
       .finally(() => {
@@ -200,14 +204,19 @@ export function useEditorAssetLifecycle({
     setProject(sanitizedDraft.project);
     setMessage(
       sanitizedDraft.clearedPlacementCount > 0
-        ? `Signed out. Removed ${sanitizedDraft.removedAssetCount} uploaded photo${
-            sanitizedDraft.removedAssetCount === 1 ? '' : 's'
-          } from this local draft and cleared ${sanitizedDraft.clearedPlacementCount} frame${
-            sanitizedDraft.clearedPlacementCount === 1 ? '' : 's'
-          }.`
-        : `Signed out. Removed ${sanitizedDraft.removedAssetCount} uploaded photo${
-            sanitizedDraft.removedAssetCount === 1 ? '' : 's'
-          } from this local draft.`
+        ? translate('Signed out. Removed %s from this local draft and cleared %s.')
+            .replace(
+              '%s',
+              countLabel(sanitizedDraft.removedAssetCount, '1 uploaded photo', '%s uploaded photos'),
+            )
+            .replace(
+              '%s',
+              countLabel(sanitizedDraft.clearedPlacementCount, '1 frame', '%s frames'),
+            )
+        : translate('Signed out. Removed %s from this local draft.').replace(
+            '%s',
+            countLabel(sanitizedDraft.removedAssetCount, '1 uploaded photo', '%s uploaded photos'),
+          ),
     );
   }, [authReady, authRefreshFailed, loadState, project, projectRecord, session, setMessage, setProject]);
 

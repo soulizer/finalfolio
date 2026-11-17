@@ -4,6 +4,7 @@ import { SiteLegalFooter } from '../components/SiteLegalFooter';
 import { SitePageHeader } from '../components/SitePageHeader';
 import { TransientNotice } from '../components/TransientNotice';
 import { useSession } from '../session';
+import { AdminAiPanel } from './admin/AdminAiPanel';
 import { AdminConsoleHeader } from './admin/AdminConsoleHeader';
 import { AdminEventsPanel } from './admin/AdminEventsPanel';
 import { AdminGovernancePanel } from './admin/AdminGovernancePanel';
@@ -12,6 +13,7 @@ import { AdminProjectsPanel } from './admin/AdminProjectsPanel';
 import { AdminUploadsPanel } from './admin/AdminUploadsPanel';
 import { AdminStoragePanel } from './admin/AdminStoragePanel';
 import { AdminUsersPanel } from './admin/AdminUsersPanel';
+import { useAdminAiConfig } from './admin/useAdminAiConfig';
 import { useAdminAssetGovernanceActions } from './admin/useAdminAssetGovernanceActions';
 import { AdminLoadingState, AdminUnavailableState } from './admin/AdminShellStates';
 import { useAdminShellState } from './admin/useAdminShellState';
@@ -26,6 +28,7 @@ export function AdminPage() {
   const {
     activeDailyTrend,
     activeHourlyTrend,
+    aiConfigDraft,
     bootstrapStatus,
     busy,
     clearAdminData,
@@ -45,6 +48,7 @@ export function AdminPage() {
     selectedProjectId,
     selectedUpload,
     selectedUploadDetail,
+    setAiConfigDraft,
     setObjectStorageDraft,
     setProjectSearch,
     setSelectedProjectId,
@@ -142,6 +146,22 @@ export function AdminPage() {
     setMessage,
   });
   const {
+    addProvider,
+    aiBusy,
+    aiTestBusyId,
+    handleSaveAiConfig,
+    handleTestAiProvider,
+    moveProvider,
+    removeProvider,
+    updateField: updateAiField,
+    updateProvider: updateAiProvider,
+  } = useAdminAiConfig({
+    aiConfigDraft,
+    refreshAll,
+    setAiConfigDraft,
+    setMessage,
+  });
+  const {
     handleDeleteProject,
     handleDeleteUpload,
     handleRetryUpload,
@@ -235,6 +255,21 @@ export function AdminPage() {
                 updateTemplateSetting={updateTemplateSetting}
                 updateWorkflow={updateWorkflow}
                 updateWorkflowStep={updateWorkflowStep}
+              />
+            ) : null}
+
+            {activeSection === 'ai' ? (
+              <AdminAiPanel
+                addProvider={addProvider}
+                aiBusy={aiBusy}
+                aiConfigDraft={aiConfigDraft}
+                aiTestBusyId={aiTestBusyId}
+                handleSaveAiConfig={handleSaveAiConfig}
+                handleTestAiProvider={handleTestAiProvider}
+                moveProvider={moveProvider}
+                removeProvider={removeProvider}
+                updateField={updateAiField}
+                updateProvider={updateAiProvider}
               />
             ) : null}
 

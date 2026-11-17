@@ -8,6 +8,7 @@ import {
   PROJECT_FRAME_RADIUS_MAX,
   PROJECT_FRAME_RADIUS_MIN,
 } from '../../editor/limits';
+import { clampLayoutArea } from '../../editor/layoutGeometry';
 import type {
   CustomTemplateDefinition,
   CustomTemplateFrame,
@@ -30,20 +31,6 @@ type CreateEditorDesignActionsOptions = {
   setCustomTemplateDraft: SetCustomTemplateDraft;
   setMessage: SetMessage;
 };
-
-function clampLayoutArea(area: LayoutArea): LayoutArea {
-  const x = Math.min(100, Math.max(0, area.x));
-  const y = Math.min(100, Math.max(0, area.y));
-  const width = Math.min(100 - x, Math.max(12, area.width));
-  const height = Math.min(100 - y, Math.max(12, area.height));
-
-  return {
-    x,
-    y,
-    width,
-    height,
-  };
-}
 
 export function createEditorDesignActions({
   updateProject,

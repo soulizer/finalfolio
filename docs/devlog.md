@@ -1671,3 +1671,16 @@
 - Reduced radii across panels, cards, controls and overlays.
 - Added Playwright coverage for the unified grid, rename persistence, deletion,
   insert-link retention and discard confirmation.
+
+## 2026-11-17 AI Arrangement
+
+- Added an admin-governed OpenAI-compatible interface pool with ordering,
+  connection tests, masked keys, global switch and per-user total/daily limits.
+- Added the editor **Arrange with AI** flow: guest gating, up to 50 thumbnails,
+  read-only default prompt with temporary editing, three-plan comparison, and
+  apply-through-the-normal-upload-pipeline.
+- AI plans are validated and normalised before touching the editor; the folio
+  stays unchanged if every provider fails.
+- Usage is counted only after success and stored separately for a future
+  recharge flow.
+- Added `tests/e2e/ai-arrange.spec.ts` and `docs/ai-arrangement.md`.

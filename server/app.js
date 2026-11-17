@@ -7,6 +7,7 @@ import { isIP } from 'node:net';
 import express from 'express';
 import multer from 'multer';
 import { createAccountPreferencesStore } from './accountPreferences.js';
+import { createAiStore } from './ai.js';
 import { createAssetStore } from './assets.js';
 import { createAuthStore } from './auth.js';
 import { CURRENT_TOS_VERSION, hasAcceptedCurrentTerms } from './legal.js';
@@ -115,6 +116,12 @@ const EXPORT_EVENT_IP_RATE_LIMIT = {
   limit: 60,
   windowMs: 10 * 60 * 1000,
   message: 'Too many export events. Try again later.',
+};
+const AI_PLAN_RATE_LIMIT = {
+  scope: 'ai-plan-user',
+  limit: 12,
+  windowMs: 10 * 60 * 1000,
+  message: 'Too many AI arrangement requests. Try again later.',
 };
 const PUBLIC_ORIGIN_FALLBACK = 'https://finalfolio.com';
 const PUBLIC_HOST_ALLOWLIST = new Set(['finalfolio.com', 'www.finalfolio.com']);
@@ -1408,6 +1415,7 @@ export function createApp({
   const authStore = createAuthStore({ dataRoot });
   const opsStore = createOpsStore({ dataRoot });
   const siteStore = createSiteStore({ dataRoot });
+  const aiStore = createAiStore({ dataRoot });
   const accountPreferencesStore = createAccountPreferencesStore({
     dataRoot,
     allowedPageThemes,
@@ -2714,6 +2722,41 @@ export function createApp({
     }
   });
 
+  app.get('/api/ai/status', async (request, response, next) => {
+    try {
+      const user = requireAuthenticated(request);
+      response.json(await aiStore.getUserStatus(user.id));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/ai/plans', async (request, response, next) => {
+    try {
+      const user = requireAuthenticated(request);
+      await securityStore.consumeRateLimit({ ...AI_PLAN_RATE_LIMIT, key: user.id });
+      const result = await aiStore.generatePlans({
+        userId: user.id,
+        images: request.body?.images,
+        prompt: request.body?.prompt,
+      });
+      await opsStore.recordEvent({
+        type: 'ai',
+        status: 'ok',
+        userId: user.id,
+        detail: {
+          action: 'generate-ai-plans',
+          provider: result.providerName ?? null,
+          imageCount: Array.isArray(request.body?.images) ? request.body.images.length : 0,
+          planCount: Array.isArray(result.plans) ? result.plans.length : 0,
+        },
+      });
+      response.json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.get('/api/account/activity', async (request, response, next) => {
     try {
       const user = requireAuthenticated(request);
@@ -3485,16 +3528,18 @@ export function createApp({
   app.get('/api/admin/product-config', async (request, response, next) => {
     try {
       requireAdmin(request);
-      const [siteContent, templateGovernance, uploadInventory] = await Promise.all([
+      const [siteContent, templateGovernance, uploadInventory, aiConfig] = await Promise.all([
         siteStore.readSiteContent(),
         siteStore.readTemplateGovernance(),
         store.collectUploadInventory(),
+        aiStore.readAdminConfig(),
       ]);
       const objectStorage = await objectStorageStore.readAdminConfig(uploadInventory);
       const homepagePreview = await buildHomepagePreviewPayload(siteContent);
       response.json({
         siteContent,
         templateGovernance,
+        ai: aiConfig,
         homepagePreview,
         objectStorage: {
           ...objectStorage,
@@ -3543,6 +3588,41 @@ export function createApp({
         detail: { action: 'update-template-governance' },
       });
       response.json({ templateGovernance });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.put('/api/admin/product-config/ai', async (request, response, next) => {
+    try {
+      const user = requireAdmin(request);
+      const ai = await aiStore.updateConfig(request.body?.ai ?? request.body);
+      await opsStore.recordEvent({
+        type: 'admin',
+        status: 'ok',
+        userId: user.id,
+        detail: { action: 'update-ai-config' },
+      });
+      response.json({ ai });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/admin/product-config/ai/test', async (request, response, next) => {
+    try {
+      const user = requireAdmin(request);
+      const result = await aiStore.testProvider({
+        providerId: request.body?.providerId,
+        provider: request.body?.provider,
+      });
+      await opsStore.recordEvent({
+        type: 'admin',
+        status: 'ok',
+        userId: user.id,
+        detail: { action: 'test-ai-provider', providerId: request.body?.providerId ?? null },
+      });
+      response.json(result);
     } catch (error) {
       next(error);
     }
@@ -4204,7 +4284,12 @@ export function createApp({
           ? error.status
           : null;
     const statusCode = explicitStatus ?? (isMissingFile ? 404 : 500);
-    const message = statusCode >= 500 ? 'Internal server error.' : isMissingFile ? 'Not found.' : error.message;
+    const message =
+      statusCode >= 500 && !error?.expose
+        ? 'Internal server error.'
+        : isMissingFile
+          ? 'Not found.'
+          : error.message;
     if (typeof error?.retryAfterSeconds === 'number' && Number.isFinite(error.retryAfterSeconds) && error.retryAfterSeconds > 0) {
       response.setHeader('Retry-After', String(Math.ceil(error.retryAfterSeconds)));
     }

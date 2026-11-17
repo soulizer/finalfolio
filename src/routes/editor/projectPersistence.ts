@@ -1,4 +1,5 @@
 import { startTransition } from 'react';
+import { translate } from '../../i18n';
 import type { NavigateFunction } from 'react-router-dom';
 import {
   type AccountUploadListItem,
@@ -282,8 +283,8 @@ export function applyServerProjectRecordState({
     setShareCopyState('idle');
     setMessage(
       nextMessage
-        ? `${nextMessage} Newer edits are queued for the next save.`
-        : 'Newer edits are queued for the next save.',
+        ? translate('%s Newer edits are queued for the next save.').replace('%s', nextMessage)
+        : translate('Newer edits are queued for the next save.'),
     );
     return;
   }
@@ -376,13 +377,13 @@ export async function saveProjectRecord({
   const needsSession = !projectRecord || Boolean(projectRecord?.ownerUserId) || legacyReadOnly;
   if (legacyReadOnly) {
     setSaveState('error');
-    setMessage('This legacy project is read-only. Duplicate it into your account before saving changes.');
+    setMessage(translate('This legacy project is read-only. Duplicate it into your account before saving changes.'));
     return;
   }
 
   if (needsSession && !session) {
     setSaveState(projectRecord ? 'error' : 'draft');
-    setMessage(projectRecord ? 'Sign in again to save this owned project.' : 'Sign in to create a saved project link.');
+    setMessage(translate(projectRecord ? 'Sign in again to save this owned project.' : 'Sign in to create a saved project link.'));
     return;
   }
 
@@ -393,13 +394,13 @@ export async function saveProjectRecord({
 
   if (project.assets.some((asset) => asset.src.startsWith('blob:') || asset.src.startsWith('guest-upload://'))) {
     setSaveState('dirty');
-    setMessage('Local photos are still being attached. This folio will save automatically once they finish.');
+    setMessage(translate('Local photos are still being attached. This folio will save automatically once they finish.'));
     return;
   }
 
   const requestSnapshot = snapshot;
   setSaveState('saving');
-  setMessage(projectRecord ? 'Saving changes to the server...' : 'Creating a stable editor URL on the server...');
+  setMessage(translate(projectRecord ? 'Saving changes to the server...' : 'Creating a stable editor URL on the server...'));
 
   try {
     const projectToPersist = createPersistableProjectSnapshot(project);
@@ -449,14 +450,14 @@ export async function enableProjectShareLink({
 }: ProjectShareOptions & { rotate?: boolean }) {
 
   if (!projectRecord) {
-    setMessage('Save this folio first, then enable a public share link.');
+    setMessage(translate('Save this folio first, then enable a public share link.'));
     return;
   }
 
   const requestSnapshot = JSON.stringify(project);
   setShareBusy(true);
   setShareCopyState('idle');
-  setMessage(rotate ? 'Regenerating the public share link...' : 'Enabling the public share link...');
+  setMessage(translate(rotate ? 'Regenerating the public share link...' : 'Enabling the public share link...'));
 
   try {
     const record = await enableProjectShare(projectRecord.id, { rotate });
@@ -464,7 +465,7 @@ export async function enableProjectShareLink({
       requestSnapshot,
     });
   } catch (error) {
-    setMessage(error instanceof Error ? error.message : 'Unable to enable project sharing.');
+    setMessage(error instanceof Error ? error.message : translate('Unable to enable project sharing.'));
   } finally {
     setShareBusy(false);
   }
@@ -494,7 +495,7 @@ export async function disableProjectShareLink({
 
   setShareBusy(true);
   setShareCopyState('idle');
-  setMessage('Turning off the public share link...');
+  setMessage(translate('Turning off the public share link...'));
 
   try {
     const record = await disableProjectShare(projectRecord.id);
@@ -502,7 +503,7 @@ export async function disableProjectShareLink({
       requestSnapshot: JSON.stringify(project),
     });
   } catch (error) {
-    setMessage(error instanceof Error ? error.message : 'Unable to disable project sharing.');
+    setMessage(error instanceof Error ? error.message : translate('Unable to disable project sharing.'));
   } finally {
     setShareBusy(false);
   }
@@ -517,10 +518,10 @@ export async function copyProjectShareLink(projectRecord: ProjectRecord | null, 
     await navigator.clipboard.writeText(new URL(projectRecord.share.path, window.location.origin).toString());
     setShareCopyState('copied');
     window.setTimeout(() => setShareCopyState('idle'), 1800);
-    setMessage('Public share link copied.');
+    setMessage(translate('Public share link copied.'));
   } catch {
     setShareCopyState('error');
-    setMessage('Unable to copy the public share link.');
+    setMessage(translate('Unable to copy the public share link.'));
   }
 }
 

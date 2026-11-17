@@ -12,12 +12,10 @@ import {
   writeCustomLayouts,
   type CustomLayoutRecord,
 } from '../../editor/customLayouts';
-import { CUSTOM_TEMPLATE_NAME_LIMIT } from '../../editor/limits';
 import type { CustomTemplateDefinition, PageData, TemplateId } from '../../editor/types';
 import { confirmAction } from '../../ui/confirm';
 
 type UseCustomLayoutLibraryOptions = {
-  customTemplateDraft: CustomTemplateDefinition;
   selectedPage: PageData | undefined;
   selectedPageId: string | undefined;
   templateChoice: TemplateId;
@@ -31,11 +29,10 @@ type UseCustomLayoutLibraryOptions = {
 /**
  * Saved page layouts (a name plus frame/text geometry) live in localStorage so
  * they behave like reusable templates without requiring a second server store.
- * The hook owns selection, rename/save, duplicate and delete so the editor page
- * only has to render the grid.
+ * The large layout editor owns the draft; this hook only persists records and
+ * keeps the picker selection in sync.
  */
 export function useCustomLayoutLibrary({
-  customTemplateDraft,
   selectedPage,
   selectedPageId,
   templateChoice,
@@ -52,217 +49,130 @@ export function useCustomLayoutLibrary({
     () => customLayouts.find((layout) => layout.id === activeCustomLayoutId) ?? null,
     [activeCustomLayoutId, customLayouts],
   );
-  const customLayoutDirty = useMemo(() => {
-    if (!activeCustomLayout) {
-      return false;
-    }
-
-    return !customTemplatesEqual(
-      customTemplateDraft,
-      cloneCustomTemplateDefinition(activeCustomLayout.template),
-    );
-  }, [activeCustomLayout, customTemplateDraft]);
 
   const persistCustomLayouts = useCallback((nextLayouts: CustomLayoutRecord[]) => {
     setCustomLayouts(nextLayouts);
     return writeCustomLayouts(nextLayouts);
   }, []);
 
-  const confirmDiscardIfNeeded = useCallback(async () => {
-    if (!customLayoutDirty) {
-      return true;
-    }
-
-    return confirmAction({
-      title: 'Discard unsaved layout changes?',
-      body: 'This layout has changes that have not been saved to the library yet.',
-      confirmLabel: 'Discard changes',
-      tone: 'danger',
-    });
-  }, [customLayoutDirty]);
-
   const selectBuiltinLayout = useCallback(
-    async (templateId: TemplateId) => {
-      if (!(await confirmDiscardIfNeeded())) {
-        return;
-      }
-
+    (templateId: TemplateId) => {
       setTemplateChoice(templateId);
       setActiveCustomLayoutId(null);
     },
-    [confirmDiscardIfNeeded, setTemplateChoice],
+    [setTemplateChoice],
   );
 
   const selectCustomLayout = useCallback(
-    async (layout: CustomLayoutRecord) => {
-      if (!(await confirmDiscardIfNeeded())) {
-        return;
-      }
-
+    (layout: CustomLayoutRecord) => {
       setTemplateChoice('custom');
       setActiveCustomLayoutId(layout.id);
       setCustomTemplateDraft(cloneCustomTemplateDefinition(layout.template));
     },
-    [confirmDiscardIfNeeded, setCustomTemplateDraft, setTemplateChoice],
+    [setCustomTemplateDraft, setTemplateChoice],
   );
 
-  const startNewCustomLayout = useCallback(async () => {
-    if (!(await confirmDiscardIfNeeded())) {
-      return;
-    }
-
-    setTemplateChoice('custom');
-    setActiveCustomLayoutId(null);
-    setCustomTemplateDraft(createCustomTemplateDefinition({ name: t('Untitled layout') }));
-  }, [confirmDiscardIfNeeded, setCustomTemplateDraft, setTemplateChoice, t]);
-
-  const resetCustomLayoutBase = useCallback(() => {
-    setCustomTemplateDraft(
-      createCustomTemplateDefinition({
-        name: customTemplateDraft.name,
-      }),
-    );
-  }, [customTemplateDraft.name, setCustomTemplateDraft]);
-
-  const buildCustomLayoutTemplate = useCallback(
-    (existing: CustomLayoutRecord | null): CustomTemplateDefinition => {
-      const draft = customTemplateDraft;
-      const nextName = draft.name.trim() || t('Untitled layout');
+  const upsertCustomLayout = useCallback(
+    (layoutId: string | null, template: CustomTemplateDefinition) => {
+      const existing = layoutId ? customLayouts.find((layout) => layout.id === layoutId) ?? null : null;
       // Keep canonical English keys for built-in scaffolds so the library still
       // follows the interface language. A name the user actually typed is kept
       // verbatim.
-      const name = existing && nextName === t(existing.template.name) ? existing.template.name : nextName;
-      const frames = draft.frames.map((frame) => {
-        const original = existing?.template.frames.find((entry) => entry.slot === frame.slot);
-        const label = original && frame.label === t(original.label) ? original.label : frame.label;
-        return {
-          ...frame,
-          label,
-        };
-      });
-
-      return {
+      const name = existing && template.name === t(existing.template.name) ? existing.template.name : template.name;
+      const canonicalTemplate: CustomTemplateDefinition = {
+        ...template,
         name,
-        text: { ...draft.text },
-        frames,
+        frames: template.frames.map((frame) => {
+          const original = existing?.template.frames.find((entry) => entry.slot === frame.slot);
+          const label = original && frame.label === t(original.label) ? original.label : frame.label;
+          return {
+            ...frame,
+            label,
+          };
+        }),
       };
-    },
-    [customTemplateDraft, t],
-  );
-
-  const saveCustomLayout = useCallback(() => {
-    if (activeCustomLayout) {
-      const template = buildCustomLayoutTemplate(activeCustomLayout);
-      const nextLayouts = customLayouts.map((layout) =>
-        layout.id === activeCustomLayout.id
-          ? {
-              ...layout,
-              name: template.name,
-              template,
-            }
-          : layout,
-      );
+      const record: CustomLayoutRecord = existing
+        ? {
+            ...existing,
+            name: canonicalTemplate.name,
+            template: canonicalTemplate,
+          }
+        : {
+            id: createCustomLayoutId(),
+            name: canonicalTemplate.name,
+            summary: '',
+            template: canonicalTemplate,
+          };
+      const nextLayouts = existing
+        ? customLayouts.map((layout) => (layout.id === existing.id ? record : layout))
+        : [record, ...customLayouts];
       const persisted = persistCustomLayouts(nextLayouts);
-      setCustomTemplateDraft(cloneCustomTemplateDefinition(template));
+
+      setTemplateChoice('custom');
+      setActiveCustomLayoutId(record.id);
+      setCustomTemplateDraft(cloneCustomTemplateDefinition(record.template));
       setMessage(
         persisted
-          ? t('Layout saved.')
+          ? t(existing ? 'Layout saved.' : 'Saved as a new layout.')
           : t('Saved for this session only. This browser blocked local storage.'),
       );
-      return;
-    }
 
-    const template = buildCustomLayoutTemplate(null);
-    const record: CustomLayoutRecord = {
-      id: createCustomLayoutId(),
-      name: template.name,
-      summary: '',
-      template,
-    };
-    const persisted = persistCustomLayouts([record, ...customLayouts]);
-    setActiveCustomLayoutId(record.id);
-    setCustomTemplateDraft(cloneCustomTemplateDefinition(template));
-    setMessage(
-      persisted
-        ? t('Saved as a new layout.')
-        : t('Saved for this session only. This browser blocked local storage.'),
-    );
-  }, [
-    activeCustomLayout,
-    buildCustomLayoutTemplate,
-    customLayouts,
-    persistCustomLayouts,
-    setCustomTemplateDraft,
-    setMessage,
-    t,
-  ]);
+      return record;
+    },
+    [
+      customLayouts,
+      persistCustomLayouts,
+      setCustomTemplateDraft,
+      setMessage,
+      setTemplateChoice,
+      t,
+    ],
+  );
 
-  const saveCustomLayoutAsNew = useCallback(() => {
-    const template = buildCustomLayoutTemplate(activeCustomLayout);
-    const copyName = t('%s copy').replace('%s', t(template.name)).slice(0, CUSTOM_TEMPLATE_NAME_LIMIT);
-    const record: CustomLayoutRecord = {
-      id: createCustomLayoutId(),
-      name: copyName,
-      summary: '',
-      template: {
-        ...template,
-        name: copyName,
-      },
-    };
-    const persisted = persistCustomLayouts([record, ...customLayouts]);
-    setActiveCustomLayoutId(record.id);
-    setCustomTemplateDraft(cloneCustomTemplateDefinition(record.template));
-    setMessage(
-      persisted
-        ? t('Saved as a new layout.')
-        : t('Saved for this session only. This browser blocked local storage.'),
-    );
-  }, [
-    activeCustomLayout,
-    buildCustomLayoutTemplate,
-    customLayouts,
-    persistCustomLayouts,
-    setCustomTemplateDraft,
-    setMessage,
-    t,
-  ]);
+  const deleteCustomLayoutById = useCallback(
+    async (layoutId: string) => {
+      const existing = customLayouts.find((layout) => layout.id === layoutId);
+      if (!existing) {
+        return false;
+      }
 
-  const deleteCustomLayout = useCallback(async () => {
-    if (!activeCustomLayout) {
-      return;
-    }
+      const confirmed = await confirmAction({
+        title: 'Delete this layout?',
+        body: 'The layout is removed from your library. Pages already using it keep their current design.',
+        confirmLabel: 'Delete layout',
+        tone: 'danger',
+      });
+      if (!confirmed) {
+        return false;
+      }
 
-    const confirmed = await confirmAction({
-      title: 'Delete this layout?',
-      body: 'The layout is removed from your library. Pages already using it keep their current design.',
-      confirmLabel: 'Delete layout',
-      tone: 'danger',
-    });
-    if (!confirmed) {
-      return;
-    }
+      const persisted = persistCustomLayouts(customLayouts.filter((layout) => layout.id !== layoutId));
+      setActiveCustomLayoutId((current) => (current === layoutId ? null : current));
+      if (activeCustomLayoutId === layoutId) {
+        setCustomTemplateDraft(
+          selectedPage?.template === 'custom' && selectedPage.customTemplate
+            ? cloneCustomTemplateDefinition(selectedPage.customTemplate)
+            : createCustomTemplateDefinition({ name: t('Untitled layout') }),
+        );
+      }
+      setMessage(
+        persisted
+          ? t('Removed the custom layout. Pages already using it keep their current design.')
+          : t('Removed for this session only. This browser blocked local storage.'),
+      );
 
-    const persisted = persistCustomLayouts(customLayouts.filter((layout) => layout.id !== activeCustomLayout.id));
-    setActiveCustomLayoutId(null);
-    setCustomTemplateDraft(
-      selectedPage?.template === 'custom' && selectedPage.customTemplate
-        ? cloneCustomTemplateDefinition(selectedPage.customTemplate)
-        : createCustomTemplateDefinition({ name: t('Untitled layout') }),
-    );
-    setMessage(
-      persisted
-        ? t('Removed the custom layout. Pages already using it keep their current design.')
-        : t('Removed for this session only. This browser blocked local storage.'),
-    );
-  }, [
-    activeCustomLayout,
-    customLayouts,
-    persistCustomLayouts,
-    selectedPage,
-    setCustomTemplateDraft,
-    setMessage,
-    t,
-  ]);
+      return true;
+    },
+    [
+      activeCustomLayoutId,
+      customLayouts,
+      persistCustomLayouts,
+      selectedPage,
+      setCustomTemplateDraft,
+      setMessage,
+      t,
+    ],
+  );
 
   useEffect(() => {
     if (templateChoice !== 'custom') {
@@ -306,16 +216,12 @@ export function useCustomLayoutLibrary({
   return {
     activeCustomLayout,
     activeCustomLayoutId,
-    customLayoutDirty,
     customLayouts,
-    deleteCustomLayout,
+    deleteCustomLayoutById,
     layoutsExpanded,
-    resetCustomLayoutBase,
-    saveCustomLayout,
-    saveCustomLayoutAsNew,
     selectBuiltinLayout,
     selectCustomLayout,
     setLayoutsExpanded,
-    startNewCustomLayout,
+    upsertCustomLayout,
   };
 }
