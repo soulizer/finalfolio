@@ -7736,7 +7736,7 @@ html:lang(zh-CN) .magazine-page h2,
   display: grid;
   min-width: 0;
   gap: 6px;
-  padding: 8px;
+  padding: 7px;
   border-radius: 8px;
   border: 1px solid rgba(17, 17, 17, 0.12);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(246, 241, 233, 0.6));
@@ -7770,7 +7770,7 @@ html:lang(zh-CN) .magazine-page h2,
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   white-space: normal;
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   font-weight: 600;
   line-height: 1.2;
 }

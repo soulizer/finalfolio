@@ -22,7 +22,11 @@ import {
 import type { Asset } from '../../editor/types';
 import type { SiteContent, TemplateGovernance } from '../../product/types';
 
-export function createAdminAiDraft(ai: ProductConfigPayload['ai']): AdminAiConfigDraft {
+export function createAdminAiDraft(ai: ProductConfigPayload['ai'] | null | undefined): AdminAiConfigDraft | null {
+  if (!ai) {
+    return null;
+  }
+
   return {
     enabled: ai.enabled,
     userTotalLimit: ai.userTotalLimit,
