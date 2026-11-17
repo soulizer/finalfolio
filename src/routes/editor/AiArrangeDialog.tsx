@@ -33,6 +33,8 @@ type AiArrangeDialogProps = {
   onClose: () => void;
   onImportUrl: (url: string) => Promise<Asset>;
   onUploadPhotos: (files: File[]) => Promise<Array<Asset | null> | undefined>;
+  uploadCompleted: number;
+  uploadTotal: number;
   availableAssets: Asset[];
 };
 
@@ -141,6 +143,8 @@ export function AiArrangeDialog({
   onClose,
   onImportUrl,
   onUploadPhotos,
+  uploadCompleted,
+  uploadTotal,
   availableAssets,
 }: AiArrangeDialogProps) {
   const t = useT();
@@ -658,7 +662,9 @@ export function AiArrangeDialog({
                       </svg>
                       <strong>
                         {uploadingFiles
-                          ? t('Uploading photos…')
+                          ? t('Uploading photos… %s/%s')
+                              .replace('%s', String(Math.min(uploadCompleted + 1, Math.max(uploadTotal, 1))))
+                              .replace('%s', String(Math.max(uploadTotal, 1)))
                           : readingFiles
                             ? t('Reading photos…')
                             : t('Drop photos here or choose files')}

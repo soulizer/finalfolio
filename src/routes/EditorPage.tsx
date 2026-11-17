@@ -1961,6 +1961,8 @@ export function EditorPage() {
           onClose={() => setAiDialogOpen(false)}
           onImportUrl={handleImportUrlForAi}
           onUploadPhotos={handleUploadFiles}
+          uploadCompleted={uploadState.completedFiles}
+          uploadTotal={uploadState.totalFiles}
           availableAssets={libraryAssets}
         />
       ) : null}
