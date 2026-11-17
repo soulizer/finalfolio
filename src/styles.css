@@ -30,8 +30,8 @@
   --paper: #faf8f3;
   --shadow: 0 24px 70px rgba(17, 17, 17, 0.08);
   --pressed-card-shadow: inset 0px 1px 7px 4px #11111114;
-  --radius: 26px;
-  --control-radius: 5px;
+  --radius: 20px;
+  --control-radius: 4px;
   --control-height: 44px;
   --control-height-sm: 36px;
   --control-pad-x: 16px;
@@ -60,7 +60,7 @@
   --overlay-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.9),
     0 24px 60px rgba(17, 17, 17, 0.16);
-  --surface-radius: 10px;
+  --surface-radius: 8px;
   --site-width: min(1240px, calc(100vw - 48px));
   --site-section-space: clamp(58px, 7vw, 88px);
   --site-panel-space: clamp(22px, 3vw, 32px);
@@ -412,6 +412,18 @@ a:focus-visible {
     rgba(255, 255, 255, 0.78);
   border-color: rgba(17, 17, 17, 0.16);
   color: var(--ink);
+}
+
+.button--danger-ghost {
+  background: rgba(255, 255, 255, 0.42);
+  border-color: rgba(122, 46, 46, 0.28);
+  color: #7a2e2e;
+  box-shadow: none;
+}
+
+.button--danger-ghost:hover {
+  background: rgba(122, 46, 46, 0.08);
+  box-shadow: none;
 }
 
 .button--danger {
@@ -1299,7 +1311,7 @@ a:focus-visible {
 .editor-panel,
 .page-strip-panel {
   padding: 14px;
-  border-radius: 16px;
+  border-radius: 12px;
   border: 1px solid var(--surface-editor-border);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 244, 237, 0.82));
   box-shadow:
@@ -4343,36 +4355,6 @@ button.asset-frame {
   line-height: 1.35;
 }
 
-.template-hover-preview--pinned-custom {
-  width: 236px;
-}
-
-.template-hover-preview--pinned-custom .custom-layout-overview {
-  grid-template-columns: 1fr;
-  gap: 12px;
-}
-
-.template-hover-preview--pinned-custom .custom-layout-overview__copy {
-  padding: 0;
-  border: 0;
-  background: transparent;
-}
-
-.template-hover-preview--pinned-custom .custom-layout-overview__copy h3 {
-  font-size: 1.18rem;
-}
-
-.template-hover-preview--pinned-custom .custom-layout-overview__copy .panel-note {
-  font-size: 0.84rem;
-}
-
-.template-hover-preview--pinned-custom .custom-layout-map,
-.template-hover-preview--pinned-custom .template-hover-preview__map {
-  width: min(100%, 176px);
-  max-width: 176px;
-  justify-self: center;
-}
-
 .template-issue-preview {
   display: grid;
   place-items: center;
@@ -5254,7 +5236,7 @@ button.asset-frame {
 .issue-viewer__page-stack--closed {
   left: 50%;
   width: calc(var(--sheet-width) - 12px);
-  border-radius: 28px;
+  border-radius: 22px;
   transform: translateX(-50%) translateY(8px);
   background:
     linear-gradient(90deg, rgba(214, 204, 188, 0.88), rgba(255, 255, 255, 0.9) 20%, rgba(217, 206, 190, 0.84) 100%);
@@ -5569,7 +5551,7 @@ button.asset-frame {
   justify-content: center;
   gap: 10px;
   padding: 10px;
-  border-radius: 18px;
+  border-radius: 14px;
   border: var(--overlay-border);
   background: var(--overlay-bg);
   box-shadow: var(--overlay-shadow);
@@ -5642,7 +5624,7 @@ button.asset-frame {
   gap: 12px;
   align-items: center;
   padding: 12px 14px;
-  border-radius: 22px;
+  border-radius: 18px;
   border: var(--overlay-border);
   background: var(--overlay-bg);
   box-shadow: var(--overlay-shadow);
@@ -5714,7 +5696,7 @@ button.asset-frame {
   padding: 12px 14px;
   color: var(--ink);
   text-align: left;
-  border-radius: 20px;
+  border-radius: 16px;
   border: 1px solid rgba(17, 17, 17, 0.1);
   background: rgba(255, 251, 245, 0.88);
   box-shadow:
@@ -5773,7 +5755,7 @@ button.asset-frame {
 .issue-view-mobile-sheet__card {
   width: 100%;
   max-height: min(74vh, 700px);
-  border-radius: 28px 28px 0 0;
+  border-radius: 22px 22px 0 0;
   border: 1px solid rgba(17, 17, 17, 0.1);
   background: rgba(252, 248, 241, 0.96);
   box-shadow:
@@ -5807,7 +5789,7 @@ button.asset-frame {
 
 .issue-view-mobile-sheet .issue-view-copy {
   padding: 16px;
-  border-radius: 22px;
+  border-radius: 18px;
   background: rgba(255, 251, 245, 0.74);
 }
 
@@ -6049,50 +6031,6 @@ button.asset-frame {
     0 8px 18px rgba(17, 17, 17, 0.04);
 }
 
-.custom-layout-overview {
-  display: grid;
-  gap: 14px;
-  grid-template-columns: minmax(0, 1fr) clamp(132px, 28%, 176px);
-  align-items: stretch;
-}
-
-.custom-layout-overview--inline-hidden {
-  display: none;
-}
-
-.custom-layout-overview__copy {
-  display: grid;
-  position: relative;
-  z-index: 1;
-  min-width: 0;
-  align-content: start;
-  gap: 8px;
-  padding: 14px;
-  border-radius: calc(var(--surface-radius) - 2px);
-  border: 1px solid rgba(17, 17, 17, 0.08);
-  background: rgba(255, 255, 255, 0.46);
-}
-
-.custom-layout-overview__copy h3 {
-  margin: 0;
-  font-family: var(--font-ui);
-  font-size: 1.24rem;
-  font-weight: 500;
-  line-height: 1.05;
-}
-
-.custom-layout-overview__copy .panel-note {
-  margin: 0;
-  line-height: 1.45;
-}
-
-.custom-layout-overview > .custom-layout-map {
-  width: 100%;
-  max-width: 176px;
-  justify-self: end;
-  align-self: start;
-}
-
 .custom-layout-details {
   border-radius: var(--surface-radius);
   border: 1px solid var(--line);
@@ -6296,14 +6234,6 @@ button.asset-frame {
 
 .editor-sidebar--navigation .template-grid.template-grid--compact {
   grid-template-columns: 1fr;
-}
-
-.editor-sidebar--navigation .custom-layout-overview {
-  grid-template-columns: 1fr;
-}
-
-.editor-sidebar--navigation .custom-layout-overview > .custom-layout-map {
-  justify-self: start;
 }
 
 .editor-sidebar--operations .editor-topbar,
@@ -6651,10 +6581,6 @@ button.asset-frame {
   }
 
   .editor-crop-workbench {
-    grid-template-columns: 1fr;
-  }
-
-  .custom-layout-overview {
     grid-template-columns: 1fr;
   }
 
@@ -7147,7 +7073,7 @@ button.asset-frame {
   display: grid;
   gap: 10px;
   padding: 22px;
-  border-radius: 24px;
+  border-radius: 20px;
   border: 1px solid var(--line);
   background: rgba(250, 248, 243, 0.78);
   box-shadow: var(--shadow);
@@ -7364,7 +7290,7 @@ html:lang(zh-CN) .magazine-page h2,
 
 .surface-popover {
   border: var(--overlay-border);
-  border-radius: 18px;
+  border-radius: 14px;
   background: var(--overlay-bg);
   box-shadow: var(--overlay-shadow);
   backdrop-filter: var(--overlay-blur);
@@ -7875,9 +7801,10 @@ html:lang(zh-CN) .magazine-page h2,
 .layout-card {
   position: relative;
   display: grid;
+  min-width: 0;
   gap: 6px;
   padding: 8px;
-  border-radius: 12px;
+  border-radius: 8px;
   border: 1px solid rgba(17, 17, 17, 0.12);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(246, 241, 233, 0.6));
   transition: border-color 160ms ease, box-shadow 160ms ease;
@@ -7890,6 +7817,7 @@ html:lang(zh-CN) .magazine-page h2,
 
 .layout-card__pick {
   display: grid;
+  min-width: 0;
   gap: 6px;
   padding: 0;
   border: 0;
@@ -7902,7 +7830,10 @@ html:lang(zh-CN) .magazine-page h2,
 
 .layout-card__name {
   display: block;
+  max-width: 100%;
+  overflow: hidden;
   text-align: center;
+  text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 0.8rem;
   font-weight: 600;
@@ -8280,9 +8211,22 @@ html[lang='zh-CN'] body {
 }
 
 .editor-panel__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
   font-size: 0.92rem;
   font-weight: 600;
   letter-spacing: 0.01em;
+}
+
+.unsaved-dot {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #a97425;
+  box-shadow: 0 0 0 2px rgba(169, 116, 37, 0.16);
 }
 
 .photo-actions {
@@ -8540,4 +8484,44 @@ html[lang='zh-CN'] body {
 .field-note {
   font-weight: 400;
   color: var(--muted);
+}
+
+/* Unified layout library: saved layouts share the built-in card grid. */
+.layout-grid--more {
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+
+.layout-picker-footer {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 6px;
+}
+
+.layout-picker-footer .button {
+  width: 100%;
+  min-height: 30px;
+  font-size: 0.72rem;
+}
+
+.layout-picker-note {
+  margin: 0;
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+.custom-layout-map-wrap {
+  padding: 12px;
+}
+
+.custom-layout-map-wrap .custom-layout-map {
+  max-width: 220px;
+  margin: 0 auto;
+}
+
+/* Touch devices should not show the pointer-following layout tooltip. */
+@media (hover: none) {
+  .template-hover-preview {
+    display: none;
+  }
 }

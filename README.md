@@ -26,6 +26,9 @@ npm run uploads:manage -- list
 - `/editor` is the live editor: upload photos, drag pages to reorder, choose a
   layout, edit text directly on the page, crop/fit photos, then save, export PDF,
   or publish a read-only share link.
+- Custom layouts live in the same **Page layout** grid as the built-in layouts.
+  They can be renamed, duplicated and deleted; the library is stored in this
+  browser (`localStorage`) so it is available without a server round-trip.
 - The rendered page, the exported PDF/JPG files and the public viewer all use the
   same `MagazinePreview` page renderer.
 - Drafts stay local until you save; guest uploads can be recovered and attached

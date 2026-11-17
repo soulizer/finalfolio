@@ -11,8 +11,6 @@ import { formatDateTime } from '../editor/dateFormat';
 import { getAssetSource } from '../editor/assetResources';
 import {
   createDefaultProject,
-  customLayoutPresets,
-  defaultCustomLayoutPresetId,
   defaultTemplatePackId,
   getPageSlotOrder,
   getTemplateLabel,
@@ -33,6 +31,7 @@ import {
   PROJECT_ASSET_LIMIT,
   PROJECT_PAGE_LIMIT,
 } from '../editor/limits';
+import { customTemplatesEqual } from '../editor/customLayouts';
 import { buildExportAdvisories } from '../editor/export';
 import { readDraftProject } from '../editor/storage';
 import {
@@ -42,6 +41,7 @@ import {
   PageData,
   ProjectRecord,
   ProjectState,
+  TemplateId,
 } from '../editor/types';
 import { getGovernedTemplateIds, getGovernedTemplatePackIds } from '../product/governance';
 import { buildTermsPath } from '../legal/terms';
@@ -71,6 +71,7 @@ import { useEditorProjectState } from './editor/useEditorProjectState';
 import { useEditorTemplateState } from './editor/useEditorTemplateState';
 import { useEditorAssetLifecycle } from './editor/useEditorAssetLifecycle';
 import { useEditorPreviewScale } from './editor/useEditorPreviewScale';
+import { useCustomLayoutLibrary } from './editor/useCustomLayoutLibrary';
 import { useEditorUiState } from './editor/useEditorUiState';
 
 type LoadState = 'loading' | 'ready' | 'error';
@@ -136,6 +137,7 @@ function getAssetOrientation(asset: Asset) {
 
   return 'square';
 }
+
 export function EditorPage() {
   const t = useT();
   const navigate = useNavigate();
@@ -187,6 +189,30 @@ export function EditorPage() {
     setSaveState,
     setMessage,
   });
+  const {
+    activeCustomLayout,
+    activeCustomLayoutId,
+    customLayoutDirty,
+    customLayouts,
+    deleteCustomLayout,
+    layoutsExpanded,
+    resetCustomLayoutBase,
+    saveCustomLayout,
+    saveCustomLayoutAsNew,
+    selectBuiltinLayout,
+    selectCustomLayout,
+    setLayoutsExpanded,
+    startNewCustomLayout,
+  } = useCustomLayoutLibrary({
+    customTemplateDraft,
+    selectedPage,
+    selectedPageId,
+    templateChoice,
+    setCustomTemplateDraft,
+    setTemplateChoice,
+    setMessage,
+  });
+
   const [uploadState, setUploadState] = useState<UploadState>(() => createIdleUploadState());
   const [printState, setPrintState] = useState<PrintState>({ phase: 'idle' });
   const {
@@ -265,7 +291,6 @@ export function EditorPage() {
   const sheetProbeRef = useRef<HTMLDivElement | null>(null);
   const printStackRef = useRef<HTMLElement | null>(null);
   const printPageRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const customLayoutBuilderRef = useRef<HTMLDivElement | null>(null);
   const editorStageRef = useRef<HTMLElement | null>(null);
   const previewScale = useEditorPreviewScale({
     loadState,
@@ -414,6 +439,31 @@ export function EditorPage() {
     () => getGovernedTemplateIds(templateGovernance, selectedPage?.template ?? null),
     [selectedPage?.template, templateGovernance],
   );
+  // Custom layouts are ordinary templates: they sit in the same picker grid.
+  // Four familiar built-ins and two saved layouts stay visible; the rest fold
+  // behind one control so the panel does not become a long wall of cards.
+  const layoutPickerEntries = useMemo(() => {
+    const builtIns = visibleTemplateIds
+      .filter((templateId) => templateId !== 'custom')
+      .map((templateId) => ({ kind: 'builtin' as const, templateId, key: `builtin:${templateId}` }));
+    const custom = customLayouts.map((layout) => ({
+      kind: 'custom' as const,
+      layout,
+      key: `custom:${layout.id}`,
+    }));
+    return [...builtIns, ...custom];
+  }, [customLayouts, visibleTemplateIds]);
+  const commonLayoutEntries = useMemo(
+    () => [
+      ...layoutPickerEntries.filter((entry) => entry.kind === 'builtin').slice(0, 4),
+      ...layoutPickerEntries.filter((entry) => entry.kind === 'custom').slice(0, 2),
+    ],
+    [layoutPickerEntries],
+  );
+  const moreLayoutEntries = useMemo(
+    () => layoutPickerEntries.filter((entry) => !commonLayoutEntries.includes(entry)),
+    [commonLayoutEntries, layoutPickerEntries],
+  );
   const visibleTemplatePackIds = useMemo(() => getGovernedTemplatePackIds(templateGovernance), [templateGovernance]);
   const uploadBusy = uploadState.phase !== 'idle';
   const assetMutationBusy = assetDeleteBusy || Boolean(assetRetryTargetId);
@@ -472,19 +522,13 @@ export function EditorPage() {
 
 
   const {
-    activateCustomLayoutPreview,
     clearTemplateHoverPreview,
     commitZoomInputValue,
-    customLayoutPreviewActive,
-    deactivateCustomLayoutPreview,
     handleCropMetricsChange,
-    handleCustomLayoutPreviewBlur,
-    handleCustomLayoutPreviewFocus,
     handleZoomInputChange,
     nudgeSelectedCrop,
     nudgeSelectedScale,
     openTemplateHoverPreview,
-    pinnedCustomLayoutPreview,
     resetZoomInputValue,
     selectedCropMetrics,
     templateHoverPreview,
@@ -494,16 +538,12 @@ export function EditorPage() {
     selectedSlot,
     currentCrop,
     templatePickerOpen,
-    templateChoice,
-    customLayoutBuilderRef,
-    editorStageRef,
     updateSelectedCrop,
   });
 
   const {
     addCustomFrame,
     applyTheme,
-    loadCustomLayoutPreset,
     removeCustomFrame,
     updateCustomArea,
     updateCustomFrameArea,
@@ -513,7 +553,6 @@ export function EditorPage() {
     updateProject,
     updateSelectedPage,
     setCustomTemplateDraft,
-    setTemplateChoice,
     setMessage,
   });
 
@@ -933,7 +972,14 @@ export function EditorPage() {
     .replace('%s', String(selectedPageIndex + 1))
     .replace('%s', String(project.pages.length));
   const selectedTemplateLabel = getTemplateLabel(templateChoice, templateChoice === 'custom' ? customTemplateDraft : null);
-  const isCurrentLayoutSelected = templateChoice === selectedPage.template && templateChoice !== 'custom';
+  const isCurrentLayoutSelected =
+    templateChoice === 'custom'
+      ? Boolean(
+          selectedPage.template === 'custom' &&
+            selectedPage.customTemplate &&
+            customTemplatesEqual(customTemplateDraft, selectedPage.customTemplate),
+        )
+      : templateChoice === selectedPage.template;
   const selectedAssetId = selectedSlot ? selectedPage.slots[selectedSlot] : null;
   const selectedPageUsesKicker = templateUsesKicker(selectedPage.template);
   const selectedPageUsesDeck = templateUsesDeck(selectedPage.template);
@@ -989,25 +1035,16 @@ export function EditorPage() {
           : t('Archive');
   const hoveredTemplateMeta = templateHoverPreview ? templateMeta[templateHoverPreview.templateId] : null;
   const hoveredTemplateLabel = templateHoverPreview
-    ? getTemplateLabel(templateHoverPreview.templateId, templateHoverPreview.templateId === 'custom' ? customTemplateDraft : null)
+    ? templateHoverPreview.label ??
+      getTemplateLabel(templateHoverPreview.templateId, templateHoverPreview.templateId === 'custom' ? customTemplateDraft : null)
     : '';
   const hoveredTemplateDescription = templateHoverPreview
-    ? templateHoverPreview.templateId === 'custom'
-      ? t('Current custom scaffold preview.')
-      : hoveredTemplateMeta?.description ?? ''
+    ? templateHoverPreview.description ??
+      (templateHoverPreview.templateId === 'custom'
+        ? t('Current custom scaffold preview.')
+        : hoveredTemplateMeta?.description ?? '')
     : '';
-  const showInlineCustomLayoutOverview = customLayoutPreviewActive && !pinnedCustomLayoutPreview;
-  const customLayoutOverview = showInlineCustomLayoutOverview ? (
-    <div className="custom-layout-overview">
-      <div className="custom-layout-overview__copy">
-        <p className="eyebrow">{t('Layout map')}</p>
-        <h3>{t('Start from a scaffold')}</h3>
-        <p className="panel-note">
-          {t('Pick the closest structure first. Open the geometry controls only when the preset still needs fine tuning.')}</p>
-      </div>
-      <CustomLayoutMap template={customTemplateDraft} highlightedSlot={selectedSlot} />
-    </div>
-  ) : null;
+  const hoveredTemplateUseCase = templateHoverPreview?.useCase ?? hoveredTemplateMeta?.useCase ?? '';
   const protectedProjectLocked = authReady && !authRefreshFailed && !session && Boolean(projectRecord?.ownerUserId);
   const projectTemplateSectionTag = t('%s ready').replace('%s', String(visibleTemplatePackIds.length));
   const showLoadingShell = useDelayedVisibility(loadState === 'loading');
@@ -1028,6 +1065,71 @@ export function EditorPage() {
     return <EditorLockedState openAccountPage={openAccountPage} startNewDraft={handleStartNewDraft} />;
   }
 
+  const renderLayoutCard = (entry: (typeof layoutPickerEntries)[number]) => {
+    if (entry.kind === 'custom') {
+      const layout = entry.layout;
+      const isSelected = templateChoice === 'custom' && activeCustomLayoutId === layout.id;
+      const description = layout.summary
+        ? t(layout.summary)
+        : t('%s frames').replace('%s', String(layout.template.frames.length));
+      const openPreview = (element: HTMLElement, point?: { x: number; y: number }) =>
+        openTemplateHoverPreview('custom', element, point, {
+          label: layout.name,
+          description,
+        });
+
+      return (
+        <article
+          key={entry.key}
+          className={`layout-card layout-card--custom ${isSelected ? 'is-active' : ''}`}
+          onMouseEnter={(event) => openPreview(event.currentTarget, { x: event.clientX, y: event.clientY })}
+          onMouseMove={(event) => openPreview(event.currentTarget, { x: event.clientX, y: event.clientY })}
+          onMouseLeave={clearTemplateHoverPreview}
+        >
+          <button
+            type="button"
+            className="layout-card__pick"
+            aria-pressed={isSelected}
+            title={t(layout.name)}
+            onClick={() => void selectCustomLayout(layout)}
+            onFocus={(event) => openPreview(event.currentTarget)}
+            onBlur={clearTemplateHoverPreview}
+          >
+            <LayoutThumbnail templateId="custom" customTemplate={layout.template} />
+            <span className="layout-card__name">{t(layout.name)}</span>
+          </button>
+        </article>
+      );
+    }
+
+    const templateId = entry.templateId;
+    const isSelected = templateChoice === templateId;
+    const openPreview = (element: HTMLElement, point?: { x: number; y: number }) =>
+      openTemplateHoverPreview(templateId, element, point);
+
+    return (
+      <article
+        key={entry.key}
+        className={`layout-card ${isSelected ? 'is-active' : ''}`}
+        onMouseEnter={(event) => openPreview(event.currentTarget, { x: event.clientX, y: event.clientY })}
+        onMouseMove={(event) => openPreview(event.currentTarget, { x: event.clientX, y: event.clientY })}
+        onMouseLeave={clearTemplateHoverPreview}
+      >
+        <button
+          type="button"
+          className="layout-card__pick"
+          aria-pressed={isSelected}
+          title={t(templateMeta[templateId].label)}
+          onClick={() => void selectBuiltinLayout(templateId)}
+          onFocus={(event) => openPreview(event.currentTarget)}
+          onBlur={clearTemplateHoverPreview}
+        >
+          <LayoutThumbnail templateId={templateId} />
+          <span className="layout-card__name">{t(templateMeta[templateId].label)}</span>
+        </button>
+      </article>
+    );
+  };
 
   return (
     <div className="editor-shell">
@@ -1253,39 +1355,38 @@ export function EditorPage() {
             {templatePickerOpen ? (
               <>
                 <div className="layout-grid">
-                  {visibleTemplateIds.map((templateId) => {
-                    const meta = templateMeta[templateId];
-                    const isCurrent = templateId === selectedPage.template && templateId !== 'custom';
-                    return (
-                      <article
-                        key={templateId}
-                        className={`layout-card ${templateChoice === templateId ? 'is-active' : ''}`}
-                        onMouseEnter={(event) =>
-                          openTemplateHoverPreview(templateId, event.currentTarget, { x: event.clientX, y: event.clientY })
-                        }
-                        onMouseMove={(event) =>
-                          openTemplateHoverPreview(templateId, event.currentTarget, { x: event.clientX, y: event.clientY })
-                        }
-                        onMouseLeave={clearTemplateHoverPreview}
-                      >
-                        <button
-                          type="button"
-                          className="layout-card__pick"
-                          aria-pressed={templateChoice === templateId}
-                          onClick={() => setTemplateChoice(templateId)}
-                          onFocus={(event) => openTemplateHoverPreview(templateId, event.currentTarget)}
-                          onBlur={clearTemplateHoverPreview}
-                        >
-                          <LayoutThumbnail
-                            templateId={templateId}
-                            customTemplate={templateId === 'custom' ? customTemplateDraft : null}
-                          />
-                          <span className="layout-card__name">{t(meta.label)}</span>
-                        </button>
-                      </article>
-                    );
-                  })}
+                  {commonLayoutEntries.map(renderLayoutCard)}
                 </div>
+                {layoutsExpanded && moreLayoutEntries.length ? (
+                  <div className="layout-grid layout-grid--more" id="layout-grid-more">
+                    {moreLayoutEntries.map(renderLayoutCard)}
+                  </div>
+                ) : null}
+                <div className="layout-picker-footer">
+                  <button
+                    type="button"
+                    className="button button--ghost button--small"
+                    onClick={() => void startNewCustomLayout()}
+                  >
+                    {t('New custom layout')}
+                  </button>
+                  {moreLayoutEntries.length ? (
+                    <button
+                      type="button"
+                      className="button button--ghost button--small layout-grid__more"
+                      aria-expanded={layoutsExpanded}
+                      aria-controls="layout-grid-more"
+                      onClick={() => setLayoutsExpanded((current) => !current)}
+                    >
+                      {layoutsExpanded
+                        ? t('Show fewer layouts')
+                        : `${t('More layouts')} (${moreLayoutEntries.length})`}
+                    </button>
+                  ) : null}
+                </div>
+                <p className="panel-note layout-picker-note">
+                  {t('Saved layouts stay in this browser.')}
+                </p>
                 <div className="layout-selection-actions">
                   <span className="layout-selection-actions__label">{t(selectedTemplateLabel)}</span>
                   <div className="layout-selection-actions__buttons">
@@ -1317,36 +1418,37 @@ export function EditorPage() {
                 </div>
                 {templateChoice === 'custom' ? (
                   <div
-                    ref={customLayoutBuilderRef}
                     className="custom-layout-builder"
-                    onMouseEnter={activateCustomLayoutPreview}
-                    onMouseLeave={deactivateCustomLayoutPreview}
-                    onFocus={handleCustomLayoutPreviewFocus}
-                    onBlur={handleCustomLayoutPreviewBlur}
                   >
                     <div className="editor-panel__toolbar">
-                      <span className="editor-panel__label">{t('Custom layout')}</span>
+                      <span className="editor-panel__label">
+                        {activeCustomLayout ? t('Edit layout') : t('New custom layout')}
+                        {customLayoutDirty ? (
+                          <span
+                            className="unsaved-dot"
+                            role="status"
+                            aria-label={t('Unsaved changes')}
+                            title={t('Unsaved changes')}
+                          />
+                        ) : null}
+                      </span>
                       <span className="panel-tag">
                         {customTemplateDraft.frames.length === 1
                           ? t('1 frame')
                           : t('%s frames').replace('%s', String(customTemplateDraft.frames.length))}
                       </span>
                     </div>
-                    {customLayoutOverview}
-                    <div className="template-grid template-grid--compact">
-                      {customLayoutPresets.map((preset) => (
-                        <button
-                          key={preset.id}
-                          type="button"
-                          className={`template-card ${customTemplateDraft.name === t(preset.template.name) ? 'is-active' : ''}`}
-                          onClick={() => loadCustomLayoutPreset(preset.id)}
-                        >
-                          <CustomLayoutMap template={preset.template} className="custom-layout-map--card" />
-                          <span>{t(preset.label)}</span>
-                          <small>{t(preset.summary)}</small>
-                        </button>
-                      ))}
-                    </div>
+                    <p className="panel-note">
+                      {activeCustomLayout
+                        ? t('Save changes updates this layout in your library. Use Replace this page above to apply it to the page.')
+                        : t('Save the layout to reuse it later. Use Replace this page above to apply it now.')}
+                    </p>
+                    <details className="custom-layout-details">
+                      <summary>{t('Layout map')}</summary>
+                      <div className="custom-layout-map-wrap">
+                        <CustomLayoutMap template={customTemplateDraft} highlightedSlot={selectedSlot} />
+                      </div>
+                    </details>
                     <label className="field">
                       <span>{t('Layout name')}</span>
                       <input
@@ -1363,10 +1465,27 @@ export function EditorPage() {
                     <div className="editor-panel__actions editor-panel__actions--tight">
                       <button
                         type="button"
-                        className="button button--ghost button--small"
-                        onClick={() => loadCustomLayoutPreset(defaultCustomLayoutPresetId)}
+                        className="button button--primary button--small"
+                        onClick={saveCustomLayout}
                       >
-                        {t('Reset base')}</button>
+                        {activeCustomLayout ? t('Save changes') : t('Save layout')}
+                      </button>
+                      {activeCustomLayout ? (
+                        <button
+                          type="button"
+                          className="button button--ghost button--small"
+                          onClick={saveCustomLayoutAsNew}
+                        >
+                          {t('Save as new layout')}
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="button button--ghost button--small"
+                        onClick={resetCustomLayoutBase}
+                      >
+                        {t('Reset base')}
+                      </button>
                       <button
                         type="button"
                         className="button button--ghost button--small"
@@ -1376,6 +1495,17 @@ export function EditorPage() {
                         {customTemplateDraft.frames.length >= CUSTOM_TEMPLATE_FRAME_LIMIT ? t('Frame limit') : t('Add frame')}
                       </button>
                     </div>
+                    {activeCustomLayout ? (
+                      <div className="editor-panel__actions editor-panel__actions--tight">
+                        <button
+                          type="button"
+                          className="button button--danger-ghost button--small"
+                          onClick={() => void deleteCustomLayout()}
+                        >
+                          {t('Delete layout')}
+                        </button>
+                      </div>
+                    ) : null}
                     <details className="custom-layout-details">
                       <summary>{t('Text block geometry')}</summary>
                       <div className="custom-layout-grid">
@@ -1490,35 +1620,11 @@ export function EditorPage() {
               <div className="template-hover-preview__meta">
                 <span>{t(hoveredTemplateLabel)}</span>
                 <p>{t(hoveredTemplateDescription)}</p>
-                {hoveredTemplateMeta?.useCase ? (
+                {hoveredTemplateUseCase ? (
                   <small>
-                    {t('Recommended for')} · {t(hoveredTemplateMeta.useCase)}
+                    {t('Recommended for')} · {t(hoveredTemplateUseCase)}
                   </small>
                 ) : null}
-              </div>
-            </div>
-          ) : null}
-          {!templateHoverPreview && pinnedCustomLayoutPreview ? (
-            <div
-              className="template-hover-preview template-hover-preview--pinned-custom"
-              style={{
-                left: `${pinnedCustomLayoutPreview.left}px`,
-                top: `${pinnedCustomLayoutPreview.top}px`,
-              }}
-              aria-hidden="true"
-            >
-              <div className="custom-layout-overview custom-layout-overview--floating">
-                <div className="custom-layout-overview__copy">
-                  <p className="eyebrow">{t('Layout map')}</p>
-                  <h3>{t('Start from a scaffold')}</h3>
-                  <p className="panel-note">
-                    {t('Pick the closest structure first. Open the geometry controls only when the preset still needs fine tuning.')}</p>
-                </div>
-                <CustomLayoutMap
-                  template={customTemplateDraft}
-                  highlightedSlot={selectedSlot}
-                  className="template-hover-preview__map"
-                />
               </div>
             </div>
           ) : null}

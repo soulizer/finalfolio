@@ -1657,3 +1657,17 @@
 - Playwright 16/16
 - Runtime sweep: no console errors, failed requests, missing alt text, unnamed buttons or unlabeled inputs
 - No horizontal overflow at 360/390/768/1024; PDF export page count/A4 geometry verified
+
+## 2026-11-17 Saved Layouts Join the Layout Picker
+
+- Custom layout presets now render as A4 cards in the main Page layout grid,
+  with common layouts first and the rest behind **More layouts**.
+- Saved layouts are fully editable: rename, save changes, duplicate, delete.
+  Names and frame labels stay localised and are no longer fixed strings.
+- Added unsaved-change confirmation when leaving an edited saved layout.
+- Removed the hover/focus custom-layout preview that shifted the builder and
+  could swallow button clicks; replaced it with a stable **Layout map**
+  disclosure.
+- Reduced radii across panels, cards, controls and overlays.
+- Added Playwright coverage for the unified grid, rename persistence, deletion,
+  insert-link retention and discard confirmation.

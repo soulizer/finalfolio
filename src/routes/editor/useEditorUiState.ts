@@ -1,4 +1,4 @@
-import { ChangeEvent, FocusEvent, RefObject, useCallback, useEffect, useState } from 'react';
+import { ChangeEvent, useCallback, useEffect, useState } from 'react';
 import { DEFAULT_FILL_SCALE } from '../../editor/demoData';
 import { cropValueToPixelOffset, pixelOffsetToCropValue } from '../../editor/imageGeometry';
 import type { CropSettings, TemplateId } from '../../editor/types';
@@ -6,7 +6,6 @@ import type { CropSettings, TemplateId } from '../../editor/types';
 const TEMPLATE_HOVER_PREVIEW_WIDTH = 214;
 const TEMPLATE_HOVER_PREVIEW_HEIGHT = 180;
 const TEMPLATE_HOVER_PREVIEW_GAP = 16;
-const CUSTOM_LAYOUT_PREVIEW_WIDTH = 236;
 
 export type CropMetrics = {
   maxOffsetX: number;
@@ -17,11 +16,9 @@ export type TemplateHoverPreview = {
   templateId: TemplateId;
   left: number;
   top: number;
-};
-
-export type FloatingPreviewPosition = {
-  left: number;
-  top: number;
+  label?: string;
+  description?: string;
+  useCase?: string;
 };
 
 type UseEditorUiStateOptions = {
@@ -29,9 +26,6 @@ type UseEditorUiStateOptions = {
   selectedSlot: string | null;
   currentCrop?: CropSettings;
   templatePickerOpen: boolean;
-  templateChoice: TemplateId;
-  customLayoutBuilderRef: RefObject<HTMLDivElement | null>;
-  editorStageRef: RefObject<HTMLElement | null>;
   updateSelectedCrop: (updater: (crop: CropSettings) => CropSettings) => void;
 };
 
@@ -44,21 +38,13 @@ export function useEditorUiState({
   selectedSlot,
   currentCrop,
   templatePickerOpen,
-  templateChoice,
-  customLayoutBuilderRef,
-  editorStageRef,
   updateSelectedCrop,
 }: UseEditorUiStateOptions) {
   const [zoomInputValue, setZoomInputValue] = useState('1.00');
   const [cropMetricsBySlot, setCropMetricsBySlot] = useState<Record<string, CropMetrics>>({});
   const [templateHoverPreview, setTemplateHoverPreview] = useState<TemplateHoverPreview | null>(null);
-  const [customLayoutPreviewHover, setCustomLayoutPreviewHover] = useState(false);
-  const [customLayoutPreviewFocus, setCustomLayoutPreviewFocus] = useState(false);
-  const [pinnedCustomLayoutPreview, setPinnedCustomLayoutPreview] = useState<FloatingPreviewPosition | null>(null);
 
   const selectedCropMetrics = selectedSlot ? cropMetricsBySlot[selectedSlot] ?? null : null;
-  const customLayoutPreviewActive =
-    templatePickerOpen && templateChoice === 'custom' && (customLayoutPreviewHover || customLayoutPreviewFocus);
 
   useEffect(() => {
     setCropMetricsBySlot({});
@@ -83,55 +69,6 @@ export function useEditorUiState({
   }, [templateHoverPreview, templatePickerOpen]);
 
   useEffect(() => {
-    if (!customLayoutPreviewActive) {
-      setPinnedCustomLayoutPreview(null);
-      return;
-    }
-
-    const updatePinnedPreviewPosition = () => {
-      if (!customLayoutBuilderRef.current || !editorStageRef.current || window.innerWidth <= 1100) {
-        setPinnedCustomLayoutPreview(null);
-        return;
-      }
-
-      const builderBounds = customLayoutBuilderRef.current.getBoundingClientRect();
-      const stageBounds = editorStageRef.current.getBoundingClientRect();
-      const viewportPadding = 8;
-      const preferredLeft = builderBounds.right + TEMPLATE_HOVER_PREVIEW_GAP;
-      const left =
-        preferredLeft + CUSTOM_LAYOUT_PREVIEW_WIDTH > window.innerWidth - viewportPadding
-          ? Math.max(viewportPadding, builderBounds.left - CUSTOM_LAYOUT_PREVIEW_WIDTH - TEMPLATE_HOVER_PREVIEW_GAP)
-          : preferredLeft;
-      const maxTop = Math.max(viewportPadding, window.innerHeight - TEMPLATE_HOVER_PREVIEW_HEIGHT - viewportPadding);
-      const top =
-        stageBounds.top >= viewportPadding && stageBounds.top <= maxTop
-          ? stageBounds.top
-          : clamp(stageBounds.bottom - TEMPLATE_HOVER_PREVIEW_HEIGHT, viewportPadding, maxTop);
-
-      setPinnedCustomLayoutPreview({ left, top });
-    };
-
-    const frame = window.requestAnimationFrame(updatePinnedPreviewPosition);
-    window.addEventListener('resize', updatePinnedPreviewPosition);
-    window.addEventListener('scroll', updatePinnedPreviewPosition, true);
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.removeEventListener('resize', updatePinnedPreviewPosition);
-      window.removeEventListener('scroll', updatePinnedPreviewPosition, true);
-    };
-  }, [customLayoutBuilderRef, customLayoutPreviewActive, editorStageRef]);
-
-  useEffect(() => {
-    if (templatePickerOpen && templateChoice === 'custom') {
-      return;
-    }
-
-    setCustomLayoutPreviewHover(false);
-    setCustomLayoutPreviewFocus(false);
-  }, [templateChoice, templatePickerOpen]);
-
-  useEffect(() => {
     if (!templateHoverPreview) {
       return;
     }
@@ -149,7 +86,12 @@ export function useEditorUiState({
     };
   }, [templateHoverPreview]);
 
-  function openTemplateHoverPreview(templateId: TemplateId, element: HTMLElement, point?: { x: number; y: number }) {
+  function openTemplateHoverPreview(
+    templateId: TemplateId,
+    element: HTMLElement,
+    point?: { x: number; y: number },
+    meta?: { label?: string; description?: string; useCase?: string },
+  ) {
     const bounds = element.getBoundingClientRect();
     const viewportPadding = 16;
     const anchorX = point?.x ?? bounds.left + bounds.width / 2;
@@ -168,31 +110,12 @@ export function useEditorUiState({
       templateId,
       left,
       top,
+      ...meta,
     });
   }
 
   function clearTemplateHoverPreview() {
     setTemplateHoverPreview(null);
-  }
-
-  function activateCustomLayoutPreview() {
-    setCustomLayoutPreviewHover(true);
-  }
-
-  function deactivateCustomLayoutPreview() {
-    setCustomLayoutPreviewHover(false);
-  }
-
-  function handleCustomLayoutPreviewFocus() {
-    setCustomLayoutPreviewFocus(true);
-  }
-
-  function handleCustomLayoutPreviewBlur(event: FocusEvent<HTMLDivElement>) {
-    if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
-      return;
-    }
-
-    setCustomLayoutPreviewFocus(false);
   }
 
   // Stable identity is required: MagazinePreview includes this callback in an effect
@@ -282,19 +205,13 @@ export function useEditorUiState({
   }
 
   return {
-    activateCustomLayoutPreview,
     clearTemplateHoverPreview,
     commitZoomInputValue,
-    customLayoutPreviewActive,
-    deactivateCustomLayoutPreview,
     handleCropMetricsChange,
-    handleCustomLayoutPreviewBlur,
-    handleCustomLayoutPreviewFocus,
     handleZoomInputChange,
     nudgeSelectedCrop,
     nudgeSelectedScale,
     openTemplateHoverPreview,
-    pinnedCustomLayoutPreview,
     resetZoomInputValue,
     selectedCropMetrics,
     templateHoverPreview,

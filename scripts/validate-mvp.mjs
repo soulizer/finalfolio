@@ -1828,7 +1828,7 @@ try {
     assert.match(editorPageActions, /function applyTemplateChoice/);
     assert.match(editorDesignActions, /export function createEditorDesignActions/);
     assert.match(editorDesignActions, /function clampLayoutArea/);
-    assert.match(editorDesignActions, /function loadCustomLayoutPreset/);
+    assert.match(editorDesignActions, /function addCustomFrame/);
     assert.match(editorDesignActions, /function updateFrameRadius/);
     assert.match(editorUseEditorExportState, /export function useEditorExportState/);
     assert.match(editorUseEditorExportState, /function updateExportSettings/);
@@ -1862,7 +1862,7 @@ try {
     assert.match(editorUseEditorUiState, /export function useEditorUiState/);
     assert.match(editorUseEditorUiState, /openTemplateHoverPreview/);
     assert.match(editorUseEditorUiState, /commitZoomInputValue/);
-    assert.match(editorUseEditorUiState, /setPinnedCustomLayoutPreview/);
+    assert.match(editorUseEditorUiState, /handleCropMetricsChange/);
     assert.match(accountConsoleHeader, /export function AccountConsoleHeader/);
     assert.match(accountConsoleHeader, /Manage your own projects, uploads, and identity\./);
     assert.match(accountConsoleHeader, /admin-section-nav/);

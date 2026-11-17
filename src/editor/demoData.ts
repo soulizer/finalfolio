@@ -545,7 +545,6 @@ export const customLayoutPresets: CustomLayoutPreset[] = customLayoutPresetSourc
   template: normalizeCustomTemplateDefinition(preset.template),
 }));
 
-export const defaultCustomLayoutPresetId = customLayoutPresets[0].id;
 
 const templatePackSource: TemplatePackDefinition[] = [
   {

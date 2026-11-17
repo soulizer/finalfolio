@@ -1,7 +1,6 @@
 import { translate } from '../../i18n';
 import {
   cloneCustomTemplateDefinition,
-  customLayoutPresets,
   pageThemeMeta,
 } from '../../editor/demoData';
 import {
@@ -16,7 +15,6 @@ import type {
   PageData,
   PageThemeId,
   ProjectState,
-  TemplateId,
 } from '../../editor/types';
 
 type UpdateProject = (updater: (current: ProjectState) => ProjectState) => void;
@@ -24,14 +22,12 @@ type UpdateSelectedPage = (updater: (page: PageData) => PageData) => void;
 type SetCustomTemplateDraft = (
   value: CustomTemplateDefinition | ((current: CustomTemplateDefinition) => CustomTemplateDefinition)
 ) => void;
-type SetTemplateChoice = (value: TemplateId) => void;
 type SetMessage = (message: string | null) => void;
 
 type CreateEditorDesignActionsOptions = {
   updateProject: UpdateProject;
   updateSelectedPage: UpdateSelectedPage;
   setCustomTemplateDraft: SetCustomTemplateDraft;
-  setTemplateChoice: SetTemplateChoice;
   setMessage: SetMessage;
 };
 
@@ -53,7 +49,6 @@ export function createEditorDesignActions({
   updateProject,
   updateSelectedPage,
   setCustomTemplateDraft,
-  setTemplateChoice,
   setMessage,
 }: CreateEditorDesignActionsOptions) {
   function updateCustomTemplateDraft(updater: (current: CustomTemplateDefinition) => CustomTemplateDefinition) {
@@ -72,19 +67,6 @@ export function createEditorDesignActions({
       ...frame,
       ...updateCustomArea(frame, field, value),
     };
-  }
-
-  function loadCustomLayoutPreset(presetId: string) {
-    const preset = customLayoutPresets.find((entry) => entry.id === presetId);
-    if (!preset) {
-      return;
-    }
-
-    setTemplateChoice('custom');
-    setCustomTemplateDraft(cloneCustomTemplateDefinition(preset.template));
-    setMessage(
-      translate('Loaded the %s scaffold. Apply it when the structure feels right.').replace('%s', translate(preset.label)),
-    );
   }
 
   function addCustomFrame() {
@@ -156,7 +138,6 @@ export function createEditorDesignActions({
   return {
     addCustomFrame,
     applyTheme,
-    loadCustomLayoutPreset,
     removeCustomFrame,
     updateCustomArea,
     updateCustomFrameArea,
