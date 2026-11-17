@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { MagazinePreview } from '../components/MagazinePreview';
 import { TemplateIssuePreview } from '../components/TemplateIssuePreview';
 import { LayoutThumbnail } from '../components/LayoutThumbnail';
+import { Icon } from '../components/Icon';
 import { AccountUploadListItem, importAssetFromUrl } from '../editor/api';
 import { getConfirmationMessage } from '../editor/confirmations';
 import { formatDateTime } from '../editor/dateFormat';
@@ -1246,9 +1247,7 @@ export function EditorPage() {
             title={t('Edit layout')}
             onClick={() => openEditLayoutEditor(layout)}
           >
-            <svg viewBox="0 0 16 16" aria-hidden="true">
-              <path d="M9.6 3.1l3.3 3.3M3.2 12.8l1.1-3.4 6-6a1.4 1.4 0 0 1 2 0l.3.3a1.4 1.4 0 0 1 0 2l-6 6-3.4 1.1Z" />
-            </svg>
+            <Icon name="pencil" />
           </button>
         </article>
       );
@@ -1473,10 +1472,7 @@ export function EditorPage() {
                           aria-label={t('Duplicate page')}
                           onClick={duplicatePage}
                         >
-                          <svg viewBox="0 0 16 16" aria-hidden="true">
-                            <rect x="5.5" y="3.5" width="7" height="9" rx="1.2" />
-                            <path d="M10.5 12.5H4.5A1 1 0 0 1 3.5 11.5V6" />
-                          </svg>
+                          <Icon name="copy" />
                         </button>
                         <button
                           type="button"
@@ -1486,9 +1482,7 @@ export function EditorPage() {
                           disabled={selectedPageIndex <= 0}
                           onClick={() => moveSelectedPage(-1)}
                         >
-                          <svg viewBox="0 0 16 16" aria-hidden="true">
-                            <path d="M8 12.5V4M4.5 7.5 8 4l3.5 3.5" />
-                          </svg>
+                          <Icon name="arrowUp" />
                         </button>
                         <button
                           type="button"
@@ -1498,9 +1492,7 @@ export function EditorPage() {
                           disabled={selectedPageIndex >= project.pages.length - 1}
                           onClick={() => moveSelectedPage(1)}
                         >
-                          <svg viewBox="0 0 16 16" aria-hidden="true">
-                            <path d="M8 3.5V12M4.5 8.5 8 12l3.5-3.5" />
-                          </svg>
+                          <Icon name="arrowDown" />
                         </button>
                         <button
                           type="button"
@@ -1510,9 +1502,7 @@ export function EditorPage() {
                           disabled={project.pages.length === 1}
                           onClick={removeSelectedPage}
                         >
-                          <svg viewBox="0 0 16 16" aria-hidden="true">
-                            <path d="M3.5 4.5h9M6.2 4.5V3.2h3.6v1.3M5 4.5l.5 8.3h5l.5-8.3M6.8 7v3.6M9.2 7v3.6" />
-                          </svg>
+                          <Icon name="trash" />
                         </button>
                       </div>
                     ) : null}
@@ -1535,9 +1525,7 @@ export function EditorPage() {
                   aria-label={templatePickerOpen ? t('Collapse page layouts') : t('Expand page layouts')}
                   title={templatePickerOpen ? t('Collapse page layouts') : t('Expand page layouts')}
                 >
-                  <svg viewBox="0 0 16 16" aria-hidden="true">
-                    <path d={templatePickerOpen ? 'M4 10l4-4 4 4' : 'M4 6l4 4 4-4'} />
-                  </svg>
+                  <Icon name={templatePickerOpen ? 'chevronUp' : 'chevronDown'} />
                 </button>
               </div>
             </div>
@@ -1598,9 +1586,7 @@ export function EditorPage() {
                       aria-label={t('Insert above')}
                       title={t('Insert above')}
                     >
-                      <svg viewBox="0 0 16 16" aria-hidden="true">
-                        <path d="M8 9.6V2.6M4.8 5.8 8 2.6l3.2 3.2M3.4 12.8h9.2" />
-                      </svg>
+                      <Icon name="arrowUpToLine" />
                     </button>
                     <button
                       type="button"
@@ -1610,9 +1596,7 @@ export function EditorPage() {
                       aria-label={t('Replace this page')}
                       title={t('Replace this page')}
                     >
-                      <svg viewBox="0 0 16 16" aria-hidden="true">
-                        <path d="M3.6 5.4h7.2L9 3.6M12.4 10.6H5.2L7 12.4" />
-                      </svg>
+                      <Icon name="repeat" />
                     </button>
                     <button
                       type="button"
@@ -1622,9 +1606,7 @@ export function EditorPage() {
                       aria-label={t('Insert below')}
                       title={t('Insert below')}
                     >
-                      <svg viewBox="0 0 16 16" aria-hidden="true">
-                        <path d="M8 2.6v7M4.8 6.4 8 9.6l3.2-3.2M3.4 12.8h9.2" />
-                      </svg>
+                      <Icon name="arrowDownToLine" />
                     </button>
                   </div>
                 </div>
@@ -1665,9 +1647,7 @@ export function EditorPage() {
                   aria-label={starterPacksOpen ? t('Collapse project templates') : t('Expand project templates')}
                   title={starterPacksOpen ? t('Collapse project templates') : t('Expand project templates')}
                 >
-                  <svg viewBox="0 0 16 16" aria-hidden="true">
-                    <path d={starterPacksOpen ? 'M4 10l4-4 4 4' : 'M4 6l4 4 4-4'} />
-                  </svg>
+                  <Icon name={starterPacksOpen ? 'chevronUp' : 'chevronDown'} />
                 </button>
               </div>
             </div>
@@ -1737,9 +1717,7 @@ export function EditorPage() {
                     aria-label={t('Manage templates')}
                     title={t('Manage templates')}
                   >
-                    <svg viewBox="0 0 16 16" aria-hidden="true">
-                      <path d="M9.6 3.1l3.3 3.3M3.2 12.8l1.1-3.4 6-6a1.4 1.4 0 0 1 2 0l.3.3a1.4 1.4 0 0 1 0 2l-6 6-3.4 1.1Z" />
-                    </svg>
+                    <Icon name="pencil" />
                   </Link>
                 ) : null}
               </div>

@@ -1734,3 +1734,20 @@
   once, use an 8k output budget, and fail with a clear retry message when the
   service is unavailable. The API fallback now reports status-specific errors
   instead of the generic `Request failed.`.
+
+## 2026-11-17 Icon language and control rhythm
+
+- Added `docs/design-system.md` and fixed the control height system: 24px micro
+  icon controls and 36px standard editor/admin controls. AI, fill/fit, crop,
+  account, template and project actions now share the same height.
+- Replaced every hand-drawn UI SVG with the shared `Icon` component (Lucide
+  geometry, 24px grid, 1.75 stroke). Decorative layout illustrations stay in the
+  preview components.
+- Removed the dead absolute-positioned `.editor-icon-button` rule that made new
+  toolbar buttons 32px wide and floating inside their rows.
+- Rebuilt the gallery action row: a compact upload button with an icon, a real
+  gap, and a separate link button. The upload button no longer stretches across
+  the panel.
+- Restored the AI layout dialog to the delete-confirmation material: one thin
+  border, a 1px inset top highlight and the standard popover shadow. The heavy
+  inner bevel ring was removed.

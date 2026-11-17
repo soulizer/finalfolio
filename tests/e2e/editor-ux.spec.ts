@@ -244,3 +244,16 @@ test('odd page counts offer one-click page parity fixes', async ({ page }) => {
   await page.locator('.confirm-dialog').getByRole('button', { name: 'Delete page' }).click();
   await expect(page.locator('.editor-page-parity')).toHaveCount(0);
 });
+
+test('editor controls share one dense control height', async ({ page }) => {
+  await signIn(page, '/editor');
+  await expect(page.locator('.editor-sidebar .button--small').first()).toBeVisible();
+  const heights = await page
+    .locator('.editor-sidebar .button--small, .editor-sidebar .editor-icon-button')
+    .evaluateAll((elements) =>
+      elements
+        .filter((element) => element.offsetParent !== null)
+        .map((element) => Math.round(element.getBoundingClientRect().height)),
+    );
+  expect([...new Set(heights)]).toEqual([36]);
+});

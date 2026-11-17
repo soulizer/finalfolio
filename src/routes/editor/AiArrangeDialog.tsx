@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Icon } from '../../components/Icon';
 import { useT } from '../../i18n';
 import {
   fetchAiStatus,
@@ -546,9 +547,7 @@ export function AiArrangeDialog({
               onClose();
             }}
           >
-            <svg viewBox="0 0 16 16" aria-hidden="true">
-              <path d="M4 4l8 8M12 4l-8 8" />
-            </svg>
+            <Icon name="x" />
           </button>
         </header>
 
@@ -723,9 +722,7 @@ export function AiArrangeDialog({
                     aria-expanded={sourcePanel === 'upload'}
                     onClick={() => setSourcePanel((current) => (current === 'upload' ? 'none' : 'upload'))}
                   >
-                    <svg viewBox="0 0 16 16" aria-hidden="true">
-                      <path d="M8 11V3M5 6l3-3 3 3M3 12v1a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1" />
-                    </svg>
+                    <Icon name="upload" />
                     {t('Upload from device')}
                   </button>
                   <button
@@ -734,9 +731,7 @@ export function AiArrangeDialog({
                     aria-expanded={sourcePanel === 'url'}
                     onClick={() => setSourcePanel((current) => (current === 'url' ? 'none' : 'url'))}
                   >
-                    <svg viewBox="0 0 16 16" aria-hidden="true">
-                      <path d="M6.5 9.5l3-3M5 11l-1 1a2.1 2.1 0 0 1-3-3l3-3a2.1 2.1 0 0 1 3 0M11 5l1-1a2.1 2.1 0 0 1 3 3l-3 3a2.1 2.1 0 0 1-3 0" />
-                    </svg>
+                    <Icon name="link" />
                     {t('Import from URL')}
                   </button>
                 </div>
@@ -765,9 +760,7 @@ export function AiArrangeDialog({
                         }
                       }}
                     >
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M12 16V4M7 9l5-5 5 5M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4" />
-                      </svg>
+                      <Icon name="upload" />
                       <strong>
                         {uploadingFiles
                           ? t('Uploading photos… %s/%s')

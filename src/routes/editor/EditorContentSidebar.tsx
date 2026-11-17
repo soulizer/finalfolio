@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Icon } from '../../components/Icon';
 import { countLabel, useT } from '../../i18n';
 import type { ChangeEvent } from 'react';
 import {
@@ -135,6 +136,7 @@ export function EditorContentSidebar({
         </div>
         <div className="editor-panel__actions editor-panel__actions--tight photo-actions">
           <label className={`button button--primary button--small upload-button upload-button--compact ${uploadBusy ? 'is-busy' : ''}`.trim()}>
+            <Icon name="upload" />
             {uploadProgressLabel}
             <input
               type="file"
@@ -163,9 +165,7 @@ export function EditorContentSidebar({
             title={t('Add from URL')}
             onClick={() => setImportUrlOpen((current) => !current)}
           >
-            <svg viewBox="0 0 16 16" aria-hidden="true">
-              <path d="M6.4 9.6 9.6 6.4M5 11l-1 1a2.1 2.1 0 0 1-3-3l3-3a2.1 2.1 0 0 1 3 0M11 5l1-1a2.1 2.1 0 0 1 3 3l-3 3a2.1 2.1 0 0 1-3 0" />
-            </svg>
+            <Icon name="link" />
           </button>
           {unusedAssetCount > 0 ? (
             <button
@@ -176,9 +176,7 @@ export function EditorContentSidebar({
               title={assetMutationBusy || uploadBusy ? t('Wait for the current library mutation to finish.') : countLabel(unusedAssetCount, 'Clear 1 unused', 'Clear %s unused')}
               onClick={() => void removeUnusedAssetsFromIssue()}
             >
-              <svg viewBox="0 0 16 16" aria-hidden="true">
-                <path d="M3 4.6h10M6.2 4.6V3.2h3.6v1.4M5 4.6l.5 8h5l.5-8" />
-              </svg>
+              <Icon name="trash" />
               <span className="photo-actions__badge" aria-hidden="true">{unusedAssetCount}</span>
             </button>
           ) : null}
@@ -317,9 +315,7 @@ export function EditorContentSidebar({
                       title={retryLabel}
                       onClick={() => void handleRetryAssetMirror(asset)}
                     >
-                      <svg viewBox="0 0 16 16" aria-hidden="true">
-                        <path d="M13 8a5 5 0 1 1-1.5-3.5M13 3v4H9" />
-                      </svg>
+                      <Icon name="refresh" />
                     </button>
                   ) : null}
                   {isInCurrentProject ? (
@@ -331,9 +327,7 @@ export function EditorContentSidebar({
                       title={deleteLabel}
                       onClick={() => void handleDeleteAsset(asset)}
                     >
-                      <svg viewBox="0 0 16 16" aria-hidden="true">
-                        <path d="M3.5 4.5h9M6.2 4.5V3.2h3.6v1.3M5 4.5l.5 8.3h5l.5-8.3M6.8 7v3.6M9.2 7v3.6" />
-                      </svg>
+                      <Icon name="trash" />
                     </button>
                   ) : null}
                 </article>
@@ -341,11 +335,7 @@ export function EditorContentSidebar({
             })
           ) : (
             <div className="asset-rail__empty">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
-                <circle cx="8.5" cy="9.5" r="1.8" />
-                <path d="M4.5 17.5 10 12l3.2 3.4 2.6-2.6 3.7 4.7" />
-              </svg>
+              <Icon name="image" />
               <strong>{t('No photos yet.')}</strong>
               <span>{t('Use the upload button above, or drag photos straight onto the page.')}</span>
             </div>
@@ -557,9 +547,7 @@ export function EditorContentSidebar({
                   aria-label={t('Clear')}
                   title={t('Clear')}
                 >
-                  <svg viewBox="0 0 16 16" aria-hidden="true">
-                    <path d="M9.4 2.6 13.4 6.6 7.6 12.4H4.4l-1.8-1.8zM6.2 5.8l4 4M4.2 12.4h8.2" />
-                  </svg>
+                  <Icon name="eraser" />
                 </button>
                 <button
                   type="button"
@@ -568,9 +556,7 @@ export function EditorContentSidebar({
                   aria-label={t('Clear all')}
                   title={t('Clear all')}
                 >
-                  <svg viewBox="0 0 16 16" aria-hidden="true">
-                    <path d="M3 4.6h10M6.2 4.6V3.2h3.6v1.4M5 4.6l.5 8h5l.5-8M6.8 7v3.2M9.2 7v3.2" />
-                  </svg>
+                  <Icon name="trash" />
                 </button>
                 <button
                   type="button"
@@ -585,9 +571,7 @@ export function EditorContentSidebar({
                   aria-label={t('Reset')}
                   title={t('Reset')}
                 >
-                  <svg viewBox="0 0 16 16" aria-hidden="true">
-                    <path d="M13 8a5 5 0 1 1-1.5-3.5M13 3v4H9" />
-                  </svg>
+                  <Icon name="rotate" />
                 </button>
               </div>
             </>

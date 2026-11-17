@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { translate, useT } from '../../i18n';
+import { Icon } from '../../components/Icon';
 import {
   testAdminAiProvider,
   type AdminAiConfigDraft,
@@ -122,9 +123,7 @@ function ProviderEditorDialog({
             disabled={saving}
             onClick={onCancel}
           >
-            <svg viewBox="0 0 16 16" aria-hidden="true">
-              <path d="M4 4l8 8M12 4l-8 8" />
-            </svg>
+            <Icon name="x" />
           </button>
         </header>
 
