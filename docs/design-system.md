@@ -28,20 +28,18 @@ Use the existing 6 / 8 / 10 / 12 / 16 spacing steps.
 - Page chip padding: **12px 14px**; corner actions sit **14px** inside the card.
 - Thumbnail corner actions sit **14px** from the top and right edges.
 
-## 3. Icons
+## 3. Text-first actions
 
-All functional icons come from `src/components/Icon.tsx`.
+Functional controls use **text labels**, not icon-only buttons. This keeps the
+meaning explicit and avoids a second visual language competing with the folio
+typography.
 
-- 24×24 viewBox.
-- 1.75 stroke, round caps and joins, no fills.
-- Rendered at **14px** in 24px micro controls, **16–17px** in 36px controls,
-  **28px** in dropzones.
-- One glyph per meaning: undo, redo, save, download, copy, archive, refresh,
-  rotate, repeat, trash, eraser, link, upload, sparkles, and so on.
-- Decorative layout illustrations are not UI icons and stay in the preview
-  components.
-
-Never hand-draw a new path inline in a screen. Add it to `Icon.tsx` once.
+- Standard actions sit in equal-width button grids: two or three columns.
+- Long actions span the full row instead of truncating or shrinking neighbours.
+- Micro actions inside page chips and thumbnails use short text labels such as
+  “复制 / 上移 / 下移 / 删除” in a 24px pill.
+- Only decorative illustrations inside layout previews may use SVG. They are not
+  controls and must not be interactive.
 
 ## 4. Buttons and icon buttons
 
@@ -49,7 +47,8 @@ Never hand-draw a new path inline in a screen. Add it to `Icon.tsx` once.
   shadow, and hover treatment.
 - Hover changes border, background, colour, or shadow only. **No `translateY`
   lift.**
-- Icon-only controls require `aria-label` and `title`.
+- Every button keeps a readable text label; `aria-label` is only added when the
+  visible label needs a longer explanation.
 - Primary actions use the dark filled material. Secondary actions use the warm
   ghost material. Destructive actions use the danger tone only for the glyph.
 

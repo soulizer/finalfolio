@@ -1823,6 +1823,8 @@ const zh: Record<string, string> = {
   'This clears the used count for this account. It does not change the configured limits.':
     '这会将该账户的已用次数清零，不会修改已配置的上限。',
   'Reset usage': '重置次数',
+  'Collapse': '收起',
+  'Expand': '展开',
   'Add a page': '增加一页',
   'Delete last page': '删除最后一页',
   'Last page deleted.': '已删除最后一页。',

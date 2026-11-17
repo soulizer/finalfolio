@@ -1751,3 +1751,17 @@
 - Restored the AI layout dialog to the delete-confirmation material: one thin
   border, a 1px inset top highlight and the standard popover shadow. The heavy
   inner bevel ring was removed.
+
+## 2026-11-17 Text-first action controls
+
+- Removed the icon-only toolbar experiment. Functional controls are text buttons
+  again, arranged in equal-width two/three-column grids with one 36px height.
+- Project actions use a six-button 3×2 grid; AI is a full-width button; new draft
+  and save-as-template share a two-column row.
+- Page layout, crop, share, gallery and admin dialog actions use the same text
+  button system. Page-chip micro actions use short text pills.
+- Gallery upload and link import are now two equal text buttons with no stretched
+  primary button.
+- Kept the delete-confirmation popover material for the AI dialog.
+- Replaced the central icon-only treatment with a text-first rule in
+  `docs/design-system.md`.

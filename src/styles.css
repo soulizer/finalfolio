@@ -4013,9 +4013,10 @@ button.asset-frame {
   position: relative;
   display: grid;
   place-items: center;
-  width: 24px;
+  width: auto;
+  min-width: 24px;
   height: 24px;
-  padding: 0;
+  padding: 0 7px;
   border-radius: 999px;
   border: 1px solid rgba(17, 17, 17, 0.14);
   background:
@@ -7231,78 +7232,6 @@ html:lang(zh-CN) .magazine-page h2,
   margin-top: 6px;
 }
 
-.editor-icon-toolbar {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.editor-icon-button {
-  position: relative;
-  display: grid;
-  place-items: center;
-  min-width: 0;
-  height: var(--control-height-sm);
-  padding: 0;
-  border-radius: 9px;
-  border: 1px solid rgba(17, 17, 17, 0.14);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(242, 237, 229, 0.82)),
-    rgba(255, 255, 255, 0.94);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.94),
-    0 10px 18px rgba(17, 17, 17, 0.06);
-  color: rgba(17, 17, 17, 0.72);
-  cursor: pointer;
-  transition:
-    border-color 180ms ease,
-    box-shadow 180ms ease,
-    color 180ms ease,
-    background 180ms ease;
-}
-
-.editor-icon-button svg {
-  width: 17px;
-  height: 17px;
-}
-
-.editor-icon-button:not(:disabled):hover {
-  border-color: rgba(17, 17, 17, 0.26);
-  color: var(--ink);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.96),
-    0 14px 22px rgba(17, 17, 17, 0.1);
-}
-
-.editor-icon-button:disabled {
-  opacity: 0.42;
-  cursor: not-allowed;
-}
-
-.editor-icon-button--primary {
-  border-color: rgba(17, 17, 17, 0.36);
-  background:
-    linear-gradient(180deg, rgba(60, 56, 50, 0.96), rgba(30, 28, 25, 0.96)),
-    rgba(17, 17, 17, 0.92);
-  color: var(--paper);
-}
-
-.editor-icon-button--primary:not(:disabled):hover {
-  border-color: rgba(17, 17, 17, 0.52);
-  color: #fff;
-}
-
-.editor-icon-button__dot {
-  position: absolute;
-  top: 6px;
-  right: 7px;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #e6b15c;
-  box-shadow: 0 0 0 1px rgba(17, 17, 17, 0.32);
-}
-
 .editor-conflict-notice {
   display: grid;
   gap: 8px;
@@ -7883,9 +7812,10 @@ html[lang='zh-CN'] body {
   min-height: 24px;
 }
 
-.page-chip__action svg {
-  width: 14px;
-  height: 14px;
+.page-chip__action span {
+  font-size: 0.68rem;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 @media (pointer: coarse) {
@@ -8499,9 +8429,12 @@ html[lang='zh-CN'] body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
+  width: auto;
+  min-width: 48px;
+  height: var(--control-height-sm);
+  padding: 0 10px;
+  font-size: 0.74rem;
+  white-space: nowrap;
   border-radius: var(--control-radius);
   border: 1px solid rgba(17, 17, 17, 0.14);
   background: rgba(255, 255, 255, 0.72);
@@ -8514,10 +8447,7 @@ html[lang='zh-CN'] body {
   border-color: rgba(17, 17, 17, 0.26);
 }
 
-.layout-editor-close svg {
-  width: 16px;
-  height: 16px;
-}
+
 
 .layout-editor-main {
   display: grid;
@@ -8632,9 +8562,12 @@ html[lang='zh-CN'] body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
+  width: auto;
+  min-width: 48px;
   height: 24px;
-  padding: 0;
+  padding: 0 7px;
+  font-size: 0.66rem;
+  white-space: nowrap;
   border-radius: 4px;
   border: 1px solid transparent;
   background: transparent;
@@ -8653,10 +8586,7 @@ html[lang='zh-CN'] body {
   cursor: not-allowed;
 }
 
-.layout-editor-frame-card__remove svg {
-  width: 14px;
-  height: 14px;
-}
+
 
 .layout-editor-footer {
   display: flex;
@@ -8818,9 +8748,12 @@ html[lang='zh-CN'] body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--control-height-sm);
+  width: auto;
+  min-width: 44px;
   height: var(--control-height-sm);
-  padding: 0;
+  padding: 0 8px;
+  font-size: 0.72rem;
+  white-space: nowrap;
   border-radius: var(--control-radius);
   border: 1px solid rgba(17, 17, 17, 0.14);
   background: rgba(255, 255, 255, 0.72);
@@ -8833,10 +8766,7 @@ html[lang='zh-CN'] body {
   border-color: rgba(17, 17, 17, 0.26);
 }
 
-.editor-toggle-icon svg {
-  width: 16px;
-  height: 16px;
-}
+
 
 /* Direct edit affordance on saved layout cards. */
 .layout-card__edit {
@@ -8847,9 +8777,10 @@ html[lang='zh-CN'] body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
+  width: auto;
+  min-width: 36px;
   height: 24px;
-  padding: 0;
+  padding: 0 6px;
   border-radius: 4px;
   border: 1px solid rgba(17, 17, 17, 0.14);
   background: rgba(255, 255, 255, 0.9);
@@ -8870,9 +8801,9 @@ html[lang='zh-CN'] body {
   border-color: rgba(17, 17, 17, 0.3);
 }
 
-.layout-card__edit svg {
-  width: 14px;
-  height: 14px;
+.layout-card__edit {
+  font-size: 0.66rem;
+  white-space: nowrap;
 }
 
 @media (hover: none) {
@@ -10075,6 +10006,8 @@ html[lang='zh-CN'] body {
 }
 
 .page-chip__color-action {
+  width: 24px;
+  min-width: 24px;
   padding: 0;
 }
 
@@ -10125,11 +10058,6 @@ html[lang='zh-CN'] body {
 .ai-source-buttons .button.is-active {
   border-color: rgba(17, 17, 17, 0.32);
   box-shadow: var(--pressed-card-shadow);
-}
-
-.ai-source-buttons svg {
-  width: 16px;
-  height: 16px;
 }
 
 .ai-source-panel {
@@ -10240,9 +10168,12 @@ html[lang='zh-CN'] body {
   z-index: 2;
   display: grid;
   place-items: center;
-  width: 24px;
+  width: auto;
+  min-width: 44px;
   height: 24px;
-  padding: 0;
+  padding: 0 7px;
+  font-size: 0.66rem;
+  white-space: nowrap;
   border-radius: 999px;
   border: 1px solid rgba(17, 17, 17, 0.14);
   background:
@@ -10285,11 +10216,7 @@ html[lang='zh-CN'] body {
     0 14px 22px rgba(17, 17, 17, 0.1);
 }
 
-.asset-tile__delete-icon svg,
-.asset-tile__retry-icon svg {
-  width: 14px;
-  height: 14px;
-}
+
 
 .editor-shell .upload-button.button--primary {
   color: var(--paper);
@@ -10314,10 +10241,6 @@ html[lang='zh-CN'] body {
 .browser-stage__field span,
 .browser-stage__copy p {
   font-family: var(--font-ui);
-}
-
-.editor-icon-toolbar--share {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 /* Admin AI usage editor: compact rows, no nested cards. */
@@ -10424,81 +10347,55 @@ html[lang='zh-CN'] body {
   }
 }
 
-.editor-primary-row {
+
+
+/* Text-first editor action grids. Every standard control is 36px tall. */
+.editor-button-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--control-height-sm) var(--control-height-sm);
-  gap: 8px;
-  align-items: stretch;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
 }
 
-.editor-primary-row .editor-project-action {
+.editor-button-grid--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.editor-button-grid--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.editor-button-grid .button {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--control-height-sm);
+  padding: 0 8px;
+  font-size: 0.74rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.editor-project-action--ai {
   width: 100%;
   min-height: var(--control-height-sm);
 }
 
-.editor-primary-row .editor-icon-button {
-  height: var(--control-height-sm);
-}
-
-.editor-project-action.ai-arrange-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-}
-
-.editor-icon-toolbar--three {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
 .photo-actions {
-  align-items: center;
-  flex-wrap: nowrap;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  align-items: stretch;
 }
 
 .photo-actions .upload-button {
-  flex: 0 0 auto;
-  gap: 6px;
-  width: auto;
-  min-width: 88px;
-  height: 36px;
+  width: 100%;
+  height: var(--control-height-sm);
 }
 
-.photo-actions .upload-button svg {
-  width: 16px;
-  height: 16px;
+.photo-actions__clear {
+  grid-column: 1 / -1;
 }
 
-.photo-actions__icon {
-  flex: 0 0 36px;
-  width: 36px;
-  height: 36px;
-  min-height: 36px;
-}
-
-.photo-actions__icon.is-active {
-  border-color: rgba(17, 17, 17, 0.32);
-  box-shadow: var(--pressed-card-shadow);
-}
-
-.photo-actions__icon--warning {
-  color: #7b5d14;
-}
-
-.photo-actions__badge {
-  position: absolute;
-  top: -5px;
-  right: -5px;
-  display: grid;
-  place-items: center;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.94);
-  background: #7b5d14;
-  color: #fff;
-  font-size: 0.62rem;
-  line-height: 1;
+.layout-selection-actions__replace {
+  grid-column: 1 / -1;
 }

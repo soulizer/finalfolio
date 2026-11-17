@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Icon } from '../../components/Icon';
 import { useT } from '../../i18n';
 import {
   fetchAiStatus,
@@ -547,7 +546,7 @@ export function AiArrangeDialog({
               onClose();
             }}
           >
-            <Icon name="x" />
+            {t('Close')}
           </button>
         </header>
 
@@ -722,7 +721,6 @@ export function AiArrangeDialog({
                     aria-expanded={sourcePanel === 'upload'}
                     onClick={() => setSourcePanel((current) => (current === 'upload' ? 'none' : 'upload'))}
                   >
-                    <Icon name="upload" />
                     {t('Upload from device')}
                   </button>
                   <button
@@ -731,7 +729,6 @@ export function AiArrangeDialog({
                     aria-expanded={sourcePanel === 'url'}
                     onClick={() => setSourcePanel((current) => (current === 'url' ? 'none' : 'url'))}
                   >
-                    <Icon name="link" />
                     {t('Import from URL')}
                   </button>
                 </div>
@@ -760,7 +757,6 @@ export function AiArrangeDialog({
                         }
                       }}
                     >
-                      <Icon name="upload" />
                       <strong>
                         {uploadingFiles
                           ? t('Uploading photos… %s/%s')

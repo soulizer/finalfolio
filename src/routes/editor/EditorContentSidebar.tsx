@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Icon } from '../../components/Icon';
 import { countLabel, useT } from '../../i18n';
 import type { ChangeEvent } from 'react';
 import {
@@ -134,9 +133,8 @@ export function EditorContentSidebar({
             {libraryAssets.length === 0 ? t('Empty') : countLabel(libraryAssets.length, '1 photo', '%s photos')}
           </span>
         </div>
-        <div className="editor-panel__actions editor-panel__actions--tight photo-actions">
+        <div className="editor-panel__actions editor-panel__actions--tight photo-actions editor-button-grid editor-button-grid--two">
           <label className={`button button--primary button--small upload-button upload-button--compact ${uploadBusy ? 'is-busy' : ''}`.trim()}>
-            <Icon name="upload" />
             {uploadProgressLabel}
             <input
               type="file"
@@ -159,25 +157,21 @@ export function EditorContentSidebar({
           </label>
           <button
             type="button"
-            className={`editor-icon-button photo-actions__icon ${importUrlOpen ? 'is-active' : ''}`.trim()}
+            className={`button button--ghost button--small ${importUrlOpen ? 'is-active' : ''}`.trim()}
             aria-expanded={importUrlOpen}
-            aria-label={t('Add from URL')}
-            title={t('Add from URL')}
             onClick={() => setImportUrlOpen((current) => !current)}
           >
-            <Icon name="link" />
+            {t('Add from URL')}
           </button>
           {unusedAssetCount > 0 ? (
             <button
               type="button"
-              className="editor-icon-button photo-actions__icon photo-actions__icon--warning"
+              className="button button--ghost button--small photo-actions__clear"
               disabled={assetMutationBusy || uploadBusy}
-              aria-label={countLabel(unusedAssetCount, 'Clear 1 unused', 'Clear %s unused')}
-              title={assetMutationBusy || uploadBusy ? t('Wait for the current library mutation to finish.') : countLabel(unusedAssetCount, 'Clear 1 unused', 'Clear %s unused')}
+              title={assetMutationBusy || uploadBusy ? t('Wait for the current library mutation to finish.') : undefined}
               onClick={() => void removeUnusedAssetsFromIssue()}
             >
-              <Icon name="trash" />
-              <span className="photo-actions__badge" aria-hidden="true">{unusedAssetCount}</span>
+              {countLabel(unusedAssetCount, 'Clear 1 unused', 'Clear %s unused')}
             </button>
           ) : null}
         </div>
@@ -315,7 +309,7 @@ export function EditorContentSidebar({
                       title={retryLabel}
                       onClick={() => void handleRetryAssetMirror(asset)}
                     >
-                      <Icon name="refresh" />
+                      <span>{retryLabel}</span>
                     </button>
                   ) : null}
                   {isInCurrentProject ? (
@@ -327,7 +321,7 @@ export function EditorContentSidebar({
                       title={deleteLabel}
                       onClick={() => void handleDeleteAsset(asset)}
                     >
-                      <Icon name="trash" />
+                      <span>{deleteLabel}</span>
                     </button>
                   ) : null}
                 </article>
@@ -335,7 +329,11 @@ export function EditorContentSidebar({
             })
           ) : (
             <div className="asset-rail__empty">
-              <Icon name="image" />
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <circle cx="9" cy="9" r="2" />
+                <path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21" />
+              </svg>
               <strong>{t('No photos yet.')}</strong>
               <span>{t('Use the upload button above, or drag photos straight onto the page.')}</span>
             </div>
@@ -539,28 +537,20 @@ export function EditorContentSidebar({
                   </div>
                 </div>
               </div>
-              <div className="editor-crop-actions editor-crop-actions--below editor-icon-toolbar editor-icon-toolbar--three">
-                <button
-                  type="button"
-                  className="editor-icon-button"
-                  onClick={clearSelectedSlot}
-                  aria-label={t('Clear')}
-                  title={t('Clear')}
-                >
-                  <Icon name="eraser" />
+              <div className="editor-crop-actions editor-crop-actions--below editor-button-grid editor-button-grid--three">
+                <button type="button" className="button button--ghost button--small" onClick={clearSelectedSlot}>
+                  {t('Clear')}
                 </button>
                 <button
                   type="button"
-                  className="editor-icon-button"
+                  className="button button--ghost button--small"
                   onClick={() => clearAssetPlacements(selectedAsset.id)}
-                  aria-label={t('Clear all')}
-                  title={t('Clear all')}
                 >
-                  <Icon name="trash" />
+                  {t('Clear all')}
                 </button>
                 <button
                   type="button"
-                  className="editor-icon-button"
+                  className="button button--ghost button--small"
                   onClick={() =>
                     updateSelectedCrop((crop) =>
                       createDefaultCrop({
@@ -568,10 +558,8 @@ export function EditorContentSidebar({
                       }),
                     )
                   }
-                  aria-label={t('Reset')}
-                  title={t('Reset')}
                 >
-                  <Icon name="rotate" />
+                  {t('Reset')}
                 </button>
               </div>
             </>

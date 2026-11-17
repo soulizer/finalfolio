@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Icon } from '../../components/Icon';
 import { useT } from '../../i18n';
 import type { UserSession } from '../../editor/api';
 import { getUserPrimaryIdentity } from '../../editor/identity';
@@ -195,101 +194,86 @@ export function EditorOperationsSidebar({
               {t('Reload latest')}</button>
           </div>
         ) : null}
-        <div className="editor-icon-toolbar" role="group" aria-label={t('Project actions')}>
+        <div className="editor-button-grid editor-button-grid--three" role="group" aria-label={t('Project actions')}>
           <button
             type="button"
-            className="editor-icon-button"
+            className="button button--ghost button--small"
             disabled={!canUndo}
             onClick={onUndo}
-            aria-label={t('Undo')}
             title={t('Undo (Ctrl+Z)')}
           >
-            <Icon name="undo" />
+            {t('Undo')}
           </button>
           <button
             type="button"
-            className="editor-icon-button"
+            className="button button--ghost button--small"
             disabled={!canRedo}
             onClick={onRedo}
-            aria-label={t('Redo')}
             title={t('Redo (Ctrl+Shift+Z)')}
           >
-            <Icon name="redo" />
+            {t('Redo')}
           </button>
           <button
             type="button"
-            className={`editor-icon-button editor-icon-button--primary ${saveState === 'dirty' ? 'is-dirty' : ''}`.trim()}
+            className="button button--primary button--small"
             disabled={saveState === 'saving' || libraryBusy || exportActionBusy || !canSaveProject}
             onClick={onSaveProject}
-            aria-label={saveActionLabel}
-            title={saveActionLabel}
           >
-            <Icon name="save" />
-            {saveState === 'dirty' ? <span className="editor-icon-button__dot" aria-hidden="true" /> : null}
+            {saveActionLabel}
           </button>
           <button
             type="button"
-            className="editor-icon-button"
+            className="button button--ghost button--small"
             disabled={libraryBusy || exportActionBusy}
             onClick={onToggleExportCenter}
-            aria-label={exportActionLabel}
-            title={exportActionLabel}
             aria-expanded={exportActionLabel === t('Close export')}
           >
-            <Icon name="download" />
+            {exportActionLabel}
           </button>
           <button
             type="button"
-            className="editor-icon-button"
+            className="button button--ghost button--small"
             disabled={!projectRecord || Boolean(projectActionBusy) || !session}
             onClick={onDuplicateProject}
-            aria-label={projectActionBusy === 'duplicate' ? t('Duplicating…') : t('Duplicate')}
-            title={projectActionBusy === 'duplicate' ? t('Duplicating…') : t('Duplicate')}
           >
-            <Icon name="copy" />
+            {projectActionBusy === 'duplicate' ? t('Duplicating…') : t('Duplicate')}
           </button>
           <button
             type="button"
-            className="editor-icon-button"
+            className="button button--ghost button--small"
             disabled={!projectRecord || Boolean(projectActionBusy) || projectMutationLocked}
             onClick={onArchiveToggle}
-            aria-label={archiveActionLabel}
-            title={archiveActionLabel}
           >
-            <Icon name="archive" />
+            {archiveActionLabel}
           </button>
         </div>
 
-        <div className="editor-primary-row">
+        <button
+          type="button"
+          className="button button--primary button--small editor-project-action editor-project-action--ai"
+          onClick={onOpenAiArrange}
+          title={t('Choose photos and let AI build a complete layout.')}
+        >
+          {t('Lay out with AI')}
+        </button>
+
+        <div className="editor-button-grid editor-button-grid--two" role="group" aria-label={t('Project tools')}>
           <button
             type="button"
-            className="button button--primary button--small editor-project-action ai-arrange-button"
-            onClick={onOpenAiArrange}
-            title={t('Choose photos and let AI build a complete layout.')}
-          >
-            <Icon name="sparkles" />
-            {t('Lay out with AI')}
-          </button>
-          <button
-            type="button"
-            className="editor-icon-button"
+            className="button button--ghost button--small"
             disabled={libraryBusy || exportActionBusy}
             onClick={onStartNewDraft}
-            aria-label={t('New draft')}
-            title={t('New draft')}
           >
-            <Icon name="filePlus" />
+            {t('New draft')}
           </button>
           <button
             type="button"
-            className="editor-icon-button"
+            className="button button--ghost button--small"
             disabled={!session || templateSaveBusy}
             onClick={onToggleTemplateComposer}
-            aria-label={t('Save as template')}
-            title={t('Save as template')}
             aria-expanded={templateComposerOpen}
           >
-            <Icon name="bookmarkPlus" />
+            {t('Save as template')}
           </button>
         </div>
         <section className="editor-panel__section">
@@ -323,46 +307,39 @@ export function EditorOperationsSidebar({
                   : t('The public link is off. Enable it when this folio should be viewable outside the editor.')}
           </p>
           {!projectRecord ? null : projectRecord.share.enabled ? (
-            <div className="editor-icon-toolbar editor-icon-toolbar--share" role="group" aria-label={t('Share actions')}>
+            <div className="editor-button-grid editor-button-grid--two" role="group" aria-label={t('Share actions')}>
               <button
                 type="button"
-                className="editor-icon-button editor-icon-button--primary"
+                className="button button--primary button--small"
                 disabled={shareBusy}
                 onClick={onOpenSharedProject}
-                aria-label={t('Open shared')}
                 title={t('Open shared')}
               >
-                <Icon name="externalLink" />
+                {t('Open shared')}
               </button>
               <button
                 type="button"
-                className="editor-icon-button"
+                className="button button--ghost button--small"
                 disabled={shareBusy}
                 onClick={onCopyPublicShareLink}
-                aria-label={publicShareCopyLabel}
-                title={publicShareCopyLabel}
               >
-                <Icon name="copy" />
+                {publicShareCopyLabel}
               </button>
               <button
                 type="button"
-                className="editor-icon-button"
+                className="button button--ghost button--small"
                 disabled={shareBusy || projectMutationLocked}
                 onClick={onRegenerateShare}
-                aria-label={shareBusy ? t('Updating…') : t('Regenerate')}
-                title={shareBusy ? t('Updating…') : t('Regenerate')}
               >
-                <Icon name="refresh" />
+                {shareBusy ? t('Updating…') : t('Regenerate')}
               </button>
               <button
                 type="button"
-                className="editor-icon-button"
+                className="button button--ghost button--small"
                 disabled={shareBusy || projectMutationLocked}
                 onClick={onDisableShare}
-                aria-label={shareBusy ? t('Updating…') : t('Disable')}
-                title={shareBusy ? t('Updating…') : t('Disable')}
               >
-                <Icon name="power" />
+                {shareBusy ? t('Updating…') : t('Disable')}
               </button>
             </div>
           ) : (

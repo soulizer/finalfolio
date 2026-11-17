@@ -4,7 +4,6 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { MagazinePreview } from '../components/MagazinePreview';
 import { TemplateIssuePreview } from '../components/TemplateIssuePreview';
 import { LayoutThumbnail } from '../components/LayoutThumbnail';
-import { Icon } from '../components/Icon';
 import { AccountUploadListItem, importAssetFromUrl } from '../editor/api';
 import { getConfirmationMessage } from '../editor/confirmations';
 import { formatDateTime } from '../editor/dateFormat';
@@ -1247,7 +1246,7 @@ export function EditorPage() {
             title={t('Edit layout')}
             onClick={() => openEditLayoutEditor(layout)}
           >
-            <Icon name="pencil" />
+            <span>{t('Edit')}</span>
           </button>
         </article>
       );
@@ -1472,7 +1471,7 @@ export function EditorPage() {
                           aria-label={t('Duplicate page')}
                           onClick={duplicatePage}
                         >
-                          <Icon name="copy" />
+                          <span>{t('Duplicate')}</span>
                         </button>
                         <button
                           type="button"
@@ -1482,7 +1481,7 @@ export function EditorPage() {
                           disabled={selectedPageIndex <= 0}
                           onClick={() => moveSelectedPage(-1)}
                         >
-                          <Icon name="arrowUp" />
+                          <span>{t('Move up')}</span>
                         </button>
                         <button
                           type="button"
@@ -1492,7 +1491,7 @@ export function EditorPage() {
                           disabled={selectedPageIndex >= project.pages.length - 1}
                           onClick={() => moveSelectedPage(1)}
                         >
-                          <Icon name="arrowDown" />
+                          <span>{t('Move down')}</span>
                         </button>
                         <button
                           type="button"
@@ -1502,7 +1501,7 @@ export function EditorPage() {
                           disabled={project.pages.length === 1}
                           onClick={removeSelectedPage}
                         >
-                          <Icon name="trash" />
+                          <span>{t('Delete')}</span>
                         </button>
                       </div>
                     ) : null}
@@ -1525,7 +1524,7 @@ export function EditorPage() {
                   aria-label={templatePickerOpen ? t('Collapse page layouts') : t('Expand page layouts')}
                   title={templatePickerOpen ? t('Collapse page layouts') : t('Expand page layouts')}
                 >
-                  <Icon name={templatePickerOpen ? 'chevronUp' : 'chevronDown'} />
+                  {templatePickerOpen ? t('Collapse') : t('Expand')}
                 </button>
               </div>
             </div>
@@ -1577,36 +1576,30 @@ export function EditorPage() {
                       </button>
                     ) : null}
                   </div>
-                  <div className="layout-selection-actions__buttons editor-icon-toolbar editor-icon-toolbar--three">
+                  <div className="layout-selection-actions__buttons editor-button-grid editor-button-grid--two">
                     <button
                       type="button"
-                      className="editor-icon-button"
+                      className="button button--ghost button--small"
                       disabled={project.pages.length >= PROJECT_PAGE_LIMIT}
                       onClick={() => insertPage(templateChoice, 'before')}
-                      aria-label={t('Insert above')}
-                      title={t('Insert above')}
                     >
-                      <Icon name="arrowUpToLine" />
+                      {t('Insert above')}
                     </button>
                     <button
                       type="button"
-                      className="editor-icon-button"
-                      disabled={isCurrentLayoutSelected}
-                      onClick={() => applyTemplateChoice(templateChoice)}
-                      aria-label={t('Replace this page')}
-                      title={t('Replace this page')}
-                    >
-                      <Icon name="repeat" />
-                    </button>
-                    <button
-                      type="button"
-                      className="editor-icon-button"
+                      className="button button--ghost button--small"
                       disabled={project.pages.length >= PROJECT_PAGE_LIMIT}
                       onClick={() => insertPage(templateChoice, 'after')}
-                      aria-label={t('Insert below')}
-                      title={t('Insert below')}
                     >
-                      <Icon name="arrowDownToLine" />
+                      {t('Insert below')}
+                    </button>
+                    <button
+                      type="button"
+                      className="button button--ghost button--small layout-selection-actions__replace"
+                      disabled={isCurrentLayoutSelected}
+                      onClick={() => applyTemplateChoice(templateChoice)}
+                    >
+                      {t('Replace this page')}
                     </button>
                   </div>
                 </div>
@@ -1647,7 +1640,7 @@ export function EditorPage() {
                   aria-label={starterPacksOpen ? t('Collapse project templates') : t('Expand project templates')}
                   title={starterPacksOpen ? t('Collapse project templates') : t('Expand project templates')}
                 >
-                  <Icon name={starterPacksOpen ? 'chevronUp' : 'chevronDown'} />
+                  {starterPacksOpen ? t('Collapse') : t('Expand')}
                 </button>
               </div>
             </div>
@@ -1717,7 +1710,7 @@ export function EditorPage() {
                     aria-label={t('Manage templates')}
                     title={t('Manage templates')}
                   >
-                    <Icon name="pencil" />
+                    <span>{t('Edit')}</span>
                   </Link>
                 ) : null}
               </div>

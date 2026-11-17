@@ -1385,7 +1385,8 @@ try {
     assert.match(styles, /\.page-chip--theme-butter-cream/);
     assert.match(styles, /\.editor-collapsible-meta/);
     assert.match(styles, /\.editor-project-url/);
-    assert.match(styles, /\.editor-icon-button/);
+    assert.match(styles, /\.editor-button-grid/);
+    assert.match(styles, /\.page-chip__action span/);
     assert.match(styles, /\.editor-panel__section/);
     assert.match(styles, /\.field-note/);
     assert.match(styles, /\.auth-captcha/);
@@ -1747,7 +1748,7 @@ try {
     assert.match(editorOperationsSidebar, /export function EditorOperationsSidebar/);
     assert.match(editorOperationsSidebar, /editor-panel--project-actions/);
     assert.doesNotMatch(editorOperationsSidebar, /editor-project-url/);
-    assert.match(editorOperationsSidebar, /editor-icon-button/);
+    assert.match(editorOperationsSidebar, /editor-button-grid/);
     assert.match(editorOperationsSidebar, /Share project/);
     assert.match(editorOperationsSidebar, /Share project/);
     assert.match(editorOperationsSidebar, /Save as template/);
@@ -2140,7 +2141,7 @@ try {
     assert.doesNotMatch(editorPage, /Clear all/);
     assert.doesNotMatch(editorPage, /Clear .* unused/);
     assert.doesNotMatch(editorPage, /editor-project-url/);
-    assert.match(editorPage, /editor-icon-button/);
+    assert.match(editorPage, /editor-button-grid/);
     assert.match(editorPage, /editor-page-parity/);
     assert.doesNotMatch(editorPage, /editor-crop-workbench/);
     assert.doesNotMatch(editorPage, /Arrow keys nudge/);

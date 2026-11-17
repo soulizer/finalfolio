@@ -1,6 +1,5 @@
 import { CSSProperties, RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { useT } from '../../i18n';
-import { Icon } from '../../components/Icon';
 import { createCustomTemplateDefinition } from '../../editor/demoData';
 import {
   CUSTOM_LAYOUT_GAP_X_PERCENT,
@@ -299,7 +298,7 @@ export function LayoutEditorDialog({
               title={t('Close')}
               onClick={() => void requestClose()}
             >
-              <Icon name="x" />
+              {t('Close')}
             </button>
           </div>
         </header>
@@ -373,7 +372,7 @@ export function LayoutEditorDialog({
                         title={draft.frames.length <= 1 ? t('Keep at least one image area') : t('Remove image area')}
                         onClick={() => removeFrame(frame.slot)}
                       >
-                        <Icon name="trash" />
+                        {t('Remove')}
                       </button>
                     </div>
                     <label className="field">

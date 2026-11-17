@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { translate, useT } from '../../i18n';
-import { Icon } from '../../components/Icon';
 import {
   testAdminAiProvider,
   type AdminAiConfigDraft,
@@ -123,7 +122,7 @@ function ProviderEditorDialog({
             disabled={saving}
             onClick={onCancel}
           >
-            <Icon name="x" />
+            {t('Close')}
           </button>
         </header>
 
