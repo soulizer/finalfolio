@@ -1706,11 +1706,11 @@ export function EditorPage() {
                 {session ? (
                   <Link
                     to="/account?section=templates"
-                    className="editor-icon-link"
+                    className="button button--ghost button--small"
                     aria-label={t('Manage templates')}
                     title={t('Manage templates')}
                   >
-                    <span>{t('Edit')}</span>
+                    {t('Edit')}
                   </Link>
                 ) : null}
               </div>

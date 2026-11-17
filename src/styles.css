@@ -8826,28 +8826,6 @@ html[lang='zh-CN'] body {
   margin-top: 10px;
 }
 
-.editor-icon-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: var(--control-radius);
-  border: 1px solid rgba(17, 17, 17, 0.14);
-  background: rgba(255, 255, 255, 0.72);
-  color: var(--muted);
-}
-
-.editor-icon-link:hover {
-  color: var(--ink);
-  border-color: rgba(17, 17, 17, 0.26);
-}
-
-.editor-icon-link svg {
-  width: 15px;
-  height: 15px;
-}
-
 /* Admin AI interface pool */
 .admin-ai-limits {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
