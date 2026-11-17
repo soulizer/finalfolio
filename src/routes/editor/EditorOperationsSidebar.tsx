@@ -194,60 +194,87 @@ export function EditorOperationsSidebar({
               {t('Reload latest')}</button>
           </div>
         ) : null}
-        <div className="editor-history-row" role="group" aria-label={t('Edit history')}>
+        <div className="editor-icon-toolbar" role="group" aria-label={t('Project actions')}>
           <button
             type="button"
-            className="button button--ghost button--small editor-history-button"
+            className="editor-icon-button"
             disabled={!canUndo}
             onClick={onUndo}
+            aria-label={t('Undo')}
             title={t('Undo (Ctrl+Z)')}
           >
-            {t('Undo')}</button>
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M6 3.5 2.5 7 6 10.5M2.5 7h6.2a3.4 3.4 0 0 1 0 6.8H6.5" />
+            </svg>
+          </button>
           <button
             type="button"
-            className="button button--ghost button--small editor-history-button"
+            className="editor-icon-button"
             disabled={!canRedo}
             onClick={onRedo}
+            aria-label={t('Redo')}
             title={t('Redo (Ctrl+Shift+Z)')}
           >
-            {t('Redo')}</button>
-        </div>
-        <div className="editor-panel__actions editor-panel__actions--tight">
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M10 3.5 13.5 7 10 10.5M13.5 7H7.3a3.4 3.4 0 0 0 0 6.8h2.2" />
+            </svg>
+          </button>
           <button
             type="button"
-            className="button button--primary button--small editor-project-action"
+            className={`editor-icon-button editor-icon-button--primary ${saveState === 'dirty' ? 'is-dirty' : ''}`.trim()}
             disabled={saveState === 'saving' || libraryBusy || exportActionBusy || !canSaveProject}
             onClick={onSaveProject}
+            aria-label={saveActionLabel}
+            title={saveActionLabel}
           >
-            {saveActionLabel}
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M3 2.8h8L13.2 5v8.2H3zM5.4 2.8v3.4h5.2V2.8M5.2 13.2V9.4h5.6v3.8" />
+            </svg>
+            {saveState === 'dirty' ? <span className="editor-icon-button__dot" aria-hidden="true" /> : null}
           </button>
           <button
             type="button"
-            className="button button--ghost button--small editor-project-action"
+            className="editor-icon-button"
             disabled={libraryBusy || exportActionBusy}
             onClick={onToggleExportCenter}
+            aria-label={exportActionLabel}
+            title={exportActionLabel}
+            aria-expanded={exportActionLabel === t('Close export')}
           >
-            {exportActionLabel}
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M8 10.2V2.4M4.6 5.8 8 2.4l3.4 3.4M3.2 10.2v2.6a.8.8 0 0 0 .8.8h8a.8.8 0 0 0 .8-.8v-2.6" />
+            </svg>
           </button>
           <button
             type="button"
-            className="button button--ghost button--small editor-project-action"
+            className="editor-icon-button"
             disabled={!projectRecord || Boolean(projectActionBusy) || !session}
             onClick={onDuplicateProject}
+            aria-label={projectActionBusy === 'duplicate' ? t('Duplicating…') : t('Duplicate')}
+            title={projectActionBusy === 'duplicate' ? t('Duplicating…') : t('Duplicate')}
           >
-            {projectActionBusy === 'duplicate' ? t('Duplicating…') : t('Duplicate')}
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M5.2 5.2h7.6v7.6H5.2zM3.2 10.8V3.2h7.6" />
+            </svg>
           </button>
           <button
             type="button"
-            className="button button--ghost button--small editor-project-action"
+            className="editor-icon-button"
             disabled={!projectRecord || Boolean(projectActionBusy) || projectMutationLocked}
             onClick={onArchiveToggle}
+            aria-label={archiveActionLabel}
+            title={archiveActionLabel}
           >
-            {archiveActionLabel}
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M2.2 5.4h11.6v7.4H2.2zM2.2 5.4 3.8 3h8.4l1.6 2.4M6 8.2h4" />
+            </svg>
           </button>
+        </div>
+
+        <div className="editor-primary-row">
           <button
             type="button"
-            className="button button--ghost button--small editor-project-action editor-project-action--wide ai-arrange-button"
+            className="button button--primary button--small editor-project-action ai-arrange-button"
             onClick={onOpenAiArrange}
             title={t('Choose photos and let AI build a complete layout.')}
           >
@@ -259,18 +286,29 @@ export function EditorOperationsSidebar({
           </button>
           <button
             type="button"
-            className="button button--ghost button--small editor-project-action editor-project-action--wide"
+            className="editor-icon-button"
             disabled={libraryBusy || exportActionBusy}
             onClick={onStartNewDraft}
+            aria-label={t('New draft')}
+            title={t('New draft')}
           >
-            {t('New draft')}</button>
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M9 2.4H3.6v11.2h8.8V5.8L9 2.4ZM9 2.4v3.4h3.4M8 8.2v4M6 10.2h4" />
+            </svg>
+          </button>
           <button
             type="button"
-            className="button button--ghost button--small editor-project-action editor-project-action--wide"
+            className="editor-icon-button"
             disabled={!session || templateSaveBusy}
             onClick={onToggleTemplateComposer}
+            aria-label={t('Save as template')}
+            title={t('Save as template')}
+            aria-expanded={templateComposerOpen}
           >
-            {t('Save as template')}</button>
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M3.6 2.6h8.8v10.8L8 10.6l-4.4 2.8zM8 4.6v3.2M6.4 6.2h3.2" />
+            </svg>
+          </button>
         </div>
         <section className="editor-panel__section">
           <div className="editor-panel__toolbar">
@@ -302,27 +340,62 @@ export function EditorOperationsSidebar({
                   ? t('Legacy ownerless folios can still be read, but only an owned duplicate can publish or change sharing.')
                   : t('The public link is off. Enable it when this folio should be viewable outside the editor.')}
           </p>
-          <div className="editor-panel__actions editor-panel__actions--tight">
-            {!projectRecord ? null : projectRecord.share.enabled ? (
-              <>
-                <button type="button" className="button button--primary button--small" disabled={shareBusy} onClick={onOpenSharedProject}>
-                  {t('Open shared')}</button>
-                <button type="button" className="button button--ghost button--small" disabled={shareBusy} onClick={onCopyPublicShareLink}>
-                  {publicShareCopyLabel}
-                </button>
-                <button type="button" className="button button--ghost button--small" disabled={shareBusy || projectMutationLocked} onClick={onRegenerateShare}>
-                  {shareBusy ? t('Updating…') : t('Regenerate')}
-                </button>
-                <button type="button" className="button button--ghost button--small" disabled={shareBusy || projectMutationLocked} onClick={onDisableShare}>
-                  {shareBusy ? t('Updating…') : t('Disable')}
-                </button>
-              </>
-            ) : (
-              <button type="button" className="button button--primary button--small" disabled={shareBusy || projectMutationLocked} onClick={onEnableShare}>
-                {shareBusy ? t('Sharing…') : t('Share project')}
+          {!projectRecord ? null : projectRecord.share.enabled ? (
+            <div className="editor-icon-toolbar editor-icon-toolbar--share" role="group" aria-label={t('Share actions')}>
+              <button
+                type="button"
+                className="editor-icon-button editor-icon-button--primary"
+                disabled={shareBusy}
+                onClick={onOpenSharedProject}
+                aria-label={t('Open shared')}
+                title={t('Open shared')}
+              >
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M9.2 3h3.8v3.8M13 3 7.4 8.6M11.8 9.2v3.2a.6.6 0 0 1-.6.6H3.6a.6.6 0 0 1-.6-.6V4.8a.6.6 0 0 1 .6-.6h3.2" />
+                </svg>
               </button>
-            )}
-          </div>
+              <button
+                type="button"
+                className="editor-icon-button"
+                disabled={shareBusy}
+                onClick={onCopyPublicShareLink}
+                aria-label={publicShareCopyLabel}
+                title={publicShareCopyLabel}
+              >
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M5.6 5.6h6.8v6.8H5.6zM3.6 10.4V3.6h6.8" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="editor-icon-button"
+                disabled={shareBusy || projectMutationLocked}
+                onClick={onRegenerateShare}
+                aria-label={shareBusy ? t('Updating…') : t('Regenerate')}
+                title={shareBusy ? t('Updating…') : t('Regenerate')}
+              >
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M13 8a5 5 0 1 1-1.5-3.5M13 3v4H9" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="editor-icon-button"
+                disabled={shareBusy || projectMutationLocked}
+                onClick={onDisableShare}
+                aria-label={shareBusy ? t('Updating…') : t('Disable')}
+                title={shareBusy ? t('Updating…') : t('Disable')}
+              >
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M8 2.4v5.2M4.7 4.6a4.6 4.6 0 1 0 6.6 0" />
+                </svg>
+              </button>
+            </div>
+          ) : (
+            <button type="button" className="button button--primary button--small" disabled={shareBusy || projectMutationLocked} onClick={onEnableShare}>
+              {shareBusy ? t('Sharing…') : t('Share project')}
+            </button>
+          )}
         </section>
 
         {templateComposerOpen ? (

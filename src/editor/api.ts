@@ -151,6 +151,20 @@ export interface AdminAiConfigDraft {
   providers: AdminAiProviderDraft[];
 }
 
+export interface AdminAiUsageUser {
+  userId: string;
+  email: string;
+  username: string | null;
+  role: UserSession['role'];
+  status: UserSession['status'];
+  usage: {
+    total: number;
+    daily: number;
+    day: string | null;
+    updatedAt: string | null;
+  };
+}
+
 export interface AiStatus {
   enabled: boolean;
   prompt: string;
@@ -294,16 +308,46 @@ function redirectToTermsIfNeeded(payload: ApiErrorPayload | null | undefined, ne
   }
 }
 
+function fallbackErrorMessage(status: number) {
+  if (status === 413) {
+    return 'The request is too large. Reduce the number of photos and try again.';
+  }
+  if (status === 502 || status === 503 || status === 504) {
+    return 'The service is temporarily unavailable. Please try again in a moment.';
+  }
+  return `Request failed (${status}).`;
+}
+
 async function readJson<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
-  const response = await fetch(input, init);
-  const payload = (await response.json().catch(() => null)) as ApiErrorPayload | null;
+  let response: Response;
+  try {
+    response = await fetch(input, init);
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw error;
+    }
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw error;
+    }
+    throw new Error('Network connection failed. Check your connection and try again.');
+  }
+
+  const raw = await response.text().catch(() => '');
+  let payload: ApiErrorPayload | null = null;
+  if (raw) {
+    try {
+      payload = JSON.parse(raw) as ApiErrorPayload;
+    } catch {
+      payload = null;
+    }
+  }
 
   if (!response.ok) {
     redirectToTermsIfNeeded(payload);
-    throw createApiError(payload, 'Request failed.');
+    throw createApiError(payload, fallbackErrorMessage(response.status));
   }
 
-  return payload as T;
+  return (payload ?? ({} as T)) as T;
 }
 
 export function createProject(project: ProjectState) {
@@ -778,6 +822,23 @@ export function updateAdminAiConfig(ai: AdminAiConfigDraft) {
     },
     body: JSON.stringify({ ai }),
   });
+}
+
+export function fetchAdminAiUsage() {
+  return readJson<{ users: AdminAiUsageUser[] }>('/api/admin/product-config/ai/usage');
+}
+
+export function updateAdminAiUsage(userId: string, usage: { total: number; daily: number }) {
+  return readJson<{ userId: string; usage: AdminAiUsageUser['usage'] | null }>(
+    `/api/admin/product-config/ai/usage/${encodeURIComponent(userId)}`,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(usage),
+    },
+  );
 }
 
 export function testAdminAiProvider(payload: { providerId?: string; provider: AdminAiProviderDraft }) {

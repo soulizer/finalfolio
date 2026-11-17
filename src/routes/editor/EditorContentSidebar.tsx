@@ -157,21 +157,29 @@ export function EditorContentSidebar({
           </label>
           <button
             type="button"
-            className="button button--ghost button--small"
+            className={`editor-icon-button photo-actions__icon ${importUrlOpen ? 'is-active' : ''}`.trim()}
             aria-expanded={importUrlOpen}
+            aria-label={t('Add from URL')}
+            title={t('Add from URL')}
             onClick={() => setImportUrlOpen((current) => !current)}
           >
-            {t('Add from URL')}
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M6.4 9.6 9.6 6.4M5 11l-1 1a2.1 2.1 0 0 1-3-3l3-3a2.1 2.1 0 0 1 3 0M11 5l1-1a2.1 2.1 0 0 1 3 3l-3 3a2.1 2.1 0 0 1-3 0" />
+            </svg>
           </button>
           {unusedAssetCount > 0 ? (
             <button
               type="button"
-              className="button button--ghost button--small"
+              className="editor-icon-button photo-actions__icon photo-actions__icon--warning"
               disabled={assetMutationBusy || uploadBusy}
-              title={assetMutationBusy || uploadBusy ? t('Wait for the current library mutation to finish.') : undefined}
+              aria-label={countLabel(unusedAssetCount, 'Clear 1 unused', 'Clear %s unused')}
+              title={assetMutationBusy || uploadBusy ? t('Wait for the current library mutation to finish.') : countLabel(unusedAssetCount, 'Clear 1 unused', 'Clear %s unused')}
               onClick={() => void removeUnusedAssetsFromIssue()}
             >
-              {countLabel(unusedAssetCount, 'Clear 1 unused', 'Clear %s unused')}
+              <svg viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M3 4.6h10M6.2 4.6V3.2h3.6v1.4M5 4.6l.5 8h5l.5-8" />
+              </svg>
+              <span className="photo-actions__badge" aria-hidden="true">{unusedAssetCount}</span>
             </button>
           ) : null}
         </div>
@@ -541,18 +549,32 @@ export function EditorContentSidebar({
                   </div>
                 </div>
               </div>
-              <div className="editor-crop-actions editor-crop-actions--below">
-                <button type="button" className="button button--ghost button--small" onClick={clearSelectedSlot}>
-                  {t('Clear')}</button>
+              <div className="editor-crop-actions editor-crop-actions--below editor-icon-toolbar editor-icon-toolbar--three">
                 <button
                   type="button"
-                  className="button button--ghost button--small"
-                  onClick={() => clearAssetPlacements(selectedAsset.id)}
+                  className="editor-icon-button"
+                  onClick={clearSelectedSlot}
+                  aria-label={t('Clear')}
+                  title={t('Clear')}
                 >
-                  {t('Clear all')}</button>
+                  <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M9.4 2.6 13.4 6.6 7.6 12.4H4.4l-1.8-1.8zM6.2 5.8l4 4M4.2 12.4h8.2" />
+                  </svg>
+                </button>
                 <button
                   type="button"
-                  className="button button--ghost button--small"
+                  className="editor-icon-button"
+                  onClick={() => clearAssetPlacements(selectedAsset.id)}
+                  aria-label={t('Clear all')}
+                  title={t('Clear all')}
+                >
+                  <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M3 4.6h10M6.2 4.6V3.2h3.6v1.4M5 4.6l.5 8h5l.5-8M6.8 7v3.2M9.2 7v3.2" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  className="editor-icon-button"
                   onClick={() =>
                     updateSelectedCrop((crop) =>
                       createDefaultCrop({
@@ -560,8 +582,13 @@ export function EditorContentSidebar({
                       }),
                     )
                   }
+                  aria-label={t('Reset')}
+                  title={t('Reset')}
                 >
-                  {t('Reset')}</button>
+                  <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M13 8a5 5 0 1 1-1.5-3.5M13 3v4H9" />
+                  </svg>
+                </button>
               </div>
             </>
           ) : null}

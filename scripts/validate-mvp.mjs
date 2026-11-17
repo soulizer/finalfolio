@@ -1747,7 +1747,7 @@ try {
     assert.match(editorOperationsSidebar, /export function EditorOperationsSidebar/);
     assert.match(editorOperationsSidebar, /editor-panel--project-actions/);
     assert.doesNotMatch(editorOperationsSidebar, /editor-project-url/);
-    assert.doesNotMatch(editorOperationsSidebar, /editor-icon-button/);
+    assert.match(editorOperationsSidebar, /editor-icon-button/);
     assert.match(editorOperationsSidebar, /Share project/);
     assert.match(editorOperationsSidebar, /Share project/);
     assert.match(editorOperationsSidebar, /Save as template/);
@@ -2140,7 +2140,8 @@ try {
     assert.doesNotMatch(editorPage, /Clear all/);
     assert.doesNotMatch(editorPage, /Clear .* unused/);
     assert.doesNotMatch(editorPage, /editor-project-url/);
-    assert.doesNotMatch(editorPage, /editor-icon-button/);
+    assert.match(editorPage, /editor-icon-button/);
+    assert.match(editorPage, /editor-page-parity/);
     assert.doesNotMatch(editorPage, /editor-crop-workbench/);
     assert.doesNotMatch(editorPage, /Arrow keys nudge/);
     assert.doesNotMatch(editorPage, /editor-sidebar editor-sidebar--content/);

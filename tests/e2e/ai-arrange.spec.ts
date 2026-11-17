@@ -213,3 +213,23 @@ test('admin AI pool saves a provider and its ordering fields', async ({ page }) 
   await expect(page.locator('.admin-notice')).toContainText('AI settings saved.');
   await expect(page.locator('.admin-ai-provider-card').filter({ hasText: 'Mock provider' })).toBeVisible();
 });
+
+test('admin can adjust per-account AI usage counts', async ({ page }) => {
+  await signInAs(page, 'e2e-admin@example.com', 'Password123!', '/admin');
+  await page.getByRole('button', { name: 'AI', exact: true }).click();
+  const row = page.locator('.admin-ai-usage__row').filter({ hasText: 'e2e-user@example.com' }).first();
+  await expect(row).toBeVisible();
+  const inputs = row.locator('input');
+  const totalBefore = await inputs.nth(0).inputValue();
+  const dailyBefore = await inputs.nth(1).inputValue();
+
+  await inputs.nth(0).fill('4');
+  await inputs.nth(1).fill('3');
+  await row.getByRole('button', { name: 'Save usage' }).click();
+  await expect(page.locator('.admin-inline-note')).toContainText('e2e-user@example.com');
+  await expect(row).toContainText('Used 4 total · 3 today');
+
+  await inputs.nth(0).fill(totalBefore);
+  await inputs.nth(1).fill(dailyBefore);
+  await row.getByRole('button', { name: 'Save usage' }).click();
+});

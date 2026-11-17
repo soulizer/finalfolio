@@ -710,6 +710,7 @@ export function EditorPage() {
     duplicatePage,
     insertPage,
     moveSelectedPage,
+    removeLastPage,
     removeSelectedPage,
     reorderPages,
   } = createEditorPageActions({
@@ -1308,6 +1309,34 @@ export function EditorPage() {
               <span className="editor-panel__label">{t('Sequence')}</span>
               <span className="panel-tag">{sequenceLabel}</span>
             </div>
+            {project.pages.length % 2 === 1 ? (
+              <div className="editor-page-parity" role="status">
+                <div className="editor-page-parity__copy">
+                  <strong>{t('Odd page count')}</strong>
+                  <span>
+                    {t('Spreads pair two pages. Add or remove one page so the folio reads as complete spreads.')}
+                  </span>
+                </div>
+                <div className="editor-page-parity__actions">
+                  <button
+                    type="button"
+                    className="button button--ghost button--small"
+                    disabled={project.pages.length >= PROJECT_PAGE_LIMIT}
+                    onClick={() => addPage()}
+                  >
+                    {t('Add a page')}
+                  </button>
+                  <button
+                    type="button"
+                    className="button button--ghost button--small"
+                    disabled={project.pages.length <= 1}
+                    onClick={() => void removeLastPage()}
+                  >
+                    {t('Delete last page')}
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
             <div className="page-strip">
               {project.pages.map((page, index) => {
@@ -1560,30 +1589,42 @@ export function EditorPage() {
                       </button>
                     ) : null}
                   </div>
-                  <div className="layout-selection-actions__buttons">
+                  <div className="layout-selection-actions__buttons editor-icon-toolbar editor-icon-toolbar--three">
                     <button
                       type="button"
-                      className="button button--ghost button--small"
+                      className="editor-icon-button"
                       disabled={project.pages.length >= PROJECT_PAGE_LIMIT}
                       onClick={() => insertPage(templateChoice, 'before')}
+                      aria-label={t('Insert above')}
+                      title={t('Insert above')}
                     >
-                      {t('Insert above')}
+                      <svg viewBox="0 0 16 16" aria-hidden="true">
+                        <path d="M8 9.6V2.6M4.8 5.8 8 2.6l3.2 3.2M3.4 12.8h9.2" />
+                      </svg>
                     </button>
                     <button
                       type="button"
-                      className="button button--ghost button--small"
+                      className="editor-icon-button"
                       disabled={isCurrentLayoutSelected}
                       onClick={() => applyTemplateChoice(templateChoice)}
+                      aria-label={t('Replace this page')}
+                      title={t('Replace this page')}
                     >
-                      {t('Replace this page')}
+                      <svg viewBox="0 0 16 16" aria-hidden="true">
+                        <path d="M3.6 5.4h7.2L9 3.6M12.4 10.6H5.2L7 12.4" />
+                      </svg>
                     </button>
                     <button
                       type="button"
-                      className="button button--ghost button--small"
+                      className="editor-icon-button"
                       disabled={project.pages.length >= PROJECT_PAGE_LIMIT}
                       onClick={() => insertPage(templateChoice, 'after')}
+                      aria-label={t('Insert below')}
+                      title={t('Insert below')}
                     >
-                      {t('Insert below')}
+                      <svg viewBox="0 0 16 16" aria-hidden="true">
+                        <path d="M8 2.6v7M4.8 6.4 8 9.6l3.2-3.2M3.4 12.8h9.2" />
+                      </svg>
                     </button>
                   </div>
                 </div>

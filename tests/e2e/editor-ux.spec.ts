@@ -226,3 +226,21 @@ test('language toggle switches the editor and homepage to Chinese', async ({ pag
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
 });
+
+test('odd page counts offer one-click page parity fixes', async ({ page }) => {
+  await signIn(page, '/editor');
+  const firstPage = page.locator('.page-chip').first();
+  await firstPage.locator('.page-chip__select').click();
+  await firstPage.getByRole('button', { name: 'Duplicate page' }).click();
+
+  const parity = page.locator('.editor-page-parity');
+  await expect(parity).toBeVisible();
+  await parity.getByRole('button', { name: 'Add a page' }).click();
+  await expect(parity).toHaveCount(0);
+
+  await page.locator('.page-chip.is-active').getByRole('button', { name: 'Duplicate page' }).click();
+  await expect(page.locator('.editor-page-parity')).toBeVisible();
+  await page.locator('.editor-page-parity').getByRole('button', { name: 'Delete last page' }).click();
+  await page.locator('.confirm-dialog').getByRole('button', { name: 'Delete page' }).click();
+  await expect(page.locator('.editor-page-parity')).toHaveCount(0);
+});

@@ -18,6 +18,8 @@ Admin → **AI**:
 - Default prompt (shown to users; users may edit a temporary copy).
 - Interface pool: name, model, Base URL, API key, enabled flag and priority.
 - **Test connection** for any provider from the focused edit dialog.
+- **AI usage** lists every account with editable total and daily used counts, plus
+  a reset action. Global limits still apply.
 - Plans are asked to use 4/6/8/10 pages; odd provider responses are padded to an
   even count so spreads turn naturally.
 - Saved interfaces render as compact summary rows. Click **Edit interface** to

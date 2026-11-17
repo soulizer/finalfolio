@@ -2291,7 +2291,7 @@ export function createApp({
       next(error);
     }
   });
-  app.use(express.json({ limit: '5mb' }));
+  app.use(express.json({ limit: '8mb' }));
   app.use(async (request, _response, next) => {
     const cookies = parseCookies(request.headers.cookie ?? '');
     const sessionId = cookies[SESSION_COOKIE_NAME] ?? null;
@@ -3604,6 +3604,49 @@ export function createApp({
         detail: { action: 'update-ai-config' },
       });
       response.json({ ai });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get('/api/admin/product-config/ai/usage', async (request, response, next) => {
+    try {
+      requireAdmin(request);
+      const [users, usage] = await Promise.all([authStore.listUsers(), aiStore.readUsageForAdmin()]);
+      response.json({
+        users: users
+          .map((user) => ({
+            userId: user.id,
+            email: user.email,
+            username: user.username ?? null,
+            role: user.role,
+            status: user.status,
+            usage: usage[user.id] ?? { total: 0, daily: 0, day: null, updatedAt: null },
+          }))
+          .sort((a, b) => b.usage.total - a.usage.total || String(a.email).localeCompare(String(b.email))),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.put('/api/admin/product-config/ai/usage/:userId', async (request, response, next) => {
+    try {
+      const adminUser = requireAdmin(request);
+      const targetUser = await authStore.readUser(request.params.userId);
+      const usage = await aiStore.setUserUsage(targetUser.id, request.body ?? {});
+      await opsStore.recordEvent({
+        type: 'admin',
+        status: 'ok',
+        userId: adminUser.id,
+        detail: {
+          action: 'update-ai-usage',
+          targetUserId: targetUser.id,
+          total: usage?.total ?? null,
+          daily: usage?.daily ?? null,
+        },
+      });
+      response.json({ userId: targetUser.id, usage });
     } catch (error) {
       next(error);
     }

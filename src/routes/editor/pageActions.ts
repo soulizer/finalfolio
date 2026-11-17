@@ -220,6 +220,45 @@ export function createEditorPageActions({
     setTemplateChoice(nextState.nextPage.template);
   }
 
+  async function removeLastPage() {
+    if (project.pages.length <= 1) {
+      return;
+    }
+
+    const lastIndex = project.pages.length - 1;
+    const lastPage = project.pages[lastIndex];
+    if (!lastPage) {
+      return;
+    }
+    const pageTitle = lastPage.title.trim() || 'Page ' + (lastIndex + 1);
+    const confirmed = await confirmAction({
+      title: 'Delete this page?',
+      body: getConfirmationMessage('deletePage', { pageTitle }),
+      confirmLabel: 'Delete page',
+      tone: 'danger',
+    });
+    if (!confirmed) {
+      return;
+    }
+
+    const nextState = removeProjectPage({
+      project,
+      selectedPage: lastPage,
+      selectedPageIndex: lastIndex,
+    });
+    if (!nextState) {
+      return;
+    }
+
+    updateProject(() => nextState.nextProject);
+    if (selectedPage?.id === lastPage.id) {
+      setSelectedPageId(nextState.nextPage.id);
+      setSelectedSlot(getInitialSlot(nextState.nextPage));
+      setTemplateChoice(nextState.nextPage.template);
+    }
+    setMessage(translate('Last page deleted.'));
+  }
+
   function applyTemplateChoice(nextTemplate: TemplateId = templateChoice, templateOverride?: CustomTemplateDefinition) {
     if (!selectedPage || (nextTemplate === selectedPage.template && nextTemplate !== 'custom')) {
       return;
@@ -245,6 +284,7 @@ export function createEditorPageActions({
     duplicatePage,
     insertPage,
     moveSelectedPage,
+    removeLastPage,
     removeSelectedPage,
     reorderPages,
   };

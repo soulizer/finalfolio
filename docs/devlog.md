@@ -1714,3 +1714,23 @@
   the display face.
 - Replaced Tencent-mirror URLs in `package-lock.json`, added `.npmrc`, and
   verified `npm ci` against the public registry.
+
+## 2026-11-17 Follow-up — hover, parity, admin usage and AI reliability
+
+- Removed every hover `translateY` lift. Controls now respond with border, colour
+  and shadow only.
+- Gallery delete/retry icons now share the exact 24 px, border, gradient and
+  shadow recipe of `.page-chip__action`, inset 14 px from the thumbnail edge.
+- AI dialog received an inner bevel ring and selected tiles now use a white inner
+  frame, dark outer ring and pressed shadow instead of relying on a tiny check.
+- Added an odd-page notice with **Add a page** and **Delete last page** actions.
+- Collapsed undo, redo, save, export, duplicate and archive into one icon row;
+  new draft and save-as-template sit beside the AI button. Page layout and crop
+  actions are icon rows too, and the gallery URL/clear actions became compact
+  icons.
+- Added an admin AI usage editor so an administrator can correct or reset each
+  account's total and daily used counts.
+- AI requests now share a 90 s pool deadline, retry transient provider failures
+  once, use an 8k output budget, and fail with a clear retry message when the
+  service is unavailable. The API fallback now reports status-specific errors
+  instead of the generic `Request failed.`.

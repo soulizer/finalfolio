@@ -7,6 +7,7 @@ import {
 } from '../../editor/api';
 import { confirmAction } from '../../ui/confirm';
 import { AdminInlineField, AdminToggleField } from './AdminFormFields';
+import { AdminAiUsagePanel } from './AdminAiUsagePanel';
 
 type ProviderEditorState = {
   index: number | null;
@@ -379,6 +380,8 @@ export function AdminAiPanel({
         <p className="panel-note">
           {t('0 means unlimited. The daily limit resets at UTC midnight.')}
         </p>
+
+        <AdminAiUsagePanel />
 
         <div className="admin-ai-prompt">
           <div className="admin-section-heading">

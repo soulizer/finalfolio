@@ -302,8 +302,47 @@ export function createAiStore({ dataRoot } = {}) {
     };
   }
 
+  async function readUsageForAdmin() {
+    const usage = await readUsage();
+    const records = usage.users && typeof usage.users === 'object' ? usage.users : {};
+    const result = {};
+    for (const userId of Object.keys(records)) {
+      const record = usageFor(usage, userId);
+      result[userId] = {
+        total: record.total,
+        daily: record.daily,
+        day: record.day,
+        updatedAt: record.updatedAt,
+      };
+    }
+    return result;
+  }
+
+  async function setUserUsage(userId, payload = {}) {
+    if (typeof userId !== 'string' || !userId.trim()) {
+      throw createBadRequest('User ID is invalid.');
+    }
+    const total = sanitizeLimit(payload.total, 0, 100000);
+    const daily = sanitizeLimit(payload.daily, 0, 10000);
+
+    usageQueue = usageQueue.catch(() => {}).then(async () => {
+      await ensureAiDirectory();
+      const usage = await readUsage();
+      usage.users = usage.users && typeof usage.users === 'object' ? usage.users : {};
+      usage.users[userId] = {
+        total,
+        daily,
+        day: currentDay(),
+        updatedAt: new Date().toISOString(),
+      };
+      await writeJsonFile(usageFile, usage);
+    });
+    await usageQueue;
+    return (await readUsageForAdmin())[userId] ?? null;
+  }
+
   function recordUsage(userId) {
-    usageQueue = usageQueue.then(async () => {
+    usageQueue = usageQueue.catch(() => {}).then(async () => {
       await ensureAiDirectory();
       const usage = await readUsage();
       const day = currentDay();
@@ -340,7 +379,7 @@ export function createAiStore({ dataRoot } = {}) {
     return config;
   }
 
-  async function callProvider(provider, messages, { timeoutMs, maxTokens = 5000 } = {}) {
+  async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000 } = {}) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     const startedAt = Date.now();
@@ -368,6 +407,9 @@ export function createAiStore({ dataRoot } = {}) {
         payload = JSON.parse(bodyText);
       } catch {
         throw new Error('The AI provider returned a non-JSON response.');
+      }
+      if (payload?.choices?.[0]?.finish_reason === 'length') {
+        throw new Error('The AI provider cut the response off before it finished.');
       }
       const content = payload?.choices?.[0]?.message?.content;
       if (typeof content !== 'string' || !content.trim()) {
@@ -475,24 +517,41 @@ export function createAiStore({ dataRoot } = {}) {
     }
 
     const failures = [];
+    const deadline = Date.now() + Math.max(30_000, Math.min(config.requestTimeoutMs, 90_000));
+    const canRetry = (error) => {
+      const message = error instanceof Error ? error.message : '';
+      return /Timed out|HTTP (?:429|5\d\d)|fetch failed|ECONNRESET|ENOTFOUND|socket hang up/i.test(message);
+    };
     for (const provider of providers) {
-      try {
-        const result = await callProvider(provider, messages, {
-          timeoutMs: config.requestTimeoutMs,
-        });
-        const parsed = extractJson(result.content);
-        if (!parsed || !Array.isArray(parsed.plans) || parsed.plans.length === 0) {
-          throw new Error('The AI response did not include any plans.');
+      let lastError = null;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const remaining = deadline - Date.now();
+        if (remaining < 5_000) {
+          break;
         }
-        await recordUsage(userId);
-        return {
-          ...parsed,
-          providerName: provider.name,
-          prompt: userPrompt,
-        };
-      } catch (error) {
-        failures.push(`${provider.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        try {
+          const result = await callProvider(provider, messages, {
+            timeoutMs: Math.min(config.requestTimeoutMs, remaining),
+          });
+          const parsed = extractJson(result.content);
+          if (!parsed || !Array.isArray(parsed.plans) || parsed.plans.length === 0) {
+            throw new Error('The AI response did not include any plans.');
+          }
+          await recordUsage(userId);
+          return {
+            ...parsed,
+            providerName: provider.name,
+            prompt: userPrompt,
+          };
+        } catch (error) {
+          lastError = error;
+          if (attempt > 0 || !canRetry(error) || deadline - Date.now() < 10_000) {
+            break;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 700));
+        }
       }
+      failures.push(`${provider.name}: ${lastError instanceof Error ? lastError.message : 'Unknown error'}`);
     }
 
     throw createAiError(
@@ -507,6 +566,8 @@ export function createAiStore({ dataRoot } = {}) {
     generatePlans,
     getUserStatus,
     readAdminConfig,
+    readUsageForAdmin,
+    setUserUsage,
     testProvider,
     updateConfig,
   };

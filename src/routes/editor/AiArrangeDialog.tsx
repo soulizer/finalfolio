@@ -161,7 +161,20 @@ function localizeAiError(message: string, t: (key: string) => string) {
   if (/^AI connection failed/i.test(message)) {
     return t('AI connection failed. Check the interface settings.');
   }
+  if (/Network connection failed|Failed to fetch|NetworkError|temporarily unavailable|Request failed \(5\d\d\)/i.test(message)) {
+    return t('AI service is temporarily unavailable. Please try again in a moment.');
+  }
+  if (/Request failed/i.test(message)) {
+    return t('AI arrangement could not be completed. Please try again.');
+  }
   return t(message);
+}
+
+function isTransientAiError(error: unknown) {
+  const message = error instanceof Error ? error.message : '';
+  return /Network connection failed|Failed to fetch|NetworkError|temporarily unavailable|Request failed \(5\d\d\)|All AI providers failed/i.test(
+    message,
+  );
 }
 
 function formatElapsed(seconds: number) {
@@ -437,18 +450,35 @@ export function AiArrangeDialog({
       ]
         .filter(Boolean)
         .join('\n\n');
-      const response = await generateAiPlans(
-        {
-          images: photos.map((photo) => ({
-            name: photo.name,
-            width: photo.width,
-            height: photo.height,
-            dataUrl: photo.thumbnail,
-          })),
-          prompt: composedPrompt,
-        },
-        controller.signal,
-      );
+      const requestPlans = () =>
+        generateAiPlans(
+          {
+            images: photos.map((photo) => ({
+              name: photo.name,
+              width: photo.width,
+              height: photo.height,
+              dataUrl: photo.thumbnail,
+            })),
+            prompt: composedPrompt,
+          },
+          controller.signal,
+        );
+
+      let response;
+      const attemptStartedAt = Date.now();
+      try {
+        response = await requestPlans();
+      } catch (firstError) {
+        const failedFast = Date.now() - attemptStartedAt < 15_000;
+        if (controller.signal.aborted || !failedFast || !isTransientAiError(firstError)) {
+          throw firstError;
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 900));
+        if (controller.signal.aborted) {
+          throw firstError;
+        }
+        response = await requestPlans();
+      }
       const nextBundle = normalizeAiPlanBundle(response, response.prompt || composedPrompt, photos.length);
       setBundle(nextBundle);
       setSelectedPlanId(nextBundle.plans[0]?.id ?? null);
@@ -494,7 +524,7 @@ export function AiArrangeDialog({
             <p className="eyebrow">{t('AI arrangement')}</p>
             <h2 id="ai-dialog-title">{t('Let AI shape a first folio sequence')}</h2>
             <p className="panel-note">
-              {t('Upload up to %s photos. AI proposes three sequences; you choose one before it touches the editor.').replace(
+              {t('Select up to %s photos. AI proposes three sequences; you choose one before it touches the editor.').replace(
                 '%s',
                 String(maxPhotos),
               )}
