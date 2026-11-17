@@ -534,6 +534,7 @@ const zh: Record<string, string> = {
   'Photos are already prepared. This usually takes only a few seconds.': '照片已经准备好，通常只需几秒钟。',
   'Applying the plan and building pages': '正在应用方案并生成页面',
   'Uploading photos…': '正在上传照片…',
+  'Uploading…': '上传中…',
   'Uploading photos… %s/%s': '正在上传照片… %s/%s',
   'Select up to %s photos. AI proposes three sequences; you choose one before it touches the editor.': '最多选择 %s 张照片。AI 会给出 3 套编排，确认后才写入编辑器。',
   'Only small thumbnails are sent to the AI interfaces configured by the administrator.': '只会把较小的照片缩略图发送给管理员配置的 AI 接口。',

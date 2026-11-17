@@ -1958,6 +1958,7 @@ export function EditorPage() {
           onUploadPhotos={handleUploadFiles}
           uploadCompleted={uploadState.completedFiles}
           uploadTotal={uploadState.totalFiles}
+          uploadProgressPercent={uploadProgressPercent}
           availableAssets={libraryAssets}
         />
       ) : null}

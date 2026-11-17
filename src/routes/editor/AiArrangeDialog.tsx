@@ -35,6 +35,7 @@ type AiArrangeDialogProps = {
   onUploadPhotos: (files: File[]) => Promise<Array<Asset | null> | undefined>;
   uploadCompleted: number;
   uploadTotal: number;
+  uploadProgressPercent: number;
   availableAssets: Asset[];
 };
 
@@ -191,6 +192,7 @@ export function AiArrangeDialog({
   onUploadPhotos,
   uploadCompleted,
   uploadTotal,
+  uploadProgressPercent,
   availableAssets,
 }: AiArrangeDialogProps) {
   const t = useT();
@@ -200,6 +202,8 @@ export function AiArrangeDialog({
   const [readingFiles, setReadingFiles] = useState(false);
 
   const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [uploadBatchTotal, setUploadBatchTotal] = useState(0);
+  const [uploadedAssets, setUploadedAssets] = useState<Asset[]>([]);
   const [basePrompt, setBasePrompt] = useState('');
   const [stylePresetId, setStylePresetId] = useState<(typeof AI_STYLE_PRESETS)[number]['id']>('editorial');
   const [ideas, setIdeas] = useState('');
@@ -232,6 +236,19 @@ export function AiArrangeDialog({
     () => new Set(photos.filter((photo) => photo.kind === 'asset').map((photo) => photo.assetId).filter(Boolean)),
     [photos],
   );
+  const allAssets = useMemo(() => {
+    const merged = new Map<string, Asset>();
+    availableAssets.forEach((asset) => merged.set(asset.id, asset));
+    uploadedAssets.forEach((asset) => {
+      if (!merged.has(asset.id)) {
+        merged.set(asset.id, asset);
+      }
+    });
+    return Array.from(merged.values());
+  }, [availableAssets, uploadedAssets]);
+  const localPhotos = useMemo(() => photos.filter((photo) => photo.kind === 'local'), [photos]);
+  const uploadTotalCount = Math.max(uploadBatchTotal, uploadTotal, 1);
+  const uploadDoneCount = Math.min(uploadCompleted, uploadTotalCount);
 
   useEffect(() => {
     let cancelled = false;
@@ -345,9 +362,16 @@ export function AiArrangeDialog({
     // Upload immediately so applying a plan stays fast. If an upload fails, the
     // photo remains local and the apply step can retry it.
     setUploadingFiles(true);
+    setUploadBatchTotal(accepted.length);
     try {
       const uploaded = await onUploadPhotos(accepted);
       if (uploaded) {
+        const uploadedList = uploaded.filter((asset): asset is Asset => Boolean(asset));
+        setUploadedAssets((current) => {
+          const merged = new Map(current.map((asset) => [asset.id, asset]));
+          uploadedList.forEach((asset) => merged.set(asset.id, asset));
+          return Array.from(merged.values());
+        });
         setPhotos((current) =>
           current.map((photo) => {
             const index = nextPhotos.findIndex((entry) => entry.id === photo.id);
@@ -372,6 +396,7 @@ export function AiArrangeDialog({
       setError(uploadError instanceof Error ? t(uploadError.message) : t('Unable to upload the selected photos.'));
     } finally {
       setUploadingFiles(false);
+      setUploadBatchTotal(0);
     }
   }
 
@@ -680,9 +705,9 @@ export function AiArrangeDialog({
                   </span>
                 </div>
 
-                {availableAssets.length ? (
+                {allAssets.length || localPhotos.length ? (
                   <div className="ai-library-grid">
-                    {availableAssets.map((asset) => {
+                    {allAssets.map((asset) => {
                       const selected = selectedAssetIds.has(asset.id);
                       const disabled = !selected && photos.length >= maxPhotos;
                       return (
@@ -706,6 +731,22 @@ export function AiArrangeDialog({
                         </button>
                       );
                     })}
+                    {localPhotos.map((photo) => (
+                      <button
+                        key={photo.id}
+                        type="button"
+                        className="ai-library-item is-selected is-local"
+                        aria-pressed="true"
+                        onClick={() => removePhoto(photo.id)}
+                      >
+                        <img src={photo.previewUrl} alt={photo.name} />
+                        <span className="ai-library-item__name">{photo.name}</span>
+                        {uploadingFiles ? (
+                          <span className="ai-library-item__status">{t('Uploading…')}</span>
+                        ) : null}
+                        <span className="ai-library-item__check" aria-hidden="true">✓</span>
+                      </button>
+                    ))}
                   </div>
                 ) : (
                   <div className="ai-library-empty">
@@ -782,6 +823,24 @@ export function AiArrangeDialog({
                         event.currentTarget.value = '';
                       }}
                     />
+                    {uploadingFiles ? (
+                      <div
+                        className="ai-upload-progress"
+                        role="progressbar"
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={uploadProgressPercent}
+                      >
+                        <div className="ai-upload-progress__track">
+                          <span className="ai-upload-progress__bar" style={{ width: `${uploadProgressPercent}%` }} />
+                        </div>
+                        <span className="ai-upload-progress__label">
+                          {t('Uploading photos… %s/%s')
+                            .replace('%s', String(Math.min(uploadDoneCount + 1, uploadTotalCount)))
+                            .replace('%s', String(uploadTotalCount))}
+                        </span>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
 
