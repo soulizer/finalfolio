@@ -152,6 +152,7 @@ export function AiArrangeDialog({
   const [statusError, setStatusError] = useState<string | null>(null);
   const [photos, setPhotos] = useState<AiPhoto[]>([]);
   const [readingFiles, setReadingFiles] = useState(false);
+
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [prompt, setPrompt] = useState('');
   const [promptEditing, setPromptEditing] = useState(false);
@@ -167,6 +168,7 @@ export function AiArrangeDialog({
   const [importError, setImportError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const readingAssetRef = useRef<string | null>(null);
   const photosRef = useRef<AiPhoto[]>([]);
 
   photosRef.current = photos;
@@ -345,7 +347,11 @@ export function AiArrangeDialog({
       return;
     }
 
-    setReadingFiles(true);
+    if (readingAssetRef.current === asset.id) {
+      return;
+    }
+
+    readingAssetRef.current = asset.id;
     setError(null);
     try {
       const photo = await readAssetPhoto(asset);
@@ -353,7 +359,7 @@ export function AiArrangeDialog({
     } catch (readError) {
       setError(readError instanceof Error ? t(readError.message) : t('Unable to read one of the selected photos.'));
     } finally {
-      setReadingFiles(false);
+      readingAssetRef.current = null;
     }
   }
 
@@ -698,9 +704,9 @@ export function AiArrangeDialog({
                           <button
                             key={asset.id}
                             type="button"
-                            className={`ai-library-item ${selected ? 'is-selected' : ''}`}
+                            className={`ai-library-item ${selected ? 'is-selected' : ''}`.trim()}
                             aria-pressed={selected}
-                            disabled={disabled || readingFiles}
+                            disabled={disabled}
                             onClick={() => {
                               if (selected) {
                                 removePhoto(`asset:${asset.id}`);

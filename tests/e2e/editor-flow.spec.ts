@@ -49,13 +49,11 @@ test('upload, save, reopen, share, and export the editor flow', async ({ page })
   await expect(page).toHaveURL(/\/editor\/[a-z0-9_-]+$/);
   await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeVisible();
 
-  const editorUrl = await page.getByLabel('Project URL').inputValue();
+  const editorUrl = page.url();
   expect(editorUrl).toContain('/editor/');
 
   await page.reload();
   await expect(projectTitleInput).toHaveValue(title);
-
-  await page.getByRole('button', { name: 'Share project' }).click();
   await expect(page.getByRole('button', { name: 'Open shared' })).toBeVisible();
   const publicShareUrl = await page.getByLabel('Share link').inputValue();
   expect(publicShareUrl).toContain('/project/');

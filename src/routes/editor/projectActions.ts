@@ -4,13 +4,11 @@ import { duplicateProject, patchProject, type UserSession } from '../../editor/a
 import type { ProjectRecord } from '../../editor/types';
 
 type ProjectActionBusy = 'duplicate' | 'archive' | 'unarchive' | null;
-type CopyState = 'idle' | 'copied' | 'error';
 type SetProjectActionBusy = (value: ProjectActionBusy) => void;
 type SetMessage = (message: string | null) => void;
 type SetProjectRecord = (
   value: ProjectRecord | ((current: ProjectRecord | null) => ProjectRecord | null)
 ) => void;
-type SetCopyState = (state: CopyState) => void;
 
 type DuplicateProjectRecordOptions = {
   session: UserSession | null;
@@ -31,23 +29,19 @@ type ToggleProjectArchiveOptions = {
 type CreateEditorProjectShellActionsOptions = {
   session: UserSession | null;
   projectRecord: ProjectRecord | null;
-  shareUrl: string;
   navigate: NavigateFunction;
   setProjectActionBusy: SetProjectActionBusy;
   setMessage: SetMessage;
   setProjectRecord: SetProjectRecord;
-  setCopyState: SetCopyState;
 };
 
 export function createEditorProjectShellActions({
   session,
   projectRecord,
-  shareUrl,
   navigate,
   setProjectActionBusy,
   setMessage,
   setProjectRecord,
-  setCopyState,
 }: CreateEditorProjectShellActionsOptions) {
   async function handleDuplicateCurrentProject() {
     await duplicateProjectRecord({
@@ -82,23 +76,8 @@ export function createEditorProjectShellActions({
     window.location.assign('/admin');
   }
 
-  async function handleCopyLink() {
-    if (!shareUrl) {
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopyState('copied');
-      window.setTimeout(() => setCopyState('idle'), 1800);
-    } catch {
-      setCopyState('error');
-    }
-  }
-
   return {
     handleArchiveToggle,
-    handleCopyLink,
     handleDuplicateCurrentProject,
     openAccountPage,
     openAdminPage,

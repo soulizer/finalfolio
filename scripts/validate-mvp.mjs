@@ -1746,8 +1746,8 @@ try {
     assert.match(editorContentSidebar, /Arrow keys nudge/);
     assert.match(editorOperationsSidebar, /export function EditorOperationsSidebar/);
     assert.match(editorOperationsSidebar, /editor-panel--project-actions/);
-    assert.match(editorOperationsSidebar, /editor-project-url/);
-    assert.match(editorOperationsSidebar, /editor-icon-button/);
+    assert.doesNotMatch(editorOperationsSidebar, /editor-project-url/);
+    assert.doesNotMatch(editorOperationsSidebar, /editor-icon-button/);
     assert.match(editorOperationsSidebar, /Share project/);
     assert.match(editorOperationsSidebar, /Share project/);
     assert.match(editorOperationsSidebar, /Save as template/);
@@ -1824,7 +1824,7 @@ try {
     assert.match(editorProjectActions, /export function createEditorProjectShellActions/);
     assert.match(editorProjectActions, /export async function duplicateProjectRecord/);
     assert.match(editorProjectActions, /export async function toggleProjectArchiveState/);
-    assert.match(editorProjectActions, /function handleCopyLink/);
+    assert.doesNotMatch(editorProjectActions, /function handleCopyLink/);
     assert.match(editorProjectActions, /duplicateProject\(/);
     assert.match(editorProjectActions, /patchProject\(/);
     assert.match(editorPageOperations, /export function addPageToProject/);

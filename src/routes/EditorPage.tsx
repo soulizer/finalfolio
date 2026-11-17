@@ -417,13 +417,6 @@ export function EditorPage() {
     () => project.assets.filter(isServerBackedUploadAsset).map((asset) => asset.id).sort().join('|'),
     [project.assets],
   );
-  const shareUrl = useMemo(() => {
-    if (!projectRecord) {
-      return '';
-    }
-
-    return new URL(projectRecord.sharePath, window.location.origin).toString();
-  }, [projectRecord]);
   const previewStyle = useMemo(
     () =>
       ({
@@ -669,19 +662,16 @@ export function EditorPage() {
 
   const {
     handleArchiveToggle,
-    handleCopyLink,
     handleDuplicateCurrentProject,
     openAccountPage,
     openAdminPage,
   } = createEditorProjectShellActions({
     session,
     projectRecord,
-    shareUrl,
     navigate,
     setProjectActionBusy,
     setMessage,
     setProjectRecord,
-    setCopyState,
   });
 
   const {
@@ -1085,7 +1075,7 @@ export function EditorPage() {
           ? t('Attaching recovered local uploads to this account before saving.')
           : t('Recovered local uploads are still pending account attachment before this folio can be saved.')
         : t('Local uploads are kept on this device. Sign in to attach them to your account before creating a saved link.')
-      : t('Draft only. Create a stable editor URL to save this folio on the server.')
+      : t('Draft only. Save this folio to keep it on the server and create a shareable link.')
     : legacyProjectReadOnly
       ? session
         ? t('Legacy read-only project. Duplicate it into your account before saving, sharing, or archiving.')
@@ -1144,7 +1134,6 @@ export function EditorPage() {
       : projectRecord.archivedAt
         ? t('Archived')
         : t('Saved link');
-  const copyButtonLabel = copyState === 'copied' ? t('Copied') : copyState === 'error' ? t('Copy failed') : t('Copy link');
   const publicShareUrl =
     projectRecord?.share.path && typeof window !== 'undefined' ? new URL(projectRecord.share.path, window.location.origin).toString() : '';
   const publicShareCopyLabel =
@@ -1840,8 +1829,6 @@ export function EditorPage() {
           canUndo={canUndo}
           authReady={authReady}
           canSaveProject={canSaveProject}
-          copyButtonLabel={copyButtonLabel}
-          copyState={copyState}
           exportActionBusy={exportActionBusy}
           exportActionLabel={exportActionLabel}
           guestUploadTransferBusy={guestUploadTransferBusy}
@@ -1849,7 +1836,6 @@ export function EditorPage() {
           libraryBusy={libraryBusy}
           onArchiveToggle={() => void handleArchiveToggle(!projectRecord?.archivedAt)}
           onCloseTemplateComposer={() => setTemplateComposerOpen(false)}
-          onCopyLink={() => void handleCopyLink()}
           onCopyPublicShareLink={() => void handleCopyPublicShareLink()}
           onDisableShare={() => void handleDisableProjectShare()}
           onDuplicateProject={() => void handleDuplicateCurrentProject()}
@@ -1888,7 +1874,6 @@ export function EditorPage() {
           sequenceLabel={sequenceLabel}
           session={session}
           shareBusy={shareBusy}
-          shareUrl={shareUrl}
           statusText={statusText}
           templateComposerOpen={templateComposerOpen}
           templatePreserveCopy={templatePreserveCopy}

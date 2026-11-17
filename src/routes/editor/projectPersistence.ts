@@ -16,7 +16,6 @@ import { Asset, ProjectRecord, ProjectState } from '../../editor/types';
 import { confirmAction } from '../../ui/confirm';
 import {
   buildDraftProjectHydration,
-  CREATED_EDITOR_URL_MESSAGE,
   DRAFT_ONLY_MESSAGE,
   type EditorProjectHydration,
   normalizeEditorProjectRecord,
@@ -400,16 +399,37 @@ export async function saveProjectRecord({
 
   const requestSnapshot = snapshot;
   setSaveState('saving');
-  setMessage(translate(projectRecord ? 'Saving changes to the server...' : 'Creating a stable editor URL on the server...'));
+  setMessage(translate(projectRecord ? 'Saving changes...' : 'Saving this folio...'));
 
   try {
     const projectToPersist = createPersistableProjectSnapshot(project);
-    const record = projectRecord
+    let record = projectRecord
       ? await persistProject(projectRecord.id, projectToPersist, projectRecord.rev, { autosave: !manual })
       : await createProject(projectToPersist);
-    applyServerProjectRecord(record, projectRecord ? formatSavedAt(record.updatedAt) : CREATED_EDITOR_URL_MESSAGE, {
-      requestSnapshot,
-    });
+
+    let shareCreated = Boolean(record.share?.enabled);
+    if (!projectRecord && !shareCreated) {
+      try {
+        record = await enableProjectShare(record.id);
+        shareCreated = Boolean(record.share?.enabled);
+      } catch {
+        shareCreated = false;
+      }
+    }
+
+    applyServerProjectRecord(
+      record,
+      projectRecord
+        ? formatSavedAt(record.updatedAt)
+        : translate(
+            shareCreated
+              ? 'Folio saved and public link created.'
+              : 'Folio saved. Open the share section to create a public link.',
+          ),
+      {
+        requestSnapshot,
+      },
+    );
 
     onSaveSuccess?.();
 

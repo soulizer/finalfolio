@@ -136,6 +136,24 @@ export function normalizeAiPlanBundle(value: unknown, prompt: string, imageCount
         return null;
       }
 
+      // Turn.js reads more naturally with an even page count. The prompt asks
+      // for an even count, and this fallback keeps the promise if a provider
+      // returns an odd sequence.
+      if (pages.length % 2 === 1 && pages.length < PROJECT_PAGE_LIMIT) {
+        const lastPage = pages[pages.length - 1];
+        const closingAssetIndex = [...lastPage.assetIndexes].reverse().find((index) => index >= 0 && index < imageCount);
+        pages.push({
+          template: 'folio',
+          theme: lastPage.theme,
+          kicker: '',
+          title: '',
+          deck: '',
+          body: '',
+          caption: '',
+          assetIndexes: closingAssetIndex === undefined ? [] : [closingAssetIndex],
+        });
+      }
+
       const usedIndexes = new Set<number>();
       pages.forEach((page) => page.assetIndexes.forEach((index) => usedIndexes.add(index)));
 

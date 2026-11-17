@@ -7,8 +7,7 @@ import {
 import { CustomTemplateDefinition, PageData, PageThemeId, ProjectRecord, ProjectState, TemplateId } from '../../editor/types';
 
 export const DRAFT_ONLY_MESSAGE = 'Draft only on this device. Save this folio to reopen it from any device later.';
-export const STABLE_EDITOR_URL_MESSAGE = 'Saved. Reopen this folio from the same link whenever you need to edit or export again.';
-export const CREATED_EDITOR_URL_MESSAGE = 'Folio saved. This link is now the permanent address for the folio.';
+export const STABLE_EDITOR_URL_MESSAGE = 'Folio saved. Your folio and public link are up to date.';
 
 export type EditorSelectionState = {
   selectedPageId: string;

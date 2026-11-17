@@ -158,6 +158,31 @@ test('AI arrangement shows account library photos that are not in the draft', as
   await expect(page.locator('.ai-library-item').first()).toBeVisible();
 });
 
+test('AI plans are padded to an even page count', async ({ page }) => {
+  const oddBundle = {
+    ...bundle,
+    plans: [
+      {
+        ...bundle.plans[0],
+        id: 'odd-plan',
+        pages: [...planPages, planPages[0]],
+        pageCount: 3,
+      },
+    ],
+  };
+  await page.route('**/api/ai/status', (route) => route.fulfill({ json: status }));
+  await page.route('**/api/ai/plans', (route) => route.fulfill({ json: oddBundle }));
+  await signIn(page, '/editor');
+
+  await page.getByRole('button', { name: 'Arrange with AI' }).click();
+  const dialog = page.locator('.ai-dialog');
+  await dialog.locator('input[type="file"]').setInputFiles('public/icon-192.png');
+  await page.getByRole('button', { name: 'Generate 3 plans' }).click();
+
+  const firstPlan = page.locator('.ai-plan-card').first();
+  await expect(firstPlan).toContainText('4 pages');
+});
+
 test('AI arrangement asks guests to sign in first', async ({ page }) => {
   await page.goto('/editor');
   await expect(page.getByRole('button', { name: 'Arrange with AI' })).toBeVisible();

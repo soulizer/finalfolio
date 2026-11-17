@@ -106,6 +106,10 @@ const zh: Record<string, string> = {
   'Importing…': '导入中…',
   'Creating…': '创建中…',
   'Saving…': '保存中…',
+  'Folio saved. Open the share section to create a public link.': '作品集已保存。可在分享区创建公开链接。',
+  'Folio saved and public link created.': '作品集已保存，公开分享链接已生成。',
+  'Saving changes...': '正在保存修改…',
+  'Saving this folio...': '正在保存作品集…',
   'Updating…': '更新中…',
   'Deleting…': '删除中…',
   'Sharing…': '设置中…',
@@ -344,6 +348,8 @@ const zh: Record<string, string> = {
   'Local uploads are kept on this device. Sign in to attach them to your account before creating a saved link.':
     '本地照片只保存在这台设备上。登录并关联账户后，才能生成保存链接。',
   'Draft only. Create a stable editor URL to save this folio on the server.': '当前只是草稿，保存后会生成固定链接。',
+  'Draft only. Save this folio to keep it on the server and create a shareable link.': '当前只是草稿，保存后会保留在服务器并生成可分享的公开链接。',
+  'The public link is off. Enable it when this folio should be viewable outside the editor.': '公开链接当前已关闭；需要对外展示时再开启。',
   'Legacy read-only project. Duplicate it into your account before saving, sharing, or archiving.':
     '旧版只读项目。复制到你的账户后，才能保存、分享或归档。',
   'Legacy read-only project. Sign in to duplicate it into your account before editing.':
@@ -612,6 +618,7 @@ const zh: Record<string, string> = {
   '%s pages · %s photos': '%s 页 · %s 张照片',
   'Folio saved. This link is now the permanent address for the folio.': '作品集已保存，此链接即成为它的固定地址。',
   'Saved. Reopen this folio from the same link whenever you need to edit or export again.': '已保存。以后可通过同一链接重新打开、编辑或导出。',
+  'Folio saved. Your folio and public link are up to date.': '作品集已保存，内容和公开链接都是最新的。',
   'Draft only on this device. Save this folio to reopen it from any device later.': '仅保存在本机。保存作品集后可从其他设备重新打开。',
   'Uploading %s one by one...': '正在逐个上传%s…',
   'Untitled template': '未命名模板',

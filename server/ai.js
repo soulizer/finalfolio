@@ -41,15 +41,16 @@ export const DEFAULT_AI_PROMPT = `你是一位资深摄影画册编辑与图片�
 
 硬性规则：
 1. 必须给出 3 套方案，风格明显不同（例如：克制编辑感、强烈视觉冲击、安静手记感）。
-2. 每套方案 4-10 页；第一页用 cover 或 folio 开场，最后一页安静收束。
-3. 每个页面只使用上面列出的 template。每个 template 的图片数量必须匹配：
+2. 每套方案必须是偶数页：4、6、8 或 10 页；第一页用 cover 或 folio 开场，最后一页安静收束。
+3. 页数必须是偶数，方便双页翻页；不要输出奇数页方案。
+4. 每个页面只使用上面列出的 template。每个 template 的图片数量必须匹配：
    cover=1, essay=1, folio=1, grid=4, diptych=2, panorama=2, mosaic=3, triptych=3。
-4. assetIndexes 使用上传顺序的编号，不能越界；尽量让每张照片至少出现一次，但不要为了用完而重复堆砌。
-5. 主图放在 cover、folio、mosaic 的 lead 或大幅页面；次图、细节图放在 grid、diptych、triptych、panorama。
-6. 每页只填写该版式需要的文字；没有导语或正文时用空字符串。文字使用中文，简洁、有编辑感，不要空泛营销语。
-7. theme 必须从列表中选择，同一套方案可以有 1-3 个主色，不要每页都换色。
-8. frameRadius 为 0-24 的整数，整套方案统一。
-9. 不要输出任何 JSON 之外的字符。`;
+5. assetIndexes 使用上传顺序的编号，不能越界；尽量让每张照片至少出现一次，但不要为了用完而重复堆砌。
+6. 主图放在 cover、folio、mosaic 的 lead 或大幅页面；次图、细节图放在 grid、diptych、triptych、panorama。
+7. 每页只填写该版式需要的文字；没有导语或正文时用空字符串。文字使用中文，简洁、有编辑感，不要空泛营销语。
+8. theme 必须从列表中选择，同一套方案可以有 1-3 个主色，不要每页都换色。
+9. frameRadius 为 0-24 的整数，整套方案统一。
+10. 不要输出任何 JSON 之外的字符。`;
 
 const DEFAULT_AI_CONFIG = {
   enabled: false,

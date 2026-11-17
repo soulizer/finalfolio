@@ -14,7 +14,6 @@ import type { ProjectRecord, ProjectState, UserTemplateKind } from '../../editor
 
 type SaveState = 'draft' | 'dirty' | 'saving' | 'saved' | 'error';
 type ProjectActionBusy = 'duplicate' | 'archive' | 'unarchive' | null;
-type CopyState = 'idle' | 'copied' | 'error';
 
 type EditorOperationsSidebarProps = {
   archiveActionLabel: string;
@@ -22,8 +21,6 @@ type EditorOperationsSidebarProps = {
   canRedo: boolean;
   canSaveProject: boolean;
   canUndo: boolean;
-  copyButtonLabel: string;
-  copyState: CopyState;
   exportActionBusy: boolean;
   exportActionLabel: string;
   guestUploadTransferBusy: boolean;
@@ -31,7 +28,6 @@ type EditorOperationsSidebarProps = {
   libraryBusy: boolean;
   onArchiveToggle: () => void;
   onCloseTemplateComposer: () => void;
-  onCopyLink: () => void;
   onCopyPublicShareLink: () => void;
   onDisableShare: () => void;
   onDuplicateProject: () => void;
@@ -66,7 +62,6 @@ type EditorOperationsSidebarProps = {
   sequenceLabel: string;
   session: UserSession | null;
   shareBusy: boolean;
-  shareUrl: string;
   statusText: string;
   templateComposerOpen: boolean;
   templatePreserveCopy: boolean;
@@ -85,8 +80,6 @@ export function EditorOperationsSidebar({
   canRedo,
   canSaveProject,
   canUndo,
-  copyButtonLabel,
-  copyState,
   exportActionBusy,
   exportActionLabel,
   guestUploadTransferBusy,
@@ -94,7 +87,6 @@ export function EditorOperationsSidebar({
   libraryBusy,
   onArchiveToggle,
   onCloseTemplateComposer,
-  onCopyLink,
   onCopyPublicShareLink,
   onDisableShare,
   onDuplicateProject,
@@ -129,7 +121,6 @@ export function EditorOperationsSidebar({
   sequenceLabel,
   session,
   shareBusy,
-  shareUrl,
   statusText,
   templateComposerOpen,
   templatePreserveCopy,
@@ -267,29 +258,6 @@ export function EditorOperationsSidebar({
           >
             {t('Save as template')}</button>
         </div>
-        <div className="editor-project-url">
-          <input
-            aria-label={t('Project URL')}
-            className="editor-project-bar__input"
-            readOnly
-            value={projectRecord ? shareUrl : ''}
-            placeholder={projectRecord ? undefined : t('Save this folio to get a permanent link.')}
-          />
-          <button
-            type="button"
-            className={`editor-icon-button ${copyState === 'copied' ? 'is-active' : ''} ${copyState === 'error' ? 'is-error' : ''}`.trim()}
-            disabled={!projectRecord}
-            onClick={onCopyLink}
-            aria-label={copyButtonLabel}
-            title={copyButtonLabel}
-          >
-            <svg viewBox="0 0 16 16" aria-hidden="true">
-              <rect x="5" y="3" width="8" height="10" rx="1.5" />
-              <path d="M3.5 11V5.5C3.5 4.67 4.17 4 5 4" />
-            </svg>
-          </button>
-        </div>
-
         <section className="editor-panel__section">
           <div className="editor-panel__toolbar">
             <span className="editor-panel__label">{t('Share project')}</span>
@@ -316,7 +284,7 @@ export function EditorOperationsSidebar({
               ? t('The public route opens a read-only folio viewer with swipe, drag, keyboard, and button navigation.')
               : projectMutationLocked
                 ? t('Legacy ownerless folios can still be read, but only an owned duplicate can publish or change sharing.')
-                : t('The saved editor URL remains private. Enable sharing when this folio should be viewable outside the editor.')}
+                : t('The public link is off. Enable it when this folio should be viewable outside the editor.')}
           </p>
           <div className="editor-panel__actions editor-panel__actions--tight">
             {!projectRecord ? null : projectRecord.share.enabled ? (
