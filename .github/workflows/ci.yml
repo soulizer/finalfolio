@@ -32,6 +32,25 @@ jobs:
             const escaped = message.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
             console.log(`::error title=validate-mvp::${escaped}`);
           '
-      - run: npx playwright install --with-deps chromium
+      - name: Install Chromium
+        shell: bash
+        run: |
+          set -o pipefail
+          npx playwright install --with-deps chromium 2>&1 | tee /tmp/playwright-install.log || {
+            echo "::warning title=playwright-install::--with-deps failed; retrying browser install without OS packages"
+            npx playwright install chromium 2>&1 | tee -a /tmp/playwright-install.log
+          }
+      - name: Report Playwright install failure
+        if: failure()
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const file = "/tmp/playwright-install.log";
+            if (!fs.existsSync(file)) process.exit(0);
+            const lines = fs.readFileSync(file, "utf8").trim().split("\n");
+            const message = lines.slice(-40).join(" | ").slice(0, 7000);
+            const escaped = message.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
+            console.log(`::error title=playwright-install::${escaped}`);
+          '
       - run: npx playwright test
       - run: npm audit --audit-level=high
