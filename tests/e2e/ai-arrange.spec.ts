@@ -143,6 +143,21 @@ test('AI arrangement accepts URL imports and reuses them from the library', asyn
   await expect(page.locator('.page-chip')).toHaveCount(2, { timeout: 20_000 });
 });
 
+test('AI arrangement shows account library photos that are not in the draft', async ({ page }) => {
+  await page.route('**/api/ai/status', (route) => route.fulfill({ json: status }));
+  await signIn(page, '/editor');
+
+  await page.locator('input[type="file"][multiple]').first().setInputFiles('public/icon-192.png');
+  await expect(page.locator('.asset-tile').first()).toBeVisible({ timeout: 15_000 });
+
+  await page.getByRole('button', { name: 'New draft' }).click();
+  await page.waitForTimeout(800);
+  await page.getByRole('button', { name: 'Arrange with AI' }).click();
+  await page.getByRole('tab', { name: 'Choose from library' }).click();
+
+  await expect(page.locator('.ai-library-item').first()).toBeVisible();
+});
+
 test('AI arrangement asks guests to sign in first', async ({ page }) => {
   await page.goto('/editor');
   await expect(page.getByRole('button', { name: 'Arrange with AI' })).toBeVisible();

@@ -975,10 +975,14 @@ export function EditorPage() {
       }
 
       const latestProject = getProject();
-      const resolvedIds = new Set(availableAssets.map((asset) => asset.id));
+      const usedIndexes = new Set(plan.pages.flatMap((page) => page.assetIndexes));
+      const usedAssets = resolvedAssets.filter(
+        (asset, index): asset is Asset => Boolean(asset) && usedIndexes.has(index),
+      );
+      const resolvedIds = new Set(usedAssets.map((asset) => asset.id));
       const projectWithUploads = {
         ...latestProject,
-        assets: [...availableAssets, ...latestProject.assets.filter((asset) => !resolvedIds.has(asset.id))],
+        assets: [...usedAssets, ...latestProject.assets.filter((asset) => !resolvedIds.has(asset.id))],
       };
       const nextProject = applyAiPlanToProject({
         project: projectWithUploads,
@@ -1957,7 +1961,7 @@ export function EditorPage() {
           onClose={() => setAiDialogOpen(false)}
           onImportUrl={handleImportUrlForAi}
           onUploadPhotos={handleUploadFiles}
-          projectAssets={project.assets}
+          availableAssets={libraryAssets}
         />
       ) : null}
 

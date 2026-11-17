@@ -33,7 +33,7 @@ type AiArrangeDialogProps = {
   onClose: () => void;
   onImportUrl: (url: string) => Promise<Asset>;
   onUploadPhotos: (files: File[]) => Promise<Array<Asset | null> | undefined>;
-  projectAssets: Asset[];
+  availableAssets: Asset[];
 };
 
 type Phase = 'select' | 'generating' | 'results' | 'applying';
@@ -141,7 +141,7 @@ export function AiArrangeDialog({
   onClose,
   onImportUrl,
   onUploadPhotos,
-  projectAssets,
+  availableAssets,
 }: AiArrangeDialogProps) {
   const t = useT();
   const [status, setStatus] = useState<AiStatus | null>(null);
@@ -683,9 +683,9 @@ export function AiArrangeDialog({
                 ) : null}
 
                 {sourceTab === 'library' ? (
-                  projectAssets.length ? (
+                  availableAssets.length ? (
                     <div className="ai-library-grid">
-                      {projectAssets.map((asset) => {
+                      {availableAssets.map((asset) => {
                         const selected = selectedAssetIds.has(asset.id);
                         const disabled = !selected && photos.length >= maxPhotos;
                         return (

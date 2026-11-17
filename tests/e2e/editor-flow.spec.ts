@@ -38,9 +38,11 @@ test('upload, save, reopen, share, and export the editor flow', async ({ page })
     mimeType: 'image/png',
     buffer: uploadFixtureBuffer,
   });
-  await expect(page.locator('.editor-panel--photos .panel-tag')).toHaveText(/1 photo/);
+  await expect(page.locator('.editor-panel--photos .panel-tag')).toContainText(/photo/);
+  const uploadedTile = page.locator('.asset-tile').filter({ hasText: 'icon-192' }).first();
+  await expect(uploadedTile).toBeVisible();
   await page.getByRole('button', { name: /Select the hero frame/ }).click();
-  await page.locator('.asset-tile__main').first().click();
+  await uploadedTile.locator('.asset-tile__main').click();
   await expect(page.locator('main .asset-frame[data-has-asset="true"] img')).toBeVisible();
 
   await page.getByRole('button', { name: 'Save folio' }).click();
