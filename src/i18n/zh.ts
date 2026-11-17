@@ -503,7 +503,7 @@ const zh: Record<string, string> = {
   'Saved as a new layout.': '已另存为新排版。',
   'Untitled layout': '未命名排版',
   '%s copy': '%s 副本',
-  'Saved layouts stay in this browser.': '已保存的排版仅保留在此浏览器中。',
+  'Saved layouts stay in this browser.': '自定义排版保存在此浏览器中。',
   'Save changes updates this layout in your library. Use Replace this page above to apply it to the page.': '“保存修改”只更新排版库；点击上方“替换本页”才会把当前排版应用到页面。',
   'Save the layout to reuse it later. Use Replace this page above to apply it now.': '保存后可重复使用；点击上方“替换本页”可立即应用到当前页面。',
   'Delete this layout?': '删除这个排版？',
