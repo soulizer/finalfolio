@@ -840,7 +840,7 @@ export function EditorPage() {
     };
     const handlePointerDown = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null;
-      if (!target?.closest('.page-color-popover') && !target?.closest('.page-chip__dot')) {
+      if (!target?.closest('.page-color-popover') && !target?.closest('.page-chip__color-action')) {
         setColorPickerPageId(null);
       }
     };
@@ -1309,14 +1309,6 @@ export function EditorPage() {
               <span className="panel-tag">{sequenceLabel}</span>
             </div>
 
-            <button type="button" className="button button--primary button--small ai-arrange-button" onClick={openAiDialog}>
-              <svg viewBox="0 0 16 16" aria-hidden="true">
-                <path d="M8 1.8l1.2 3.3 3.3 1.2-3.3 1.2L8 10.8 6.8 7.5 3.5 6.3l3.3-1.2L8 1.8Z" />
-                <path d="M12.6 9.4l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8Z" />
-              </svg>
-              {t('Arrange with AI')}
-            </button>
-
             <div className="page-strip">
               {project.pages.map((page, index) => {
                 const isActive = page.id === selectedPage.id;
@@ -1371,19 +1363,6 @@ export function EditorPage() {
                         <span className="page-chip__index">{pagePositionLabel}</span>
                         <em>{t(getTemplateLabel(page.template, page.customTemplate))}</em>
                       </button>
-                      <button
-                        type="button"
-                        className={`page-chip__dot theme-card__swatch--${page.theme}`}
-                        title={t('Paper color')}
-                        aria-label={t('Paper color')}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          if (!isActive) {
-                            selectPage(page.id);
-                          }
-                          setColorPickerPageId((current) => (current === page.id ? null : page.id));
-                        }}
-                      />
                     </div>
                     {isActive ? (
                       <button
@@ -1440,6 +1419,24 @@ export function EditorPage() {
                     ) : null}
                     {isActive ? (
                       <div className="page-chip__actions" aria-label={t('Actions for %s').replace('%s', pagePositionLabel)}>
+                        <button
+                          type="button"
+                          className="page-chip__action page-chip__color-action"
+                          title={t('Paper color')}
+                          aria-label={t('Paper color')}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (!isActive) {
+                              selectPage(page.id);
+                            }
+                            setColorPickerPageId((current) => (current === page.id ? null : page.id));
+                          }}
+                        >
+                          <span
+                            className={`page-chip__color-swatch theme-card__swatch--${page.theme}`}
+                            aria-hidden="true"
+                          />
+                        </button>
                         <button
                           type="button"
                           className="page-chip__action"
@@ -1835,6 +1832,7 @@ export function EditorPage() {
           hasGuestUploadAssets={hasGuestUploadAssets}
           libraryBusy={libraryBusy}
           onArchiveToggle={() => void handleArchiveToggle(!projectRecord?.archivedAt)}
+          onOpenAiArrange={openAiDialog}
           onCloseTemplateComposer={() => setTemplateComposerOpen(false)}
           onCopyPublicShareLink={() => void handleCopyPublicShareLink()}
           onDisableShare={() => void handleDisableProjectShare()}

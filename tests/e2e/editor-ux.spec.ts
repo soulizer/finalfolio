@@ -32,7 +32,7 @@ test('editor leads with photos and the new layout picker', async ({ page }) => {
   await expect(layoutActions.getByRole('button', { name: 'Insert below' })).toBeVisible();
 
   // Per-page paper colour popover opens next to the dot with round swatches.
-  const firstDot = page.locator('.page-chip__dot').first();
+  const firstDot = page.locator('.page-chip__color-action').first();
   await expect(firstDot).toBeVisible();
   await firstDot.click();
   const popover = page.locator('.page-color-popover');

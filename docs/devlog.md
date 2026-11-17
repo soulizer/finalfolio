@@ -1696,3 +1696,21 @@
   padding.
 - AI photos can now come from upload, the existing media library, or URL import.
   Local uploads happen at selection time, keeping plan application fast.
+
+## 2026-11-17 AI Flow, Editor Chrome and CI
+
+- Moved **Lay out with AI** into the project panel and renamed it so it reads as
+  full folio layout, not page sorting.
+- AI photos now show the existing library first; upload and URL import are
+  additive buttons. The dialog uses style presets plus optional notes instead of
+  exposing or editing the raw prompt.
+- Saved folios create a public share link automatically; the private editor URL
+  is no longer shown in the sidebar.
+- AI plans are padded to an even page count.
+- Page colour selection moved into the page action row as the first of five
+  matching icon buttons.
+- Gallery delete actions moved into a fixed top-right icon on each thumbnail.
+- Site chrome now uses the UI sans-serif stack; only rendered folio pages keep
+  the display face.
+- Replaced Tencent-mirror URLs in `package-lock.json`, added `.npmrc`, and
+  verified `npm ci` against the public registry.

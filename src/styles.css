@@ -280,10 +280,10 @@ a:focus-visible {
 
 .eyebrow {
   margin: 0 0 12px;
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.78rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   color: var(--muted);
 }
 
@@ -1238,10 +1238,9 @@ a:focus-visible {
 .template-card span,
 .template-card small {
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.76rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
 }
 
 .panel-note {
@@ -2744,7 +2743,7 @@ a:focus-visible {
   border: 1px solid rgba(17, 17, 17, 0.12);
   background: rgba(255, 255, 255, 0.96);
   color: rgba(17, 17, 17, 0.76);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.72rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -2781,10 +2780,11 @@ a:focus-visible {
 }
 
 .admin-inline-meta {
-  align-items: center;
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
   gap: 0.4rem;
+  font-family: var(--font-ui);
 }
 
 .admin-row__actions {
@@ -2938,10 +2938,9 @@ a:focus-visible {
 
 .admin-detail-metrics span,
 .admin-mini-list__item span {
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
   color: var(--muted);
 }
 
@@ -7831,15 +7830,6 @@ html:lang(zh-CN) .magazine-page h2,
    rendered folio pages. All UI chrome (buttons, links, captions, admin) uses
    the system stack so it stays fast and neutral.
    --------------------------------------------------------------------------- */
-.hero__copy h1,
-.hero__copy .hero__lede,
-.hero__copy .eyebrow,
-.site-main h2,
-.site-main h3,
-.editorial-note p,
-.hero-proof__header strong,
-.hero-proof__footer strong,
-.hero-proof__caption strong,
 .magazine-page,
 .magazine-page * {
   font-family: var(--font-display);
@@ -9112,6 +9102,7 @@ html[lang='zh-CN'] body {
 
 .ai-dialog__body {
   min-height: 0;
+  max-height: min(680px, calc(100dvh - 190px));
   padding: 16px 20px;
   overflow-y: auto;
 }
@@ -10095,4 +10086,243 @@ html[lang='zh-CN'] body {
   .admin-storage-form__grid {
     grid-template-columns: 1fr;
   }
+}
+
+.page-chip__color-action {
+  padding: 0;
+}
+
+.page-chip__color-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(17, 17, 17, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+/* AI dialog now uses the same material language as the confirm dialog. */
+.ai-dialog-overlay {
+  background: rgba(17, 17, 17, 0.32);
+  backdrop-filter: blur(4px);
+}
+
+.ai-dialog {
+  height: auto;
+  max-height: min(860px, calc(100dvh - 32px));
+  grid-template-rows: auto auto auto;
+  border: var(--overlay-border);
+  border-radius: 14px;
+  background: var(--overlay-bg-strong);
+  box-shadow: var(--overlay-shadow);
+  backdrop-filter: var(--overlay-blur);
+}
+
+.ai-dialog__header,
+.ai-dialog__footer {
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.ai-dialog__body--message {
+  min-height: 320px;
+}
+
+.ai-source-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ai-source-buttons .button {
+  flex: 1 1 150px;
+}
+
+.ai-source-buttons .button.is-active {
+  border-color: rgba(17, 17, 17, 0.32);
+  box-shadow: var(--pressed-card-shadow);
+}
+
+.ai-source-buttons svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ai-source-panel {
+  display: grid;
+  gap: 8px;
+}
+
+.ai-library-empty {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 30px 18px;
+  border-radius: 8px;
+  border: 1px dashed rgba(17, 17, 17, 0.18);
+  background: rgba(255, 255, 255, 0.38);
+  text-align: center;
+}
+
+.ai-library-empty strong {
+  font-size: 0.94rem;
+}
+
+.ai-library-empty .panel-note {
+  max-width: 340px;
+  font-size: 0.78rem;
+}
+
+.ai-style-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.ai-style-card {
+  display: grid;
+  gap: 3px;
+  align-content: start;
+  padding: 9px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  background: rgba(255, 255, 255, 0.56);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ai-style-card:hover {
+  border-color: rgba(17, 17, 17, 0.28);
+}
+
+.ai-style-card.is-selected {
+  border-color: rgba(17, 17, 17, 0.46);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 2px rgba(17, 17, 17, 0.07);
+}
+
+.ai-style-card strong {
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.ai-style-card span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.ai-prompt-panel .field {
+  margin-top: 2px;
+}
+
+.ai-prompt-panel .field textarea {
+  min-height: 86px;
+}
+
+@media (max-width: 900px) {
+  .ai-dialog {
+    max-height: 96dvh;
+  }
+
+  .ai-dialog__select {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .ai-dialog {
+    max-height: 100dvh;
+  }
+}
+
+.ai-style-grid .ai-style-card:last-child {
+  grid-column: 1 / -1;
+}
+
+/* Gallery assets: destructive actions stay inside the thumbnail, not below it. */
+.asset-tile {
+  position: relative;
+}
+
+.asset-tile__delete-icon,
+.asset-tile__retry-icon {
+  position: absolute;
+  top: 10px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(17, 17, 17, 0.14);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    0 6px 14px rgba(17, 17, 17, 0.1);
+  cursor: pointer;
+}
+
+.asset-tile__delete-icon {
+  right: 10px;
+  color: #8d3a3a;
+}
+
+.asset-tile__retry-icon {
+  left: 10px;
+  color: var(--muted);
+}
+
+.asset-tile__delete-icon:disabled,
+.asset-tile__retry-icon:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.asset-tile__delete-icon:hover,
+.asset-tile__retry-icon:hover {
+  transform: translateY(-1px);
+}
+
+.asset-tile__delete-icon svg,
+.asset-tile__retry-icon svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.editor-shell .upload-button.button--primary {
+  color: var(--paper);
+}
+
+/* Functional chrome everywhere uses the same UI stack; only rendered folio pages keep the display face. */
+.asset-tile__copy span,
+.upload-progress__meta span,
+.upload-progress__queue-item span,
+.editor-stack-field__label,
+.admin-inline-field__label,
+.admin-detail-metrics span,
+.admin-mini-list__item span,
+.admin-pill,
+.page-chip__index,
+.hero-proof__meta span,
+.hero-proof__caption span,
+.hero-proof__caption small,
+.feature-card__index,
+.browser-stage__rail-head span,
+.browser-stage__panel-head span,
+.browser-stage__field span,
+.browser-stage__copy p {
+  font-family: var(--font-ui);
 }

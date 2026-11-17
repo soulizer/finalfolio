@@ -28,6 +28,7 @@ type EditorOperationsSidebarProps = {
   libraryBusy: boolean;
   onArchiveToggle: () => void;
   onCloseTemplateComposer: () => void;
+  onOpenAiArrange: () => void;
   onCopyPublicShareLink: () => void;
   onDisableShare: () => void;
   onDuplicateProject: () => void;
@@ -87,6 +88,7 @@ export function EditorOperationsSidebar({
   libraryBusy,
   onArchiveToggle,
   onCloseTemplateComposer,
+  onOpenAiArrange,
   onCopyPublicShareLink,
   onDisableShare,
   onDuplicateProject,
@@ -245,6 +247,18 @@ export function EditorOperationsSidebar({
           </button>
           <button
             type="button"
+            className="button button--ghost button--small editor-project-action editor-project-action--wide ai-arrange-button"
+            onClick={onOpenAiArrange}
+            title={t('Choose photos and let AI build a complete layout.')}
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M8 1.8l1.2 3.3 3.3 1.2-3.3 1.2L8 10.8 6.8 7.5 3.5 6.3l3.3-1.2L8 1.8Z" />
+              <path d="M12.6 9.4l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8Z" />
+            </svg>
+            {t('Lay out with AI')}
+          </button>
+          <button
+            type="button"
             className="button button--ghost button--small editor-project-action editor-project-action--wide"
             disabled={libraryBusy || exportActionBusy}
             onClick={onStartNewDraft}
@@ -280,11 +294,13 @@ export function EditorOperationsSidebar({
             />
           </label>
           <p className="panel-note">
-            {projectRecord?.share.enabled
-              ? t('The public route opens a read-only folio viewer with swipe, drag, keyboard, and button navigation.')
-              : projectMutationLocked
-                ? t('Legacy ownerless folios can still be read, but only an owned duplicate can publish or change sharing.')
-                : t('The public link is off. Enable it when this folio should be viewable outside the editor.')}
+            {!projectRecord
+              ? t('The public link is created automatically after you save this folio.')
+              : projectRecord.share.enabled
+                ? t('The public route opens a read-only folio viewer with swipe, drag, keyboard, and button navigation.')
+                : projectMutationLocked
+                  ? t('Legacy ownerless folios can still be read, but only an owned duplicate can publish or change sharing.')
+                  : t('The public link is off. Enable it when this folio should be viewable outside the editor.')}
           </p>
           <div className="editor-panel__actions editor-panel__actions--tight">
             {!projectRecord ? null : projectRecord.share.enabled ? (

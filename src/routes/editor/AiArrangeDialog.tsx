@@ -43,6 +43,39 @@ type Phase = 'select' | 'generating' | 'results' | 'applying';
 const MAX_THUMBNAIL_SIZE = 320;
 const THUMBNAIL_QUALITY = 0.68;
 
+const AI_STYLE_PRESETS = [
+  {
+    id: 'editorial',
+    label: 'Editorial restraint',
+    description: 'Leaded image, generous whitespace, precise short copy.',
+    prompt: '整体克制、留白充足、编辑感强；主图突出，文字少而精准，避免营销腔。',
+  },
+  {
+    id: 'impact',
+    label: 'Visual impact',
+    description: 'Large images, strong contrast, faster rhythm.',
+    prompt: '强烈视觉冲击，大图和强对比，节奏更快，适合时尚、商业大片或强情绪照片。',
+  },
+  {
+    id: 'quiet',
+    label: 'Quiet journal',
+    description: 'Soft paper tones, short lines, calm pacing.',
+    prompt: '安静、柔和、手记感；纸色淡雅，短句，慢节奏，适合日常和私人叙事。',
+  },
+  {
+    id: 'magazine',
+    label: 'Magazine feature',
+    description: 'Cover story structure with a clear editorial arc.',
+    prompt: '杂志专题感，封面故事结构，图文并茂，有明确的起承转合和章节节奏。',
+  },
+  {
+    id: 'minimal',
+    label: 'Minimal whitespace',
+    description: 'Very few words, photos carry the page.',
+    prompt: '极简、大量留白、文字非常克制，让照片本身承担页面主角。',
+  },
+] as const;
+
 function createPhotoId(file: File) {
   return `${file.name}:${file.size}:${file.lastModified}:${Math.random().toString(36).slice(2, 7)}`;
 }
@@ -154,15 +187,16 @@ export function AiArrangeDialog({
   const [readingFiles, setReadingFiles] = useState(false);
 
   const [uploadingFiles, setUploadingFiles] = useState(false);
-  const [prompt, setPrompt] = useState('');
-  const [promptEditing, setPromptEditing] = useState(false);
+  const [basePrompt, setBasePrompt] = useState('');
+  const [stylePresetId, setStylePresetId] = useState<(typeof AI_STYLE_PRESETS)[number]['id']>('editorial');
+  const [ideas, setIdeas] = useState('');
   const [phase, setPhase] = useState<Phase>('select');
   const [bundle, setBundle] = useState<AiPlanBundle | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [dragging, setDragging] = useState(false);
-  const [sourceTab, setSourceTab] = useState<'upload' | 'library' | 'url'>('upload');
+  const [sourcePanel, setSourcePanel] = useState<'none' | 'upload' | 'url'>('none');
   const [importUrlValue, setImportUrlValue] = useState('');
   const [importBusy, setImportBusy] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
@@ -192,7 +226,7 @@ export function AiArrangeDialog({
       .then((nextStatus) => {
         if (!cancelled) {
           setStatus(nextStatus);
-          setPrompt(nextStatus.prompt);
+          setBasePrompt(nextStatus.prompt);
         }
       })
       .catch((statusFetchError) => {
@@ -395,6 +429,14 @@ export function AiArrangeDialog({
     abortRef.current = controller;
 
     try {
+      const stylePreset = AI_STYLE_PRESETS.find((preset) => preset.id === stylePresetId) ?? AI_STYLE_PRESETS[0];
+      const composedPrompt = [
+        basePrompt,
+        `用户偏好的风格是：【${t(stylePreset.label)}】。${stylePreset.prompt}`,
+        ideas.trim() ? `用户补充要求是：【${ideas.trim()}】` : '',
+      ]
+        .filter(Boolean)
+        .join('\n\n');
       const response = await generateAiPlans(
         {
           images: photos.map((photo) => ({
@@ -403,11 +445,11 @@ export function AiArrangeDialog({
             height: photo.height,
             dataUrl: photo.thumbnail,
           })),
-          prompt,
+          prompt: composedPrompt,
         },
         controller.signal,
       );
-      const nextBundle = normalizeAiPlanBundle(response, response.prompt || prompt, photos.length);
+      const nextBundle = normalizeAiPlanBundle(response, response.prompt || composedPrompt, photos.length);
       setBundle(nextBundle);
       setSelectedPlanId(nextBundle.plans[0]?.id ?? null);
       setPhase('results');
@@ -446,7 +488,7 @@ export function AiArrangeDialog({
 
   return (
     <div className="ai-dialog-overlay" role="presentation">
-      <div className="ai-dialog" role="dialog" aria-modal="true" aria-labelledby="ai-dialog-title">
+      <div className="ai-dialog surface-popover" role="dialog" aria-modal="true" aria-labelledby="ai-dialog-title">
         <header className="ai-dialog__header">
           <div>
             <p className="eyebrow">{t('AI arrangement')}</p>
@@ -602,45 +644,75 @@ export function AiArrangeDialog({
               <section className="ai-photo-panel">
                 <div className="ai-section-heading">
                   <div>
-                    <p className="eyebrow">{t('Photos')}</p>
-                    <h3>{t('Choose the set AI should sequence')}</h3>
+                    <p className="eyebrow">{t('Existing photos')}</p>
+                    <h3>{t('Pick photos for AI to arrange')}</h3>
                   </div>
                   <span className="panel-tag">
                     {photos.length}/{maxPhotos}
                   </span>
                 </div>
-                <div className="ai-source-tabs" role="tablist" aria-label={t('Photo source')}>
+
+                {availableAssets.length ? (
+                  <div className="ai-library-grid">
+                    {availableAssets.map((asset) => {
+                      const selected = selectedAssetIds.has(asset.id);
+                      const disabled = !selected && photos.length >= maxPhotos;
+                      return (
+                        <button
+                          key={asset.id}
+                          type="button"
+                          className={`ai-library-item ${selected ? 'is-selected' : ''}`.trim()}
+                          aria-pressed={selected}
+                          disabled={disabled}
+                          onClick={() => {
+                            if (selected) {
+                              removePhoto(`asset:${asset.id}`);
+                            } else {
+                              void addAssetPhoto(asset);
+                            }
+                          }}
+                        >
+                          <img src={getAssetSource(asset, 'thumb')} alt={asset.name} />
+                          <span className="ai-library-item__name">{asset.name}</span>
+                          {selected ? <span className="ai-library-item__check" aria-hidden="true">✓</span> : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="ai-library-empty">
+                    <strong>{t('No photos yet')}</strong>
+                    <p className="panel-note">{t('Upload from this device or import a URL to add the first photos.')}</p>
+                  </div>
+                )}
+
+                <div className="ai-source-buttons">
                   <button
                     type="button"
-                    role="tab"
-                    aria-selected={sourceTab === 'upload'}
-                    className={`ai-source-tab ${sourceTab === 'upload' ? 'is-active' : ''}`}
-                    onClick={() => setSourceTab('upload')}
+                    className={`button button--ghost button--small ${sourcePanel === 'upload' ? 'is-active' : ''}`.trim()}
+                    aria-expanded={sourcePanel === 'upload'}
+                    onClick={() => setSourcePanel((current) => (current === 'upload' ? 'none' : 'upload'))}
                   >
-                    {t('Upload photos')}
+                    <svg viewBox="0 0 16 16" aria-hidden="true">
+                      <path d="M8 11V3M5 6l3-3 3 3M3 12v1a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1" />
+                    </svg>
+                    {t('Upload from device')}
                   </button>
                   <button
                     type="button"
-                    role="tab"
-                    aria-selected={sourceTab === 'library'}
-                    className={`ai-source-tab ${sourceTab === 'library' ? 'is-active' : ''}`}
-                    onClick={() => setSourceTab('library')}
+                    className={`button button--ghost button--small ${sourcePanel === 'url' ? 'is-active' : ''}`.trim()}
+                    aria-expanded={sourcePanel === 'url'}
+                    onClick={() => setSourcePanel((current) => (current === 'url' ? 'none' : 'url'))}
                   >
-                    {t('Choose from library')}
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={sourceTab === 'url'}
-                    className={`ai-source-tab ${sourceTab === 'url' ? 'is-active' : ''}`}
-                    onClick={() => setSourceTab('url')}
-                  >
-                    {t('URL import')}
+                    <svg viewBox="0 0 16 16" aria-hidden="true">
+                      <path d="M6.5 9.5l3-3M5 11l-1 1a2.1 2.1 0 0 1-3-3l3-3a2.1 2.1 0 0 1 3 0M11 5l1-1a2.1 2.1 0 0 1 3 3l-3 3a2.1 2.1 0 0 1-3 0" />
+                    </svg>
+                    {t('Import from URL')}
                   </button>
                 </div>
 
-                {sourceTab === 'upload' ? (
-                  <>
+                {sourcePanel === 'upload' ? (
+                  <div className="ai-source-panel">
                     <div
                       className={`ai-dropzone ${dragging ? 'is-dragging' : ''}`}
                       onDragOver={(event) => {
@@ -691,43 +763,10 @@ export function AiArrangeDialog({
                         event.currentTarget.value = '';
                       }}
                     />
-                  </>
+                  </div>
                 ) : null}
 
-                {sourceTab === 'library' ? (
-                  availableAssets.length ? (
-                    <div className="ai-library-grid">
-                      {availableAssets.map((asset) => {
-                        const selected = selectedAssetIds.has(asset.id);
-                        const disabled = !selected && photos.length >= maxPhotos;
-                        return (
-                          <button
-                            key={asset.id}
-                            type="button"
-                            className={`ai-library-item ${selected ? 'is-selected' : ''}`.trim()}
-                            aria-pressed={selected}
-                            disabled={disabled}
-                            onClick={() => {
-                              if (selected) {
-                                removePhoto(`asset:${asset.id}`);
-                              } else {
-                                void addAssetPhoto(asset);
-                              }
-                            }}
-                          >
-                            <img src={getAssetSource(asset, 'thumb')} alt={asset.name} />
-                            <span className="ai-library-item__name">{asset.name}</span>
-                            {selected ? <span className="ai-library-item__check" aria-hidden="true">✓</span> : null}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="panel-note">{t('No photos in the media library yet. Upload or import a URL first.')}</p>
-                  )
-                ) : null}
-
-                {sourceTab === 'url' ? (
+                {sourcePanel === 'url' ? (
                   <form
                     className="ai-url-import"
                     onSubmit={(event) => {
@@ -759,76 +798,47 @@ export function AiArrangeDialog({
                   </p>
                 ) : null}
 
-                {sourceTab === 'library' ? (
-                  photos.length ? (
-                    <p className="panel-note">
-                      {t('%s selected. Click a checked photo to remove it.').replace('%s', String(photos.length))}
-                    </p>
-                  ) : (
-                    <p className="panel-note">{t('No photos selected yet.')}</p>
-                  )
-                ) : photos.length ? (
-                  <div className="ai-photo-grid">
-                    {photos.map((photo, index) => (
-                      <figure className="ai-photo-card" key={photo.id}>
-                        <img src={photo.previewUrl} alt={photo.name} />
-                        <figcaption>
-                          <span>{index + 1}</span>
-                          <small>{photo.name}</small>
-                        </figcaption>
-                        <button
-                          type="button"
-                          className="ai-photo-card__remove"
-                          aria-label={t('Remove photo')}
-                          title={t('Remove photo')}
-                          onClick={() => removePhoto(photo.id)}
-                        >
-                          <svg viewBox="0 0 16 16" aria-hidden="true">
-                            <path d="M4 4l8 8M12 4l-8 8" />
-                          </svg>
-                        </button>
-                      </figure>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="panel-note">{t('No photos selected yet.')}</p>
-                )}
+                <p className="panel-note">
+                  {photos.length
+                    ? t('%s selected. Click a checked photo to remove it.').replace('%s', String(photos.length))
+                    : t('No photos selected yet.')}
+                </p>
               </section>
 
               <section className="ai-prompt-panel">
                 <div className="ai-section-heading">
                   <div>
-                    <p className="eyebrow">{t('Prompt')}</p>
-                    <h3>{t('What AI will follow')}</h3>
+                    <p className="eyebrow">{t('Style')}</p>
+                    <h3>{t('Choose a direction for AI')}</h3>
                   </div>
-                  <button
-                    type="button"
-                    className="button button--ghost button--small"
-                    onClick={() => setPromptEditing((current) => !current)}
-                  >
-                    {promptEditing ? t('Done editing') : t('Edit prompt')}
-                  </button>
                 </div>
-                <textarea
-                  className="ai-prompt-textarea"
-                  aria-label={t('Prompt')}
-                  rows={14}
-                  readOnly={!promptEditing}
-                  value={prompt}
-                  onChange={(event) => setPrompt(event.target.value)}
-                />
-                {promptEditing && status ? (
-                  <button
-                    type="button"
-                    className="button button--ghost button--small"
-                    onClick={() => {
-                      setPrompt(status.prompt);
-                      setPromptEditing(false);
-                    }}
-                  >
-                    {t('Restore default prompt')}
-                  </button>
-                ) : null}
+                <div className="ai-style-grid" role="radiogroup" aria-label={t('AI style')}>
+                  {AI_STYLE_PRESETS.map((preset) => {
+                    const active = preset.id === stylePresetId;
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        className={`ai-style-card ${active ? 'is-selected' : ''}`.trim()}
+                        onClick={() => setStylePresetId(preset.id)}
+                      >
+                        <strong>{t(preset.label)}</strong>
+                        <span>{t(preset.description)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <label className="field">
+                  <span>{t('Your notes (optional)')}</span>
+                  <textarea
+                    rows={4}
+                    value={ideas}
+                    placeholder={t('For example: people-focused, cool tones, fewer words, 6–8 pages.')}
+                    onChange={(event) => setIdeas(event.target.value)}
+                  />
+                </label>
                 <div className="ai-quota">
                   {status ? (
                     <>

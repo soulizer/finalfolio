@@ -18,6 +18,8 @@ Admin → **AI**:
 - Default prompt (shown to users; users may edit a temporary copy).
 - Interface pool: name, model, Base URL, API key, enabled flag and priority.
 - **Test connection** for any provider from the focused edit dialog.
+- Plans are asked to use 4/6/8/10 pages; odd provider responses are padded to an
+  even count so spreads turn naturally.
 - Saved interfaces render as compact summary rows. Click **Edit interface** to
   open the form; adding an interface also opens a focused dialog, so typing is
   never interrupted by the list collapsing.
@@ -47,9 +49,13 @@ generation. The current model is ready for a future credit/recharge flow.
      uploading them again.
    - **URL import** — import a public image URL into the library and select it.
    Up to 50 photos (or the admin-configured limit) across all sources.
-4. Review the prompt; **Edit prompt** unlocks a temporary copy.
-5. Generate three plans. The waiting screen shows elapsed time and explains that
-   the pool tries interfaces in order.
+4. Existing photos are shown immediately. **Upload from device** and
+   **Import from URL** are additive actions, not mutually exclusive tabs.
+   Choose a style preset and optionally add notes; the server prompt is never
+   shown or editable in the editor.
+5. Generate three plans. The prompt sent to the provider appends the chosen
+   style and the user's notes to the admin-owned base prompt. The waiting screen
+   shows elapsed time and explains that the pool tries interfaces in order.
 6. Compare plan name, style, page count, used photo count, themes and page
    sequence.
 7. Apply one plan. Photos selected from the library or URL import are already

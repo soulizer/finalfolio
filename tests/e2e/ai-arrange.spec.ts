@@ -77,18 +77,18 @@ test('AI arrangement previews three plans and applies the chosen one', async ({ 
   await page.route('**/api/ai/plans', (route) => route.fulfill({ json: bundle }));
   await signIn(page, '/editor');
 
-  await page.getByRole('button', { name: 'Arrange with AI' }).click();
+  await page.getByRole('button', { name: 'Lay out with AI' }).click();
   const dialog = page.locator('.ai-dialog');
   await expect(dialog).toBeVisible();
+  await expect(dialog.locator('.ai-style-card')).toHaveCount(5);
+  await expect(dialog.locator('.ai-prompt-textarea')).toHaveCount(0);
 
-  const prompt = page.locator('.ai-prompt-textarea');
-  await expect(prompt).toHaveJSProperty('readOnly', true);
-  await page.getByRole('button', { name: 'Edit prompt' }).click();
-  await expect(prompt).toHaveJSProperty('readOnly', false);
-  await page.getByRole('button', { name: 'Done editing' }).click();
+  await dialog.getByRole('radio', { name: /Visual impact/ }).click();
+  await dialog.getByLabel('Your notes (optional)').fill('People-focused, cool tones, 6 pages.');
 
+  await dialog.getByRole('button', { name: 'Upload from device' }).click();
   await dialog.locator('input[type="file"]').setInputFiles('public/icon-192.png');
-  await expect(page.locator('.ai-photo-card')).toHaveCount(1);
+  await expect(dialog.locator('.ai-library-item.is-selected')).toHaveCount(1);
   await page.getByRole('button', { name: 'Generate 3 plans' }).click();
 
   await expect(page.locator('.ai-plan-card')).toHaveCount(3);
@@ -123,16 +123,13 @@ test('AI arrangement accepts URL imports and reuses them from the library', asyn
   );
   await signIn(page, '/editor');
 
-  await page.getByRole('button', { name: 'Arrange with AI' }).click();
+  await page.getByRole('button', { name: 'Lay out with AI' }).click();
   const dialog = page.locator('.ai-dialog');
   await expect(dialog).toBeVisible();
 
-  await dialog.getByRole('tab', { name: 'URL import' }).click();
+  await dialog.getByRole('button', { name: 'Import from URL' }).click();
   await dialog.getByLabel('Image URL').fill('https://example.com/photo.jpg');
   await dialog.getByRole('button', { name: 'Import URL' }).click();
-  await expect(page.locator('.ai-photo-card')).toHaveCount(1);
-
-  await dialog.getByRole('tab', { name: 'Choose from library' }).click();
   await expect(dialog.locator('.ai-library-item.is-selected')).toHaveCount(1);
   await expect(dialog.locator('.ai-library-item.is-selected')).toContainText('URL photo');
 
@@ -152,8 +149,7 @@ test('AI arrangement shows account library photos that are not in the draft', as
 
   await page.getByRole('button', { name: 'New draft' }).click();
   await page.waitForTimeout(800);
-  await page.getByRole('button', { name: 'Arrange with AI' }).click();
-  await page.getByRole('tab', { name: 'Choose from library' }).click();
+  await page.getByRole('button', { name: 'Lay out with AI' }).click();
 
   await expect(page.locator('.ai-library-item').first()).toBeVisible();
 });
@@ -174,8 +170,9 @@ test('AI plans are padded to an even page count', async ({ page }) => {
   await page.route('**/api/ai/plans', (route) => route.fulfill({ json: oddBundle }));
   await signIn(page, '/editor');
 
-  await page.getByRole('button', { name: 'Arrange with AI' }).click();
+  await page.getByRole('button', { name: 'Lay out with AI' }).click();
   const dialog = page.locator('.ai-dialog');
+  await dialog.getByRole('button', { name: 'Upload from device' }).click();
   await dialog.locator('input[type="file"]').setInputFiles('public/icon-192.png');
   await page.getByRole('button', { name: 'Generate 3 plans' }).click();
 
@@ -185,8 +182,8 @@ test('AI plans are padded to an even page count', async ({ page }) => {
 
 test('AI arrangement asks guests to sign in first', async ({ page }) => {
   await page.goto('/editor');
-  await expect(page.getByRole('button', { name: 'Arrange with AI' })).toBeVisible();
-  await page.getByRole('button', { name: 'Arrange with AI' }).click();
+  await expect(page.getByRole('button', { name: 'Lay out with AI' })).toBeVisible();
+  await page.getByRole('button', { name: 'Lay out with AI' }).click();
   await expect(page).toHaveURL(/\/auth\?next=/);
 });
 
