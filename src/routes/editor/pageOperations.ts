@@ -17,6 +17,7 @@ type AddPageToProjectOptions = {
   selectedPageTheme?: PageThemeId;
   customTemplateDraft: CustomTemplateDefinition;
   createPageId: () => string;
+  position?: 'before' | 'after';
 };
 
 type DuplicateProjectPageOptions = {
@@ -75,12 +76,18 @@ export function addPageToProject({
   selectedPageTheme,
   customTemplateDraft,
   createPageId,
+  position = 'after',
 }: AddPageToProjectOptions) {
   const nextPage = createPageDraft(template, createPageId(), {
     theme: selectedPageTheme,
     ...(template === 'custom' ? { customTemplate: customTemplateDraft } : {}),
   });
-  const insertAt = selectedPageIndex >= 0 ? selectedPageIndex + 1 : project.pages.length;
+  const insertAt =
+    selectedPageIndex >= 0
+      ? position === 'before'
+        ? selectedPageIndex
+        : selectedPageIndex + 1
+      : project.pages.length;
 
   return {
     nextPage,

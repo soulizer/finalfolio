@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { expect, test } from '@playwright/test';
 import { signIn } from './helpers';
 
@@ -22,11 +24,12 @@ test('editor leads with photos and the new layout picker', async ({ page }) => {
   });
   expect(Math.abs(thumbRatio - 210 / 297)).toBeLessThan(0.02);
 
-  // Hovering a layout exposes the two direct actions.
-  const secondCard = page.locator('.layout-card').nth(1);
-  await secondCard.hover();
-  await expect(secondCard.getByRole('button', { name: 'Replace this page' })).toBeVisible();
-  await expect(secondCard.getByRole('button', { name: 'Add page below' })).toBeVisible();
+  // Selecting a layout exposes the three placement actions.
+  await page.locator('.layout-card').nth(1).locator('.layout-card__pick').click();
+  const layoutActions = page.locator('.layout-selection-actions');
+  await expect(layoutActions.getByRole('button', { name: 'Insert above' })).toBeVisible();
+  await expect(layoutActions.getByRole('button', { name: 'Replace this page' })).toBeVisible();
+  await expect(layoutActions.getByRole('button', { name: 'Insert below' })).toBeVisible();
 
   // Per-page paper colour popover opens next to the dot with round swatches.
   const firstDot = page.locator('.page-chip__dot').first();
@@ -51,14 +54,28 @@ test('applying a layout from the card keeps the current page and adds pages belo
   const initialCount = await pageChips.count();
 
   const gridCard = page.locator('.layout-card').nth(3);
-  await gridCard.hover();
-  await gridCard.getByRole('button', { name: 'Add page below' }).click();
+  await gridCard.locator('.layout-card__pick').click();
+  await page.locator('.layout-selection-actions').getByRole('button', { name: 'Insert below' }).click();
   await expect(pageChips).toHaveCount(initialCount + 1);
 
   const essayCard = page.locator('.layout-card').nth(1);
-  await essayCard.hover();
-  await essayCard.getByRole('button', { name: 'Replace this page' }).click();
+  await essayCard.locator('.layout-card__pick').click();
+  await page.locator('.layout-selection-actions').getByRole('button', { name: 'Replace this page' }).click();
   await expect(page.locator('.layout-card').nth(1)).toHaveClass(/is-active/);
+});
+
+test('empty frame upload CTA assigns the chosen photo', async ({ page }) => {
+  await signIn(page, '/editor');
+
+  const cta = page.locator('.asset-slot__upload').first();
+  await expect(cta).toBeVisible();
+  await cta.click();
+  await page.locator('input[type="file"][hidden]').setInputFiles({
+    name: 'quick-upload.png',
+    mimeType: 'image/png',
+    buffer: fs.readFileSync(path.resolve('public/icon-192.png')),
+  });
+  await expect(page.locator('.asset-frame[data-has-asset="true"]').first()).toBeVisible();
 });
 
 test('pages can be reordered by dragging', async ({ page }) => {

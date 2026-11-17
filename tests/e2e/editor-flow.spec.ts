@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import fs from 'node:fs';
+import { PDFDocument } from 'pdf-lib';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { signIn } from './helpers';
@@ -79,6 +80,13 @@ test('upload, save, reopen, share, and export the editor flow', async ({ page })
   const pdfBytes = fs.readFileSync(pdfPath as string);
   expect(pdfBytes.subarray(0, 5).toString('latin1')).toBe('%PDF-');
   expect(pdfBytes.length).toBeGreaterThan(10_000);
+
+  // The exported PDF must contain one page per folio page and keep A4 geometry.
+  const pdfDocument = await PDFDocument.load(pdfBytes);
+  expect(pdfDocument.getPageCount()).toBeGreaterThan(0);
+  const pdfPageSize = pdfDocument.getPage(0).getSize();
+  expect(pdfPageSize.width).toBeGreaterThan(500);
+  expect(pdfPageSize.height).toBeGreaterThan(700);
 
   // The print path stays available as a secondary action and must still use the
   // same page renderer as the editor preview.

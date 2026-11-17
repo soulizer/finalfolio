@@ -1688,7 +1688,7 @@ try {
     assert.doesNotMatch(issueViewTurnJsMarkup, /react-dom\/server/);
     assert.match(issueViewTurnJsMarkup, /MagazinePreview/);
     assert.match(editorPage, /Apply/);
-    assert.match(editorPage, /Add page/);
+    assert.match(editorPage, /Insert below/);
     assert.match(editorPage, /editor-panel--layout/);
     assert.match(editorPage, /Paper color/);
     assert.match(editorPage, /page-color-popover/);

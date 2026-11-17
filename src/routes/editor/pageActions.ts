@@ -122,6 +122,32 @@ export function createEditorPageActions({
     setTemplateChoice(nextState.nextPage.template);
   }
 
+  function insertPage(template: TemplateId, position: 'before' | 'after') {
+    if (!selectedPage) {
+      return;
+    }
+
+    if (project.pages.length >= PROJECT_PAGE_LIMIT) {
+      setMessage(translate('This folio already has the maximum of %s pages.').replace('%s', String(PROJECT_PAGE_LIMIT)));
+      return;
+    }
+
+    const nextState = addPageToProject({
+      project,
+      selectedPageIndex,
+      template,
+      selectedPageTheme: selectedPage.theme,
+      customTemplateDraft,
+      createPageId,
+      position,
+    });
+
+    updateProject(() => nextState.nextProject);
+    setSelectedPageId(nextState.nextPage.id);
+    setSelectedSlot(getInitialSlot(nextState.nextPage));
+    setTemplateChoice(nextState.nextPage.template);
+  }
+
   function reorderPages(fromIndex: number, toIndex: number) {
     const nextProject = reorderProjectPage({ project, fromIndex, toIndex });
     if (!nextProject) {
@@ -217,6 +243,7 @@ export function createEditorPageActions({
     applyTemplateChoice,
     applyTemplatePack,
     duplicatePage,
+    insertPage,
     moveSelectedPage,
     removeSelectedPage,
     reorderPages,

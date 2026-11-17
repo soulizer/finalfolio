@@ -687,6 +687,7 @@ export function EditorPage() {
     applyTemplateChoice,
     applyTemplatePack,
     duplicatePage,
+    insertPage,
     moveSelectedPage,
     removeSelectedPage,
     reorderPages,
@@ -932,6 +933,7 @@ export function EditorPage() {
     .replace('%s', String(selectedPageIndex + 1))
     .replace('%s', String(project.pages.length));
   const selectedTemplateLabel = getTemplateLabel(templateChoice, templateChoice === 'custom' ? customTemplateDraft : null);
+  const isCurrentLayoutSelected = templateChoice === selectedPage.template && templateChoice !== 'custom';
   const selectedAssetId = selectedSlot ? selectedPage.slots[selectedSlot] : null;
   const selectedPageUsesKicker = templateUsesKicker(selectedPage.template);
   const selectedPageUsesDeck = templateUsesDeck(selectedPage.template);
@@ -1036,6 +1038,7 @@ export function EditorPage() {
         accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
         multiple
         hidden
+        aria-label={t('Upload photo')}
         onChange={(event) => {
           const input = event.currentTarget;
           const files = Array.from(input.files ?? []);
@@ -1221,7 +1224,7 @@ export function EditorPage() {
                           onClick={removeSelectedPage}
                         >
                           <svg viewBox="0 0 16 16" aria-hidden="true">
-                            <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" />
+                            <path d="M3.5 4.5h9M6.2 4.5V3.2h3.6v1.3M5 4.5l.5 8.3h5l.5-8.3M6.8 7v3.6M9.2 7v3.6" />
                           </svg>
                         </button>
                       </div>
@@ -1279,35 +1282,38 @@ export function EditorPage() {
                           />
                           <span className="layout-card__name">{t(meta.label)}</span>
                         </button>
-                        <div className="layout-card__actions">
-                          <button
-                            type="button"
-                            className="button button--primary button--small"
-                            disabled={isCurrent}
-                            title={t("Replaces this page's layout. Photos and text stay.")}
-                            onClick={() => {
-                              setTemplateChoice(templateId);
-                              applyTemplateChoice(templateId);
-                            }}
-                          >
-                            {t('Replace this page')}
-                          </button>
-                          <button
-                            type="button"
-                            className="button button--ghost button--small"
-                            disabled={project.pages.length >= PROJECT_PAGE_LIMIT}
-                            title={t('Adds this layout as a new page below the current one.')}
-                            onClick={() => {
-                              setTemplateChoice(templateId);
-                              addPage(templateId);
-                            }}
-                          >
-                            {t('Add page below')}
-                          </button>
-                        </div>
                       </article>
                     );
                   })}
+                </div>
+                <div className="layout-selection-actions">
+                  <span className="layout-selection-actions__label">{t(selectedTemplateLabel)}</span>
+                  <div className="layout-selection-actions__buttons">
+                  <button
+                    type="button"
+                    className="button button--ghost button--small"
+                    disabled={project.pages.length >= PROJECT_PAGE_LIMIT}
+                    onClick={() => insertPage(templateChoice, 'before')}
+                  >
+                    {t('Insert above')}
+                  </button>
+                  <button
+                    type="button"
+                    className="button button--primary button--small"
+                    disabled={isCurrentLayoutSelected}
+                    onClick={() => applyTemplateChoice(templateChoice)}
+                  >
+                    {t('Replace this page')}
+                  </button>
+                  <button
+                    type="button"
+                    className="button button--ghost button--small"
+                    disabled={project.pages.length >= PROJECT_PAGE_LIMIT}
+                    onClick={() => insertPage(templateChoice, 'after')}
+                  >
+                    {t('Insert below')}
+                  </button>
+                  </div>
                 </div>
                 {templateChoice === 'custom' ? (
                   <div
@@ -1469,22 +1475,6 @@ export function EditorPage() {
                     </div>
                   </div>
                 ) : null}
-                <div className="editor-panel__actions editor-panel__actions--end">
-                  <button
-                    type="button"
-                    className="button button--ghost button--small"
-                    disabled={project.pages.length >= PROJECT_PAGE_LIMIT}
-                    title={t('Add a page after the current one')}
-                    onClick={() => addPage()}
-                  >
-                    {project.pages.length >= PROJECT_PAGE_LIMIT ? t('Page limit') : t('Add page')}
-                  </button>
-                  {templateChoice === 'custom' ? (
-                    <button type="button" className="button button--primary button--small" onClick={() => applyTemplateChoice('custom')}>
-                      {t('Apply')}
-                    </button>
-                  ) : null}
-                </div>
               </>
             ) : null}
           </section>

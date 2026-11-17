@@ -22,4 +22,17 @@ await authStore.createUser(
     termsAcceptedLanguage: 'en',
   },
 );
+await authStore.createUser(
+  {
+    email: 'e2e-admin@example.com',
+    password: 'Password123!',
+    username: 'e2eadmin',
+  },
+  {
+    role: 'admin',
+    markEmailVerified: true,
+    acceptCurrentTerms: true,
+    termsAcceptedLanguage: 'en',
+  },
+);
 console.log(`Seeded Playwright data root at ${dataRoot}`);

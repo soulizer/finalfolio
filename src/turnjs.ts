@@ -1,6 +1,7 @@
-// `turn.js` depends on its nested jQuery copy, so the same instance must be imported here.
-// @ts-expect-error The package ships without types for this nested entry.
-import $ from 'turn.js/node_modules/jquery';
+// `turn.js` requires jQuery internally; the dependency is deduped to the same
+// hoisted copy so both the plugin and this module share one instance.
+// @ts-expect-error The package ships without jQuery types.
+import $ from 'jquery';
 
 export const turn$ = $ as any;
 

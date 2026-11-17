@@ -3845,16 +3845,26 @@ button.asset-frame {
   place-items: center;
   padding: 18px;
   text-align: center;
+  font-family: var(--font-ui);
+  font-size: 1.12rem;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+  color: rgba(17, 17, 17, 0.58);
 }
 
 .asset-frame__hint {
   position: absolute;
-  left: 12px;
-  bottom: 12px;
-  padding: 6px 8px;
-  border-radius: 999px;
-  background: var(--page-chip-bg);
+  left: 8px;
+  top: 8px;
+  padding: 3px 7px;
+  border-radius: 4px;
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  background: rgba(255, 255, 255, 0.82);
   z-index: 1;
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  color: rgba(17, 17, 17, 0.72);
 }
 
 .magazine-cover__image,
@@ -4090,8 +4100,8 @@ button.asset-frame {
   position: relative;
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border-radius: 999px;
   border: 1px solid rgba(17, 17, 17, 0.14);
@@ -7906,62 +7916,10 @@ html:lang(zh-CN) .magazine-page h2,
   color: var(--muted);
 }
 
-.layout-card__actions {
-  position: absolute;
-  z-index: 2;
-  left: 4px;
-  right: 4px;
-  top: calc(50% - 12px);
-  transform: translateY(-50%);
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 4px;
-  padding: 4px;
-  border-radius: 10px;
-  background: rgba(252, 250, 246, 0.9);
-  backdrop-filter: blur(3px);
-  box-shadow: 0 8px 20px rgba(17, 17, 17, 0.14);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 140ms ease;
-}
 
-.layout-card__actions .button {
-  pointer-events: auto;
-}
 
-.layout-card::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  border-radius: inherit;
-  background: rgba(247, 243, 237, 0.42);
-  backdrop-filter: blur(2.4px);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 150ms ease;
-}
 
-.layout-card:hover::after,
-.layout-card:focus-within::after {
-  opacity: 1;
-}
 
-.layout-card:hover .layout-card__actions,
-.layout-card:focus-within .layout-card__actions {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.layout-card__actions .button {
-  width: 100%;
-  justify-content: center;
-  font-size: 0.72rem;
-  min-height: 27px;
-  padding: 0 2px;
-  white-space: nowrap;
-}
 
 
 
@@ -8001,16 +7959,6 @@ html:lang(zh-CN) .magazine-page h2,
   border-radius: 2px;
 }
 
-@media (hover: none) {
-  .layout-card__actions {
-    position: static;
-    opacity: 1;
-    pointer-events: auto;
-    background: transparent;
-    box-shadow: none;
-    padding: 0;
-  }
-}
 
 /* ---------------------------------------------------------------------------
    Typography split: the designed font is reserved for the homepage and the
@@ -8034,7 +7982,9 @@ html:lang(zh-CN) .magazine-page h2,
 /* Keep controls and small labels on the system stack even inside display areas. */
 .site-main .button,
 .site-main .site-legal-footer,
-.magazine-page .asset-frame__hint {
+.magazine-page .asset-frame__hint,
+.magazine-page .asset-frame__placeholder,
+.magazine-page .asset-slot__upload {
   font-family: var(--font-ui);
 }
 
@@ -8077,8 +8027,8 @@ html[lang='zh-CN'] body {
 }
 
 .page-chip__action svg {
-  width: 13px;
-  height: 13px;
+  width: 12px;
+  height: 12px;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.4;
@@ -8344,12 +8294,19 @@ html[lang='zh-CN'] body {
   align-items: center;
   justify-content: center;
   width: auto;
-  min-height: 34px;
+  min-height: 36px;
   padding: 0 14px;
   border-radius: var(--control-radius);
+  font-family: var(--font-ui);
   font-size: 0.8rem;
   letter-spacing: 0.02em;
   text-transform: none;
+}
+
+@media (pointer: coarse) {
+  .upload-button--compact {
+    min-height: 44px;
+  }
 }
 
 
@@ -8543,4 +8500,44 @@ html[lang='zh-CN'] body {
   transform: none;
   white-space: nowrap;
   overflow-wrap: normal;
+}
+
+.layout-selection-actions {
+  display: grid;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.layout-selection-actions__label {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.layout-selection-actions__buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.layout-selection-actions__buttons .button {
+  width: 100%;
+  min-height: 30px;
+  padding: 0 4px;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.field > span {
+  font-family: var(--font-ui);
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+}
+
+.field small,
+.field-note {
+  font-weight: 400;
+  color: var(--muted);
 }

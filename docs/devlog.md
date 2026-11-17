@@ -1639,3 +1639,21 @@
 - `npm run validate:mvp`
 - `./node_modules/.bin/playwright test` (14 specs)
 - No horizontal overflow at 360/390/768/1024
+
+## 2026-11-17 Interaction Redesign and Full Audit
+
+### What changed
+
+- Layout picker: hover no longer blurs the schematic; clicking a layout selects it and reveals three explicit actions — insert above, replace this page, insert below. The redundant footer “add page”/“apply” buttons are gone.
+- Sequence chips: 24 px action buttons matching the colour dot, trash icon for delete, consistent alignment.
+- Empty frames: “上传照片” is a standard overlay control, no wrapping, no hover displacement; frame hints are small top-left tags; the drop hint uses the UI font at a larger size.
+- Field labels (title, deck, caption, body, kicker) are bolder than their helper notes.
+- Fixed the public reader regression, deduped jQuery for turn.js to 3.7.1 (`npm audit` now 0 vulnerabilities), and added admin/quick-upload/PDF-geometry tests.
+- README deployment/env docs corrected; full audit recorded in `docs/audit-2026-11-17.md`.
+
+### Validation
+
+- `tsc`, `npm run build`, `npm run validate:mvp`
+- Playwright 16/16
+- Runtime sweep: no console errors, failed requests, missing alt text, unnamed buttons or unlabeled inputs
+- No horizontal overflow at 360/390/768/1024; PDF export page count/A4 geometry verified

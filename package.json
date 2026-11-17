@@ -38,7 +38,8 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.18.5",
-    "turn.js": "^1.0.5"
+    "turn.js": "^1.0.5",
+    "jquery": "^3.7.1"
   },
   "overrides": {
     "body-parser": "^2.4.0",
@@ -47,6 +48,10 @@
     "path-to-regexp": "^8.4.0",
     "postcss": "^8.5.33",
     "proxy-addr": "^2.0.8",
-    "qs": "^6.17.1"
+    "qs": "^6.17.1",
+    "turn.js": {
+      "jquery": "^3.7.1"
+    },
+    "jquery": "^3.7.1"
   }
 }

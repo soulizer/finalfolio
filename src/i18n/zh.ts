@@ -526,6 +526,8 @@ const zh: Record<string, string> = {
   'Built-in folio starters': '内置项目模板',
   'Use as project': '用作新项目',
   Insert: '插入页面',
+  'Insert above': '插入到上方',
+  'Insert below': '插入下方',
   'Replaces every page in this folio. Photos stay in the media library.':
     '会替换这本作品集的全部页面，照片仍保留在图库中。',
   'Replace every page in this folio?': '替换全部页面？',
