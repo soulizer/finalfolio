@@ -3607,12 +3607,25 @@ a:focus-visible {
 .magazine-cover {
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
-  gap: var(--page-rail-gap);
+  gap: calc(var(--page-rail-gap) + 2mm);
+  min-height: 0;
 }
 
 .magazine-cover__copy {
   display: grid;
-  gap: var(--page-copy-gap);
+  gap: calc(var(--page-copy-gap) + 1mm);
+  min-height: 0;
+}
+
+/* The cover title used to run at display size against the page edge; keep it
+   prominent but let the copy block breathe. */
+.magazine-page--cover h2.magazine-text--title {
+  font-size: clamp(1.9rem, 3vw, 3.1rem);
+  line-height: 1.14;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .magazine-essay {
@@ -8161,8 +8174,12 @@ html[lang='zh-CN'] body {
 .editor-panel__toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.editor-panel__toolbar > .editor-panel__label {
+  margin-right: auto;
 }
 
 .editor-panel__label {
@@ -8306,8 +8323,8 @@ html[lang='zh-CN'] body {
 .editor-panel__toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  justify-content: flex-start;
+  gap: 8px;
   min-height: 28px;
 }
 
@@ -8364,7 +8381,6 @@ html[lang='zh-CN'] body {
 .editor-panel__toggle {
   position: static;
   flex: none;
-  margin-left: auto;
   z-index: 1;
   display: grid;
   place-items: center;

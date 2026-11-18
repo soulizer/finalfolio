@@ -1900,6 +1900,7 @@ const zh: Record<string, string> = {
   'The server rejected the request.': '服务器拒绝了这次请求',
   'Could not reach the server.': '无法连接到服务器',
   'The request was interrupted before any AI provider answered. Check the network and try again.': '请求在 AI 接口响应前就中断了，请检查网络后重试。',
+  'A short line about this series': '用一句话说明这组照片',
 };
 
 

@@ -503,9 +503,9 @@ export function templateUsesBody(template: TemplateId, customTemplate?: CustomTe
 
 export const pageStarters: Record<TemplateId, Omit<PageData, 'id' | 'slots' | 'crops' | 'template' | 'customTemplate' | 'theme'>> = {
   cover: {
-    kicker: 'Cover',
+    kicker: '',
     title: 'Untitled Project',
-    deck: 'Folio 01',
+    deck: 'A short line about this series',
     body: '',
     caption: 'Choose a lead image for the opening page.',
   },
