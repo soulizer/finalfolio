@@ -1905,6 +1905,15 @@ const zh: Record<string, string> = {
   'Change style': '更换风格',
   'Switch style and regenerate?': '更换风格并重新生成？',
   'The current plans will be replaced. Pages already applied to your folio stay as they are until you apply a new plan.': '当前方案会被替换。已应用到作品集的页面在你应用新方案前保持不变。',
+  'Body font': '正文字体',
+  'Select': '批量选择',
+  'Done': '完成',
+  '%s selected': '已选 %s 张',
+  'Delete selected photos': '删除所选照片',
+  'Delete photos': '删除照片',
+  'Delete %s photos from every folio and the library?': '从所有作品集和媒体库中删除 %s 张照片？',
+  'Deleted %s photos.': '已删除 %s 张照片。',
+  'Unable to delete these photos.': '无法删除这些照片。',
 };
 
 

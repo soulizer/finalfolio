@@ -637,7 +637,7 @@ export function MagazinePreview({
               <h2 className="magazine-text magazine-text--title">{renderText('title')}</h2>
               {hasDeck ? <p className="magazine-essay__deck magazine-text magazine-text--deck">{renderText('deck')}</p> : null}
             </div>
-            {hasBody ? <p className="magazine-essay__body">{renderText('body')}</p> : null}
+            {hasBody ? <p className="magazine-essay__body magazine-text magazine-text--body">{renderText('body')}</p> : null}
             {hasCaption ? <footer className="magazine-text magazine-text--caption">{renderText('caption')}</footer> : null}
           </div>
         </div>
@@ -671,7 +671,7 @@ export function MagazinePreview({
           </div>
           {hasBody || hasCaption ? (
             <div className="magazine-grid__footer">
-              {hasBody ? <p className="magazine-grid__body">{renderText('body')}</p> : null}
+              {hasBody ? <p className="magazine-grid__body magazine-text magazine-text--body">{renderText('body')}</p> : null}
               {hasCaption ? <footer className="magazine-text magazine-text--caption">{renderText('caption')}</footer> : null}
             </div>
           ) : null}
@@ -693,7 +693,7 @@ export function MagazinePreview({
           </div>
           {hasBody || hasCaption ? (
             <div className="magazine-diptych__footer">
-              {hasBody ? <p className="magazine-diptych__body">{renderText('body')}</p> : null}
+              {hasBody ? <p className="magazine-diptych__body magazine-text magazine-text--body">{renderText('body')}</p> : null}
               {hasCaption ? <footer className="magazine-text magazine-text--caption">{renderText('caption')}</footer> : null}
             </div>
           ) : null}
@@ -734,7 +734,7 @@ export function MagazinePreview({
             </div>
             {hasBody || hasCaption ? (
               <div className="magazine-mosaic__notes">
-                {hasBody ? <p className="magazine-mosaic__body">{renderText('body')}</p> : null}
+                {hasBody ? <p className="magazine-mosaic__body magazine-text magazine-text--body">{renderText('body')}</p> : null}
                 {hasCaption ? <footer className="magazine-text magazine-text--caption">{renderText('caption')}</footer> : null}
               </div>
             ) : null}
@@ -757,7 +757,7 @@ export function MagazinePreview({
             {hasTriptychAside ? (
               <div className="magazine-triptych__aside">
                 {hasDeck ? <p className="magazine-triptych__deck magazine-text magazine-text--deck">{renderText('deck')}</p> : null}
-                {hasBody ? <p className="magazine-triptych__body">{renderText('body')}</p> : null}
+                {hasBody ? <p className="magazine-triptych__body magazine-text magazine-text--body">{renderText('body')}</p> : null}
                 {hasCaption ? <footer className="magazine-text magazine-text--caption">{renderText('caption')}</footer> : null}
               </div>
             ) : null}
@@ -780,7 +780,7 @@ export function MagazinePreview({
                 <h2 className="magazine-text magazine-text--title">{renderText('title')}</h2>
                 {hasDeck ? <p className="magazine-custom__deck magazine-text magazine-text--deck">{renderText('deck')}</p> : null}
               </div>
-              {hasBody ? <p className="magazine-custom__body">{renderText('body')}</p> : null}
+              {hasBody ? <p className="magazine-custom__body magazine-text magazine-text--body">{renderText('body')}</p> : null}
               {hasCaption ? <footer className="magazine-text magazine-text--caption">{renderText('caption')}</footer> : null}
             </section>
           </div>

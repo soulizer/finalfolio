@@ -40,6 +40,7 @@ type EditorContentSidebarProps = {
   currentCrop?: CropSettings;
   focusAssetPlacement: (placement: AssetPlacement) => void;
   handleDeleteAsset: (asset: Asset) => void | Promise<void>;
+  onDeleteAssets: (assets: Asset[]) => void | Promise<void>;
   handleRetryAssetMirror: (asset: Asset) => void | Promise<void>;
   handleUploadFiles: (files: File[]) => void | Promise<void>;
   importUrlBusy: boolean;
@@ -86,6 +87,7 @@ export function EditorContentSidebar({
   currentCrop,
   focusAssetPlacement,
   handleDeleteAsset,
+  onDeleteAssets,
   handleRetryAssetMirror,
   handleUploadFiles,
   importUrlBusy,
@@ -120,6 +122,8 @@ export function EditorContentSidebar({
   const t = useT();
   const [importUrlValue, setImportUrlValue] = useState('');
   const [assetSearch, setAssetSearch] = useState('');
+  const [batchMode, setBatchMode] = useState(false);
+  const [batchSelected, setBatchSelected] = useState<Set<string>>(new Set());
   const [importUrlOpen, setImportUrlOpen] = useState(false);
   const uploadTrackWidth = `${
     uploadBusy ? uploadProgressPercent : Math.round((uploadState.completedFiles / Math.max(uploadState.totalFiles, 1)) * 100)
@@ -254,6 +258,66 @@ export function EditorContentSidebar({
             />
           </label>
         ) : null}
+        {libraryAssets.length ? (
+          <div className="asset-batch-bar">
+            <button
+              type="button"
+              className="button button--ghost button--small"
+              onClick={() => {
+                setBatchMode((current) => {
+                  if (current) {
+                    setBatchSelected(new Set());
+                  }
+                  return !current;
+                });
+              }}
+            >
+              {batchMode ? t('Done') : t('Select')}
+            </button>
+            {batchMode ? (
+              <>
+                <button
+                  type="button"
+                  className="button button--ghost button--small"
+                  onClick={() =>
+                    setBatchSelected(
+                      new Set(
+                        (assetSearch.trim()
+                          ? libraryAssets.filter((asset) =>
+                              asset.name.toLowerCase().includes(assetSearch.trim().toLowerCase()),
+                            )
+                          : libraryAssets
+                        ).map((asset) => asset.id),
+                      ),
+                    )
+                  }
+                >
+                  {t('Select all')}
+                </button>
+                <span className="panel-tag">
+                  {t('%s selected').replace('%s', String(batchSelected.size))}
+                </span>
+                <button
+                  type="button"
+                  className="button button--danger-ghost button--small asset-batch-bar__delete"
+                  disabled={!batchSelected.size || assetMutationBusy}
+                  aria-label={t('Delete selected photos')}
+                  title={t('Delete selected photos')}
+                  onClick={() => {
+                    const selectedAssets = libraryAssets.filter((asset) => batchSelected.has(asset.id));
+                    void Promise.resolve(onDeleteAssets(selectedAssets)).then(() => {
+                      setBatchSelected(new Set());
+                    });
+                  }}
+                >
+                  <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M2.5 4.5h11M6 4.5V3.2h4v1.3M4 4.5l.6 8.2h6.8l.6-8.2M6.6 7v3.4M9.4 7v3.4" />
+                  </svg>
+                </button>
+              </>
+            ) : null}
+          </div>
+        ) : null}
         <div className="asset-rail asset-rail--gallery">
           {libraryAssets.length ? (
             (assetSearch.trim()
@@ -270,7 +334,12 @@ export function EditorContentSidebar({
               const retryLabel = assetRetryTargetId === asset.id ? t('Retrying…') : t('Retry mirror');
 
               return (
-                <article key={asset.id} className={`asset-tile ${isSelected ? 'is-selected' : ''}`.trim()}>
+                <article
+                  key={asset.id}
+                  className={`asset-tile ${isSelected ? 'is-selected' : ''} ${
+                    batchSelected.has(asset.id) ? 'is-batch-selected' : ''
+                  }`.trim()}
+                >
                   <button
                     type="button"
                     className="asset-tile__main"
@@ -278,6 +347,18 @@ export function EditorContentSidebar({
                     draggable
                     onDragStart={(event) => event.dataTransfer.setData(t('text/finalfolio-asset'), asset.id)}
                     onClick={() => {
+                      if (batchMode) {
+                        setBatchSelected((current) => {
+                          const next = new Set(current);
+                          if (next.has(asset.id)) {
+                            next.delete(asset.id);
+                          } else {
+                            next.add(asset.id);
+                          }
+                          return next;
+                        });
+                        return;
+                      }
                       if (selectedSlot && !assetMutationBusy) {
                         assignAsset(selectedSlot, asset.id);
                       }
@@ -302,7 +383,12 @@ export function EditorContentSidebar({
                       </span>
                     </div>
                   </button>
-                  {asset.delivery?.canRetry ? (
+                  {batchSelected.has(asset.id) ? (
+                    <span className="asset-tile__batch-check" aria-hidden="true">
+                      ✓
+                    </span>
+                  ) : null}
+                  {asset.delivery?.canRetry && !batchMode ? (
                     <button
                       type="button"
                       className="asset-tile__retry-icon"
@@ -324,6 +410,7 @@ export function EditorContentSidebar({
                       </svg>
                     </button>
                   ) : null}
+                  {!batchMode ? (
                   <button
                     type="button"
                     className="asset-tile__delete-icon"
@@ -344,6 +431,7 @@ export function EditorContentSidebar({
                       <path d="M2.5 4.5h11M6 4.5V3.2h4v1.3M4 4.5l.6 8.2h6.8l.6-8.2M6.6 7v3.4M9.4 7v3.4" />
                     </svg>
                   </button>
+                  ) : null}
                 </article>
               );
             })

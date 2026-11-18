@@ -701,6 +701,7 @@ export function EditorPage() {
     clearSelectedSlot,
     focusAssetPlacement,
     handleDeleteAsset,
+    handleDeleteAssets,
     handleRetryAssetMirror,
     removeUnusedAssetsFromIssue,
   } = createEditorAssetActions({
@@ -1798,6 +1799,7 @@ export function EditorPage() {
           currentCrop={currentCrop}
           focusAssetPlacement={focusAssetPlacement}
           handleDeleteAsset={handleDeleteAsset}
+          onDeleteAssets={handleDeleteAssets}
           handleRetryAssetMirror={handleRetryAssetMirror}
           handleUploadFiles={handleUploadFilesWithLimit}
           importUrlBusy={importUrlBusy}

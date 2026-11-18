@@ -63,6 +63,7 @@ export const DEFAULT_PROJECT_FONTS: ProjectFonts = {
   title: 'default',
   deck: 'default',
   caption: 'default',
+  body: 'default',
 };
 
 export const PROJECT_FONT_ROLES = ['title', 'deck', 'caption'] as const;
@@ -88,6 +89,7 @@ export function normalizeProjectFonts(fonts: Partial<ProjectFonts> | null | unde
     title: pick(fonts?.title, DEFAULT_PROJECT_FONTS.title),
     deck: pick(fonts?.deck, DEFAULT_PROJECT_FONTS.deck),
     caption: pick(fonts?.caption, DEFAULT_PROJECT_FONTS.caption),
+    body: pick(fonts?.body, DEFAULT_PROJECT_FONTS.body),
   };
 }
 
@@ -98,5 +100,6 @@ export function buildProjectFontVars(fonts: Partial<ProjectFonts> | null | undef
     '--page-font-title': getFontOption(normalized.title).stack,
     '--page-font-deck': getFontOption(normalized.deck).stack,
     '--page-font-caption': getFontOption(normalized.caption).stack,
+    '--page-font-body': getFontOption(normalized.body).stack,
   } as Record<string, string>;
 }

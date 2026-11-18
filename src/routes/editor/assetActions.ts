@@ -201,6 +201,59 @@ export function createEditorAssetActions({
     }
   }
 
+  async function handleDeleteAssets(assets: Asset[]) {
+    if (!assets.length) {
+      return;
+    }
+    const confirmed = await confirmAction({
+      title: translate('Delete %s photos from every folio and the library?').replace(
+        '%s',
+        String(assets.length),
+      ),
+      confirmLabel: 'Delete photos',
+      tone: 'danger',
+    });
+    if (!confirmed) {
+      return;
+    }
+
+    setAssetDeleteBusy(true);
+    const ids = new Set(assets.map((asset) => asset.id));
+    try {
+      for (const asset of assets) {
+        if (asset.src.startsWith('/uploads/') && session) {
+          try {
+            await deleteOwnedAsset(asset.id);
+          } catch (error) {
+            if (!(error instanceof Error) || !/not found/i.test(error.message)) {
+              throw error;
+            }
+          }
+        }
+        removeOwnedUpload(asset.id);
+      }
+      updateProject((current) => ({
+        ...current,
+        assets: current.assets.filter((asset) => !ids.has(asset.id)),
+        pages: current.pages.map((page) => ({
+          ...page,
+          slots: Object.fromEntries(
+            Object.entries(page.slots).map(([slot, assetId]) => [
+              slot,
+              typeof assetId === 'string' && ids.has(assetId) ? null : assetId,
+            ]),
+          ),
+        })),
+      }));
+      setMessage(translate('Deleted %s photos.').replace('%s', String(assets.length)));
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : translate('Unable to delete these photos.'));
+    } finally {
+      setAssetDeleteBusy(false);
+      setAssetDeleteTargetId(null);
+    }
+  }
+
   async function handleRetryAssetMirror(asset: Asset) {
     setAssetRetryTargetId(asset.id);
     setMessage(translate('Retrying remote delivery for %s...').replace('%s', asset.name));
@@ -260,6 +313,7 @@ export function createEditorAssetActions({
     clearSelectedSlot,
     focusAssetPlacement,
     handleDeleteAsset,
+    handleDeleteAssets,
     handleRetryAssetMirror,
     removeUnusedAssetsFromIssue,
   };

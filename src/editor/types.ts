@@ -104,6 +104,7 @@ export interface ProjectFonts {
   title: string;
   deck: string;
   caption: string;
+  body: string;
 }
 
 export interface ProjectState {

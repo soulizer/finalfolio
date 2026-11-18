@@ -534,7 +534,7 @@ const LEGACY_PROJECT_FONT_IDS = {
   'newsreader': 'default',
   inter: 'sans-cn',
 };
-const DEFAULT_PROJECT_FONTS = { title: 'default', deck: 'default', caption: 'default' };
+const DEFAULT_PROJECT_FONTS = { title: 'default', deck: 'default', caption: 'default', body: 'default' };
 
 function sanitizeProjectFonts(fonts) {
   const source = fonts && typeof fonts === 'object' ? fonts : {};
@@ -547,6 +547,7 @@ function sanitizeProjectFonts(fonts) {
     title: pick(source.title, DEFAULT_PROJECT_FONTS.title),
     deck: pick(source.deck, DEFAULT_PROJECT_FONTS.deck),
     caption: pick(source.caption, DEFAULT_PROJECT_FONTS.caption),
+    body: pick(source.body, DEFAULT_PROJECT_FONTS.body),
   };
 }
 

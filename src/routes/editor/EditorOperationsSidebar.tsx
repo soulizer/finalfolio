@@ -194,10 +194,18 @@ export function EditorOperationsSidebar({
         </label>
         <div className="editor-font-fields" role="group" aria-label={t('Typography')}>
           <span className="editor-stack-field__label">{t('Typography')}</span>
-          {(['title', 'deck', 'caption'] as const).map((role) => (
+          {(['title', 'deck', 'caption', 'body'] as const).map((role) => (
             <label className="field" key={role}>
               <span>
-                {t(role === 'title' ? 'Title font' : role === 'deck' ? 'Deck font' : 'Caption font')}
+                {t(
+                  role === 'title'
+                    ? 'Title font'
+                    : role === 'deck'
+                      ? 'Deck font'
+                      : role === 'caption'
+                        ? 'Caption font'
+                        : 'Body font',
+                )}
               </span>
               <select
                 value={normalizeProjectFonts(project.fonts)[role] ?? DEFAULT_PROJECT_FONTS[role]}
