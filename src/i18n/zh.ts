@@ -1811,6 +1811,7 @@ const zh: Record<string, string> = {
   'body': '正文',
   'AI arrangement could not be completed. Please try again.': 'AI 排版未能完成，请重试。',
   'AI service is temporarily unavailable. Please try again in a moment.': 'AI 服务暂时不可用，请稍后重试。',
+  'If this keeps failing, check the AI provider settings (endpoint URL, model, and API key).': '如果持续失败，请在管理后台检查 AI 接口配置（接口地址、模型、密钥）。',
   'Network connection failed. Check your connection and try again.': '网络连接失败，请检查网络后重试。',
   'The service is temporarily unavailable. Please try again in a moment.': '服务暂时不可用，请稍后重试。',
   'The request is too large. Reduce the number of photos and try again.': '请求内容过大，请减少照片数量后重试。',

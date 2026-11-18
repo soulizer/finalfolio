@@ -655,7 +655,14 @@ export function AiArrangeDialog({
                 </p>
               ) : null}
               {error ? <p className="ai-dialog__error" role="alert">{t(error)}</p> : null}
-              {errorDetail ? <p className="ai-dialog__error-detail">{errorDetail}</p> : null}
+              {errorDetail ? (
+                <div className="ai-dialog__error-detail">
+                  <p>{errorDetail}</p>
+                  <p className="ai-dialog__error-hint">
+                    {t('If this keeps failing, check the AI provider settings (endpoint URL, model, and API key).')}
+                  </p>
+                </div>
+              ) : null}
             </div>
             <footer className="ai-dialog__footer">
               <button
@@ -938,7 +945,14 @@ export function AiArrangeDialog({
                   <p className="ai-dialog__error">{t('You have no AI arrangement uses left right now.')}</p>
                 ) : null}
                 {error ? <p className="ai-dialog__error" role="alert">{t(error)}</p> : null}
-                {errorDetail ? <p className="ai-dialog__error-detail">{errorDetail}</p> : null}
+                {errorDetail ? (
+                  <div className="ai-dialog__error-detail">
+                    <p>{errorDetail}</p>
+                    <p className="ai-dialog__error-hint">
+                      {t('If this keeps failing, check the AI provider settings (endpoint URL, model, and API key).')}
+                    </p>
+                  </div>
+                ) : null}
               </section>
             </div>
             <footer className="ai-dialog__footer">

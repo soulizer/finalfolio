@@ -545,16 +545,25 @@ async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000 } 
       const message = error instanceof Error ? error.message : '';
       return /Timed out|HTTP (?:429|5\d\d)|fetch failed|ECONNRESET|ENOTFOUND|socket hang up|empty message|did not include any plans/i.test(message);
     };
-    for (const provider of providers) {
+    for (let providerIndex = 0; providerIndex < providers.length; providerIndex += 1) {
+      const provider = providers[providerIndex];
       let lastError = null;
       for (let attempt = 0; attempt < 2; attempt += 1) {
         const remaining = deadline - Date.now();
         if (remaining < 5_000) {
           break;
         }
+        // Reserve a minimum slice for every provider still to come, so one slow
+        // first provider cannot starve the rest of the pool into quick timeouts.
+        const laterProviders = providers.length - providerIndex - 1;
+        const reserveForLater = Math.min(Math.max(remaining - 5_000, 0), 8_000 * laterProviders);
+        const attemptTimeout = Math.min(
+          config.requestTimeoutMs,
+          Math.max(5_000, remaining - reserveForLater),
+        );
         try {
           const result = await callProvider(provider, messages, {
-            timeoutMs: Math.min(config.requestTimeoutMs, remaining),
+            timeoutMs: attemptTimeout,
           });
           const parsed = extractJson(result.content);
           if (!parsed || !Array.isArray(parsed.plans) || parsed.plans.length === 0) {
