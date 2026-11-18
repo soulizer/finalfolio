@@ -290,14 +290,18 @@ async function selectProviders(config) {
   const known = stats.providers ?? {};
   return [...config.providers]
     .filter((provider) => provider.enabled && provider.apiKey)
-    .map((provider) => ({ provider, score: providerScore(known[provider.id]) }))
+    .map((provider) => {
+      const entry = known[provider.id];
+      const avgLatencyMs =
+        entry && entry.successes > 0 ? entry.totalLatencyMs / entry.successes : null;
+      return { provider, score: providerScore(entry), avgLatencyMs };
+    })
     .sort(
       (a, b) =>
         a.score - b.score ||
         a.provider.order - b.provider.order ||
         a.provider.createdAt.localeCompare(b.provider.createdAt),
-    )
-    .map((entry) => entry.provider);
+    );
 }
 
   async function readConfig() {
@@ -604,20 +608,24 @@ async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000 } 
     }
 
     const failures = [];
-    const deadline = Date.now() + Math.max(30_000, Math.min(config.requestTimeoutMs, 120_000));
+    const deadline = Date.now() + Math.max(30_000, Math.min(config.requestTimeoutMs, 150_000));
     const canRetry = (error) => {
       const message = error instanceof Error ? error.message : '';
       return /Timed out|HTTP (?:429|5\d\d)|fetch failed|ECONNRESET|ENOTFOUND|socket hang up|empty message|did not include any plans/i.test(message);
     };
     for (let providerIndex = 0; providerIndex < providers.length; providerIndex += 1) {
-      const provider = providers[providerIndex];
+      const { provider, avgLatencyMs } = providers[providerIndex];
       let lastError = null;
-      // Equal time slices: a slow provider gets one slice and no more, so the
-      // fast ones always get their turn.
-      const sliceMs = Math.max(
+      // Time slice per provider: sized from its own measured latency when we
+      // have one (so a slow relay gets enough room without wasting the pool's
+      // budget), otherwise an equal share of what is left.
+      const equalShare = Math.max(
         20_000,
         Math.min(45_000, Math.floor((deadline - Date.now()) / (providers.length - providerIndex))),
       );
+      const sliceMs = avgLatencyMs
+        ? Math.max(25_000, Math.min(75_000, Math.round(avgLatencyMs * 1.6)))
+        : equalShare;
       for (let attempt = 0; attempt < 2; attempt += 1) {
         const remaining = deadline - Date.now();
         if (remaining < 5_000) {
@@ -630,6 +638,9 @@ async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000 } 
         try {
           const result = await callProvider(provider, messages, {
             timeoutMs: attemptTimeout,
+            // Three fully written plans easily exceed 8k tokens; a truncated
+            // response cannot be parsed at all.
+            maxTokens: 16_000,
           });
           await recordProviderStat(provider.id, { latencyMs: result.latencyMs, ok: true });
           const parsed = extractJson(result.content);
