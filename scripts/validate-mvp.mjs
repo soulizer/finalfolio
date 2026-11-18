@@ -1739,8 +1739,13 @@ try {
     assert.match(editorContentSidebar, /import-url-form/);
     assert.match(editorContentSidebar, /onImportFromUrl/);
     assert.match(editorContentSidebar, /editor-panel__toolbar/);
-    assert.match(editorContentSidebar, /Small label above the main headline\./);
-    assert.match(editorContentSidebar, /Line breaks stay visible in the preview\./);
+    assert.match(editorContentSidebar, /t\('Kicker'\)/);
+    assert.match(editorContentSidebar, /t\('Title'\)/);
+    assert.match(editorContentSidebar, /t\('Deck'\)/);
+    assert.match(editorContentSidebar, /t\('Caption'\)/);
+    // The verbose per-field helper copy was removed to save vertical space.
+    assert.doesNotMatch(editorContentSidebar, /Small label above the main headline/);
+    assert.doesNotMatch(editorContentSidebar, /Line breaks stay visible in the preview/);
     assert.match(editorContentSidebar, /Clear all/);
     assert.match(editorContentSidebar, /Clear .* unused/);
     assert.match(editorContentSidebar, /editor-crop-workbench/);

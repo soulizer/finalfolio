@@ -13,6 +13,7 @@ import {
 import { Hash } from '@smithy/hash-node';
 import { HttpRequest } from '@smithy/protocol-http';
 import { SignatureV4 } from '@smithy/signature-v4';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { createBadRequest } from './lib/httpErrors.js';
 
 const DEFAULT_OBJECT_STORAGE_CONFIG = {
@@ -961,6 +962,55 @@ export function createObjectStorageStore({
     return Object.values(syncIndex.uploads).filter((entry) => entry.status === 'remote').length;
   }
 
+  async function createPresignedUpload({ filename, contentType, expiresIn = 900 }) {
+    const config = await readConfig();
+    if (!config.enabled) {
+      return null;
+    }
+    if (!config.credentials.accessKeyId || !config.credentials.secretAccessKey) {
+      throw createBadRequest('Object storage credentials are required before direct uploads.');
+    }
+    const relativePaths = createUploadRelativePaths(filename);
+    const target = createRemoteVariantTargets(config, relativePaths).original;
+    const client = createS3Client(config, config.credentials);
+    const url = await getSignedUrl(
+      client,
+      new PutObjectCommand({
+        Bucket: config.bucket,
+        Key: target.key,
+        ContentType: contentType || 'application/octet-stream',
+      }),
+      { expiresIn },
+    );
+    return { key: target.key, url, publicUrl: target.publicUrl, expiresIn };
+  }
+
+  async function statObject(key) {
+    const config = await readConfig();
+    if (!config.enabled) {
+      return null;
+    }
+    const client = createS3Client(config, config.credentials);
+    return await sendS3Command(client, new HeadObjectCommand({ Bucket: config.bucket, Key: key }));
+  }
+
+  async function downloadObjectToFile(key, destinationPath) {
+    const config = await readConfig();
+    if (!config.enabled) {
+      throw createBadRequest('Object storage is disabled.');
+    }
+    const client = createS3Client(config, config.credentials);
+    const result = await sendS3Command(client, new GetObjectCommand({ Bucket: config.bucket, Key: key }));
+    const chunks = [];
+    for await (const chunk of result.Body) {
+      chunks.push(Buffer.from(chunk));
+    }
+    const buffer = Buffer.concat(chunks);
+    await fs.mkdir(path.dirname(destinationPath), { recursive: true });
+    await fs.writeFile(destinationPath, buffer);
+    return { bytes: buffer.length, contentType: result.ContentType ?? null };
+  }
+
   return {
     defaults: { ...DEFAULT_OBJECT_STORAGE_CONFIG },
     readConfig,
@@ -977,5 +1027,8 @@ export function createObjectStorageStore({
     restoreRemoteUploadToLocal,
     buildRemoteResources,
     buildDeliveryStatus,
+    createPresignedUpload,
+    statObject,
+    downloadObjectToFile,
   };
 }

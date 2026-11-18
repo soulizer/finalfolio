@@ -1084,6 +1084,47 @@ export async function importAssetFromUrl(url: string): Promise<Asset> {
   return asset;
 }
 
+export type DirectUploadTicket = {
+  enabled: boolean;
+  filename?: string;
+  key?: string;
+  url?: string;
+  publicUrl?: string;
+  contentType?: string;
+};
+
+export async function requestDirectUpload(payload: {
+  filename: string;
+  contentType: string;
+  size: number;
+}): Promise<DirectUploadTicket> {
+  return readJson<DirectUploadTicket>('/api/uploads/presign', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function completeDirectUpload(payload: {
+  filename: string;
+  key: string;
+  originalName: string;
+  width?: number | null;
+  height?: number | null;
+  bytes?: number;
+}): Promise<Asset> {
+  const result = await readJson<{ assets: Asset[] }>('/api/uploads/complete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const asset = result.assets?.[0];
+  if (!asset) {
+    throw new Error('The upload completed without returning an asset record.');
+  }
+  return asset;
+}
+
 export function uploadAssets(
   files: File[],
   metadata: UploadAssetMetadata[],

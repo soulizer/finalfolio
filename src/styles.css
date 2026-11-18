@@ -1810,9 +1810,11 @@ a:focus-visible {
 
 .asset-rail__empty {
   display: grid;
-  gap: 8px;
+  justify-items: center;
+  gap: 6px;
   grid-column: 1 / -1;
-  padding: 20px;
+  padding: 14px 12px;
+  text-align: center;
   border-radius: var(--surface-radius);
   border: 1px dashed var(--line-strong);
   background: rgba(255, 255, 255, 0.42);
@@ -7910,8 +7912,8 @@ html:lang(zh-CN) .magazine-page h2,
 }
 
 .asset-rail__empty svg {
-  width: 36px;
-  height: 36px;
+  width: 24px;
+  height: 24px;
   color: rgba(17, 17, 17, 0.28);
 }
 
@@ -8528,6 +8530,26 @@ html[lang='zh-CN'] body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.editor-font-fields .field {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.editor-font-fields .field > span {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.editor-font-fields .field select {
+  min-height: var(--control-height-sm);
+  height: var(--control-height-sm);
+  padding: 0 30px 0 8px;
+  font-size: 0.76rem;
 }
 
 .editor-project-action-rows {
@@ -9174,7 +9196,8 @@ html[lang='zh-CN'] body {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   width: min(1180px, 94vw);
-  height: min(860px, 90vh);
+  height: auto;
+  max-height: min(860px, 90vh);
   border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.64);
   background: linear-gradient(180deg, rgba(252, 250, 246, 0.99), rgba(244, 239, 231, 0.98));

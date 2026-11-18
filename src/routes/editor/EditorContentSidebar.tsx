@@ -464,13 +464,9 @@ export function EditorContentSidebar({
         </div>
 
         <section className="editor-panel__section">
-          <div className="editor-panel__toolbar">
-            <span className="editor-panel__label">{t('Text')}</span>
-          </div>
           {selectedPageUsesKicker ? (
             <label className="field">
               <span>{t('Kicker')}</span>
-              <small className="field-note">{t('Small label above the main headline. Line breaks stay visible in the preview.')}</small>
               <textarea
                 rows={2}
                 maxLength={PAGE_KICKER_LIMIT}
@@ -481,7 +477,6 @@ export function EditorContentSidebar({
           ) : null}
           <label className="field">
             <span>{t('Title')}</span>
-            <small className="field-note">{t('Main headline shown on the page. Line breaks stay visible in the preview.')}</small>
             <textarea
               rows={2}
               maxLength={PAGE_TITLE_LIMIT}
@@ -492,11 +487,6 @@ export function EditorContentSidebar({
           {selectedPageUsesDeck ? (
             <label className="field">
               <span>{t('Deck')}</span>
-              <small className="field-note">
-                {selectedPage.template === 'cover'
-                  ? t('Short line above the cover title. Line breaks stay visible in the preview.')
-                  : t('Secondary introduction beneath or beside the headline. Line breaks stay visible in the preview.')}
-              </small>
               <textarea
                 rows={2}
                 maxLength={PAGE_DECK_LIMIT}
@@ -508,7 +498,6 @@ export function EditorContentSidebar({
           {selectedPageUsesBody ? (
             <label className="field">
               <span>{t('Body')}</span>
-              <small className="field-note">{t('Optional supporting text block used when the layout needs more editorial weight. Line breaks stay visible in the preview.')}</small>
               <textarea
                 rows={4}
                 maxLength={PAGE_BODY_LIMIT}
@@ -522,7 +511,6 @@ export function EditorContentSidebar({
           ) : null}
           <label className="field">
             <span>{t('Caption')}</span>
-            <small className="field-note">{t('Small note at the bottom of the page. Line breaks stay visible in the preview.')}</small>
             <textarea
               rows={2}
               maxLength={PAGE_CAPTION_LIMIT}

@@ -3115,6 +3115,113 @@ export function createApp({
     },
   );
 
+  app.post('/api/uploads/presign', async (request, response, next) => {
+    try {
+      requireAuthenticated(request);
+      if (!objectStorageStore) {
+        response.json({ enabled: false });
+        return;
+      }
+      const config = await objectStorageStore.readConfig().catch(() => null);
+      if (!config?.enabled) {
+        response.json({ enabled: false });
+        return;
+      }
+      const contentType = typeof request.body?.contentType === 'string' ? request.body.contentType : '';
+      if (!/^image\/(?:jpeg|png|webp|avif|gif)$/i.test(contentType)) {
+        throw createBadRequest('Upload JPG, PNG, WebP, GIF, or AVIF images only.');
+      }
+      const size = Number(request.body?.size);
+      if (!Number.isFinite(size) || size <= 0 || size > maxUploadSizeBytes) {
+        throw createBadRequest('The file is too large.');
+      }
+      const filename = createUploadFilename(
+        typeof request.body?.filename === 'string' ? request.body.filename : 'photo.jpg',
+      );
+      const presigned = await objectStorageStore.createPresignedUpload({ filename, contentType });
+      if (!presigned) {
+        response.json({ enabled: false });
+        return;
+      }
+      response.json({ enabled: true, filename, contentType, ...presigned });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/uploads/complete', async (request, response, next) => {
+    try {
+      const user = requireAuthenticated(request);
+      if (!objectStorageStore) {
+        throw createBadRequest('Direct upload is not available.');
+      }
+      const filename = String(request.body?.filename ?? '');
+      const key = String(request.body?.key ?? '');
+      if (!/^[A-Za-z0-9._-]+$/.test(filename)) {
+        throw createBadRequest('Invalid upload filename.');
+      }
+      if (!(key === `uploads/${filename}` || key.endsWith(`/uploads/${filename}`))) {
+        throw createBadRequest('Invalid upload key.');
+      }
+      const head = await objectStorageStore.statObject(key);
+      if (!head) {
+        throw createBadRequest('The uploaded file was not found.');
+      }
+      const size = Number(head.ContentLength);
+      if (!Number.isFinite(size) || size <= 0 || size > maxUploadSizeBytes) {
+        throw createBadRequest('The file is too large.');
+      }
+      const contentType = typeof head.ContentType === 'string' && head.ContentType ? head.ContentType : 'image/jpeg';
+      if (!/^image\//i.test(contentType)) {
+        throw createBadRequest('Upload JPG, PNG, WebP, GIF, or AVIF images only.');
+      }
+
+      const destination = path.join(store.uploadsDir, filename);
+      await objectStorageStore.downloadObjectToFile(key, destination);
+      const baseAsset = store.createStoredUpload(
+        {
+          originalname:
+            typeof request.body?.originalName === 'string' && request.body.originalName
+              ? request.body.originalName
+              : filename,
+          filename,
+          mimetype: contentType,
+          size,
+        },
+        { width: request.body?.width, height: request.body?.height },
+      );
+      const asset = await store.hydrateStoredUploadAsset(baseAsset, { ensureVariants: true });
+      await assetStore.createAssetRecord(asset, { ownerUserId: user.id });
+      store.invalidateStoreCaches();
+
+      response.status(201).json({ assets: [asset] });
+      await opsStore.recordEvent({
+        type: 'upload',
+        status: 'ok',
+        userId: user.id,
+        detail: { action: 'direct', filename },
+      });
+
+      // Variants still need the bucket; the original is already there.
+      void (async () => {
+        try {
+          const artifacts = await store.getUploadArtifacts(filename, {
+            originalWidth: asset.width,
+            originalHeight: asset.height,
+          });
+          if (artifacts?.resources?.original) {
+            await objectStorageStore.syncLocalUpload(filename, artifacts);
+            store.invalidateStoreCaches();
+          }
+        } catch {
+          // Delivery stays failed in the sync index; the gallery offers a retry.
+        }
+      })();
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.post('/api/uploads/from-url', async (request, response, next) => {
     try {
       const user = requireAuthenticated(request);

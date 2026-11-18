@@ -3,6 +3,8 @@ import {
   type AccountUploadListItem,
   type UploadRequestProgress,
   uploadAssets,
+  requestDirectUpload,
+  completeDirectUpload,
   type UserSession,
 } from '../../editor/api';
 import { countLabel, translate } from '../../i18n';
@@ -388,6 +390,57 @@ export async function promoteGuestDraftUploads({
   };
 }
 
+/**
+ * Upload one optimized file straight to object storage when the server offers a
+ * presigned ticket. Returns null when direct upload is unavailable or fails, so
+ * the caller can fall back to the proxied multipart route.
+ */
+async function uploadFileDirect(
+  file: File,
+  metadata: { width?: number | null; height?: number | null },
+  onProgress: (progress: { loadedBytes: number; totalBytes: number }) => void,
+): Promise<Asset | null> {
+  try {
+    const ticket = await requestDirectUpload({
+      filename: file.name,
+      contentType: file.type || 'image/jpeg',
+      size: file.size,
+    });
+    if (!ticket.enabled || !ticket.url || !ticket.filename || !ticket.key) {
+      return null;
+    }
+    await new Promise<void>((resolve, reject) => {
+      const request = new XMLHttpRequest();
+      request.open('PUT', ticket.url as string);
+      request.setRequestHeader('Content-Type', file.type || 'image/jpeg');
+      request.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable) {
+          onProgress({ loadedBytes: event.loaded, totalBytes: event.total });
+        }
+      });
+      request.addEventListener('load', () => {
+        if (request.status >= 200 && request.status < 300) {
+          resolve();
+        } else {
+          reject(new Error(`Direct upload failed (${request.status}).`));
+        }
+      });
+      request.addEventListener('error', () => reject(new Error('Direct upload failed.')));
+      request.send(file);
+    });
+    return await completeDirectUpload({
+      filename: ticket.filename,
+      key: ticket.key,
+      originalName: file.name,
+      width: metadata.width,
+      height: metadata.height,
+      bytes: file.size,
+    });
+  } catch {
+    return null;
+  }
+}
+
 export async function uploadFilesIntoProject({
   files,
   navigate,
@@ -505,32 +558,38 @@ export async function uploadFilesIntoProject({
         return;
       }
 
-      const uploads = await uploadAssets(
-        [preparedItem.file],
-        [
-          {
-            width: preparedItem.width,
-            height: preparedItem.height,
-          },
-        ],
-        (progress: UploadRequestProgress) => {
-          setUploadState((current) => ({
-            ...current,
-            phase: 'uploading',
-            currentFileIndex: index + 1,
-            currentFileName: file.name,
-            completedFiles,
-            optimizedBytes,
-            currentFileLoadedBytes: progress.loadedBytes,
-            currentFileTotalBytes: progress.totalBytes,
-            queue: updateUploadQueueItem(current.queue, queueItemId, {
-              state: 'uploading',
-              error: null,
-            }),
-          }));
-        },
+      const progressHandler = (progress: UploadRequestProgress) => {
+        setUploadState((current) => ({
+          ...current,
+          phase: 'uploading',
+          currentFileIndex: index + 1,
+          currentFileName: file.name,
+          completedFiles,
+          optimizedBytes,
+          currentFileLoadedBytes: progress.loadedBytes,
+          currentFileTotalBytes: progress.totalBytes,
+          queue: updateUploadQueueItem(current.queue, queueItemId, {
+            state: 'uploading',
+            error: null,
+          }),
+        }));
+      };
+      // Try the direct-to-object-storage path first; fall back to the proxied
+      // multipart upload when the server has no storage configured.
+      const directAsset = await uploadFileDirect(
+        preparedItem.file,
+        { width: preparedItem.width, height: preparedItem.height },
+        progressHandler,
       );
-      const uploadedAsset = uploads[0];
+      const uploadedAsset =
+        directAsset ??
+        (
+          await uploadAssets(
+            [preparedItem.file],
+            [{ width: preparedItem.width, height: preparedItem.height }],
+            progressHandler,
+          )
+        )[0];
       if (!uploadedAsset) {
         throw new Error('The upload completed without returning an asset record.');
       }
