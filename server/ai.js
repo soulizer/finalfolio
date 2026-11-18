@@ -282,7 +282,10 @@ function providerScore(stats) {
     return 60_000;
   }
   if (stats.successes > 0) {
-    return stats.totalLatencyMs / stats.successes;
+    const average = stats.totalLatencyMs / stats.successes;
+    // A provider whose last attempt failed goes behind a healthy one with a
+    // similar latency; one success restores it to the front.
+    return average + (stats.lastOk === false ? 30_000 : 0);
   }
   if (stats.failures > 0) {
     return 120_000;
@@ -645,7 +648,7 @@ async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000 } 
     // The total budget is independent of a single provider's timeout: every
     // provider gets an equal share of the remaining time, so a slow first
     // provider can never leave provider two or three without a real attempt.
-    const deadline = Date.now() + 180_000;
+    const deadline = Date.now() + 210_000;
     const canRetry = (error) => {
       const message = error instanceof Error ? error.message : '';
       return /Timed out|HTTP (?:429|5\d\d)|fetch failed|ECONNRESET|ENOTFOUND|socket hang up|empty message|did not include any plans/i.test(message);
