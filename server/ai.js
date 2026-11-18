@@ -45,7 +45,7 @@ export const DEFAULT_AI_PROMPT = `你是一位资深摄影画册编辑与图片�
 
 硬性规则：
 1. 必须给出 3 套方案，风格明显不同（例如：克制编辑感、强烈视觉冲击、安静手记感）。
-2. 每套方案必须是偶数页：4、6、8 或 10 页；第一页用 cover 或 folio 开场，最后一页安静收束。
+2. 每套方案必须是偶数页：4 或 6 页；第一页用 cover 或 folio 开场，最后一页安静收束。
 3. 页数必须是偶数，方便双页翻页；不要输出奇数页方案。
 4. 每个页面只使用上面列出的 template。每个 template 的图片数量必须匹配：
    cover=1, essay=1, folio=1, grid=4, diptych=2, panorama=2, mosaic=3, triptych=3。
@@ -674,7 +674,7 @@ async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000 } 
             timeoutMs: attemptTimeout,
             // Three fully written plans easily exceed 8k tokens; a truncated
             // response cannot be parsed at all.
-            maxTokens: 16_000,
+            maxTokens: 32_000,
           });
           await recordProviderStat(provider.id, { latencyMs: result.latencyMs, ok: true });
           const parsed = extractJson(result.content);
@@ -696,7 +696,13 @@ async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000 } 
           await new Promise((resolve) => setTimeout(resolve, 700));
         }
       }
-      failures.push(`${provider.name}: ${lastError instanceof Error ? lastError.message : 'Unknown error'}`);
+      failures.push(
+        `${provider.name}: ${
+          lastError instanceof Error
+            ? lastError.message
+            : 'Skipped because the earlier providers used the whole time budget.'
+        }`,
+      );
     }
 
     throw createAiError(
