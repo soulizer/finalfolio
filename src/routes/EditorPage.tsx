@@ -1401,18 +1401,17 @@ export function EditorPage() {
                         <em>{t(getTemplateLabel(page.template, page.customTemplate))}</em>
                       </button>
                     </div>
-                    {isActive ? (
-                      <button
-                        type="button"
-                        className="page-chip__title"
-                        onClick={() => {
-                          selectPage(page.id);
-                          setColorPickerPageId(null);
-                        }}
-                      >
-                        {page.title}
-                      </button>
-                    ) : null}
+                    <button
+                      type="button"
+                      className="page-chip__title"
+                      title={page.title || t('Untitled page')}
+                      onClick={() => {
+                        selectPage(page.id);
+                        setColorPickerPageId(null);
+                      }}
+                    >
+                      {page.title || t('Untitled page')}
+                    </button>
                     {colorPickerPageId === page.id ? (
                       <div className="page-color-popover surface-popover" role="group" aria-label={t('Paper color')}>
                         <div className="page-color-popover__swatches">

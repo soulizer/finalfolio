@@ -71,6 +71,67 @@ export type AiPlanBundle = {
   providerName?: string;
 };
 
+function pageCapacity(page: AiPlanPage) {
+  return getPageSlotOrder({ template: page.template, customTemplate: null }).length;
+}
+
+function createEmptyPlanPage(template: TemplateId, theme: PageThemeId): AiPlanPage {
+  return { template, theme, kicker: '', title: '', deck: '', body: '', caption: '', assetIndexes: [] };
+}
+
+/**
+ * The model tends to leave some selected photos unused. Every selected photo
+ * must land somewhere: fill free frames first, then append pages until every
+ * photo is placed. The caller keeps the page count even afterwards.
+ */
+function ensureAllPhotosUsed(pages: AiPlanPage[], imageCount: number): AiPlanPage[] {
+  if (!Number.isFinite(imageCount) || imageCount <= 0) {
+    return pages;
+  }
+
+  const used = new Set<number>();
+  pages.forEach((page) => page.assetIndexes.forEach((index) => used.add(index)));
+  const missing: number[] = [];
+  for (let index = 0; index < imageCount; index += 1) {
+    if (!used.has(index)) {
+      missing.push(index);
+    }
+  }
+  if (!missing.length) {
+    return pages;
+  }
+
+  const result = pages.map((page) => ({ ...page, assetIndexes: [...page.assetIndexes] }));
+
+  // 1) Fill frames that are still empty in existing pages.
+  for (const page of result) {
+    const capacity = pageCapacity(page);
+    while (page.assetIndexes.length < capacity && missing.length) {
+      page.assetIndexes.push(missing.shift() as number);
+    }
+  }
+
+  // 2) Append extra pages for whatever is left, largest capacity first.
+  const fillers: Array<{ template: TemplateId; capacity: number }> = [
+    { template: 'grid', capacity: 4 },
+    { template: 'triptych', capacity: 3 },
+    { template: 'diptych', capacity: 2 },
+    { template: 'folio', capacity: 1 },
+  ];
+  while (missing.length && result.length < PROJECT_PAGE_LIMIT) {
+    const remaining = missing.length;
+    const filler = fillers.find((entry) => entry.capacity <= remaining) ?? fillers[fillers.length - 1];
+    const template = remaining === 1 ? 'folio' : filler.template;
+    const capacity = remaining === 1 ? 1 : filler.capacity;
+    const theme = result[result.length - 1]?.theme ?? 'warm-beige';
+    const page = createEmptyPlanPage(template, theme);
+    page.assetIndexes = missing.splice(0, capacity);
+    result.push(page);
+  }
+
+  return result;
+}
+
 function clampFrameRadius(value: unknown) {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     return PROJECT_FRAME_RADIUS_DEFAULT;
@@ -159,8 +220,14 @@ export function normalizeAiPlanBundle(value: unknown, prompt: string, imageCount
         });
       }
 
+      const filledPages = [...ensureAllPhotosUsed(pages, imageCount)];
+      if (filledPages.length % 2 === 1 && filledPages.length < PROJECT_PAGE_LIMIT) {
+        const lastPage = filledPages[filledPages.length - 1];
+        filledPages.push(createEmptyPlanPage('folio', lastPage.theme));
+      }
+
       const usedIndexes = new Set<number>();
-      pages.forEach((page) => page.assetIndexes.forEach((index) => usedIndexes.add(index)));
+      filledPages.forEach((page) => page.assetIndexes.forEach((index) => usedIndexes.add(index)));
 
       return {
         id: sanitizeString(plan.id, `plan-${planIndex + 1}`),
@@ -171,9 +238,9 @@ export function normalizeAiPlanBundle(value: unknown, prompt: string, imageCount
         ...(sanitizeString(plan.folioSubtitle) ? { folioSubtitle: sanitizeString(plan.folioSubtitle) } : {}),
         ...(sanitizeString(plan.issue) ? { issue: sanitizeString(plan.issue) } : {}),
         ...(typeof plan.frameRadius === 'number' ? { frameRadius: clampFrameRadius(plan.frameRadius) } : {}),
-        pageCount: pages.length,
+        pageCount: filledPages.length,
         photoCount: usedIndexes.size,
-        pages,
+        pages: filledPages,
       } satisfies AiPlan;
     })
     .filter((plan): plan is AiPlan => Boolean(plan))

@@ -29,14 +29,14 @@ export const FONT_OPTIONS: FontOption[] = [
   },
   {
     id: 'serif-cn',
-    label: '宋体 / 思源宋体',
-    stack: '"Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", "LXGW WenKai Display", serif',
+    label: '宋体',
+    stack: '"FF Serif SC", "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "SimSun", serif',
     chinese: true,
   },
   {
     id: 'sans-cn',
-    label: '黑体 / 苹方',
-    stack: '"PingFang SC", "Noto Sans SC", "Microsoft YaHei", "Heiti SC", sans-serif',
+    label: '黑体',
+    stack: '"FF Sans SC", "Noto Sans CJK SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif',
     chinese: true,
   },
   {
