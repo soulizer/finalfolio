@@ -14,6 +14,7 @@ import {
   PROJECT_SUBTITLE_LIMIT,
   PROJECT_TITLE_LIMIT,
 } from './limits';
+import { DEFAULT_PROJECT_FONTS } from './fonts';
 import {
   CUSTOM_LAYOUT_GAP_X_PERCENT,
   CUSTOM_LAYOUT_GAP_Y_PERCENT,
@@ -1109,6 +1110,7 @@ export function createDefaultProject(): ProjectState {
     ).slice(0, PROJECT_SUBTITLE_LIMIT),
     issue: translate('Folio 01').slice(0, PROJECT_ISSUE_LIMIT),
     frameRadius: PROJECT_FRAME_RADIUS_DEFAULT,
+    fonts: { ...DEFAULT_PROJECT_FONTS },
     assets: [],
     pages: createPagesFromTemplatePack(defaultTemplatePackId),
   };

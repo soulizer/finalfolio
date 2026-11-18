@@ -23,6 +23,10 @@ export const DEFAULT_AI_PROMPT = `你是一位资深摄影画册编辑与图片�
       "name": "方案名称（4-8个汉字）",
       "style": "一句话风格说明",
       "summary": "30-60字，说明为什么这样编排",
+      "folioTitle": "这套方案自己的作品集标题",
+      "folioSubtitle": "这套方案自己的一句副标题",
+      "issue": "这套方案的编号，例如 AI 01",
+      "frameRadius": 14,
       "pages": [
         {
           "template": "cover|essay|folio|grid|diptych|panorama|mosaic|triptych",
@@ -50,7 +54,34 @@ export const DEFAULT_AI_PROMPT = `你是一位资深摄影画册编辑与图片�
 7. 每页只填写该版式需要的文字；没有导语或正文时用空字符串。文字使用中文，简洁、有编辑感，不要空泛营销语。
 8. theme 必须从列表中选择，同一套方案可以有 1-3 个主色，不要每页都换色。
 9. frameRadius 为 0-24 的整数，整套方案统一。
-10. 不要输出任何 JSON 之外的字符。`;
+10. 每套方案都要给出自己的 folioTitle、folioSubtitle、issue、frameRadius，三者要互相契合；切换方案时作品集标识也应随之变化。
+11. 不要输出任何 JSON 之外的字符。`;
+
+/**
+ * Structural knowledge appended to every generation prompt in code, so a saved
+ * admin prompt written before this guide existed still gets accurate layout and
+ * capacity constraints.
+ */
+export const AI_LAYOUT_GUIDE = `【版式与容量手册】（文字按中文字符计；英文可按 1.6 倍；超长会破坏版面，必须遵守）
+- cover（1 图，封面开场）：标题 ≤12，导语 ≤34，图注 ≤26；不用引题和正文。
+- essay（1 图，图文页）：引题 ≤12，标题 ≤16，导语 ≤46，正文 ≤150，图注 ≤30。
+- folio（1 图，整幅主图）：引题 ≤12，标题 ≤16，导语 ≤40，图注 ≤28；不用正文。
+- grid（4 图，四格节奏）：引题 ≤10，标题 ≤14，正文 ≤90，图注 ≤22；不用导语。
+- diptych（2 图，对页）：引题 ≤12，标题 ≤16，导语 ≤40，正文 ≤80，图注 ≤22。
+- panorama（2 图，上下宽幅）：引题 ≤12，标题 ≤16，导语 ≤40，图注 ≤22；不用正文。
+- mosaic（3 图，主图+两细节）：引题 ≤10，标题 ≤14，导语 ≤34，正文 ≤70，图注 ≤22。
+- triptych（3 图，三联）：引题 ≤10，标题 ≤16，导语 ≤40，正文 ≤80，图注 ≤22。
+某一页不使用某字段时，请输出空字符串，不要省略键。
+
+【作品集标识】每套方案必须自带 folioTitle、folioSubtitle、issue、frameRadius；如果顶层也提供了同名键，以方案内的为准。
+
+【全局职责】
+1. 你负责整本作品集，而不只是照片顺序：同时决定 folioTitle、folioSubtitle、issue、frameRadius，以及每页版式、纸色、文字与图片分配。
+2. 首页必须是能独立成立的开始（cover 或 folio），建立主题与第一眼视觉重心；尾页必须安静收束（folio 或 diptych），不引入新论点、不堆文字。
+3. 节奏要有起承转合：开场 → 展开/对比 → 细节 → 收束；同一种版式不要连续超过两页。
+4. 每张照片最多出现 2 次；重要照片可跨页重复形成母题，不要为用满而堆砌。
+5. 3 套方案要在结构、节奏与文字语气上明显不同，而不是只换纸色。
+6. 所有文字必须能放进对应版式并留有余量；宁可短，不要顶满边界。`;
 
 const DEFAULT_AI_CONFIG = {
   enabled: false,
@@ -583,7 +614,7 @@ async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000 } 
       .map((image) => `${image.index}. ${image.name}${image.width && image.height ? ` (${image.width}×${image.height})` : ''}`)
       .join('\n');
     const messages = [
-      { role: 'system', content: userPrompt },
+      { role: 'system', content: `${userPrompt}\n\n${AI_LAYOUT_GUIDE}` },
       {
         role: 'user',
         content: [

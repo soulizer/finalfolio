@@ -97,8 +97,23 @@ test('upload, save, reopen, share, and export the editor flow', async ({ page })
   });
   await page.getByRole('button', { name: 'Print instead' }).click();
   await expect.poll(async () => page.evaluate(() => (window as PrintRuntime).__printCalls ?? 0)).toBe(1);
+  // Geometry is measured from image boxes, so wait until the print capture has
+  // decoded every image and web fonts have settled; otherwise a partially
+  // decoded image reports a slightly different cover size.
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    const images = Array.from(
+      document.querySelectorAll<HTMLImageElement>('main .asset-frame img, .editor-print-stack .asset-frame img'),
+    );
+    await Promise.all(images.map((image) => image.decode().catch(() => undefined)));
+    // Font swaps and image decodes reflow the page on the next frame.
+    await new Promise<void>((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+    );
+  });
 
-  const exportGeometry = await page.evaluate(() => {
+  const readExportGeometry = () =>
+    page.evaluate(() => {
     const previewFrame = document.querySelector('main .asset-frame[data-has-asset="true"]');
     const printFrame = document.querySelector('.editor-print-stack.is-export-capture-active .asset-frame[data-has-asset="true"]');
     const previewImage = previewFrame?.querySelector('img');
@@ -118,21 +133,36 @@ test('upload, save, reopen, share, and export the editor flow', async ({ page })
     const previewImageStyle = getComputedStyle(previewImage);
     const printImageStyle = getComputedStyle(printImage);
 
-    return {
-      preview: {
-        ratioW: Number.parseFloat(previewImageStyle.width) / Number.parseFloat(previewFrameStyle.width),
-        ratioH: Number.parseFloat(previewImageStyle.height) / Number.parseFloat(previewFrameStyle.height),
-      },
-      print: {
-        ratioW: Number.parseFloat(printImageStyle.width) / Number.parseFloat(printFrameStyle.width),
-        ratioH: Number.parseFloat(printImageStyle.height) / Number.parseFloat(printFrameStyle.height),
-      },
-    };
-  });
+      return {
+        preview: {
+          ratioW: Number.parseFloat(previewImageStyle.width) / Number.parseFloat(previewFrameStyle.width),
+          ratioH: Number.parseFloat(previewImageStyle.height) / Number.parseFloat(previewFrameStyle.height),
+        },
+        print: {
+          ratioW: Number.parseFloat(printImageStyle.width) / Number.parseFloat(printFrameStyle.width),
+          ratioH: Number.parseFloat(printImageStyle.height) / Number.parseFloat(printFrameStyle.height),
+        },
+      };
+    });
 
-  expect(exportGeometry).not.toBeNull();
-  expect(Math.abs(exportGeometry!.preview.ratioW - exportGeometry!.print.ratioW)).toBeLessThan(0.002);
-  expect(Math.abs(exportGeometry!.preview.ratioH - exportGeometry!.print.ratioH)).toBeLessThan(0.002);
+  // Font swaps and image decodes can reflow the page a frame or two after the
+  // print capture starts (sub-pixel cover sizing). Poll until the two layouts
+  // settle and agree; a genuinely different renderer never converges.
+  await expect
+    .poll(
+      async () => {
+        const geometry = await readExportGeometry();
+        if (!geometry) {
+          return 1;
+        }
+        return Math.max(
+          Math.abs(geometry.preview.ratioW - geometry.print.ratioW),
+          Math.abs(geometry.preview.ratioH - geometry.print.ratioH),
+        );
+      },
+      { timeout: 5000, intervals: [100, 200, 400, 800] },
+    )
+    .toBeLessThan(0.002);
 
   await page.evaluate(() => {
     const runtime = window as PrintRuntime;

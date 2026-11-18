@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useT } from '../../i18n';
+import { useLocale, useT } from '../../i18n';
+import { DEFAULT_PROJECT_FONTS, FONT_OPTIONS, normalizeProjectFonts } from '../../editor/fonts';
 import type { UserSession } from '../../editor/api';
 import { getUserPrimaryIdentity } from '../../editor/identity';
 import {
@@ -136,6 +137,8 @@ export function EditorOperationsSidebar({
   updateProject,
 }: EditorOperationsSidebarProps) {
   const t = useT();
+  const { locale } = useLocale();
+  const fontOptions = locale === 'zh' ? FONT_OPTIONS.filter((font) => font.chinese) : FONT_OPTIONS;
   const [projectDetailsOpen, setProjectDetailsOpen] = useState(false);
   const frameRadiusRoundThreshold = Math.max(PROJECT_FRAME_RADIUS_DEFAULT + 10, PROJECT_FRAME_RADIUS_MAX - 12);
   const frameRadiusLabel =
@@ -189,6 +192,31 @@ export function EditorOperationsSidebar({
             onChange={(event) => updateProject((current) => ({ ...current, title: event.target.value }))}
           />
         </label>
+        <div className="editor-font-fields" role="group" aria-label={t('Typography')}>
+          <span className="editor-stack-field__label">{t('Typography')}</span>
+          {(['title', 'deck', 'caption'] as const).map((role) => (
+            <label className="field" key={role}>
+              <span>
+                {t(role === 'title' ? 'Title font' : role === 'deck' ? 'Deck font' : 'Caption font')}
+              </span>
+              <select
+                value={normalizeProjectFonts(project.fonts)[role] ?? DEFAULT_PROJECT_FONTS[role]}
+                onChange={(event) =>
+                  updateProject((current) => ({
+                    ...current,
+                    fonts: { ...normalizeProjectFonts(current.fonts), [role]: event.target.value },
+                  }))
+                }
+              >
+                {fontOptions.map((font) => (
+                  <option key={font.id} value={font.id}>
+                    {font.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ))}
+        </div>
         <p className="panel-note panel-note--status">{t(statusText)}</p>
         {saveConflict ? (
           <div className="editor-conflict-notice" role="alert">
@@ -197,58 +225,64 @@ export function EditorOperationsSidebar({
               {t('Reload latest')}</button>
           </div>
         ) : null}
-        <div className="editor-button-grid editor-button-grid--three" role="group" aria-label={t('Project actions')}>
-          <button
-            type="button"
-            className="button button--ghost button--small"
-            disabled={!canUndo}
-            onClick={onUndo}
-            title={t('Undo (Ctrl+Z)')}
-          >
-            {t('Undo')}
-          </button>
-          <button
-            type="button"
-            className="button button--ghost button--small"
-            disabled={!canRedo}
-            onClick={onRedo}
-            title={t('Redo (Ctrl+Shift+Z)')}
-          >
-            {t('Redo')}
-          </button>
-          <button
-            type="button"
-            className="button button--primary button--small"
-            disabled={saveState === 'saving' || libraryBusy || exportActionBusy || !canSaveProject}
-            onClick={onSaveProject}
-          >
-            {saveActionLabel}
-          </button>
-          <button
-            type="button"
-            className="button button--ghost button--small"
-            disabled={libraryBusy || exportActionBusy}
-            onClick={onToggleExportCenter}
-            aria-expanded={exportActionLabel === t('Close export')}
-          >
-            {exportActionLabel}
-          </button>
-          <button
-            type="button"
-            className="button button--ghost button--small"
-            disabled={!projectRecord || Boolean(projectActionBusy) || !session}
-            onClick={onDuplicateProject}
-          >
-            {projectActionBusy === 'duplicate' ? t('Duplicating…') : t('Duplicate')}
-          </button>
-          <button
-            type="button"
-            className="button button--ghost button--small"
-            disabled={!projectRecord || Boolean(projectActionBusy) || projectMutationLocked}
-            onClick={onArchiveToggle}
-          >
-            {archiveActionLabel}
-          </button>
+        <div className="editor-project-action-rows" aria-label={t('Project actions')}>
+          <div className="editor-button-grid editor-button-grid--two" role="group">
+            <button
+              type="button"
+              className="button button--ghost button--small"
+              disabled={!canUndo}
+              onClick={onUndo}
+              title={t('Undo (Ctrl+Z)')}
+            >
+              {t('Undo')}
+            </button>
+            <button
+              type="button"
+              className="button button--ghost button--small"
+              disabled={!canRedo}
+              onClick={onRedo}
+              title={t('Redo (Ctrl+Shift+Z)')}
+            >
+              {t('Redo')}
+            </button>
+          </div>
+          <div className="editor-button-grid editor-button-grid--two" role="group">
+            <button
+              type="button"
+              className="button button--primary button--small"
+              disabled={saveState === 'saving' || libraryBusy || exportActionBusy || !canSaveProject}
+              onClick={onSaveProject}
+            >
+              {saveActionLabel}
+            </button>
+            <button
+              type="button"
+              className="button button--ghost button--small"
+              disabled={libraryBusy || exportActionBusy}
+              onClick={onToggleExportCenter}
+              aria-expanded={exportActionLabel === t('Close export')}
+            >
+              {exportActionLabel}
+            </button>
+          </div>
+          <div className="editor-button-grid editor-button-grid--two" role="group">
+            <button
+              type="button"
+              className="button button--ghost button--small"
+              disabled={!projectRecord || Boolean(projectActionBusy) || !session}
+              onClick={onDuplicateProject}
+            >
+              {projectActionBusy === 'duplicate' ? t('Duplicating…') : t('Duplicate')}
+            </button>
+            <button
+              type="button"
+              className="button button--ghost button--small"
+              disabled={!projectRecord || Boolean(projectActionBusy) || projectMutationLocked}
+              onClick={onArchiveToggle}
+            >
+              {archiveActionLabel}
+            </button>
+          </div>
         </div>
 
         <button

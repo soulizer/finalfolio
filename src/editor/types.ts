@@ -100,11 +100,18 @@ export interface PageData {
   crops: Record<string, CropSettings>;
 }
 
+export interface ProjectFonts {
+  title: string;
+  deck: string;
+  caption: string;
+}
+
 export interface ProjectState {
   title: string;
   subtitle: string;
   issue: string;
   frameRadius: number;
+  fonts?: ProjectFonts;
   assets: Asset[];
   pages: PageData[];
 }

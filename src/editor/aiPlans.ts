@@ -51,6 +51,11 @@ export type AiPlan = {
   name: string;
   style: string;
   summary: string;
+  /** Optional per-plan folio identity; falls back to the bundle values. */
+  folioTitle?: string;
+  folioSubtitle?: string;
+  issue?: string;
+  frameRadius?: number;
   pageCount: number;
   photoCount: number;
   pages: AiPlanPage[];
@@ -162,6 +167,10 @@ export function normalizeAiPlanBundle(value: unknown, prompt: string, imageCount
         name: sanitizeString(plan.name, `Plan ${planIndex + 1}`),
         style: sanitizeString(plan.style),
         summary: sanitizeString(plan.summary),
+        ...(sanitizeString(plan.folioTitle) ? { folioTitle: sanitizeString(plan.folioTitle) } : {}),
+        ...(sanitizeString(plan.folioSubtitle) ? { folioSubtitle: sanitizeString(plan.folioSubtitle) } : {}),
+        ...(sanitizeString(plan.issue) ? { issue: sanitizeString(plan.issue) } : {}),
+        ...(typeof plan.frameRadius === 'number' ? { frameRadius: clampFrameRadius(plan.frameRadius) } : {}),
         pageCount: pages.length,
         photoCount: usedIndexes.size,
         pages,
@@ -220,10 +229,12 @@ export function applyAiPlanToProject({
 
   return {
     ...project,
-    title: bundle.folioTitle || project.title,
-    subtitle: bundle.folioSubtitle || project.subtitle,
-    issue: bundle.issue || project.issue,
-    frameRadius: clampFrameRadius(bundle.frameRadius),
+    // The chosen plan owns the folio identity: title, subtitle, issue mark and
+    // frame radius all change together with the pages.
+    title: plan.folioTitle || bundle.folioTitle || project.title,
+    subtitle: plan.folioSubtitle || bundle.folioSubtitle || project.subtitle,
+    issue: plan.issue || bundle.issue || project.issue,
+    frameRadius: clampFrameRadius(plan.frameRadius ?? bundle.frameRadius),
     pages: pages.length ? pages : project.pages,
   };
 }

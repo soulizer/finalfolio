@@ -4,6 +4,8 @@ import { createRoot } from 'react-dom/client';
 import { MagazinePreview } from '../components/MagazinePreview';
 import { LocaleProvider, translate } from '../i18n';
 import type { Asset, PageData } from '../editor/types';
+import type { ProjectFonts } from '../editor/types';
+import { buildProjectFontVars } from '../editor/fonts';
 
 type RenderedViewerPage = {
   id: string;
@@ -18,6 +20,7 @@ type RenderTurnJsPageMarkupOptions = {
   renderedPages: RenderedViewerPage[];
   assets: Record<string, Asset>;
   frameRadius: number;
+  fonts?: ProjectFonts;
   sheetWidth: number;
   sheetHeight: number;
 };
@@ -73,6 +76,7 @@ function TurnJsPageMarkup({
   renderedPage,
   assets,
   frameRadius,
+  fonts,
   totalPages,
   sheetWidth,
   sheetHeight,
@@ -81,6 +85,7 @@ function TurnJsPageMarkup({
   renderedPage: RenderedViewerPage;
   assets: Record<string, Asset>;
   frameRadius: number;
+  fonts?: ProjectFonts;
   totalPages: number;
   sheetWidth: number;
   sheetHeight: number;
@@ -105,6 +110,7 @@ function TurnJsPageMarkup({
             {
               '--sheet-width': `${sheetWidth}px`,
               '--sheet-height': `${sheetHeight}px`,
+              ...buildProjectFontVars(fonts),
             } as CSSProperties
           }
         >
@@ -150,6 +156,7 @@ export function renderTurnJsPageMarkup({
   renderedPages,
   assets,
   frameRadius,
+  fonts,
   sheetWidth,
   sheetHeight,
 }: RenderTurnJsPageMarkupOptions) {
@@ -161,6 +168,7 @@ export function renderTurnJsPageMarkup({
           renderedPage={renderedPage}
           assets={assets}
           frameRadius={frameRadius}
+          fonts={fonts}
           totalPages={renderedPages.length}
           sheetWidth={sheetWidth}
           sheetHeight={sheetHeight}

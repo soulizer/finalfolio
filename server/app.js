@@ -516,6 +516,30 @@ function sanitizePageTheme(theme) {
   return theme;
 }
 
+const PROJECT_FONT_IDS = new Set([
+  'inherit',
+  'default-display',
+  'default-ui',
+  'serif-cn',
+  'sans-cn',
+  'kai-cn',
+  'wenkai',
+  'newsreader',
+  'inter',
+]);
+const DEFAULT_PROJECT_FONTS = { title: 'default-display', deck: 'inherit', caption: 'inherit' };
+
+function sanitizeProjectFonts(fonts) {
+  const source = fonts && typeof fonts === 'object' ? fonts : {};
+  const pick = (value, fallback) =>
+    typeof value === 'string' && PROJECT_FONT_IDS.has(value) ? value : fallback;
+  return {
+    title: pick(source.title, DEFAULT_PROJECT_FONTS.title),
+    deck: pick(source.deck, DEFAULT_PROJECT_FONTS.deck),
+    caption: pick(source.caption, DEFAULT_PROJECT_FONTS.caption),
+  };
+}
+
 function sanitizeFrameRadius(frameRadius) {
   if (frameRadius === undefined) {
     return DEFAULT_FRAME_RADIUS;
@@ -612,6 +636,7 @@ export function sanitizeProjectState(payload, { maxPageCount = DEFAULT_MAX_PAGE_
     subtitle: sanitizeText(project.subtitle, 'Project subtitle', defaultTextLimits.projectSubtitle, { trim: true }),
     issue: sanitizeText(project.issue, 'Folio mark', defaultTextLimits.projectIssue, { allowEmpty: false, trim: true }),
     frameRadius: sanitizeFrameRadius(project.frameRadius),
+    fonts: sanitizeProjectFonts(project.fonts),
     assets,
     pages: project.pages.map((page) => sanitizePage(page, assetIds, pageIds)),
   };
@@ -1054,6 +1079,7 @@ export function createProjectStore({
       ...(projectPatch.subtitle !== undefined ? { subtitle: sanitizeText(projectPatch.subtitle, 'Project subtitle', defaultTextLimits.projectSubtitle, { trim: true }) } : {}),
       ...(projectPatch.issue !== undefined ? { issue: sanitizeText(projectPatch.issue, 'Folio mark', defaultTextLimits.projectIssue, { allowEmpty: false, trim: true }) } : {}),
       ...(projectPatch.frameRadius !== undefined ? { frameRadius: sanitizeFrameRadius(projectPatch.frameRadius) } : {}),
+      ...(projectPatch.fonts !== undefined ? { fonts: sanitizeProjectFonts(projectPatch.fonts) } : {}),
     };
     const nextRecord = {
       ...existingRecord,

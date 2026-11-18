@@ -8,6 +8,7 @@ import { AccountUploadListItem, importAssetFromUrl } from '../editor/api';
 import { getConfirmationMessage } from '../editor/confirmations';
 import { formatDateTime } from '../editor/dateFormat';
 import { getAssetSource } from '../editor/assetResources';
+import { buildProjectFontVars } from '../editor/fonts';
 import {
   cloneCustomTemplateDefinition,
   countImageSlots,
@@ -399,7 +400,9 @@ export function EditorPage() {
     const orderedIds: string[] = [];
     const seenIds = new Set<string>();
 
-    [...project.assets.map((asset) => asset.id), ...ownedUploads.map((upload) => upload.assetId)].forEach((assetId) => {
+    // Keep the gallery order stable: account-library order first, then any
+    // project-only assets. Using the photo must never move it to the top.
+    [...ownedUploads.map((upload) => upload.assetId), ...project.assets.map((asset) => asset.id)].forEach((assetId) => {
       if (seenIds.has(assetId)) {
         return;
       }
@@ -432,8 +435,9 @@ export function EditorPage() {
     () =>
       ({
         '--page-scale': previewScale,
+        ...buildProjectFontVars(project.fonts),
       }) as CSSProperties,
-    [previewScale],
+    [previewScale, project.fonts],
   );
 
   const visibleTemplateIds = useMemo(
@@ -1295,6 +1299,24 @@ export function EditorPage() {
               <span className="panel-tag">{sequenceLabel}</span>
               <PanelCollapseToggle />
             </div>
+            <ul className="page-strip-titles" aria-label={t('Page titles')}>
+              {project.pages.map((page, index) => (
+                <li key={page.id}>
+                  <button
+                    type="button"
+                    className={page.id === selectedPage.id ? 'is-active' : ''}
+                    title={page.title || t('Untitled page')}
+                    onClick={() => {
+                      selectPage(page.id);
+                      setColorPickerPageId(null);
+                    }}
+                  >
+                    <span className="page-strip-titles__index">{String(index + 1).padStart(2, '0')}</span>
+                    <span className="page-strip-titles__text">{page.title || t('Untitled page')}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
             {project.pages.length % 2 === 1 ? (
               <div className="editor-page-parity" role="status">
                 <div className="editor-page-parity__copy">
@@ -1903,7 +1925,10 @@ export function EditorPage() {
                 printPageRefs.current[page.id] = node;
               }}
             >
-              <div className="magazine-sheet magazine-sheet--print">
+              <div
+                className="magazine-sheet magazine-sheet--print"
+                style={buildProjectFontVars(project.fonts) as CSSProperties}
+              >
                 <MagazinePreview
                   issue={project.issue}
                   page={page}

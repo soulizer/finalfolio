@@ -1436,6 +1436,51 @@ a:focus-visible {
   backdrop-filter: var(--overlay-blur);
 }
 
+.export-dialog {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(980px, calc(100vw - 40px));
+  max-height: min(88vh, 920px);
+  padding: 0;
+  overflow: hidden;
+}
+
+.export-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.export-dialog__header h2 {
+  margin: 4px 0 0;
+  font-size: 1.32rem;
+}
+
+.export-dialog__body {
+  display: grid;
+  gap: 16px;
+  padding: 16px 20px 20px;
+  overflow: auto;
+}
+
+.export-dialog__body > .editor-stack-field {
+  margin: 0;
+}
+
+.export-dialog__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 12px 20px;
+  border-top: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.58);
+}
+
 .editor-modal__actions {
   display: flex;
   gap: 10px;
@@ -3442,6 +3487,19 @@ a:focus-visible {
 .magazine-page--cjk h2 {
   line-height: 1.18;
   letter-spacing: -0.015em;
+}
+
+/* Per-role typography chosen in the project panel. */
+.magazine-page h2.magazine-text--title {
+  font-family: var(--page-font-title, var(--font-display));
+}
+
+.magazine-page .magazine-text--deck {
+  font-family: var(--page-font-deck, inherit);
+}
+
+.magazine-page .magazine-text--caption {
+  font-family: var(--page-font-caption, inherit);
 }
 
 .magazine-page p,
@@ -8274,8 +8332,60 @@ html[lang='zh-CN'] body {
 }
 
 .editor-panel.is-collapsed > :not(:first-child),
-.page-strip-panel.is-collapsed > :not(:first-child) {
+.page-strip-panel.is-collapsed > :not(:first-child):not(.page-strip-titles) {
   display: none;
+}
+
+/* Collapsed sequence keeps a readable page-title list instead of vanishing. */
+.page-strip-titles {
+  display: none;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.page-strip-panel.is-collapsed .page-strip-titles {
+  display: grid;
+  gap: 1px;
+  margin-top: 6px;
+}
+
+.page-strip-titles button {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 3px 2px;
+  border: 0;
+  background: transparent;
+  color: rgba(17, 17, 17, 0.62);
+  font: inherit;
+  font-size: 0.74rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.page-strip-titles button:hover,
+.page-strip-titles button.is-active {
+  color: var(--ink);
+}
+
+.page-strip-titles__index {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  color: rgba(17, 17, 17, 0.38);
+}
+
+.page-strip-titles__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editor-project-action-rows {
+  display: grid;
+  gap: 8px;
 }
 
 .editor-panel > .field,

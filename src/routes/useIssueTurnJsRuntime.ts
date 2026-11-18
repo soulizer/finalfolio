@@ -1,5 +1,5 @@
 import { ForwardedRef, useEffect, useImperativeHandle, useRef } from 'react';
-import type { Asset } from '../editor/types';
+import type { Asset, ProjectFonts } from '../editor/types';
 import {
   clamp,
   normalizeVisibleTurnView,
@@ -23,6 +23,7 @@ type UseIssueTurnJsRuntimeOptions = {
   renderedPages: RenderedViewerPage[];
   assetsById: Record<string, Asset>;
   frameRadius: number;
+  fonts?: ProjectFonts;
   sheetWidth: number;
   sheetHeight: number;
   pageWidth: number;
@@ -50,6 +51,7 @@ type InitializeTurnJsOptions = {
   currentPageRef: { current: number };
   displayMode: TurnJsDisplayMode;
   frameRadius: number;
+  fonts?: ProjectFonts;
   isDisposed: () => boolean;
   issueLabel: string;
   onTurningChangeRef: { current: (turning: boolean) => void };
@@ -144,6 +146,7 @@ async function initializeTurnJs({
   currentPageRef,
   displayMode,
   frameRadius,
+  fonts,
   isDisposed,
   issueLabel,
   onTurningChangeRef,
@@ -178,6 +181,7 @@ async function initializeTurnJs({
     renderedPages,
     assets: assetsById,
     frameRadius,
+    fonts,
     sheetWidth,
     sheetHeight,
   });
@@ -227,6 +231,7 @@ export function useIssueTurnJsRuntime({
   renderedPages,
   assetsById,
   frameRadius,
+  fonts,
   sheetWidth,
   sheetHeight,
   pageWidth,
@@ -351,7 +356,7 @@ export function useIssueTurnJsRuntime({
       destroyTurnJsBook(turnHost, turnInstanceRef.current);
       turnInstanceRef.current = null;
     };
-  }, [assetsById, canInitializeTurnJs, displayMode, frameRadius, issueLabel, renderedPages, sheetHeight, sheetWidth, spreadPageCount]);
+  }, [assetsById, canInitializeTurnJs, displayMode, fonts, frameRadius, issueLabel, renderedPages, sheetHeight, sheetWidth, spreadPageCount]);
 
   useEffect(() => {
     const turnInstance = turnInstanceRef.current;

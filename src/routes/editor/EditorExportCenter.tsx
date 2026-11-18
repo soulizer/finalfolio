@@ -33,6 +33,27 @@ type EditorExportCenterProps = {
   updateExportSettings: (updater: ExportSettings | ((current: ExportSettings) => ExportSettings)) => void;
 };
 
+function preflightMessage(issue: ExportPreflightIssue, t: (key: string) => string) {
+  switch (issue.code) {
+    case 'empty-page':
+      return t('This page has no placed image and no text content.');
+    case 'missing-image':
+      return t('Frame %s is empty.').replace('%s', issue.slot ?? '');
+    case 'uncovered-frame':
+      return t('Frame %s will expose page background because the image is not covering the full frame.').replace(
+        '%s',
+        issue.slot ?? '',
+      );
+    case 'low-resolution':
+      return t('Frame %s is drawing from a source image that is too small for this export size and quality.').replace(
+        '%s',
+        issue.slot ?? '',
+      );
+    default:
+      return issue.message;
+  }
+}
+
 export function EditorExportCenter({
   exportActionBusy,
   exportAdvisories,
@@ -51,13 +72,13 @@ export function EditorExportCenter({
   return (
     <div className="editor-modal" role="presentation" onClick={onRequestCloseIfIdle}>
       <section
-        className="editor-modal__panel"
+        className="editor-modal__panel export-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="export-center-title"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="editor-panel__heading">
+        <header className="export-dialog__header">
           <div>
             <p className="eyebrow">{t('Export Center')}</p>
             <h2 id="export-center-title">{t('Preflight and output')}</h2>
@@ -67,7 +88,8 @@ export function EditorExportCenter({
             <button type="button" className="button button--ghost button--small" disabled={exportActionBusy} onClick={onClose}>
               {t('Close')}</button>
           </div>
-        </div>
+        </header>
+        <div className="export-dialog__body">
         <p className="panel-note">
           {t('Choose export format, same-ratio page size, and quality first. JPG can export as a ZIP package of separate pages or as one stitched image.')}</p>
         <div className="editor-stack-field">
@@ -103,8 +125,8 @@ export function EditorExportCenter({
                   onClick={() => updateExportSettings((current) => ({ ...current, pageSize }))}
                 >
                   <span>{exportPageSizeMeta[pageSize].label}</span>
-                  <strong>{exportPageSizeMeta[pageSize].emphasis}</strong>
-                  <small>{`${exportPageSizeMeta[pageSize].widthMm.toFixed(1)} × ${exportPageSizeMeta[pageSize].heightMm.toFixed(1)} mm · ${exportPageSizeMeta[pageSize].description}`}</small>
+                  <strong>{t(exportPageSizeMeta[pageSize].emphasis)}</strong>
+                  <small>{`${exportPageSizeMeta[pageSize].widthMm.toFixed(1)} × ${exportPageSizeMeta[pageSize].heightMm.toFixed(1)} mm · ${t(exportPageSizeMeta[pageSize].description)}`}</small>
                 </button>
               ))}
             </div>
@@ -122,9 +144,9 @@ export function EditorExportCenter({
                   className={`template-card ${exportSettings.quality === quality ? 'is-active' : ''}`}
                   onClick={() => updateExportSettings((current) => ({ ...current, quality }))}
                 >
-                  <span>{exportQualityMeta[quality].label}</span>
-                  <strong>{`${exportQualityMeta[quality].baseDpi} dpi · ${exportQualityMeta[quality].estimatedFileSizeLabel}`}</strong>
-                  <small>{exportQualityMeta[quality].description}</small>
+                  <span>{t(exportQualityMeta[quality].label)}</span>
+                  <strong>{`${exportQualityMeta[quality].baseDpi} dpi · ${t(exportQualityMeta[quality].estimatedFileSizeLabel)}`}</strong>
+                  <small>{t(exportQualityMeta[quality].description)}</small>
                 </button>
               ))}
             </div>
@@ -142,9 +164,9 @@ export function EditorExportCenter({
                   className={`template-card ${exportSettings.jpgMode === jpgMode ? 'is-active' : ''}`}
                   onClick={() => updateExportSettings((current) => ({ ...current, jpgMode }))}
                 >
-                  <span>{jpgExportModeMeta[jpgMode].label}</span>
+                  <span>{t(jpgExportModeMeta[jpgMode].label)}</span>
                   <strong>{jpgMode === 'separate' ? t('ZIP package') : t('Single long image')}</strong>
-                  <small>{jpgExportModeMeta[jpgMode].description}</small>
+                  <small>{t(jpgExportModeMeta[jpgMode].description)}</small>
                 </button>
               ))}
             </div>
@@ -157,7 +179,7 @@ export function EditorExportCenter({
             <div>
               {exportAdvisories.map((advisory) => (
                 <p key={advisory} className="panel-note">
-                  {advisory}
+                  {t(advisory)}
                 </p>
               ))}
             </div>
@@ -178,13 +200,16 @@ export function EditorExportCenter({
                   onClick={() => onSelectPreflightIssue(issue)}
                 >
                   <strong>{issue.pageTitle}</strong>
-                  <span>{issue.message}</span>
+                  <span>{preflightMessage(issue, t)}</span>
                 </button>
               ))}
               {exportPreflightIssues.length > 6 ? (
-                <p className="panel-note">{`${exportPreflightIssues.length - 6} more warning${
-                  exportPreflightIssues.length - 6 === 1 ? '' : 's'
-                } remain in this folio.`}</p>
+                <p className="panel-note">
+                  {t('%s more warnings remain in this folio.').replace(
+                    '%s',
+                    String(exportPreflightIssues.length - 6),
+                  )}
+                </p>
               ) : null}
             </div>
           ) : (
@@ -192,7 +217,8 @@ export function EditorExportCenter({
           )}
         </div>
 
-        <div className="editor-panel__actions editor-panel__actions--tight">
+        </div>
+        <footer className="export-dialog__footer">
           <button
             type="button"
             className={`button button--primary button--small ${
@@ -215,7 +241,7 @@ export function EditorExportCenter({
           ) : null}
           <button type="button" className="button button--ghost button--small" disabled={exportActionBusy} onClick={onClose}>
             {t('Cancel')}</button>
-        </div>
+        </footer>
       </section>
     </div>
   );

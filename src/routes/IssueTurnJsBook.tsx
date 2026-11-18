@@ -1,5 +1,5 @@
 import { CSSProperties, ForwardedRef, forwardRef } from 'react';
-import type { Asset } from '../editor/types';
+import type { Asset, ProjectFonts } from '../editor/types';
 import type { RenderedViewerPage, TurnJsDisplayMode, VisibleTurnView } from './issueViewReaderState';
 import { useIssueTurnJsRuntime, type TurnJsBookHandle as IssueTurnJsBookHandle } from './useIssueTurnJsRuntime';
 
@@ -10,6 +10,7 @@ type TurnJsBookProps = {
   renderedPages: RenderedViewerPage[];
   assetsById: Record<string, Asset>;
   frameRadius: number;
+  fonts?: ProjectFonts;
   sheetWidth: number;
   sheetHeight: number;
   pageWidth: number;
@@ -27,6 +28,7 @@ export const IssueTurnJsBook = forwardRef(function IssueTurnJsBook(
     renderedPages,
     assetsById,
     frameRadius,
+    fonts,
     sheetWidth,
     sheetHeight,
     pageWidth,
@@ -45,6 +47,7 @@ export const IssueTurnJsBook = forwardRef(function IssueTurnJsBook(
     renderedPages,
     assetsById,
     frameRadius,
+    fonts,
     sheetWidth,
     sheetHeight,
     pageWidth,
