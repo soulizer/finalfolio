@@ -642,26 +642,24 @@ async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000 } 
     }
 
     const failures = [];
-    const deadline = Date.now() + Math.max(30_000, Math.min(config.requestTimeoutMs, 150_000));
+    // The total budget is independent of a single provider's timeout: every
+    // provider gets an equal share of the remaining time, so a slow first
+    // provider can never leave provider two or three without a real attempt.
+    const deadline = Date.now() + 180_000;
     const canRetry = (error) => {
       const message = error instanceof Error ? error.message : '';
       return /Timed out|HTTP (?:429|5\d\d)|fetch failed|ECONNRESET|ENOTFOUND|socket hang up|empty message|did not include any plans/i.test(message);
     };
     for (let providerIndex = 0; providerIndex < providers.length; providerIndex += 1) {
-      const { provider, avgLatencyMs } = providers[providerIndex];
+      const { provider } = providers[providerIndex];
       let lastError = null;
       // Time slice per provider: sized from its own measured latency when we
       // have one (so a slow relay gets enough room without wasting the pool's
       // budget), otherwise an equal share of what is left.
       const equalShare = Math.max(
         20_000,
-        Math.min(45_000, Math.floor((deadline - Date.now()) / (providers.length - providerIndex))),
+        Math.min(70_000, Math.floor((deadline - Date.now()) / (providers.length - providerIndex))),
       );
-      const laterProviders = providers.length - providerIndex - 1;
-      const reserveForLater = 25_000 * laterProviders;
-      const sliceMs = avgLatencyMs
-        ? Math.max(25_000, Math.min(90_000, Math.round(avgLatencyMs * 1.4)))
-        : equalShare;
       for (let attempt = 0; attempt < 2; attempt += 1) {
         const remaining = deadline - Date.now();
         if (remaining < 5_000) {
@@ -669,7 +667,7 @@ async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000 } 
         }
         const attemptTimeout = Math.min(
           config.requestTimeoutMs,
-          Math.max(15_000, Math.min(sliceMs, remaining - reserveForLater)),
+          Math.max(20_000, Math.min(equalShare, remaining)),
         );
         const attemptStartedAt = Date.now();
         try {
