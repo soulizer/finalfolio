@@ -165,6 +165,13 @@ function localizeAiError(message: string, t: (key: string) => string) {
   return t(message);
 }
 
+function splitProviderErrorDetail(message: string): string | null {
+  if (!/^All AI providers failed/i.test(message)) {
+    return null;
+  }
+  return message.replace(/^All AI providers failed\.?\s*/, '').trim() || null;
+}
+
 function isTransientAiError(error: unknown) {
   const message = error instanceof Error ? error.message : '';
   return /Network connection failed|Failed to fetch|NetworkError|temporarily unavailable|Request failed \(5\d\d\)|All AI providers failed/i.test(
@@ -205,6 +212,9 @@ export function AiArrangeDialog({
   const [bundle, setBundle] = useState<AiPlanBundle | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Per-provider failure detail straight from the server: when the whole pool
+  // is down the generic line alone cannot tell an admin what to fix.
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [sourcePanel, setSourcePanel] = useState<'none' | 'upload' | 'url'>('none');
@@ -455,6 +465,7 @@ export function AiArrangeDialog({
 
     setPhase('generating');
     setError(null);
+    setErrorDetail(null);
     setBundle(null);
     setSelectedPlanId(null);
     const controller = new AbortController();
@@ -507,7 +518,9 @@ export function AiArrangeDialog({
         setPhase('select');
         return;
       }
-      setError(generateError instanceof Error ? localizeAiError(generateError.message, t) : t('AI arrangement failed. Try again.'));
+      const rawMessage = generateError instanceof Error ? generateError.message : '';
+      setError(generateError instanceof Error ? localizeAiError(rawMessage, t) : t('AI arrangement failed. Try again.'));
+      setErrorDetail(splitProviderErrorDetail(rawMessage));
       setPhase('select');
     } finally {
       abortRef.current = null;
@@ -525,7 +538,9 @@ export function AiArrangeDialog({
       await onApply(bundle, selectedPlan, photos);
       onClose();
     } catch (applyError) {
-      setError(applyError instanceof Error ? localizeAiError(applyError.message, t) : t('Unable to apply this AI plan.'));
+      const applyMessage = applyError instanceof Error ? applyError.message : '';
+      setError(applyError instanceof Error ? localizeAiError(applyMessage, t) : t('Unable to apply this AI plan.'));
+      setErrorDetail(splitProviderErrorDetail(applyMessage));
       setPhase('results');
     }
   }
@@ -640,6 +655,7 @@ export function AiArrangeDialog({
                 </p>
               ) : null}
               {error ? <p className="ai-dialog__error" role="alert">{t(error)}</p> : null}
+              {errorDetail ? <p className="ai-dialog__error-detail">{errorDetail}</p> : null}
             </div>
             <footer className="ai-dialog__footer">
               <button
@@ -922,6 +938,7 @@ export function AiArrangeDialog({
                   <p className="ai-dialog__error">{t('You have no AI arrangement uses left right now.')}</p>
                 ) : null}
                 {error ? <p className="ai-dialog__error" role="alert">{t(error)}</p> : null}
+                {errorDetail ? <p className="ai-dialog__error-detail">{errorDetail}</p> : null}
               </section>
             </div>
             <footer className="ai-dialog__footer">

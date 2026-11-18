@@ -379,12 +379,28 @@ export function createAiStore({ dataRoot } = {}) {
     return config;
   }
 
-  async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000 } = {}) {
+  function buildChatCompletionsUrl(baseUrl) {
+  let url;
+  try {
+    url = new URL(baseUrl);
+  } catch {
+    return `${baseUrl}/chat/completions`;
+  }
+  const path = url.pathname.replace(/\/+$/, '');
+  // Bare hosts (no path) follow the OpenAI convention: /v1/chat/completions.
+  // Base URLs that already include a path (e.g. /v1, /v4, /api/v1) keep it and
+  // only get the endpoint suffix, so existing configurations stay untouched.
+  url.pathname = path ? `${path}/chat/completions` : '/v1/chat/completions';
+  url.search = '';
+  return url.toString();
+}
+
+async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000 } = {}) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     const startedAt = Date.now();
     try {
-      const response = await fetch(`${provider.baseUrl}/chat/completions`, {
+      const response = await fetch(buildChatCompletionsUrl(provider.baseUrl), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -411,7 +427,14 @@ export function createAiStore({ dataRoot } = {}) {
       if (payload?.choices?.[0]?.finish_reason === 'length') {
         throw new Error('The AI provider cut the response off before it finished.');
       }
-      const content = payload?.choices?.[0]?.message?.content;
+      let content = payload?.choices?.[0]?.message?.content;
+      if (Array.isArray(content)) {
+        // Some relays return Anthropic-style content parts; keep the text parts.
+        content = content
+          .map((part) => (typeof part?.text === 'string' ? part.text : ''))
+          .filter(Boolean)
+          .join('');
+      }
       if (typeof content !== 'string' || !content.trim()) {
         throw new Error('The AI provider returned an empty message.');
       }
@@ -520,7 +543,7 @@ export function createAiStore({ dataRoot } = {}) {
     const deadline = Date.now() + Math.max(30_000, Math.min(config.requestTimeoutMs, 90_000));
     const canRetry = (error) => {
       const message = error instanceof Error ? error.message : '';
-      return /Timed out|HTTP (?:429|5\d\d)|fetch failed|ECONNRESET|ENOTFOUND|socket hang up/i.test(message);
+      return /Timed out|HTTP (?:429|5\d\d)|fetch failed|ECONNRESET|ENOTFOUND|socket hang up|empty message|did not include any plans/i.test(message);
     };
     for (const provider of providers) {
       let lastError = null;
