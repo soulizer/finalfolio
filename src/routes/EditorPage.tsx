@@ -1,5 +1,5 @@
 import { countLabel, useT } from '../i18n';
-import { CSSProperties, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CSSProperties, Fragment, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { MagazinePreview } from '../components/MagazinePreview';
 import { TemplateIssuePreview } from '../components/TemplateIssuePreview';
@@ -293,6 +293,10 @@ export function EditorPage() {
   const quickUploadInputRef = useRef<HTMLInputElement | null>(null);
   const assetCountRef = useRef(0);
   const [dragOverPageId, setDragOverPageId] = useState<string | null>(null);
+  const [pageDropIndex, setPageDropIndex] = useState<number | null>(null);
+  // The drop handler must see the latest index synchronously, before React
+  // re-renders from the dragover state update.
+  const pageDropIndexRef = useRef<number | null>(null);
   const [importUrlBusy, setImportUrlBusy] = useState(false);
   const lastSavedSnapshotRef = useRef('');
   const printAssetFingerprintRef = useRef('');
@@ -1352,29 +1356,38 @@ export function EditorPage() {
                 const pagePositionLabel = t('Page %s').replace('%s', String(index + 1));
 
                 return (
+                  <Fragment key={page.id}>
+                  {pageDropIndex === index ? <div className="page-chip page-chip--drop" aria-hidden="true" /> : null}
                   <article
-                    key={page.id}
                     className={`page-chip page-chip--theme-${page.theme} ${isActive ? 'is-active' : ''} ${
                       draggedPageId === page.id ? 'is-dragging' : ''
-                    } ${dragOverPageId === page.id && draggedPageId !== page.id ? 'is-drop-target' : ''}`.trim()}
+                    }`.trim()}
                     onDragOver={(event) => {
                       if (!draggedPageId) {
                         return;
                       }
                       event.preventDefault();
+                      const rect = event.currentTarget.getBoundingClientRect();
+                      const after = event.clientX >= rect.left + rect.width / 2;
                       setDragOverPageId(page.id);
-                    }}
-                    onDragLeave={() => {
-                      setDragOverPageId((current) => (current === page.id ? null : current));
+                      pageDropIndexRef.current = index + (after ? 1 : 0);
+                      setPageDropIndex(pageDropIndexRef.current);
                     }}
                     onDrop={(event) => {
                       event.preventDefault();
-                      const fromIndex = project.pages.findIndex((entry) => entry.id === draggedPageId);
-                      if (fromIndex >= 0) {
-                        reorderPages(fromIndex, index);
+                      const draggedId = event.dataTransfer.getData('text/plain') || draggedPageId;
+                      const fromIndex = project.pages.findIndex((entry) => entry.id === draggedId);
+                      const insertIndex = pageDropIndexRef.current;
+                      if (fromIndex >= 0 && insertIndex !== null) {
+                        const target = insertIndex > fromIndex ? insertIndex - 1 : insertIndex;
+                        if (target !== fromIndex) {
+                          reorderPages(fromIndex, target);
+                        }
                       }
                       setDraggedPageId(null);
                       setDragOverPageId(null);
+                      pageDropIndexRef.current = null;
+                      setPageDropIndex(null);
                     }}
                   >
                     <div className="page-chip__head">
@@ -1391,6 +1404,8 @@ export function EditorPage() {
                         onDragEnd={() => {
                           setDraggedPageId(null);
                           setDragOverPageId(null);
+                          pageDropIndexRef.current = null;
+                          setPageDropIndex(null);
                         }}
                         onClick={() => {
                           selectPage(page.id);
@@ -1480,7 +1495,10 @@ export function EditorPage() {
                           aria-label={t('Duplicate page')}
                           onClick={duplicatePage}
                         >
-                          <span>{t('Duplicate')}</span>
+                          <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="5.5" y="5.5" width="7.5" height="7.5" rx="1.4" />
+                            <path d="M10.5 5.5V4.2a1.2 1.2 0 0 0-1.2-1.2H4.2A1.2 1.2 0 0 0 3 4.2v5.1a1.2 1.2 0 0 0 1.2 1.2h1.3" />
+                          </svg>
                         </button>
                         <button
                           type="button"
@@ -1490,7 +1508,9 @@ export function EditorPage() {
                           disabled={selectedPageIndex <= 0}
                           onClick={() => moveSelectedPage(-1)}
                         >
-                          <span>{t('Move up')}</span>
+                          <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M4 10l4-4 4 4" />
+                          </svg>
                         </button>
                         <button
                           type="button"
@@ -1500,7 +1520,9 @@ export function EditorPage() {
                           disabled={selectedPageIndex >= project.pages.length - 1}
                           onClick={() => moveSelectedPage(1)}
                         >
-                          <span>{t('Move down')}</span>
+                          <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M4 6l4 4 4-4" />
+                          </svg>
                         </button>
                         <button
                           type="button"
@@ -1510,13 +1532,19 @@ export function EditorPage() {
                           disabled={project.pages.length === 1}
                           onClick={removeSelectedPage}
                         >
-                          <span>{t('Delete')}</span>
+                          <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M2.5 4.5h11M6 4.5V3.2h4v1.3M4 4.5l.6 8.2h6.8l.6-8.2M6.6 7v3.4M9.4 7v3.4" />
+                          </svg>
                         </button>
                       </div>
                     ) : null}
                   </article>
+                  </Fragment>
                 );
               })}
+              {pageDropIndex === project.pages.length ? (
+                <div className="page-chip page-chip--drop" aria-hidden="true" />
+              ) : null}
             </div>
           </section>
 
@@ -1565,15 +1593,6 @@ export function EditorPage() {
                 <div className="layout-selection-actions">
                   <div className="layout-selection-actions__label-row">
                     <span className="layout-selection-actions__label">{t(selectedTemplateLabel)}</span>
-                    {activeCustomLayout ? (
-                      <button
-                        type="button"
-                        className="button button--ghost button--small layout-selection-actions__edit"
-                        onClick={() => openEditLayoutEditor(activeCustomLayout)}
-                      >
-                        {t('Edit layout')}
-                      </button>
-                    ) : null}
                   </div>
                   <div className="layout-selection-actions__buttons editor-button-grid editor-button-grid--two">
                     <button
@@ -1592,9 +1611,20 @@ export function EditorPage() {
                     >
                       {t('Insert below')}
                     </button>
+                    {activeCustomLayout ? (
+                      <button
+                        type="button"
+                        className="button button--ghost button--small"
+                        onClick={() => openEditLayoutEditor(activeCustomLayout)}
+                      >
+                        {t('Edit layout')}
+                      </button>
+                    ) : null}
                     <button
                       type="button"
-                      className="button button--ghost button--small layout-selection-actions__replace"
+                      className={`button button--ghost button--small layout-selection-actions__replace${
+                        activeCustomLayout ? '' : ' layout-selection-actions__replace--wide'
+                      }`}
                       disabled={isCurrentLayoutSelected}
                       onClick={() => applyTemplateChoice(templateChoice)}
                     >

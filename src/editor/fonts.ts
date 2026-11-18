@@ -10,65 +10,59 @@ export interface FontOption {
 
 export const FONT_OPTIONS: FontOption[] = [
   {
-    id: 'inherit',
-    label: '跟随正文（默认）',
-    stack: 'inherit',
-    chinese: true,
-  },
-  {
-    id: 'default-display',
-    label: '编辑体（默认）',
+    id: 'default',
+    label: '默认',
     stack: 'var(--font-display)',
     chinese: true,
   },
   {
-    id: 'default-ui',
-    label: '界面体（默认）',
-    stack: 'var(--font-ui)',
-    chinese: true,
-  },
-  {
     id: 'serif-cn',
-    label: '宋体',
-    stack: '"FF Serif SC", "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "SimSun", serif',
+    label: '思源宋体',
+    stack: '"FF Serif SC", "Noto Serif CJK SC", "Songti SC", SimSun, serif',
     chinese: true,
   },
   {
     id: 'sans-cn',
-    label: '黑体',
-    stack: '"FF Sans SC", "Noto Sans CJK SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif',
-    chinese: true,
-  },
-  {
-    id: 'kai-cn',
-    label: '楷体',
-    stack: '"Kaiti SC", "KaiTi", "STKaiti", "LXGW WenKai Display", serif',
+    label: '思源黑体',
+    stack: '"FF Sans SC", "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif',
     chinese: true,
   },
   {
     id: 'wenkai',
     label: '霞鹜文楷',
-    stack: '"LXGW WenKai Display", "Kaiti SC", "Songti SC", serif',
+    stack: '"LXGW WenKai Display", "Kaiti SC", serif',
     chinese: true,
   },
   {
-    id: 'newsreader',
-    label: 'Newsreader',
-    stack: '"Newsreader", Georgia, "Times New Roman", serif',
-    chinese: false,
+    id: 'mashanzheng',
+    label: '马善政毛笔楷书',
+    stack: '"FF Ma Shan Zheng", "Ma Shan Zheng", cursive',
+    chinese: true,
   },
   {
-    id: 'inter',
-    label: 'Inter',
-    stack: '"Inter", "Helvetica Neue", Arial, sans-serif',
-    chinese: false,
+    id: 'zhimangxing',
+    label: '志莽行书',
+    stack: '"FF Zhi Mang Xing", "Zhi Mang Xing", cursive',
+    chinese: true,
+  },
+  {
+    id: 'longcang',
+    label: '龙藏体',
+    stack: '"FF Long Cang", "Long Cang", cursive',
+    chinese: true,
+  },
+  {
+    id: 'smileysans',
+    label: '得意黑',
+    stack: '"FF Smiley Sans", "Smiley Sans", "PingFang SC", sans-serif',
+    chinese: true,
   },
 ];
 
 export const DEFAULT_PROJECT_FONTS: ProjectFonts = {
-  title: 'default-display',
-  deck: 'inherit',
-  caption: 'inherit',
+  title: 'default',
+  deck: 'default',
+  caption: 'default',
 };
 
 export const PROJECT_FONT_ROLES = ['title', 'deck', 'caption'] as const;
@@ -77,9 +71,19 @@ export function getFontOption(id: string | null | undefined) {
   return FONT_OPTIONS.find((font) => font.id === id) ?? FONT_OPTIONS[0];
 }
 
+const LEGACY_FONT_IDS: Record<string, string> = {
+  'default-display': 'default',
+  'default-ui': 'default',
+  inherit: 'default',
+  editorial: 'serif-cn',
+  inter: 'sans-cn',
+};
+
 export function normalizeProjectFonts(fonts: Partial<ProjectFonts> | null | undefined): ProjectFonts {
-  const pick = (value: string | undefined, fallback: string) =>
-    FONT_OPTIONS.some((font) => font.id === value) ? (value as string) : fallback;
+  const pick = (value: string | undefined, fallback: string) => {
+    const normalized = value && LEGACY_FONT_IDS[value] ? LEGACY_FONT_IDS[value] : value;
+    return FONT_OPTIONS.some((font) => font.id === normalized) ? (normalized as string) : fallback;
+  };
   return {
     title: pick(fonts?.title, DEFAULT_PROJECT_FONTS.title),
     deck: pick(fonts?.deck, DEFAULT_PROJECT_FONTS.deck),

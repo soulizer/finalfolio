@@ -654,7 +654,7 @@ try {
     }
   });
 
-  await runCheck('uploads wait for remote delivery before reporting success when object storage is enabled', async () => {
+  await runCheck('uploads answer immediately and mirror to object storage in the background', async () => {
     const uploadTempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'finalfolio-upload-boundary-validate-'));
     const apiApp = createApp({
       dataRoot: uploadTempDir,
@@ -703,31 +703,29 @@ try {
       formData.append('files', new Blob([uploadFixture], { type: 'image/png' }), 'boundary-proof.png');
       formData.append('assetMeta', JSON.stringify([{ width: 192, height: 192 }]));
 
-      const uploadPromise = fetch(`${baseUrl}/api/uploads`, {
+      // The response must not wait for the remote mirror.
+      const uploadResponse = await fetch(`${baseUrl}/api/uploads`, {
         method: 'POST',
         headers: {
           cookie,
         },
         body: formData,
       });
+      assert.equal(uploadResponse.status, 201);
+      const uploadPayload = await uploadResponse.json();
+      assert.equal(uploadPayload.assets.length, 1);
 
       for (let attempt = 0; attempt < 40 && !syncStarted; attempt += 1) {
         await new Promise((resolve) => setTimeout(resolve, 25));
       }
       assert.equal(syncStarted, true);
-      const pendingState = await Promise.race([
-        uploadPromise.then(() => 'resolved'),
-        new Promise((resolve) => setTimeout(() => resolve('pending'), 50)),
-      ]);
-      assert.equal(pendingState, 'pending');
-
       pendingSync.resolve();
-      const uploadResponse = await uploadPromise;
-      assert.equal(uploadResponse.status, 201);
-      const uploadPayload = await uploadResponse.json();
-      assert.equal(uploadPayload.assets.length, 1);
+      await new Promise((resolve) => setTimeout(resolve, 60));
+
       const uploadsAfterSuccess = (await fs.readdir(apiApp.store.uploadsDir)).sort();
 
+      // A failed mirror no longer rolls the upload back: the local asset stays,
+      // and the gallery offers a retry.
       apiApp.objectStorageStore.syncLocalUpload = async () => {
         throw new Error('Mirror unavailable.');
       };
@@ -742,10 +740,13 @@ try {
         },
         body: failedFormData,
       });
-      assert.equal(failedUploadResponse.status, 424);
-      const failedUploadPayload = await failedUploadResponse.json();
-      assert.match(failedUploadPayload.error, /Remote delivery did not complete\. Upload was rolled back\./);
-      assert.deepEqual((await fs.readdir(apiApp.store.uploadsDir)).sort(), uploadsAfterSuccess);
+      assert.equal(failedUploadResponse.status, 201);
+      await new Promise((resolve) => setTimeout(resolve, 60));
+      // The local asset is kept even though the background mirror failed.
+      assert.equal(
+        (await fs.readdir(apiApp.store.uploadsDir)).filter((name) => name.endsWith('.png')).length,
+        uploadsAfterSuccess.filter((name) => name.endsWith('.png')).length + 1,
+      );
     } finally {
       await new Promise((resolve, reject) => {
         apiServer.close((error) => {

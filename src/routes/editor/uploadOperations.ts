@@ -422,11 +422,12 @@ export async function uploadFilesIntoProject({
     translate(
       guestMode
         ? 'Adding %s to this local draft...'
-        : 'Uploading %s one by one...',
+        : 'Uploading %s...',
     ).replace('%s', countLabel(files.length, '1 photo', '%s photos')),
   );
 
-  for (let index = 0; index < files.length; index += 1) {
+  let nextUploadIndex = 0;
+  const processFile = async (index: number) => {
     const file = files[index];
     const nextFileName = files[index + 1]?.name ?? '';
     const queueItemId = queue[index].id;
@@ -501,7 +502,7 @@ export async function uploadFilesIntoProject({
             .replace('%s', String(completedFiles))
             .replace('%s', String(files.length)),
         );
-        continue;
+        return;
       }
 
       const uploads = await uploadAssets(
@@ -589,7 +590,22 @@ export async function uploadFilesIntoProject({
       }));
       setMessage(translate('%s failed. Continuing with the remaining uploads.').replace('%s', file.name));
     }
-  }
+  };
+
+  const runWorker = async () => {
+    while (true) {
+      const index = nextUploadIndex;
+      nextUploadIndex += 1;
+      if (index >= files.length) {
+        return;
+      }
+      await processFile(index);
+    }
+  };
+
+  // Upload several photos at once: four workers keep the network busy without
+  // flooding the browser or the server.
+  await Promise.all(Array.from({ length: Math.min(4, files.length) }, () => runWorker()));
 
   if (failedFiles > 0) {
     setMessage(

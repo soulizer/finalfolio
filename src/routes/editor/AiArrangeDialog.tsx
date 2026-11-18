@@ -41,8 +41,10 @@ type AiArrangeDialogProps = {
 
 type Phase = 'select' | 'generating' | 'results' | 'applying';
 
-const MAX_THUMBNAIL_SIZE = 320;
-const THUMBNAIL_QUALITY = 0.68;
+// Smaller thumbnails keep the vision request fast and cheap; layout planning
+// does not need print resolution.
+const MAX_THUMBNAIL_SIZE = 256;
+const THUMBNAIL_QUALITY = 0.6;
 
 const AI_STYLE_PRESETS = [
   {

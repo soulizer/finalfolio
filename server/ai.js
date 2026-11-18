@@ -497,9 +497,17 @@ async function selectProviders(config) {
   return url.toString();
 }
 
-async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000 } = {}) {
+async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000, signal: externalSignal } = {}) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const forwardAbort = () => controller.abort();
+    if (externalSignal) {
+      if (externalSignal.aborted) {
+        controller.abort();
+      } else {
+        externalSignal.addEventListener('abort', forwardAbort, { once: true });
+      }
+    }
     const startedAt = Date.now();
     try {
       const response = await fetch(buildChatCompletionsUrl(provider.baseUrl), {
@@ -551,6 +559,7 @@ async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000 } 
       throw error;
     } finally {
       clearTimeout(timer);
+      externalSignal?.removeEventListener('abort', forwardAbort);
     }
   }
 
@@ -645,73 +654,88 @@ async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000 } 
     }
 
     const failures = [];
-    // The total budget is independent of a single provider's timeout: every
-    // provider gets an equal share of the remaining time, so a slow first
-    // provider can never leave provider two or three without a real attempt.
-    const deadline = Date.now() + 210_000;
-    const canRetry = (error) => {
-      const message = error instanceof Error ? error.message : '';
-      return /Timed out|HTTP (?:429|5\d\d)|fetch failed|ECONNRESET|ENOTFOUND|socket hang up|empty message|did not include any plans/i.test(message);
-    };
-    for (let providerIndex = 0; providerIndex < providers.length; providerIndex += 1) {
-      const { provider } = providers[providerIndex];
-      let lastError = null;
-      // Time slice per provider: sized from its own measured latency when we
-      // have one (so a slow relay gets enough room without wasting the pool's
-      // budget), otherwise an equal share of what is left.
-      const equalShare = Math.max(
-        20_000,
-        Math.min(70_000, Math.floor((deadline - Date.now()) / (providers.length - providerIndex))),
-      );
-      for (let attempt = 0; attempt < 2; attempt += 1) {
-        const remaining = deadline - Date.now();
-        if (remaining < 5_000) {
-          break;
+    // Hedged race: the next provider starts on a timer (or immediately when the
+    // previous one fails); the first complete answer wins and the rest abort.
+    // This removes the "wait for a slow provider to time out" failure mode.
+    const winner = await new Promise((resolve) => {
+      let settled = false;
+      let nextToStart = 0;
+      let finishedCount = 0;
+      const controllers = [];
+      const timers = [];
+      const finish = (value) => {
+        if (settled) {
+          return;
         }
-        const attemptTimeout = Math.min(
-          config.requestTimeoutMs,
-          Math.max(20_000, Math.min(equalShare, remaining)),
-        );
-        const attemptStartedAt = Date.now();
-        try {
-          const result = await callProvider(provider, messages, {
-            timeoutMs: attemptTimeout,
-            // Three fully written plans easily exceed 8k tokens; a truncated
-            // response cannot be parsed at all.
-            maxTokens: 32_000,
+        settled = true;
+        timers.forEach((timer) => clearTimeout(timer));
+        controllers.forEach((controller) => controller.abort());
+        resolve(value);
+      };
+      const launchNext = () => {
+        if (settled || nextToStart >= providers.length) {
+          return;
+        }
+        const index = nextToStart;
+        nextToStart += 1;
+        const { provider } = providers[index];
+        const controller = new AbortController();
+        controllers.push(controller);
+        callProvider(provider, messages, {
+          timeoutMs: Math.min(config.requestTimeoutMs, 90_000),
+          maxTokens: 32_000,
+          signal: controller.signal,
+        })
+          .then(async (result) => {
+            const parsed = extractJson(result.content);
+            if (!parsed || !Array.isArray(parsed.plans) || parsed.plans.length === 0) {
+              throw new Error('The AI response did not include any plans.');
+            }
+            await recordProviderStat(provider.id, { latencyMs: result.latencyMs, ok: true }).catch(
+              () => null,
+            );
+            return { provider, parsed };
+          })
+          .then((value) => finish(value))
+          .catch(async (error) => {
+            finishedCount += 1;
+            if (!settled && !controller.signal.aborted) {
+              await recordProviderStat(provider.id, { ok: false }).catch(() => null);
+              failures.push(
+                `${provider.name}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+              );
+            }
+            if (settled) {
+              return;
+            }
+            if (finishedCount >= providers.length) {
+              finish(null);
+              return;
+            }
+            launchNext();
           });
-          await recordProviderStat(provider.id, { latencyMs: result.latencyMs, ok: true });
-          const parsed = extractJson(result.content);
-          if (!parsed || !Array.isArray(parsed.plans) || parsed.plans.length === 0) {
-            throw new Error('The AI response did not include any plans.');
-          }
-          await recordUsage(userId);
-          return {
-            ...parsed,
-            providerName: provider.name,
-            prompt: userPrompt,
-          };
-        } catch (error) {
-          lastError = error;
-          await recordProviderStat(provider.id, { ok: false });
-          const message = error instanceof Error ? error.message : '';
-          // A timeout already used its share of the budget: switch to the next
-          // provider immediately instead of retrying the same one.
-          const timedOut = /Timed out/i.test(message);
-          const failedFast = Date.now() - attemptStartedAt < 15_000;
-          if (attempt > 0 || !canRetry(error) || timedOut || !failedFast || deadline - Date.now() < 15_000) {
-            break;
-          }
-          await new Promise((resolve) => setTimeout(resolve, 600));
-        }
-      }
-      failures.push(
-        `${provider.name}: ${
-          lastError instanceof Error
-            ? lastError.message
-            : 'Skipped because the earlier providers used the whole time budget.'
-        }`,
-      );
+      };
+      launchNext();
+      providers.forEach((_provider, index) => {
+        timers.push(
+          setTimeout(() => {
+            if (nextToStart <= index) {
+              nextToStart = index;
+              launchNext();
+            }
+          }, index * 20_000),
+        );
+      });
+      timers.push(setTimeout(() => finish(null), 150_000));
+    });
+
+    if (winner) {
+      await recordUsage(userId);
+      return {
+        ...winner.parsed,
+        providerName: winner.provider.name,
+        prompt: userPrompt,
+      };
     }
 
     throw createAiError(

@@ -517,22 +517,32 @@ function sanitizePageTheme(theme) {
 }
 
 const PROJECT_FONT_IDS = new Set([
-  'inherit',
-  'default-display',
-  'default-ui',
+  'default',
   'serif-cn',
   'sans-cn',
-  'kai-cn',
   'wenkai',
-  'newsreader',
-  'inter',
+  'mashanzheng',
+  'zhimangxing',
+  'longcang',
+  'smileysans',
 ]);
-const DEFAULT_PROJECT_FONTS = { title: 'default-display', deck: 'inherit', caption: 'inherit' };
+const LEGACY_PROJECT_FONT_IDS = {
+  'default-display': 'default',
+  'default-ui': 'default',
+  inherit: 'default',
+  'kai-cn': 'wenkai',
+  'newsreader': 'default',
+  inter: 'sans-cn',
+};
+const DEFAULT_PROJECT_FONTS = { title: 'default', deck: 'default', caption: 'default' };
 
 function sanitizeProjectFonts(fonts) {
   const source = fonts && typeof fonts === 'object' ? fonts : {};
-  const pick = (value, fallback) =>
-    typeof value === 'string' && PROJECT_FONT_IDS.has(value) ? value : fallback;
+  const pick = (value, fallback) => {
+    const normalized =
+      typeof value === 'string' && LEGACY_PROJECT_FONT_IDS[value] ? LEGACY_PROJECT_FONT_IDS[value] : value;
+    return typeof normalized === 'string' && PROJECT_FONT_IDS.has(normalized) ? normalized : fallback;
+  };
   return {
     title: pick(source.title, DEFAULT_PROJECT_FONTS.title),
     deck: pick(source.deck, DEFAULT_PROJECT_FONTS.deck),
@@ -3006,7 +3016,6 @@ export function createApp({
         }
 
         const createdAssets = [];
-        let completedRemoteSyncCount = 0;
         const cleanupUploadedFiles = async () => {
           await Promise.all(
             files.map(async (file) => {
@@ -3021,29 +3030,16 @@ export function createApp({
         try {
           await Promise.all(files.map((file) => assertReadableImageFile(file)));
 
-          for (const [index, file] of files.entries()) {
-            const baseAsset = store.createStoredUpload(file, uploadMetadata[index]);
-            let asset = await store.hydrateStoredUploadAsset(baseAsset, { ensureVariants: true });
-            const artifacts = await store.getUploadArtifacts(file.filename, {
-              originalWidth: asset.width,
-              originalHeight: asset.height,
-            });
-
-            if (artifacts?.resources?.original && objectStorageStore) {
-              try {
-                await objectStorageStore.syncLocalUpload(file.filename, artifacts);
-              } catch (error) {
-                const failure = new Error(
-                  `Remote delivery did not complete. Upload was rolled back. ${error instanceof Error ? error.message : String(error)}`,
-                );
-                failure.statusCode = 424;
-                throw failure;
-              }
-              completedRemoteSyncCount += 1;
-              asset = await store.hydrateStoredUploadAsset(baseAsset, { ensureVariants: true });
-            }
-            createdAssets.push(asset);
-          }
+          // Process every file in parallel: variant generation is CPU-bound and
+          // the previous serial loop made multi-photo uploads crawl.
+          await Promise.all(
+            files.map(async (file, index) => {
+              const baseAsset = store.createStoredUpload(file, uploadMetadata[index]);
+              createdAssets[index] = await store.hydrateStoredUploadAsset(baseAsset, {
+                ensureVariants: true,
+              });
+            }),
+          );
         } catch (error) {
           await cleanupUploadedFiles();
           throw mapImageProcessingError(error);
@@ -3070,11 +3066,48 @@ export function createApp({
           type: 'upload',
           status: 'ok',
           userId: user.id,
-          detail: {
-            count: files.length,
-            completedRemoteSyncs: completedRemoteSyncCount,
-          },
+          detail: { count: files.length },
         });
+
+        // Mirror to object storage in the background. The upload is already
+        // usable from local disk; hydration picks up the remote URLs once the
+        // sync index flips to "remote". A failed mirror no longer rolls the
+        // whole upload back.
+        if (objectStorageStore) {
+          void (async () => {
+            let completed = 0;
+            await Promise.all(
+              files.map(async (file, index) => {
+                const asset = createdAssets[index];
+                if (!asset) {
+                  return;
+                }
+                try {
+                  const artifacts = await store.getUploadArtifacts(file.filename, {
+                    originalWidth: asset.width,
+                    originalHeight: asset.height,
+                  });
+                  if (artifacts?.resources?.original) {
+                    await objectStorageStore.syncLocalUpload(file.filename, artifacts);
+                    completed += 1;
+                  }
+                } catch {
+                  // Delivery stays "failed" in the sync index and the gallery
+                  // offers a retry action.
+                }
+              }),
+            );
+            store.invalidateStoreCaches();
+            await opsStore
+              .recordEvent({
+                type: 'upload',
+                status: 'ok',
+                userId: user.id,
+                detail: { action: 'mirror', count: completed },
+              })
+              .catch(() => null);
+          })();
+        }
       } catch (error) {
         next(error);
       }

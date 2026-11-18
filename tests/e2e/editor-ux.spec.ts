@@ -189,7 +189,11 @@ test('pages can be reordered by dragging', async ({ page }) => {
   await expect(chips.first()).toBeVisible();
   const movedTitle = await chips.first().locator('.page-chip__title').innerText();
 
-  await chips.first().locator('.page-chip__select').dragTo(chips.nth(2));
+  // Dropping on the right half inserts after the hovered page; the strip shows
+  // a gap at the insertion point while dragging.
+  await chips.first().locator('.page-chip__select').dragTo(chips.nth(2), {
+    targetPosition: { x: 170, y: 40 },
+  });
   await expect(chips.nth(2)).toContainText(movedTitle);
 });
 

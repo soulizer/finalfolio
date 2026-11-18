@@ -311,7 +311,17 @@ export function EditorContentSidebar({
                       title={retryLabel}
                       onClick={() => void handleRetryAssetMirror(asset)}
                     >
-                      <span>{retryLabel}</span>
+                      <svg
+                        viewBox="0 0 16 16"
+                        aria-hidden="true"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M13 8a5 5 0 1 1-1.5-3.5M13 3v2.6h-2.6" />
+                      </svg>
                     </button>
                   ) : null}
                   <button
@@ -322,7 +332,17 @@ export function EditorContentSidebar({
                     title={deleteLabel}
                     onClick={() => void handleDeleteAsset(asset)}
                   >
-                    <span>{deleteLabel}</span>
+                    <svg
+                      viewBox="0 0 16 16"
+                      aria-hidden="true"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M2.5 4.5h11M6 4.5V3.2h4v1.3M4 4.5l.6 8.2h6.8l.6-8.2M6.6 7v3.4M9.4 7v3.4" />
+                    </svg>
                   </button>
                 </article>
               );

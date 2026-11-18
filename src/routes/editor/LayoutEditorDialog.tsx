@@ -410,11 +410,6 @@ export function LayoutEditorDialog({
         </div>
 
         <footer className="layout-editor-footer">
-          {onDelete ? (
-            <button type="button" className="button button--danger-ghost button--small" onClick={onDelete}>
-              {t('Delete layout')}
-            </button>
-          ) : null}
           <label className="field layout-editor-name-field">
             <span>{t('Template name')}</span>
             <input
@@ -433,16 +428,23 @@ export function LayoutEditorDialog({
               {saveError}
             </p>
           ) : null}
-          <div className="layout-editor-footer__actions">
-            <button type="button" className="button button--ghost button--small" onClick={() => void requestClose()}>
-              {t('Cancel')}
-            </button>
-            <button type="button" className="button button--ghost button--small" onClick={() => handleSave(false)}>
-              {t('Save layout')}
-            </button>
-            <button type="button" className="button button--primary button--small" onClick={() => handleSave(true)}>
-              {t('Save and apply')}
-            </button>
+          <div className="layout-editor-footer__row">
+            <div className="layout-editor-footer__actions">
+              {onDelete ? (
+                <button type="button" className="button button--danger-ghost button--small" onClick={onDelete}>
+                  {t('Delete layout')}
+                </button>
+              ) : null}
+              <button type="button" className="button button--ghost button--small" onClick={() => void requestClose()}>
+                {t('Cancel')}
+              </button>
+              <button type="button" className="button button--ghost button--small" onClick={() => handleSave(false)}>
+                {t('Save layout')}
+              </button>
+              <button type="button" className="button button--primary button--small" onClick={() => handleSave(true)}>
+                {t('Save and apply')}
+              </button>
+            </div>
           </div>
         </footer>
       </div>
