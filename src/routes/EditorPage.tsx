@@ -1,5 +1,5 @@
 import { countLabel, useT } from '../i18n';
-import { CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CSSProperties, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { MagazinePreview } from '../components/MagazinePreview';
 import { TemplateIssuePreview } from '../components/TemplateIssuePreview';
@@ -257,6 +257,19 @@ export function EditorPage() {
   });
   const [projectActionBusy, setProjectActionBusy] = useState<'duplicate' | 'archive' | 'unarchive' | null>(null);
   const [ownedUploads, setOwnedUploads] = useState<AccountUploadListItem[]>([]);
+  // Deleting an owned upload is authoritative: remember the deleted ids so a
+  // slower in-flight library refresh cannot resurrect a just-deleted photo.
+  const deletedOwnedAssetIdsRef = useRef<Set<string>>(new Set());
+  const syncOwnedUploads = useCallback(
+    (value: SetStateAction<AccountUploadListItem[]>) => {
+      setOwnedUploads((current) => {
+        const next = typeof value === 'function' ? value(current) : value;
+        const deleted = deletedOwnedAssetIdsRef.current;
+        return deleted.size ? next.filter((upload) => !deleted.has(upload.assetId)) : next;
+      });
+    },
+    [],
+  );
   const [guestUploadTransferBusy, setGuestUploadTransferBusy] = useState(false);
   const [assetDeleteBusy, setAssetDeleteBusy] = useState(false);
   const [assetDeleteTargetId, setAssetDeleteTargetId] = useState<string | null>(null);
@@ -266,7 +279,6 @@ export function EditorPage() {
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
   const [shareCopyState, setShareCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [templatePickerOpen, setTemplatePickerOpen] = useState(true);
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
   const [layoutEditor, setLayoutEditor] = useState<{
     mode: 'new' | 'edit';
@@ -274,7 +286,6 @@ export function EditorPage() {
     template: CustomTemplateDefinition;
     name: string;
   } | null>(null);
-  const [starterPacksOpen, setStarterPacksOpen] = useState(false);
   const [colorPickerPageId, setColorPickerPageId] = useState<string | null>(null);
   const [draggedPageId, setDraggedPageId] = useState<string | null>(null);
   const pendingUploadSlotRef = useRef<string | null>(null);
@@ -282,7 +293,6 @@ export function EditorPage() {
   const assetCountRef = useRef(0);
   const [dragOverPageId, setDragOverPageId] = useState<string | null>(null);
   const [importUrlBusy, setImportUrlBusy] = useState(false);
-  const [starterPacksAutoOpened, setStarterPacksAutoOpened] = useState(false);
   const lastSavedSnapshotRef = useRef('');
   const printAssetFingerprintRef = useRef('');
   const canvasRef = useRef<HTMLDivElement | null>(null);
@@ -503,7 +513,7 @@ export function EditorPage() {
     session,
     setGuestUploadTransferBusy,
     setMessage,
-    setOwnedUploads,
+    setOwnedUploads: syncOwnedUploads,
     setPrintAssetsById,
     setProject,
     setUploadState,
@@ -528,7 +538,6 @@ export function EditorPage() {
     selectedPageId: selectedPage?.id,
     selectedSlot,
     currentCrop,
-    templatePickerOpen,
     updateSelectedCrop,
   });
 
@@ -702,8 +711,10 @@ export function EditorPage() {
     setSelectedPageId,
     setSelectedSlot,
     setTemplateChoice,
-    removeOwnedUpload: (assetId) =>
-      setOwnedUploads((current) => current.filter((upload) => upload.assetId !== assetId)),
+    removeOwnedUpload: (assetId) => {
+      deletedOwnedAssetIdsRef.current.add(assetId);
+      syncOwnedUploads((current) => current.filter((upload) => upload.assetId !== assetId));
+    },
   });
 
   const {
@@ -856,33 +867,6 @@ export function EditorPage() {
       window.removeEventListener('mousedown', handlePointerDown);
     };
   }, [colorPickerPageId]);
-
-  // Empty drafts open the starter packs so the first step is obvious; drafts with
-  // real content keep them collapsed to protect the existing work.
-  useEffect(() => {
-    if (starterPacksAutoOpened) {
-      return;
-    }
-    const pageMatchesStarter = (page: (typeof project.pages)[number]) => {
-      const starter = pageStarters[page.template];
-      if (!starter) {
-        return false;
-      }
-      return (['kicker', 'title', 'deck', 'body', 'caption'] as const).every(
-        (key) => page[key] === starter[key],
-      );
-    };
-    const hasContent =
-      project.pages.some((page) => Array.from(projectAssetIds).some((assetId) => Object.values(page.slots).includes(assetId))) ||
-      !project.pages.every(pageMatchesStarter);
-    if (!hasContent && !projectRecord) {
-      setStarterPacksAutoOpened(true);
-      setStarterPacksOpen(true);
-    } else if (hasContent || projectRecord) {
-      setStarterPacksAutoOpened(true);
-      setStarterPacksOpen(false);
-    }
-  }, [project, projectRecord, projectAssetIds, starterPacksAutoOpened]);
 
   const { handleUploadFiles } = createEditorUploadActions({
     navigate,
@@ -1309,6 +1293,7 @@ export function EditorPage() {
             <div className="editor-panel__toolbar">
               <span className="editor-panel__label">{t('Sequence')}</span>
               <span className="panel-tag">{sequenceLabel}</span>
+              <PanelCollapseToggle />
             </div>
             {project.pages.length % 2 === 1 ? (
               <div className="editor-page-parity" role="status">
@@ -1519,21 +1504,10 @@ export function EditorPage() {
               <span className="editor-panel__label">{t('Page layout')}</span>
               <div className="editor-collapsible-meta">
                 <span className="panel-tag">{t(selectedTemplateLabel)}</span>
-                <button
-                  type="button"
-                  className="editor-toggle-icon"
-                  onClick={() => setTemplatePickerOpen((current) => !current)}
-                  aria-expanded={templatePickerOpen}
-                  aria-label={templatePickerOpen ? t('Collapse page layouts') : t('Expand page layouts')}
-                  title={templatePickerOpen ? t('Collapse page layouts') : t('Expand page layouts')}
-                >
-                  {templatePickerOpen ? t('Collapse') : t('Expand')}
-                </button>
               </div>
                         <PanelCollapseToggle />
             </div>
-            {templatePickerOpen ? (
-              <>
+            <>
                 <div className="layout-grid">
                   {commonLayoutEntries.map(renderLayoutCard)}
                 </div>
@@ -1608,7 +1582,6 @@ export function EditorPage() {
                   </div>
                 </div>
               </>
-            ) : null}
           </section>
           {templateHoverPreview ? (
             <div
@@ -1636,20 +1609,9 @@ export function EditorPage() {
               <span className="editor-panel__label">{t('Project templates')}</span>
               <div className="editor-collapsible-meta">
                 <span className="panel-tag">{projectTemplateSectionTag}</span>
-                <button
-                  type="button"
-                  className="editor-toggle-icon"
-                  onClick={() => setStarterPacksOpen((current) => !current)}
-                  aria-expanded={starterPacksOpen}
-                  aria-label={starterPacksOpen ? t('Collapse project templates') : t('Expand project templates')}
-                  title={starterPacksOpen ? t('Collapse project templates') : t('Expand project templates')}
-                >
-                  {starterPacksOpen ? t('Collapse') : t('Expand')}
-                </button>
               </div>
                         <PanelCollapseToggle />
             </div>
-            {starterPacksOpen ? (
               <div className="template-pack-grid">
                 {visibleTemplatePackIds.map((packId) => {
                   const pack = templatePacks[packId];
@@ -1689,7 +1651,6 @@ export function EditorPage() {
                   );
                 })}
               </div>
-            ) : null}
             <button
               type="button"
               className="button button--ghost button--small template-pack-save"

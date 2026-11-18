@@ -25,7 +25,6 @@ type UseEditorUiStateOptions = {
   selectedPageId?: string;
   selectedSlot: string | null;
   currentCrop?: CropSettings;
-  templatePickerOpen: boolean;
   updateSelectedCrop: (updater: (crop: CropSettings) => CropSettings) => void;
 };
 
@@ -37,7 +36,6 @@ export function useEditorUiState({
   selectedPageId,
   selectedSlot,
   currentCrop,
-  templatePickerOpen,
   updateSelectedCrop,
 }: UseEditorUiStateOptions) {
   const [zoomInputValue, setZoomInputValue] = useState('1.00');
@@ -61,12 +59,6 @@ export function useEditorUiState({
       return Number.isFinite(parsed) && Math.abs(parsed - currentCrop.scale) < 0.005 ? current : currentCrop.scale.toFixed(2);
     });
   }, [currentCrop, selectedPageId, selectedSlot]);
-
-  useEffect(() => {
-    if (!templatePickerOpen && templateHoverPreview) {
-      setTemplateHoverPreview(null);
-    }
-  }, [templateHoverPreview, templatePickerOpen]);
 
   useEffect(() => {
     if (!templateHoverPreview) {

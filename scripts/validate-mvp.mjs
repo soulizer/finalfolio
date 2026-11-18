@@ -1705,7 +1705,7 @@ try {
     assert.match(editorPage, /useEditorAssetLifecycle/);
     assert.match(editorPage, /useEditorPreviewScale/);
     assert.match(editorPage, /ref=\{printStackRef\}/);
-    assert.match(editorPage, /templatePickerOpen/);
+    assert.match(editorPage, /PanelCollapseToggle/);
     assert.match(editorPage, /uploadProgressLabel/);
     assert.match(editorPage, /createEditorExportActions/);
     assert.match(editorPage, /frameRadius/);

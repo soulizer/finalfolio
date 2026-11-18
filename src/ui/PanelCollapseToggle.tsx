@@ -12,7 +12,7 @@ export function PanelCollapseToggle() {
     >
       <svg viewBox="0 0 12 12" aria-hidden="true">
         <path
-          d="M3 4.5 6 7.5 9 4.5"
+          d="M3 7.5 6 4.5 9 7.5"
           fill="none"
           stroke="currentColor"
           strokeWidth="1.4"

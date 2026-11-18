@@ -52,7 +52,7 @@ function applyPanel(panel: Element, collapsed: boolean) {
 
 function scan() {
   const state = readState();
-  document.querySelectorAll('.editor-panel').forEach((panel) => {
+  document.querySelectorAll('.editor-panel, .page-strip-panel').forEach((panel) => {
     if (!panel.querySelector('[data-panel-toggle]')) {
       return;
     }
@@ -67,7 +67,7 @@ function handleClick(event: MouseEvent) {
   if (!toggle) {
     return;
   }
-  const panel = toggle.closest('.editor-panel');
+  const panel = toggle.closest('.editor-panel, .page-strip-panel');
   if (!panel) {
     return;
   }
