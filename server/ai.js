@@ -228,16 +228,77 @@ function currentDay() {
   return new Date().toISOString().slice(0, 10);
 }
 
+
 export function createAiStore({ dataRoot } = {}) {
   const aiDir = path.join(dataRoot, 'ai');
   const configFile = path.join(aiDir, 'config.json');
   const usageFile = path.join(aiDir, 'usage.json');
+  const providerStatsFile = path.join(aiDir, 'provider-stats.json');
   let usageQueue = Promise.resolve();
 
   async function ensureAiDirectory() {
     await fs.mkdir(aiDir, { recursive: true, mode: 0o700 });
     await fs.chmod(aiDir, 0o700);
   }
+
+function providerScore(stats) {
+  if (!stats) {
+    // Never measured: neutral, so measured-fast providers go first and
+    // measured-failing ones go last.
+    return 60_000;
+  }
+  if (stats.successes > 0) {
+    return stats.totalLatencyMs / stats.successes;
+  }
+  if (stats.failures > 0) {
+    return 120_000;
+  }
+  return 60_000;
+}
+
+async function readProviderStats() {
+  await ensureAiDirectory();
+  const parsed = await readJsonFile(providerStatsFile, { providers: {} });
+  return parsed && typeof parsed === 'object' ? parsed : { providers: {} };
+}
+
+async function recordProviderStat(providerId, { latencyMs = null, ok }) {
+  if (!providerId) {
+    return;
+  }
+  const stats = await readProviderStats();
+  const providers = stats.providers ?? {};
+  const entry = providers[providerId] ?? { successes: 0, failures: 0, totalLatencyMs: 0 };
+  if (ok) {
+    entry.successes += 1;
+    if (typeof latencyMs === 'number' && Number.isFinite(latencyMs)) {
+      entry.totalLatencyMs += latencyMs;
+      entry.lastLatencyMs = latencyMs;
+    }
+  } else {
+    entry.failures += 1;
+  }
+  entry.lastOk = ok;
+  entry.updatedAt = new Date().toISOString();
+  providers[providerId] = entry;
+  stats.providers = providers;
+  await writeJsonFile(providerStatsFile, stats);
+}
+
+async function selectProviders(config) {
+  const stats = await readProviderStats().catch(() => ({ providers: {} }));
+  const known = stats.providers ?? {};
+  return [...config.providers]
+    .filter((provider) => provider.enabled && provider.apiKey)
+    .map((provider) => ({ provider, score: providerScore(known[provider.id]) }))
+    .sort(
+      (a, b) =>
+        a.score - b.score ||
+        a.provider.order - b.provider.order ||
+        a.provider.createdAt.localeCompare(b.provider.createdAt),
+    )
+    .map((entry) => entry.provider);
+}
 
   async function readConfig() {
     await ensureAiDirectory();
@@ -465,6 +526,7 @@ async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000 } 
         ],
         { timeoutMs: Math.min(config.requestTimeoutMs, 45_000), maxTokens: 10 },
       );
+      await recordProviderStat(draft.id, { latencyMs: result.latencyMs, ok: true });
       return {
         ok: true,
         message: result.content.trim().slice(0, 120),
@@ -472,6 +534,7 @@ async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000 } 
         model: draft.model,
       };
     } catch (error) {
+      await recordProviderStat(draft.id, { ok: false }).catch(() => {});
       throw createAiError(
         `AI connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
         502,
@@ -532,15 +595,16 @@ async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000 } 
       },
     ];
 
-    const providers = [...config.providers]
-      .filter((provider) => provider.enabled && provider.apiKey)
-      .sort((a, b) => a.order - b.order || a.createdAt.localeCompare(b.createdAt));
+    // Try the providers that have answered fastest first. The admin connection
+    // tests and earlier generations both feed this ordering, so a slow relay
+    // sinks to the back instead of blocking the pool.
+    const providers = await selectProviders(config);
     if (!providers.length) {
       throw createAiError('No AI provider is configured yet.', 503, 'ai_not_configured');
     }
 
     const failures = [];
-    const deadline = Date.now() + Math.max(30_000, Math.min(config.requestTimeoutMs, 90_000));
+    const deadline = Date.now() + Math.max(30_000, Math.min(config.requestTimeoutMs, 120_000));
     const canRetry = (error) => {
       const message = error instanceof Error ? error.message : '';
       return /Timed out|HTTP (?:429|5\d\d)|fetch failed|ECONNRESET|ENOTFOUND|socket hang up|empty message|did not include any plans/i.test(message);
@@ -548,23 +612,26 @@ async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000 } 
     for (let providerIndex = 0; providerIndex < providers.length; providerIndex += 1) {
       const provider = providers[providerIndex];
       let lastError = null;
+      // Equal time slices: a slow provider gets one slice and no more, so the
+      // fast ones always get their turn.
+      const sliceMs = Math.max(
+        20_000,
+        Math.min(45_000, Math.floor((deadline - Date.now()) / (providers.length - providerIndex))),
+      );
       for (let attempt = 0; attempt < 2; attempt += 1) {
         const remaining = deadline - Date.now();
         if (remaining < 5_000) {
           break;
         }
-        // Reserve a minimum slice for every provider still to come, so one slow
-        // first provider cannot starve the rest of the pool into quick timeouts.
-        const laterProviders = providers.length - providerIndex - 1;
-        const reserveForLater = Math.min(Math.max(remaining - 5_000, 0), 8_000 * laterProviders);
         const attemptTimeout = Math.min(
           config.requestTimeoutMs,
-          Math.max(5_000, remaining - reserveForLater),
+          Math.max(5_000, Math.min(sliceMs, remaining)),
         );
         try {
           const result = await callProvider(provider, messages, {
             timeoutMs: attemptTimeout,
           });
+          await recordProviderStat(provider.id, { latencyMs: result.latencyMs, ok: true });
           const parsed = extractJson(result.content);
           if (!parsed || !Array.isArray(parsed.plans) || parsed.plans.length === 0) {
             throw new Error('The AI response did not include any plans.');
@@ -577,6 +644,7 @@ async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000 } 
           };
         } catch (error) {
           lastError = error;
+          await recordProviderStat(provider.id, { ok: false });
           if (attempt > 0 || !canRetry(error) || deadline - Date.now() < 10_000) {
             break;
           }

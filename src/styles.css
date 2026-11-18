@@ -9826,16 +9826,20 @@ html[lang='zh-CN'] body {
   border-color: rgba(17, 17, 17, 0.26);
 }
 
-/* Selection reads on the tile edge itself: an ink border with a white separator
-   and an inner ink line, so it stays obvious on both dark and light photos.
-   Nothing is drawn outside the tile. */
+/* Selection is impossible to miss: a bold ink/white/ink band on the tile edge,
+   a slightly dimmed photo, and a large check badge. Nothing is drawn outside
+   the tile, so the grid gaps stay intact. */
 .ai-library-item.is-selected {
   border-color: #111111;
   background: #fff;
   box-shadow:
     inset 0 0 0 1px #111111,
-    inset 0 0 0 2px #ffffff,
-    inset 0 0 0 3px #111111;
+    inset 0 0 0 3px #ffffff,
+    inset 0 0 0 4px #111111;
+}
+
+.ai-library-item.is-selected img {
+  filter: brightness(0.86) saturate(0.94);
 }
 
 .ai-library-item:disabled {
@@ -9865,19 +9869,19 @@ html[lang='zh-CN'] body {
 
 .ai-library-item__check {
   position: absolute;
-  top: 7px;
-  right: 7px;
+  top: 8px;
+  right: 8px;
   z-index: 1;
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.94);
-  background: rgba(17, 17, 17, 0.88);
-  box-shadow: 0 4px 10px rgba(17, 17, 17, 0.28);
+  border: 2px solid #ffffff;
+  background: #111111;
+  box-shadow: 0 4px 12px rgba(17, 17, 17, 0.34);
   color: #fff;
-  font-size: 0.74rem;
+  font-size: 0.9rem;
   font-weight: 700;
 }
 
