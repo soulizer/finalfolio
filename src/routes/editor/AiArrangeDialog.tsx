@@ -6,6 +6,7 @@ import {
   type AiStatus,
 } from '../../editor/api';
 import { getAssetSource } from '../../editor/assetResources';
+import { confirmAction } from '../../ui/confirm';
 import type { Asset } from '../../editor/types';
 import {
   aiTemplateLabel,
@@ -571,7 +572,43 @@ export function AiArrangeDialog({
     }
   }
 
-  async function handleGenerate() {
+  async function selectAllPhotos() {
+    const remaining = maxPhotos - photos.length;
+    if (remaining <= 0) {
+      return;
+    }
+    const candidates = allAssets
+      .filter((asset) => !selectedAssetIds.has(asset.id))
+      .slice(0, remaining);
+    for (const asset of candidates) {
+      await addAssetPhoto(asset);
+    }
+  }
+
+  function clearAllPhotos() {
+    photos.forEach((photo) => removePhoto(photo.id));
+  }
+
+  async function regenerateWithStyle(nextStyleId: (typeof AI_STYLE_PRESETS)[number]['id']) {
+    if (nextStyleId === stylePresetId) {
+      return;
+    }
+    const confirmed = await confirmAction({
+      title: t('Switch style and regenerate?'),
+      body: t(
+        'The current plans will be replaced. Pages already applied to your folio stay as they are until you apply a new plan.',
+      ),
+      confirmLabel: t('Regenerate'),
+      tone: 'default',
+    });
+    if (!confirmed) {
+      return;
+    }
+    setStylePresetId(nextStyleId);
+    await handleGenerate(nextStyleId);
+  }
+
+  async function handleGenerate(styleOverride?: (typeof AI_STYLE_PRESETS)[number]['id']) {
     if (!photos.length || !status?.enabled || quotaExhausted || phase === 'generating') {
       return;
     }
@@ -584,7 +621,8 @@ export function AiArrangeDialog({
     abortRef.current = controller;
 
     try {
-      const stylePreset = AI_STYLE_PRESETS.find((preset) => preset.id === stylePresetId) ?? AI_STYLE_PRESETS[0];
+      const stylePreset =
+        AI_STYLE_PRESETS.find((preset) => preset.id === (styleOverride ?? stylePresetId)) ?? AI_STYLE_PRESETS[0];
       const composedPrompt = [
         basePrompt,
         `用户偏好的风格是：【${t(stylePreset.label)}】。${stylePreset.prompt}`,
@@ -736,6 +774,23 @@ export function AiArrangeDialog({
                   {bundle.issue || t('AI issue')} · {t('Corner radius %s px').replace('%s', String(bundle.frameRadius))}
                 </span>
               </div>
+              <div className="ai-style-switch">
+                <span className="ai-style-switch__label">{t('Change style')}</span>
+                <div className="ai-style-switch__options" role="radiogroup" aria-label={t('AI style')}>
+                  {AI_STYLE_PRESETS.map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={preset.id === stylePresetId}
+                      className={`ai-style-pill ${preset.id === stylePresetId ? 'is-active' : ''}`.trim()}
+                      onClick={() => void regenerateWithStyle(preset.id)}
+                    >
+                      {t(preset.label)}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="ai-plan-grid">
                 {bundle.plans.map((plan) => {
                   const isSelected = plan.id === selectedPlan?.id;
@@ -819,9 +874,27 @@ export function AiArrangeDialog({
                     <p className="eyebrow">{t('Existing photos')}</p>
                     <h3>{t('Pick photos for AI to arrange')}</h3>
                   </div>
-                  <span className="panel-tag">
-                    {photos.length}/{maxPhotos}
-                  </span>
+                  <div className="ai-photo-actions">
+                    <span className="panel-tag">
+                      {photos.length}/{maxPhotos}
+                    </span>
+                    <button
+                      type="button"
+                      className="button button--ghost button--small"
+                      disabled={allAssets.length === 0 || photos.length >= maxPhotos}
+                      onClick={() => void selectAllPhotos()}
+                    >
+                      {t('Select all')}
+                    </button>
+                    <button
+                      type="button"
+                      className="button button--ghost button--small"
+                      disabled={photos.length === 0}
+                      onClick={clearAllPhotos}
+                    >
+                      {t('Clear')}
+                    </button>
+                  </div>
                 </div>
 
                 {allAssets.length || localPhotos.length ? (

@@ -1901,6 +1901,10 @@ const zh: Record<string, string> = {
   'Could not reach the server.': '无法连接到服务器',
   'The request was interrupted before any AI provider answered. Check the network and try again.': '请求在 AI 接口响应前就中断了，请检查网络后重试。',
   'A short line about this series': '用一句话说明这组照片',
+  'Select all': '全选',
+  'Change style': '更换风格',
+  'Switch style and regenerate?': '更换风格并重新生成？',
+  'The current plans will be replaced. Pages already applied to your folio stay as they are until you apply a new plan.': '当前方案会被替换。已应用到作品集的页面在你应用新方案前保持不变。',
 };
 
 

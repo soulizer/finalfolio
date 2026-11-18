@@ -7461,15 +7461,9 @@ html:lang(zh-CN) .magazine-page h2,
   text-overflow: ellipsis;
 }
 
-.page-chip:has(.page-color-popover) {
-  z-index: 20;
-}
-
 .page-color-popover {
-  position: absolute;
-  z-index: 30;
-  top: calc(100% + 2px);
-  right: 4px;
+  position: fixed;
+  z-index: 90;
   width: min(188px, calc(100vw - 48px));
   padding: 10px;
   display: grid;
@@ -8997,47 +8991,6 @@ html[lang='zh-CN'] body {
 }
 
 
-
-/* Direct edit affordance on saved layout cards. */
-.layout-card__edit {
-  position: static;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-width: 0;
-  height: 24px;
-  padding: 0 6px;
-  border-radius: 4px;
-  border: 1px solid rgba(17, 17, 17, 0.14);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(242, 237, 229, 0.82)),
-    rgba(255, 255, 255, 0.94);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.94),
-    0 2px 6px rgba(17, 17, 17, 0.06);
-  color: var(--muted);
-  font-size: 0.7rem;
-  cursor: pointer;
-  transition: color 140ms ease, border-color 140ms ease;
-}
-
-.layout-card__edit:hover {
-  color: var(--ink);
-  border-color: rgba(17, 17, 17, 0.3);
-}
-
-.layout-card__edit {
-  font-size: 0.66rem;
-  white-space: nowrap;
-}
-
-@media (hover: none) {
-  .layout-card__edit {
-    opacity: 1;
-  }
-}
-
 .template-pack-card__stats {
   margin: 0;
   color: var(--muted);
@@ -10020,6 +9973,57 @@ html[lang='zh-CN'] body {
 .ai-source-tab.is-active {
   border-color: rgba(17, 17, 17, 0.14);
   background: rgba(255, 255, 255, 0.9);
+  color: var(--ink);
+}
+
+.ai-photo-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.ai-style-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 2px 0 4px;
+}
+
+.ai-style-switch__label {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.ai-style-switch__options {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ai-style-pill {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(17, 17, 17, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(242, 237, 229, 0.82)),
+    rgba(255, 255, 255, 0.94);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.94),
+    0 2px 6px rgba(17, 17, 17, 0.06);
+  color: rgba(17, 17, 17, 0.74);
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+
+.ai-style-pill.is-active {
+  border-color: #111111;
+  box-shadow:
+    inset 0 0 0 1px #111111,
+    0 2px 6px rgba(17, 17, 17, 0.08);
   color: var(--ink);
 }
 

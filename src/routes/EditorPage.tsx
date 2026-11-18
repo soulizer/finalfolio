@@ -1,6 +1,7 @@
 import { countLabel, useT } from '../i18n';
 import { CSSProperties, Fragment, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { MagazinePreview } from '../components/MagazinePreview';
 import { TemplateIssuePreview } from '../components/TemplateIssuePreview';
 import { LayoutThumbnail } from '../components/LayoutThumbnail';
@@ -288,6 +289,7 @@ export function EditorPage() {
     name: string;
   } | null>(null);
   const [colorPickerPageId, setColorPickerPageId] = useState<string | null>(null);
+  const [colorPickerAnchor, setColorPickerAnchor] = useState<{ left: number; top: number } | null>(null);
   const [draggedPageId, setDraggedPageId] = useState<string | null>(null);
   const pendingUploadSlotRef = useRef<string | null>(null);
   const quickUploadInputRef = useRef<HTMLInputElement | null>(null);
@@ -367,6 +369,7 @@ export function EditorPage() {
     return placements;
   }, [project.pages]);
   const selectedAsset = selectedSlot && selectedPage?.slots[selectedSlot] ? assetsById[selectedPage.slots[selectedSlot] as string] : null;
+  const colorPickerPage = project.pages.find((entry) => entry.id === colorPickerPageId) ?? null;
   const selectedAssetPlacements = selectedAsset ? assetPlacementsById[selectedAsset.id] ?? [] : [];
   const placedAssetCount = Object.keys(assetUsageCounts).length;
   const unusedAssetCount = Math.max(project.assets.length - placedAssetCount, 0);
@@ -856,23 +859,33 @@ export function EditorPage() {
       return undefined;
     }
 
+    const closePicker = () => {
+      setColorPickerPageId(null);
+      setColorPickerAnchor(null);
+    };
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setColorPickerPageId(null);
+        closePicker();
       }
     };
     const handlePointerDown = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null;
       if (!target?.closest('.page-color-popover') && !target?.closest('.page-chip__color-action')) {
-        setColorPickerPageId(null);
+        closePicker();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('mousedown', handlePointerDown);
+    // The picker is anchored in viewport coordinates, so close it when the
+    // page strip scrolls or the window resizes instead of letting it drift.
+    window.addEventListener('scroll', closePicker, true);
+    window.addEventListener('resize', closePicker);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('mousedown', handlePointerDown);
+      window.removeEventListener('scroll', closePicker, true);
+      window.removeEventListener('resize', closePicker);
     };
   }, [colorPickerPageId]);
 
@@ -1234,15 +1247,6 @@ export function EditorPage() {
             <LayoutThumbnail templateId="custom" customTemplate={layout.template} />
             <span className="layout-card__name">{t(layout.name)}</span>
           </button>
-          <button
-            type="button"
-            className="layout-card__edit"
-            aria-label={t('Edit layout')}
-            title={t('Edit layout')}
-            onClick={() => openEditLayoutEditor(layout)}
-          >
-            <span>{t('Edit')}</span>
-          </button>
         </article>
       );
     }
@@ -1427,47 +1431,6 @@ export function EditorPage() {
                     >
                       {page.title || t('Untitled page')}
                     </button>
-                    {colorPickerPageId === page.id ? (
-                      <div className="page-color-popover surface-popover" role="group" aria-label={t('Paper color')}>
-                        <div className="page-color-popover__swatches">
-                          {pageThemeOrder.map((themeId) => (
-                            <button
-                              key={themeId}
-                              type="button"
-                              className={`page-color-popover__swatch theme-card__swatch--${themeId} ${page.theme === themeId ? 'is-active' : ''}`}
-                              title={t(pageThemeMeta[themeId].label)}
-                              aria-label={t(pageThemeMeta[themeId].label)}
-                              aria-pressed={page.theme === themeId}
-                              onClick={() => {
-                                if (!isActive) {
-                                  selectPage(page.id);
-                                }
-                                if (page.theme !== themeId) {
-                                  applyTheme(themeId, 'page');
-                                }
-                                setColorPickerPageId(null);
-                              }}
-                            >
-                              {page.theme === themeId ? (
-                                <span className="page-color-popover__check" aria-hidden="true">
-                                  ✓
-                                </span>
-                              ) : null}
-                            </button>
-                          ))}
-                        </div>
-                        <button
-                          type="button"
-                          className="page-color-popover__apply-all"
-                          onClick={() => {
-                            applyTheme(page.theme, 'all');
-                            setColorPickerPageId(null);
-                          }}
-                        >
-                          {t('Apply to all pages')}
-                        </button>
-                      </div>
-                    ) : null}
                     {isActive ? (
                       <div className="page-chip__actions" aria-label={t('Actions for %s').replace('%s', pagePositionLabel)}>
                         <button
@@ -1480,7 +1443,24 @@ export function EditorPage() {
                             if (!isActive) {
                               selectPage(page.id);
                             }
-                            setColorPickerPageId((current) => (current === page.id ? null : page.id));
+                            if (colorPickerPageId === page.id) {
+                              setColorPickerPageId(null);
+                              setColorPickerAnchor(null);
+                              return;
+                            }
+                            const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+                            const width = Math.min(188, window.innerWidth - 24);
+                            const left = Math.min(
+                              Math.max(12, rect.right - width),
+                              window.innerWidth - width - 12,
+                            );
+                            const estimatedHeight = 210;
+                            const top =
+                              rect.bottom + 6 + estimatedHeight > window.innerHeight
+                                ? Math.max(12, rect.top - estimatedHeight - 6)
+                                : rect.bottom + 6;
+                            setColorPickerAnchor({ left, top });
+                            setColorPickerPageId(page.id);
                           }}
                         >
                           <span
@@ -1970,6 +1950,57 @@ export function EditorPage() {
           ))}
         </section>
       ) : null}
+      {colorPickerPageId && colorPickerAnchor && colorPickerPage
+        ? createPortal(
+            <div
+              className="page-color-popover surface-popover"
+              role="group"
+              aria-label={t('Paper color')}
+              style={{ left: colorPickerAnchor.left, top: colorPickerAnchor.top }}
+            >
+              <div className="page-color-popover__swatches">
+                {pageThemeOrder.map((themeId) => (
+                  <button
+                    key={themeId}
+                    type="button"
+                    className={`page-color-popover__swatch theme-card__swatch--${themeId} ${
+                      colorPickerPage.theme === themeId ? 'is-active' : ''
+                    }`}
+                    title={t(pageThemeMeta[themeId].label)}
+                    aria-label={t(pageThemeMeta[themeId].label)}
+                    aria-pressed={colorPickerPage.theme === themeId}
+                    onClick={() => {
+                      if (colorPickerPage.theme !== themeId) {
+                        applyTheme(themeId, 'page');
+                      }
+                      setColorPickerPageId(null);
+                      setColorPickerAnchor(null);
+                    }}
+                  >
+                    {colorPickerPage.theme === themeId ? (
+                      <span className="page-color-popover__check" aria-hidden="true">
+                        ✓
+                      </span>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="page-color-popover__apply-all"
+                onClick={() => {
+                  applyTheme(colorPickerPage.theme, 'all');
+                  setColorPickerPageId(null);
+                  setColorPickerAnchor(null);
+                }}
+              >
+                {t('Apply to all pages')}
+              </button>
+            </div>,
+            document.body,
+          )
+        : null}
+
       {aiDialogOpen ? (
         <AiArrangeDialog
           maxPhotos={Math.min(50, aiPhotoCapacity)}
