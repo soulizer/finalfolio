@@ -452,7 +452,7 @@ export function EditorOperationsSidebar({
         >
           <summary>
             <span>{t('Folio details')}</span>
-            <small>{project.title}</small>
+            <small>{project.issue}</small>
           </summary>
           <section className="editor-panel__section">
           <label className="field">
