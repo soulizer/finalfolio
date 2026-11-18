@@ -2,6 +2,7 @@ import { useT } from '../../i18n';
 import type { AccountSummary, UserSession } from '../../editor/api';
 import { getUserPrimaryIdentity, getUserSecondaryIdentity } from '../../editor/identity';
 import { ACCOUNT_SECTIONS, type AccountSectionKey } from './accountSections';
+import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
 
 type AccountConsoleHeaderProps = {
   activeSection: AccountSectionKey;
@@ -32,6 +33,7 @@ export function AccountConsoleHeader({
           <span className="panel-tag">{session.emailVerifiedAt ? t('Verified') : t('verification pending')}</span>
           {summary ? <span className="panel-tag">{t('%s projects').replace('%s', String(summary.counts.projects))}</span> : null}
         </div>
+            <PanelCollapseToggle />
       </div>
       <div className="admin-section-nav" role="tablist" aria-label={t('Account sections')}>
         {ACCOUNT_SECTIONS.map((section) => (

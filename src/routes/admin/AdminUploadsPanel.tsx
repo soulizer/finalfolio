@@ -6,6 +6,7 @@ import {
 } from '../../editor/assetDelivery';
 import type { AdminUploadDetail, AdminUploadListItem } from '../../editor/api';
 import { formatBytes, formatCompactTimestamp, formatDimensions, formatTimestamp } from './adminFormatting';
+import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
 
 type AdminUploadsPanelProps = {
   filteredUploads: AdminUploadListItem[];
@@ -38,6 +39,7 @@ export function AdminUploadsPanel({
             <h2>{t('Asset governance')}</h2>
           </div>
           <span className="panel-tag">{filteredUploads.length}</span>
+                <PanelCollapseToggle />
         </div>
         <label className="field admin-search-field">
           <span>{t('Search uploads')}</span>

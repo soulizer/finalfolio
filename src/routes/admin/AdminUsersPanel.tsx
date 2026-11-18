@@ -3,6 +3,7 @@ import type { UserSession } from '../../editor/api';
 import { getUserPrimaryIdentity, getUserSecondaryIdentity } from '../../editor/identity';
 import { formatCompactTimestamp, formatTimestamp } from './adminFormatting';
 import { AdminInlineField } from './AdminFormFields';
+import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
 
 type AdminUsersPanelProps = {
   createUserEmail: string;
@@ -55,6 +56,7 @@ export function AdminUsersPanel({
             <h2>{t('Provision an active account')}</h2>
           </div>
           <span className="panel-tag">{t('Admin action')}</span>
+                <PanelCollapseToggle />
         </div>
         <p className="panel-note">{t('Admin-created accounts are activated immediately and bypass email verification.')}</p>
         <div className="admin-form-grid admin-form-grid--compact">
@@ -112,6 +114,7 @@ export function AdminUsersPanel({
             <h2>{t('Accounts')}</h2>
           </div>
           <span className="panel-tag">{filteredUsers.length}</span>
+                <PanelCollapseToggle />
         </div>
         <label className="field admin-search-field">
           <span>{t('Search users')}</span>

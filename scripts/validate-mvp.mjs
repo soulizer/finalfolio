@@ -1712,7 +1712,7 @@ try {
     assert.match(editorPage, /createEditorProjectShellActions/);
     assert.match(layoutEditorDialog, /LayoutPagePreview/);
     assert.match(layoutEditorDialog, /layout-editor-dialog/);
-    assert.match(aiArrangeDialog, /Generate 3 plans/);
+    assert.match(aiArrangeDialog, /Generate plans/);
     assert.match(aiPlans, /applyAiPlanToProject/);
     assert.match(adminAiPanel, /Interface pool/);
     assert.match(serverAi, /createAiStore/);
@@ -1751,7 +1751,7 @@ try {
     assert.match(editorOperationsSidebar, /editor-button-grid/);
     assert.match(editorOperationsSidebar, /Share project/);
     assert.match(editorOperationsSidebar, /Share project/);
-    assert.match(editorOperationsSidebar, /Save as template/);
+    assert.match(editorOperationsSidebar, /Save template/);
     assert.match(editorOperationsSidebar, /Folio details/);
     assert.match(editorOperationsSidebar, /Image corners/);
     assert.match(editorOperationsSidebar, /Square/);

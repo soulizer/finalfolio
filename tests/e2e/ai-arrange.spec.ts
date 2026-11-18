@@ -80,7 +80,7 @@ test('AI arrangement previews three plans and applies the chosen one', async ({ 
   await page.getByRole('button', { name: 'Lay out with AI' }).click();
   const dialog = page.locator('.ai-dialog');
   await expect(dialog).toBeVisible();
-  await expect(dialog.locator('.ai-style-card')).toHaveCount(5);
+  await expect(dialog.locator('.ai-style-card')).toHaveCount(4);
   await expect(dialog.locator('.ai-prompt-textarea')).toHaveCount(0);
 
   await dialog.getByRole('radio', { name: /Visual impact/ }).click();
@@ -89,7 +89,7 @@ test('AI arrangement previews three plans and applies the chosen one', async ({ 
   await dialog.getByRole('button', { name: 'Upload from device' }).click();
   await dialog.locator('input[type="file"]').setInputFiles('public/icon-192.png');
   await expect(dialog.locator('.ai-library-item.is-selected')).toHaveCount(1);
-  await page.getByRole('button', { name: 'Generate 3 plans' }).click();
+  await page.getByRole('button', { name: 'Generate plans' }).click();
 
   await expect(page.locator('.ai-plan-card')).toHaveCount(3);
   await page.locator('.ai-plan-card').first().click();
@@ -133,7 +133,7 @@ test('AI arrangement accepts URL imports and reuses them from the library', asyn
   await expect(dialog.locator('.ai-library-item.is-selected')).toHaveCount(1);
   await expect(dialog.locator('.ai-library-item.is-selected')).toContainText('URL photo');
 
-  await page.getByRole('button', { name: 'Generate 3 plans' }).click();
+  await page.getByRole('button', { name: 'Generate plans' }).click();
   await expect(page.locator('.ai-plan-card')).toHaveCount(3);
   await page.getByRole('button', { name: 'Apply this plan' }).click();
   await expect(dialog).toHaveCount(0);
@@ -174,7 +174,7 @@ test('AI plans are padded to an even page count', async ({ page }) => {
   const dialog = page.locator('.ai-dialog');
   await dialog.getByRole('button', { name: 'Upload from device' }).click();
   await dialog.locator('input[type="file"]').setInputFiles('public/icon-192.png');
-  await page.getByRole('button', { name: 'Generate 3 plans' }).click();
+  await page.getByRole('button', { name: 'Generate plans' }).click();
 
   const firstPlan = page.locator('.ai-plan-card').first();
   await expect(firstPlan).toContainText('4 pages');

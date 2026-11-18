@@ -2,6 +2,7 @@ import { useT } from '../../i18n';
 import type { Dispatch, FormEvent, SetStateAction } from 'react';
 import type { AccountPreferences, PageThemeId } from '../../editor/types';
 import { AccountInlineField } from './AccountFormFields';
+import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
 
 type AccountPreferencesPanelProps = {
   handleSavePreferences: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
@@ -26,6 +27,7 @@ export function AccountPreferencesPanel({
             <h2>{t('Editor defaults')}</h2>
           </div>
           <span className="panel-tag">{t('Saved to account')}</span>
+                <PanelCollapseToggle />
         </div>
         <form className="admin-settings-stack" onSubmit={handleSavePreferences}>
           <div className="admin-form-grid admin-form-grid--compact">

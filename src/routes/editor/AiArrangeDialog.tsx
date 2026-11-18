@@ -47,9 +47,9 @@ const THUMBNAIL_QUALITY = 0.68;
 const AI_STYLE_PRESETS = [
   {
     id: 'editorial',
-    label: 'Editorial restraint',
-    description: 'Leaded image, generous whitespace, precise short copy.',
-    prompt: '整体克制、留白充足、编辑感强；主图突出，文字少而精准，避免营销腔。',
+    label: 'Restrained whitespace',
+    description: 'Generous whitespace, few precise words, photos carry the page.',
+    prompt: '整体克制、大量留白；主图突出，文字少而精准，让照片承担页面主角，避免营销腔。',
   },
   {
     id: 'impact',
@@ -68,12 +68,6 @@ const AI_STYLE_PRESETS = [
     label: 'Magazine feature',
     description: 'Cover story structure with a clear editorial arc.',
     prompt: '杂志专题感，封面故事结构，图文并茂，有明确的起承转合和章节节奏。',
-  },
-  {
-    id: 'minimal',
-    label: 'Minimal whitespace',
-    description: 'Very few words, photos carry the page.',
-    prompt: '极简、大量留白、文字非常克制，让照片本身承担页面主角。',
   },
 ] as const;
 
@@ -547,16 +541,7 @@ export function AiArrangeDialog({
         <header className="ai-dialog__header">
           <div>
             <p className="eyebrow">{t('AI arrangement')}</p>
-            <h2 id="ai-dialog-title">{t('Let AI shape a first folio sequence')}</h2>
-            <p className="panel-note">
-              {t('Select up to %s photos. AI proposes three sequences; you choose one before it touches the editor.').replace(
-                '%s',
-                String(maxPhotos),
-              )}
-            </p>
-            <p className="panel-note">
-              {t('Only small thumbnails are sent to the AI interfaces configured by the administrator.')}
-            </p>
+            <h2 id="ai-dialog-title">{t('Pick photos, generate layout plans')}</h2>
           </div>
           <button
             type="button"
@@ -598,8 +583,8 @@ export function AiArrangeDialog({
             <div className="ai-dialog__body ai-dialog__results">
               <div className="ai-results__intro">
                 <div>
-                  <p className="eyebrow">{t('Choose a direction')}</p>
-                  <h3>{t('Three plans, same photos')}</h3>
+                  <p className="eyebrow">{t('AI plans')}</p>
+                  <h3>{t('Choose one plan')}</h3>
                   <p className="panel-note">
                     {t('The selected plan replaces the current page sequence when you apply it. Your uploaded photos stay in the media library.')}
                   </p>
@@ -876,11 +861,6 @@ export function AiArrangeDialog({
                   </p>
                 ) : null}
 
-                <p className="panel-note">
-                  {photos.length
-                    ? t('%s selected. Click a checked photo to remove it.').replace('%s', String(photos.length))
-                    : t('No photos selected yet.')}
-                </p>
               </section>
 
               <section className="ai-prompt-panel">
@@ -945,9 +925,6 @@ export function AiArrangeDialog({
               </section>
             </div>
             <footer className="ai-dialog__footer">
-              <span className="panel-note">
-                {t('AI only proposes a sequence. Nothing changes until you choose a plan and apply it.')}
-              </span>
               <div className="ai-dialog__footer-actions">
                 <button type="button" className="button button--ghost button--small" onClick={onClose}>
                   {t('Cancel')}
@@ -958,7 +935,7 @@ export function AiArrangeDialog({
                   disabled={!photos.length || !status?.enabled || quotaExhausted || readingFiles || uploadingFiles}
                   onClick={() => void handleGenerate()}
                 >
-                  {t('Generate 3 plans')}
+                  {t('Generate plans')}
                 </button>
               </div>
             </footer>

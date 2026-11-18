@@ -3,6 +3,7 @@ import type { AdminSummary, UserSession } from '../../editor/api';
 import { getUserPrimaryIdentity, getUserSecondaryIdentity } from '../../editor/identity';
 import { formatBytes } from './adminFormatting';
 import type { AdminSectionKey } from './useAdminShellState';
+import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
 
 const ADMIN_SECTIONS: Array<{ id: AdminSectionKey; label: string }> = [
   { id: 'overview', label: 'Overview' },
@@ -48,6 +49,7 @@ export function AdminConsoleHeader({
           {summary ? <span className="panel-tag">{t('%s storage').replace('%s', formatBytes(summary.storage.totalBytes))}</span> : null}
           {summary ? <span className="panel-tag">{t('%s recent failures').replace('%s', String(summary.failures.length))}</span> : null}
         </div>
+            <PanelCollapseToggle />
       </div>
       <div className="admin-section-nav" role="tablist" aria-label={t('Admin sections')}>
         {ADMIN_SECTIONS.map((section) => (

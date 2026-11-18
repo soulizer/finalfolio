@@ -3,6 +3,7 @@ import { TemplateIssuePreview } from '../../components/TemplateIssuePreview';
 import { countImageSlots } from '../../editor/demoData';
 import type { UserTemplateRecord } from '../../editor/types';
 import { formatCompactTimestamp, formatTimestamp } from './accountFormatting';
+import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
 
 type AccountTemplatesPanelProps = {
   filteredTemplates: UserTemplateRecord[];
@@ -49,6 +50,7 @@ export function AccountTemplatesPanel({
             <h2>{t('My templates')}</h2>
           </div>
           <span className="panel-tag">{filteredTemplates.length}</span>
+                <PanelCollapseToggle />
         </div>
         <label className="field admin-search-field">
           <span>{t('Search templates')}</span>

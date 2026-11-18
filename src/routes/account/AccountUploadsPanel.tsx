@@ -6,6 +6,7 @@ import {
 } from '../../editor/assetDelivery';
 import type { AccountUploadListItem } from '../../editor/api';
 import { formatBytes, formatCompactTimestamp, formatDimensions, formatTimestamp } from './accountFormatting';
+import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
 
 type AccountUploadsPanelProps = {
   filteredUploads: AccountUploadListItem[];
@@ -38,6 +39,7 @@ export function AccountUploadsPanel({
             <h2>{t('My uploads')}</h2>
           </div>
           <span className="panel-tag">{filteredUploads.length}</span>
+                <PanelCollapseToggle />
         </div>
         <label className="field admin-search-field">
           <span>{t('Search uploads')}</span>

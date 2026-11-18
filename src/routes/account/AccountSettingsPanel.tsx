@@ -2,6 +2,7 @@ import { useT } from '../../i18n';
 import type { FormEvent } from 'react';
 import type { UserSession } from '../../editor/api';
 import { AccountInlineField } from './AccountFormFields';
+import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
 
 type AccountSettingsPanelProps = {
   confirmPassword: string;
@@ -42,6 +43,7 @@ export function AccountSettingsPanel({
             <h2>{t('Identity settings')}</h2>
           </div>
           <span className="panel-tag">{t('Self-service')}</span>
+                <PanelCollapseToggle />
         </div>
         <form className="admin-settings-stack" onSubmit={handleSaveProfile}>
           <div className="admin-form-grid admin-form-grid--compact">
@@ -78,6 +80,7 @@ export function AccountSettingsPanel({
             <h2>{t('Change password')}</h2>
           </div>
           <span className="panel-tag">{t('Protected')}</span>
+                <PanelCollapseToggle />
         </div>
         <form className="admin-settings-stack" onSubmit={handleChangePassword}>
           <div className="admin-form-grid admin-form-grid--compact">

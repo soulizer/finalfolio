@@ -5,6 +5,7 @@ type ConfirmationMessageKey =
   | 'deleteUpload'
   | 'deletePage'
   | 'removeIssueAsset'
+  | 'deleteLibraryAsset'
   | 'removeUnusedAssets'
   | 'replaceLayout'
   | 'saveObjectStorageConfig'
@@ -34,6 +35,12 @@ const confirmationMessages: Record<
   deletePage: {
     en: ({ pageTitle }) => `This will delete the page "${pageTitle ?? 'Untitled page'}". Continue?`,
     'zh-CN': ({ pageTitle }) => `此操作会删除页面“${pageTitle ?? '未命名页面'}”，是否继续？`,
+  },
+  deleteLibraryAsset: {
+    en: ({ assetName }) =>
+      `This will delete "${assetName ?? 'this photo'}" from your media library and remove it from the current folio. Continue?`,
+    'zh-CN': ({ assetName }) =>
+      `此操作会从媒体库中删除图片“${assetName ?? '该图片'}”，并从当前作品集中移除，是否继续？`,
   },
   removeIssueAsset: {
     en: ({ assetName }) => `This will remove "${assetName ?? 'this photo'}" from the current folio. Continue?`,

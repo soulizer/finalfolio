@@ -66,10 +66,25 @@ typography.
 
 A selected card or photo must be readable without hunting for a tiny check:
 
-- An outer focus ring.
-- A light inner frame or pressed shadow.
 - A small high-contrast check for confirmation.
-- Selected images may dim slightly so the frame reads clearly.
+- The selection frame sits on the tile's own border (darker border plus one
+  inset line). Never draw a frame floating inside the image or outside the
+  tile, and never dim the photo.
+- The selection must not change the tile's size, so horizontal and vertical
+  grid gaps stay identical.
+
+## 6b. Panel collapse
+
+Every `.editor-panel` on the site (editor sidebars, editor canvas panels,
+admin console, account console) is collapsible:
+
+- `PanelCollapseToggle` renders a 22px skeuomorphic chevron in the panel's
+  top-right corner; headers keep a 34px right padding so content never
+  slides under it.
+- Toggling adds `is-collapsed` to the section; CSS hides every direct child
+  except the header. The delegated behavior lives in `ui/panelCollapse.ts`,
+  and the collapsed state is remembered per route in localStorage.
+- Never build a one-off collapse control inside a panel; reuse this one.
 
 ## 7. Typography and colour
 

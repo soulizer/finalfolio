@@ -4,6 +4,7 @@ import { getUserPrimaryIdentity, getUserSecondaryIdentity } from '../../editor/i
 import { countLabel } from '../../i18n';
 import { formatBytes, formatTimestamp, formatTrendLabel } from './adminFormatting';
 import type { AdminSectionKey } from './useAdminShellState';
+import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
 
 type AdminOverviewPanelProps = {
   activeHourlyTrend: AdminSummary['trends']['last24Hours'];
@@ -33,6 +34,7 @@ export function AdminOverviewPanel({
               <h2>{t('Operational snapshot')}</h2>
             </div>
             <span className="panel-tag">{t('%s exports logged').replace('%s', String(summary.counts.exports))}</span>
+                    <PanelCollapseToggle />
           </div>
           <div className="admin-metric-grid">
             <button type="button" className="template-card admin-stat-card admin-stat-card--interactive" onClick={() => selectSection('users')}>
@@ -75,6 +77,7 @@ export function AdminOverviewPanel({
               <h2>{t('Featured folio on landing page')}</h2>
             </div>
             <span className="panel-tag">{productConfig?.homepagePreview?.source === 'project' ? t('live folio') : t('demo fallback')}</span>
+                    <PanelCollapseToggle />
           </div>
           <article className="admin-overview-card">
             <div className="admin-overview-card__header">
@@ -98,6 +101,7 @@ export function AdminOverviewPanel({
               <h2>{t('Template governance coverage')}</h2>
             </div>
             <span className="panel-tag">{enabledTemplateCount} {t('live templates')}</span>
+                    <PanelCollapseToggle />
           </div>
           <article className="admin-overview-card">
             <div className="admin-overview-card__header">
@@ -116,6 +120,7 @@ export function AdminOverviewPanel({
               <h2>{t('Last 7 days')}</h2>
             </div>
             <span className="panel-tag">{t('Events vs failures')}</span>
+                    <PanelCollapseToggle />
           </div>
           <div className="admin-breakdown-list">
             {summary.trends.last7Days.map((bucket) => (
@@ -139,6 +144,7 @@ export function AdminOverviewPanel({
               <h2>{t('Who touched the product')}</h2>
             </div>
             <span className="panel-tag">{summary.recentActivity.length}</span>
+                    <PanelCollapseToggle />
           </div>
           <div className="admin-mini-list">
             {summary.recentActivity.length ? (
@@ -162,6 +168,7 @@ export function AdminOverviewPanel({
               <h2>{t('Error pressure')}</h2>
             </div>
             <span className="panel-tag">{summary.failures.length}</span>
+                    <PanelCollapseToggle />
           </div>
           {activeHourlyTrend.length ? (
             <div className="admin-trend-grid">

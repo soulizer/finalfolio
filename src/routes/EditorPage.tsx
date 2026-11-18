@@ -75,6 +75,7 @@ import { useEditorAssetLifecycle } from './editor/useEditorAssetLifecycle';
 import { useEditorPreviewScale } from './editor/useEditorPreviewScale';
 import { useCustomLayoutLibrary } from './editor/useCustomLayoutLibrary';
 import { useEditorUiState } from './editor/useEditorUiState';
+import { PanelCollapseToggle } from '../ui/PanelCollapseToggle';
 
 type LoadState = 'loading' | 'ready' | 'error';
 type SaveState = 'draft' | 'dirty' | 'saving' | 'saved' | 'error';
@@ -701,6 +702,8 @@ export function EditorPage() {
     setSelectedPageId,
     setSelectedSlot,
     setTemplateChoice,
+    removeOwnedUpload: (assetId) =>
+      setOwnedUploads((current) => current.filter((upload) => upload.assetId !== assetId)),
   });
 
   const {
@@ -1151,7 +1154,7 @@ export function EditorPage() {
           ? t('Save')
           : t('Save folio');
   const exportActionBusy = exportBusy || printBusy;
-  const exportActionLabel = exportActionBusy ? t('Preparing…') : exportCenterOpen ? t('Close export') : t('Export Center');
+  const exportActionLabel = exportActionBusy ? t('Preparing…') : exportCenterOpen ? t('Close export') : t('Export');
   const themeChoiceMatchesAllPages = project.pages.every((page) => page.theme === themeChoice);
   const exportSubmitDefaultLabel =
     exportSettings.format === 'project'
@@ -1527,6 +1530,7 @@ export function EditorPage() {
                   {templatePickerOpen ? t('Collapse') : t('Expand')}
                 </button>
               </div>
+                        <PanelCollapseToggle />
             </div>
             {templatePickerOpen ? (
               <>
@@ -1643,6 +1647,7 @@ export function EditorPage() {
                   {starterPacksOpen ? t('Collapse') : t('Expand')}
                 </button>
               </div>
+                        <PanelCollapseToggle />
             </div>
             {starterPacksOpen ? (
               <div className="template-pack-grid">
@@ -1714,6 +1719,7 @@ export function EditorPage() {
                   </Link>
                 ) : null}
               </div>
+                        <PanelCollapseToggle />
             </div>
             {!session ? (
               <p className="panel-note">{t('Sign in to save reusable templates and reopen them as new folios.')}</p>

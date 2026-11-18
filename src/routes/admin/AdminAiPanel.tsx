@@ -8,6 +8,7 @@ import {
 import { confirmAction } from '../../ui/confirm';
 import { AdminInlineField, AdminToggleField } from './AdminFormFields';
 import { AdminAiUsagePanel } from './AdminAiUsagePanel';
+import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
 
 type ProviderEditorState = {
   index: number | null;
@@ -325,6 +326,7 @@ export function AdminAiPanel({
             </p>
           </div>
           <span className="panel-tag">{config.providers.length}</span>
+                <PanelCollapseToggle />
         </div>
 
         <div className="admin-ai-settings-grid">

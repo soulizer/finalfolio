@@ -68,7 +68,7 @@ test('upload, save, reopen, share, and export the editor flow', async ({ page })
   expect(viewerErrors).toEqual([]);
 
   await page.goto(editorUrl);
-  await page.getByRole('button', { name: 'Export Center' }).click();
+  await page.getByRole('button', { name: 'Export', exact: true }).click();
   await page.getByRole('button', { name: /A3/ }).click();
 
   const downloadPromise = page.waitForEvent('download');
@@ -90,7 +90,7 @@ test('upload, save, reopen, share, and export the editor flow', async ({ page })
 
   // The print path stays available as a secondary action and must still use the
   // same page renderer as the editor preview.
-  await page.getByRole('button', { name: 'Export Center' }).click();
+  await page.getByRole('button', { name: 'Export', exact: true }).click();
   await page.evaluate(() => {
     const runtime = window as PrintRuntime;
     runtime.__holdPrintOpen = true;

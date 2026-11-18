@@ -4,6 +4,7 @@ import { getUserPrimaryIdentity } from '../../editor/identity';
 import type { AccountActivityItem, AccountPreferences } from '../../editor/types';
 import { formatCompactTimestamp, formatTimestamp } from './accountFormatting';
 import type { AccountSectionKey } from './accountSections';
+import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
 
 function formatPreferenceValue(t: (text: string) => string, value: string) {
   const labels: Record<string, string> = {
@@ -71,6 +72,7 @@ export function AccountOverviewPanel({
               <h2>{t('Your working set')}</h2>
             </div>
             <span className="panel-tag">{summary ? formatTimestamp(summary.account.updatedAt) : t('Loading')}</span>
+                    <PanelCollapseToggle />
           </div>
           <div className="admin-metric-grid">
             <button type="button" className="template-card admin-stat-card admin-stat-card--interactive" onClick={() => selectSection('projects')}>
@@ -103,6 +105,7 @@ export function AccountOverviewPanel({
               <h2>{t('Continue editing')}</h2>
             </div>
             <span className="panel-tag">{summary?.recentProjects.length ?? 0}</span>
+                    <PanelCollapseToggle />
           </div>
           <div className="admin-list">
             {summary?.recentProjects.length ? (
@@ -147,6 +150,7 @@ export function AccountOverviewPanel({
               <h2>{t('Identity and access')}</h2>
             </div>
             <span className="panel-tag">{t(session.role)}</span>
+                    <PanelCollapseToggle />
           </div>
           <div className="admin-detail-metrics">
             <article>
@@ -175,6 +179,7 @@ export function AccountOverviewPanel({
               <h2>{t('Current defaults')}</h2>
             </div>
             <span className="panel-tag">{t('Account level')}</span>
+                    <PanelCollapseToggle />
           </div>
           <div className="admin-detail-metrics">
             <article>
@@ -207,6 +212,7 @@ export function AccountOverviewPanel({
               <h2>{t('Latest account actions')}</h2>
             </div>
             <span className="panel-tag">{activity.length}</span>
+                    <PanelCollapseToggle />
           </div>
           <div className="admin-list">
             {activity.length ? (

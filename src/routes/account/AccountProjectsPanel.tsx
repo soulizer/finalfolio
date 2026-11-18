@@ -5,6 +5,7 @@ import { getTemplateLabel } from '../../editor/demoData';
 import type { Asset, ProjectRecord } from '../../editor/types';
 import { formatCompactTimestamp, formatTimestamp } from './accountFormatting';
 import type { ProjectVisibilityFilter } from './useAccountWorkspace';
+import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
 
 const accountPreviewStyle = {
   '--page-scale': 0.32,
@@ -71,6 +72,7 @@ export function AccountProjectsPanel({
             <h2>{t('My projects')}</h2>
           </div>
           <span className="panel-tag">{filteredProjects.length}</span>
+                <PanelCollapseToggle />
         </div>
         <div className="editor-filter-row" role="tablist" aria-label={t('Project visibility filters')}>
           {PROJECT_VISIBILITY_FILTERS.map((filter) => (

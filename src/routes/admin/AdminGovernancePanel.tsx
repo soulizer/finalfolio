@@ -4,6 +4,7 @@ import type { AdminProjectListItem, ProductConfigPayload } from '../../editor/ap
 import { templateMeta, templatePacks } from '../../editor/demoData';
 import type { SiteContent, TemplateGovernance, TemplateGovernanceEntry } from '../../product/types';
 import { AdminInlineField } from './AdminFormFields';
+import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
 
 type TemplateSettingField = 'enabled' | 'order' | 'category' | 'tag' | 'featured';
 
@@ -152,6 +153,7 @@ export function AdminGovernancePanel({
             <h2>{t('Govern page types and starter packs')}</h2>
           </div>
           <span className="panel-tag">{enabledTemplateCount + enabledPackCount}</span>
+                <PanelCollapseToggle />
         </div>
         {templateGovernanceDraft ? (
           <>
@@ -199,6 +201,7 @@ export function AdminGovernancePanel({
             <h2>{t('Homepage content and featured folio')}</h2>
           </div>
           <span className="panel-tag">{productConfig?.homepagePreview?.source === 'project' ? t('live preview') : t('demo fallback')}</span>
+                <PanelCollapseToggle />
         </div>
         {siteContentDraft ? (
           <div className="admin-settings-stack">

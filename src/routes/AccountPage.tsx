@@ -41,6 +41,7 @@ import { AccountUploadsPanel } from './account/AccountUploadsPanel';
 import { buildAbsoluteUrl } from './account/accountFormatting';
 import { ACCOUNT_SECTIONS, normalizeAccountSection, type AccountSectionKey } from './account/accountSections';
 import { useAccountWorkspace } from './account/useAccountWorkspace';
+import { PanelCollapseToggle } from '../ui/PanelCollapseToggle';
 
 export function AccountPage() {
   const t = useT();
@@ -549,6 +550,7 @@ export function AccountPage() {
               <div className="admin-hero__meta">
                 <span className="panel-tag">{t('Checking session')}</span>
               </div>
+                        <PanelCollapseToggle />
             </div>
             <div className="loading-tab-strip" aria-hidden="true">
               {ACCOUNT_SECTIONS.map((section) => (
@@ -570,6 +572,7 @@ export function AccountPage() {
                     <h2>{t('Your working set')}</h2>
                   </div>
                   <span className="panel-tag">{t('Loading')}</span>
+                                <PanelCollapseToggle />
                 </div>
                 <LoadingStack lines={['title', 'line-long', 'line-full', 'line-medium']} />
               </section>
@@ -583,6 +586,7 @@ export function AccountPage() {
                     <h2>{t('Recent activity')}</h2>
                   </div>
                   <span className="panel-tag">{t('Loading')}</span>
+                                <PanelCollapseToggle />
                 </div>
                 <LoadingStack lines={['line-full', 'line-long', 'line-medium']} />
               </section>

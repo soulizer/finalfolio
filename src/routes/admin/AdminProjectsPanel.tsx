@@ -5,6 +5,7 @@ import type { AdminProjectDetail, AdminProjectListItem } from '../../editor/api'
 import { getTemplateLabel, templateMeta } from '../../editor/demoData';
 import type { Asset } from '../../editor/types';
 import { formatCompactTimestamp, formatTimestamp } from './adminFormatting';
+import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
 
 const adminPreviewStyle = {
   '--page-scale': 0.32,
@@ -46,6 +47,7 @@ export function AdminProjectsPanel({
             <h2>{t('Folio governance')}</h2>
           </div>
           <span className="panel-tag">{filteredProjects.length}</span>
+                <PanelCollapseToggle />
         </div>
         <label className="field admin-search-field">
           <span>{t('Search projects')}</span>

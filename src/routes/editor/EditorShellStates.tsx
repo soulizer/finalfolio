@@ -2,6 +2,7 @@ import { useT } from '../../i18n';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { LoadingStack } from '../../components/LoadingStack';
+import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
 
 function EditorStateTopbar({ actions }: { actions: ReactNode }) {
   const t = useT();
@@ -39,6 +40,7 @@ export function EditorLoadingState() {
                 <h2>{t('Preparing controls')}</h2>
               </div>
               <span className="panel-tag">{t('Syncing')}</span>
+                        <PanelCollapseToggle />
             </div>
             <LoadingStack lines={['line-full', 'line-long', 'line-medium']} />
           </section>
@@ -66,6 +68,7 @@ export function EditorLoadingState() {
                 <h2>{t('Preparing fields')}</h2>
               </div>
               <span className="panel-tag">{t('Loading')}</span>
+                        <PanelCollapseToggle />
             </div>
             <LoadingStack lines={['line-full', 'line-full', 'line-long', 'line-medium']} />
           </section>
@@ -79,6 +82,7 @@ export function EditorLoadingState() {
                 <h2>{t('Checking session')}</h2>
               </div>
               <span className="panel-tag">{t('Loading')}</span>
+                        <PanelCollapseToggle />
             </div>
             <LoadingStack lines={['line-full', 'line-medium']} />
           </section>
@@ -90,6 +94,7 @@ export function EditorLoadingState() {
                 <h2>{t('Preparing controls')}</h2>
               </div>
               <span className="panel-tag">{t('Loading')}</span>
+                        <PanelCollapseToggle />
             </div>
             <LoadingStack lines={['line-full', 'line-medium', 'line-medium']} />
           </section>

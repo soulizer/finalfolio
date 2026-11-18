@@ -17,6 +17,7 @@ import {
 } from '../../editor/limits';
 import type { Asset, CropSettings, PageData } from '../../editor/types';
 import type { UploadState } from './uploadState';
+import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
 
 type AssetPlacement = {
   pageId: string;
@@ -132,6 +133,7 @@ export function EditorContentSidebar({
           <span className="panel-tag">
             {libraryAssets.length === 0 ? t('Empty') : countLabel(libraryAssets.length, '1 photo', '%s photos')}
           </span>
+                <PanelCollapseToggle />
         </div>
         <div className="editor-panel__actions editor-panel__actions--tight photo-actions editor-button-grid editor-button-grid--two">
           <label className={`button button--primary button--small upload-button upload-button--compact ${uploadBusy ? 'is-busy' : ''}`.trim()}>
@@ -312,18 +314,16 @@ export function EditorContentSidebar({
                       <span>{retryLabel}</span>
                     </button>
                   ) : null}
-                  {isInCurrentProject ? (
-                    <button
-                      type="button"
-                      className="asset-tile__delete-icon"
-                      disabled={assetMutationBusy}
-                      aria-label={deleteLabel}
-                      title={deleteLabel}
-                      onClick={() => void handleDeleteAsset(asset)}
-                    >
-                      <span>{deleteLabel}</span>
-                    </button>
-                  ) : null}
+                  <button
+                    type="button"
+                    className="asset-tile__delete-icon"
+                    disabled={assetMutationBusy}
+                    aria-label={deleteLabel}
+                    title={deleteLabel}
+                    onClick={() => void handleDeleteAsset(asset)}
+                  >
+                    <span>{deleteLabel}</span>
+                  </button>
                 </article>
               );
             })
@@ -344,11 +344,13 @@ export function EditorContentSidebar({
         <div className="editor-panel__toolbar">
           <span className="editor-panel__label">{t('Page content')}</span>
           <span className="panel-tag">{selectedPagePositionLabel}</span>
+                <PanelCollapseToggle />
         </div>
 
         <section className="editor-panel__section">
           <div className="editor-panel__toolbar">
             <span className="editor-panel__label">{t('Text')}</span>
+                    <PanelCollapseToggle />
           </div>
           {selectedPageUsesKicker ? (
             <label className="field">
@@ -419,6 +421,7 @@ export function EditorContentSidebar({
           <div className="editor-panel__toolbar">
             <span className="editor-panel__label">{t('Selected frame')}</span>
             {selectedAsset ? <span className="panel-tag">{currentCrop?.fit === 'contain' ? t('Fit') : t('Fill')}</span> : null}
+                    <PanelCollapseToggle />
           </div>
           <p className="editor-panel__value">{selectedFrameLabel ?? t('No frame selected')}</p>
           <p className="selected-frame-status">

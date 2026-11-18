@@ -3,6 +3,7 @@ import { useT } from '../../i18n';
 import type { AdminObjectStorageDraft, ProductConfigPayload } from '../../editor/api';
 import { formatTimestamp } from './adminFormatting';
 import { AdminInlineField, AdminToggleField } from './AdminFormFields';
+import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
 
 type UpdateObjectStorageDraftField = <Key extends keyof AdminObjectStorageDraft>(
   field: Key,
@@ -65,6 +66,7 @@ export function AdminStoragePanel({
             <h2>{t('Bitiful S3 delivery and upload mirroring')}</h2>
           </div>
           <span className="panel-tag">{storage?.enabled ? t('Enabled') : t('local only')}</span>
+                <PanelCollapseToggle />
         </div>
 
         <div className="admin-overview-grid">

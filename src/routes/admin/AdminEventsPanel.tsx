@@ -3,6 +3,7 @@ import { countLabel, useT } from '../../i18n';
 import type { AdminProjectListItem, AdminSummary, UserSession } from '../../editor/api';
 import { getUserPrimaryIdentity } from '../../editor/identity';
 import { formatTimestamp, formatTrendLabel } from './adminFormatting';
+import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
 
 type AdminEventRecord = AdminSummary['events'][number];
 
@@ -118,6 +119,7 @@ export function AdminEventsPanel({
               <h2>{t('Recent errors and activity')}</h2>
             </div>
             <span className="panel-tag">{summary.failures.length ? countLabel(summary.failures.length, '1 failure', '%s failures') : t('No current failures')}</span>
+                    <PanelCollapseToggle />
           </div>
           <div className="admin-breakdown-list">
             {rankedEventBreakdown.map(([type, counts]) => (
@@ -139,6 +141,7 @@ export function AdminEventsPanel({
               <h2>{t('Recent failures')}</h2>
             </div>
             <span className="panel-tag">{summary.failures.length}</span>
+                    <PanelCollapseToggle />
           </div>
           <div className="admin-mini-list">
             {summary.failures.length ? (
@@ -164,6 +167,7 @@ export function AdminEventsPanel({
               <h2>{t('Recent operations')}</h2>
             </div>
             <span className="panel-tag">{summary.events.length}</span>
+                    <PanelCollapseToggle />
           </div>
           <div className="admin-mini-list">
             {summary.events.length ? (

@@ -1,5 +1,5 @@
 import { countLabel, translate } from '../../i18n';
-import type { UserSession } from '../../editor/api';
+import { deleteOwnedAsset, type UserSession } from '../../editor/api';
 import { getConfirmationMessage } from '../../editor/confirmations';
 import { confirmAction } from '../../ui/confirm';
 import type { Asset, PageData, ProjectRecord, ProjectState } from '../../editor/types';
@@ -21,6 +21,7 @@ type SetAssetTargetId = (assetId: string | null) => void;
 type SetSelectedPageId = (pageId: string) => void;
 type SetSelectedSlot = (slot: string | null) => void;
 type SetTemplateChoice = (value: PageData['template']) => void;
+type RemoveOwnedUpload = (assetId: string) => void;
 type FocusPlacement = {
   pageId: string;
   slot: string;
@@ -45,6 +46,7 @@ type CreateEditorAssetActionsOptions = {
   setSelectedPageId: SetSelectedPageId;
   setSelectedSlot: SetSelectedSlot;
   setTemplateChoice: SetTemplateChoice;
+  removeOwnedUpload: RemoveOwnedUpload;
 };
 
 export function createEditorAssetActions({
@@ -66,6 +68,7 @@ export function createEditorAssetActions({
   setSelectedPageId,
   setSelectedSlot,
   setTemplateChoice,
+  removeOwnedUpload,
 }: CreateEditorAssetActionsOptions) {
   function assignAsset(slot: string, assetId: string) {
     const nextProject = assignAssetToProject({
@@ -136,10 +139,15 @@ export function createEditorAssetActions({
   }
 
   async function handleDeleteAsset(asset: Asset) {
+    // The gallery lists account-library photos, so delete means deleting the
+    // photo itself: out of this folio (clearing its frames) and out of the
+    // account library, so the tile really disappears.
+    const inProject = project.assets.some((entry) => entry.id === asset.id);
+    const isServerUpload = asset.src.startsWith('/uploads/');
     const confirmed = await confirmAction({
-      title: 'Remove this photo from the folio?',
-      body: getConfirmationMessage('removeIssueAsset', { assetName: asset.name }),
-      confirmLabel: 'Remove photo',
+      title: inProject ? 'Delete this photo from the folio and the library?' : 'Delete this photo from the library?',
+      body: getConfirmationMessage('deleteLibraryAsset', { assetName: asset.name }),
+      confirmLabel: 'Delete photo',
       tone: 'danger',
     });
     if (!confirmed) {
@@ -148,20 +156,46 @@ export function createEditorAssetActions({
 
     setAssetDeleteBusy(true);
     setAssetDeleteTargetId(asset.id);
-    setMessage(translate('Removing %s...').replace('%s', asset.name));
+    setMessage(translate('Deleting %s...').replace('%s', asset.name));
 
     try {
-      const removal = await removeAssetFromIssue(asset);
+      let clearedPlacementCount = 0;
+      // removeAssetFromIssue already deletes the library copy when the draft is
+      // not server-backed; only delete here when it handled just the folio.
+      const handledLibraryDelete = inProject && !projectRecord;
+      if (inProject) {
+        const removal = await removeAssetFromIssue(asset);
+        clearedPlacementCount = removal.clearedPlacementCount;
+      }
+      if (isServerUpload && !handledLibraryDelete) {
+        if (!session) {
+          throw new Error(translate('Sign in to delete uploaded photos from the server.'));
+        }
+        try {
+          await deleteOwnedAsset(asset.id);
+        } catch (error) {
+          if (error instanceof Error && error.message === 'Asset not found.') {
+            // Already gone from the library; keep going so the tile disappears.
+          } else if (error instanceof Error && /still referenced/i.test(error.message)) {
+            throw new Error(
+              translate('This photo is still used in another folio. Remove it there first, then delete it here.'),
+            );
+          } else {
+            throw error;
+          }
+        }
+      }
+      removeOwnedUpload(asset.id);
       setMessage(
-        removal.clearedPlacementCount > 0
-          ? translate('Removed %s from this folio and cleared %s.').replace('%s', asset.name).replace(
+        clearedPlacementCount > 0
+          ? translate('Deleted %s and cleared %s.').replace('%s', asset.name).replace(
               '%s',
-              countLabel(removal.clearedPlacementCount, '1 frame', '%s frames'),
+              countLabel(clearedPlacementCount, '1 frame', '%s frames'),
             )
-          : translate('Removed %s from this folio.').replace('%s', asset.name),
+          : translate('Deleted %s.').replace('%s', asset.name),
       );
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : translate('Unable to remove this photo.'));
+      setMessage(error instanceof Error ? error.message : translate('Unable to delete this photo.'));
     } finally {
       setAssetDeleteBusy(false);
       setAssetDeleteTargetId(null);

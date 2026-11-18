@@ -11,6 +11,7 @@ import {
   PROJECT_TITLE_LIMIT,
 } from '../../editor/limits';
 import type { ProjectRecord, ProjectState, UserTemplateKind } from '../../editor/types';
+import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
 
 type SaveState = 'draft' | 'dirty' | 'saving' | 'saved' | 'error';
 type ProjectActionBusy = 'duplicate' | 'archive' | 'unarchive' | null;
@@ -146,6 +147,7 @@ export function EditorOperationsSidebar({
         <div className="editor-panel__toolbar">
           <span className="editor-panel__label">{t('Account')}</span>
           <span className="panel-tag">{authReady ? (session ? t(session.role) : t('Guest')) : t('Session')}</span>
+                <PanelCollapseToggle />
         </div>
         <p className="editor-panel__value">
           {authReady ? (session ? getUserPrimaryIdentity(session) : t('Sign in required')) : t('Account')}
@@ -176,6 +178,7 @@ export function EditorOperationsSidebar({
         <div className="editor-panel__toolbar">
           <span className="editor-panel__label">{t('Project')}</span>
           <span className="panel-tag">{projectModeTag}</span>
+                <PanelCollapseToggle />
         </div>
         <p className="editor-panel__value">{project.issue}</p>
         <label className="field">
@@ -273,13 +276,14 @@ export function EditorOperationsSidebar({
             onClick={onToggleTemplateComposer}
             aria-expanded={templateComposerOpen}
           >
-            {t('Save as template')}
+            {t('Save template')}
           </button>
         </div>
         <section className="editor-panel__section">
           <div className="editor-panel__toolbar">
             <span className="editor-panel__label">{t('Share project')}</span>
             <span className="panel-tag">{!projectRecord ? t('Save first') : projectRecord.share.enabled ? t('Live') : t('Off')}</span>
+                    <PanelCollapseToggle />
           </div>
           <label className="field">
             <span>{t('Share link')}</span>
@@ -298,13 +302,11 @@ export function EditorOperationsSidebar({
             />
           </label>
           <p className="panel-note">
-            {!projectRecord
-              ? t('The public link is created automatically after you save this folio.')
-              : projectRecord.share.enabled
-                ? t('The public route opens a read-only folio viewer with swipe, drag, keyboard, and button navigation.')
-                : projectMutationLocked
-                  ? t('Legacy ownerless folios can still be read, but only an owned duplicate can publish or change sharing.')
-                  : t('The public link is off. Enable it when this folio should be viewable outside the editor.')}
+            {projectRecord?.share.enabled
+              ? t('The public route opens a read-only folio viewer with swipe, drag, keyboard, and button navigation.')
+              : projectMutationLocked
+                ? t('Legacy ownerless folios can still be read, but only an owned duplicate can publish or change sharing.')
+                : null}
           </p>
           {!projectRecord ? null : projectRecord.share.enabled ? (
             <div className="editor-button-grid editor-button-grid--two" role="group" aria-label={t('Share actions')}>
@@ -354,6 +356,7 @@ export function EditorOperationsSidebar({
             <div className="editor-panel__toolbar">
               <span className="editor-panel__label">{t('Template')}</span>
               <span className="panel-tag">{templateSaveKind === 'page' ? t('Page template') : t('Project template')}</span>
+                        <PanelCollapseToggle />
             </div>
             <p className="panel-note">
               {t('Save the current page or the whole folio as a reusable template. Page templates change one page at a time; project templates keep the full sequence.')}</p>
@@ -441,6 +444,7 @@ export function EditorOperationsSidebar({
           <div className="editor-panel__toolbar">
             <span className="editor-panel__label">{t('Image corners')}</span>
             <span className="panel-tag">{frameRadiusLabel}</span>
+                    <PanelCollapseToggle />
           </div>
           <div className="segmented-control segmented-control--three" role="group" aria-label={t('Image corner presets')}>
             <button type="button" className={project.frameRadius <= 2 ? 'is-active' : ''} onClick={() => updateFrameRadius(0)}>

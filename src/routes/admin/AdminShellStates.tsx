@@ -1,6 +1,7 @@
 import { useT } from '../../i18n';
 import { LoadingStack } from '../../components/LoadingStack';
 import type { AdminSectionKey } from './useAdminShellState';
+import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
 
 export function AdminLoadingState({ activeSection }: { activeSection: AdminSectionKey }) {
   const t = useT();
@@ -16,6 +17,7 @@ export function AdminLoadingState({ activeSection }: { activeSection: AdminSecti
               <h2>{activeSection === 'projects' ? t('Folio governance') : t('Asset governance')}</h2>
             </div>
             <span className="panel-tag">{t('Loading')}</span>
+                    <PanelCollapseToggle />
           </div>
           <label className="field admin-search-field">
             <span>{activeSection === 'projects' ? t('Search projects') : t('Search uploads')}</span>
@@ -73,6 +75,7 @@ export function AdminLoadingState({ activeSection }: { activeSection: AdminSecti
               <h2>{t('Operational snapshot')}</h2>
             </div>
             <span className="panel-tag">{t('Loading')}</span>
+                    <PanelCollapseToggle />
           </div>
           <div className="admin-metric-grid">
             {Array.from({ length: 6 }).map((_, index) => (
@@ -90,6 +93,7 @@ export function AdminLoadingState({ activeSection }: { activeSection: AdminSecti
               <h2>{t('Recent backend activity')}</h2>
             </div>
             <span className="panel-tag">{t('Loading')}</span>
+                    <PanelCollapseToggle />
           </div>
           <div className="admin-breakdown-list">
             {Array.from({ length: 4 }).map((_, index) => (
@@ -112,6 +116,7 @@ export function AdminLoadingState({ activeSection }: { activeSection: AdminSecti
               <h2>{t('Backend status')}</h2>
             </div>
             <span className="panel-tag">{t('Syncing')}</span>
+                    <PanelCollapseToggle />
           </div>
           <p className="panel-note">{t('Live counts, failures, and governance controls will load in place.')}</p>
           <LoadingStack lines={['line-full', 'line-long', 'line-medium']} />
