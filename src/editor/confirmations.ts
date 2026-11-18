@@ -38,9 +38,9 @@ const confirmationMessages: Record<
   },
   deleteLibraryAsset: {
     en: ({ assetName }) =>
-      `This will delete "${assetName ?? 'this photo'}" from your media library and remove it from the current folio. Continue?`,
+      `This will delete "${assetName ?? 'this photo'}" from your media library and remove it from every folio that uses it, clearing those frames. Continue?`,
     'zh-CN': ({ assetName }) =>
-      `此操作会从媒体库中删除图片“${assetName ?? '该图片'}”，并从当前作品集中移除，是否继续？`,
+      `此操作会从媒体库中删除图片“${assetName ?? '该图片'}”，并从所有使用它的作品集中移除、清空对应图框，是否继续？`,
   },
   removeIssueAsset: {
     en: ({ assetName }) => `This will remove "${assetName ?? 'this photo'}" from the current folio. Continue?`,

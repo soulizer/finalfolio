@@ -3375,11 +3375,56 @@ export function createApp({
       const assetRecord = await assetStore.readAssetRecord(assetId);
       const user = requireAssetOwner(request, assetRecord);
       const references = await collectAssetProjectReferences(assetId);
-      if (references.length > 0) {
+      // Deleting a library photo also strips it from every folio its owner
+      // keeps, clearing the frames it filled. Foreign or legacy ownerless
+      // folios still block the deletion, matching mutation governance.
+      const foreignReferences = [];
+      for (const reference of references) {
+        const record = await store.readProjectRecord(reference.projectId);
+        if (!record) {
+          continue;
+        }
+        if (record.ownerUserId !== user.id) {
+          foreignReferences.push(reference);
+        }
+      }
+      if (foreignReferences.length > 0) {
         const error = new Error('Asset is still referenced by one or more projects.');
         error.statusCode = 409;
-        error.details = references;
+        error.details = foreignReferences;
         throw error;
+      }
+
+      for (const reference of references) {
+        const record = await store.readProjectRecord(reference.projectId).catch(() => null);
+        if (!record) {
+          continue;
+        }
+        const nextProject = {
+          ...record.project,
+          assets: record.project.assets.filter((entry) => entry.id !== assetId),
+          pages: record.project.pages.map((page) => {
+            let changed = false;
+            const nextSlots = Object.fromEntries(
+              Object.entries(page.slots).map(([slot, currentAssetId]) => {
+                if (currentAssetId !== assetId) {
+                  return [slot, currentAssetId];
+                }
+                changed = true;
+                return [slot, null];
+              }),
+            );
+            return changed ? { ...page, slots: nextSlots } : page;
+          }),
+        };
+        await updateProjectRecordPreservingAssets(record.id, { project: nextProject });
+        await opsStore.recordEvent({
+          type: 'project',
+          status: 'ok',
+          userId: user.id,
+          projectId: record.id,
+          detail: { action: 'delete-asset', assetId },
+        });
       }
 
       await cleanupAssetIfUnused(assetId, assetRecord.src);

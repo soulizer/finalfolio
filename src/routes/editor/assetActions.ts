@@ -145,8 +145,7 @@ export function createEditorAssetActions({
     const inProject = project.assets.some((entry) => entry.id === asset.id);
     const isServerUpload = asset.src.startsWith('/uploads/');
     const confirmed = await confirmAction({
-      title: inProject ? 'Delete this photo from the folio and the library?' : 'Delete this photo from the library?',
-      body: getConfirmationMessage('deleteLibraryAsset', { assetName: asset.name }),
+      title: inProject ? 'Delete this photo from every folio and the library?' : 'Delete this photo from the library?',
       confirmLabel: 'Delete photo',
       tone: 'danger',
     });

@@ -693,7 +693,7 @@ const zh: Record<string, string> = {
   'Unable to delete this photo.': '无法删除这张照片。',
   'This photo is still used in another folio. Remove it there first, then delete it here.': '这张照片还在其他作品中使用，请先在那里移除，再回到这里删除。',
   'Sign in to delete uploaded photos from the server.': '登录后才能删除已上传到服务器的照片。',
-  'Delete this photo from the folio and the library?': '从作品集和媒体库中删除这张照片？',
+  'Delete this photo from every folio and the library?': '从所有作品集和媒体库中删除这张照片？使用它的作品集会清空对应图框。',
   'Delete this photo from the library?': '从媒体库中删除这张照片？',
   'Delete photo': '删除照片',
   'Removing %s...': '正在移除%s…',
