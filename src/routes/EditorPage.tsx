@@ -1591,20 +1591,21 @@ export function EditorPage() {
                     >
                       {t('Insert below')}
                     </button>
-                    {activeCustomLayout ? (
-                      <button
-                        type="button"
-                        className="button button--ghost button--small"
-                        onClick={() => openEditLayoutEditor(activeCustomLayout)}
-                      >
-                        {t('Edit layout')}
-                      </button>
-                    ) : null}
                     <button
                       type="button"
-                      className={`button button--ghost button--small layout-selection-actions__replace${
-                        activeCustomLayout ? '' : ' layout-selection-actions__replace--wide'
-                      }`}
+                      className="button button--ghost button--small"
+                      disabled={!activeCustomLayout}
+                      onClick={() => {
+                        if (activeCustomLayout) {
+                          openEditLayoutEditor(activeCustomLayout);
+                        }
+                      }}
+                    >
+                      {t('Edit layout')}
+                    </button>
+                    <button
+                      type="button"
+                      className="button button--ghost button--small layout-selection-actions__replace"
                       disabled={isCurrentLayoutSelected}
                       onClick={() => applyTemplateChoice(templateChoice)}
                     >
@@ -1703,7 +1704,7 @@ export function EditorPage() {
                 {session ? (
                   <Link
                     to="/account?section=templates"
-                    className="button button--ghost button--small"
+                    className="button button--ghost button--micro"
                     aria-label={t('Manage templates')}
                     title={t('Manage templates')}
                   >

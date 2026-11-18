@@ -18,6 +18,11 @@ height beside them: a 36px footer button pairs with a 36px name field, and a
 40px panel input pairs with 40px buttons. `--control-height` and
 `--control-height-sm` are the only sources for these values.
 
+Panel headers are one 24px row: the label, `.panel-tag`, `.editor-collapsible-meta`
+and the collapse chevron all measure 24px inside a 32px toolbar. Never give the
+tag a taller box than the chevron; the row then looks ragged even when the
+centres match.
+
 ## 2. Spacing
 
 Use the existing 6 / 8 / 10 / 12 / 16 spacing steps.
@@ -26,8 +31,10 @@ Use the existing 6 / 8 / 10 / 12 / 16 spacing steps.
 - Mixed button rows: **16px** gap so the optical gap remains around 10px after
   borders and inner padding.
 - Panel padding: **12–14px**.
-- Page chip padding: **12px 14px**; corner actions sit **14px** inside the card.
-- Thumbnail corner actions sit **14px** from the top and right edges.
+- Page chip padding: **12px**, plus the 1px border, puts the action row **13px**
+  from the chip edge.
+- Thumbnail corner actions sit **13px** from the top and right edges so their
+  optical inset matches the page-chip actions.
 
 ## 3. Text and icon actions
 
@@ -81,6 +88,11 @@ renders text inside a nested editable span.
 - Do **not** add thick multi-pixel inner rings or dark frames around a dialog.
 - The delete-confirmation dialog is the reference material. The AI layout dialog
   must match it rather than inventing a heavier shell.
+- Floating popovers render through a portal on `document.body` with fixed,
+  viewport-clamped coordinates, following the Radix popover anatomy
+  (trigger → portal → content). They must not be absolute children of a
+  scrolling strip: the strip's overflow clips them and later panels cover them.
+  Close them on outside pointer-down, Escape, scroll and resize.
 - The AI dialog sizes to its content; it should not reserve a fixed tall body
   when there are only a few photos.
 
@@ -100,9 +112,9 @@ A selected card or photo must be readable without hunting for a tiny check:
 Every `.editor-panel` on the site (editor sidebars, editor canvas panels,
 admin console, account console) is collapsible:
 
-- `PanelCollapseToggle` renders a 22px skeuomorphic chevron in the panel's
-  top-right corner; headers keep a 34px right padding so content never
-  slides under it.
+- `PanelCollapseToggle` renders a 24px skeuomorphic chevron as the last child
+  of the header row (`margin-left: 0`; the label's `margin-right: auto` pushes
+  the tag and chevron to the right). Headers need no reserved right padding.
 - Toggling adds `is-collapsed` to the section; CSS hides every direct child
   except the header. The delegated behavior lives in `ui/panelCollapse.ts`,
   and the collapsed state is remembered per route in localStorage.

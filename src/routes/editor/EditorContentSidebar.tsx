@@ -378,7 +378,6 @@ export function EditorContentSidebar({
         <section className="editor-panel__section">
           <div className="editor-panel__toolbar">
             <span className="editor-panel__label">{t('Text')}</span>
-                    <PanelCollapseToggle />
           </div>
           {selectedPageUsesKicker ? (
             <label className="field">
