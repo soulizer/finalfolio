@@ -4341,7 +4341,16 @@ export function createApp({
 
     try {
       await fs.access(indexFile);
-      response.sendFile(indexFile);
+      const indexHtml = await fs.readFile(indexFile, 'utf8');
+      // The HTML changes on every build (asset hashes), so its hash doubles as a
+      // deploy id. The client renders it so a stale tab can be spotted at a glance.
+      const buildId = crypto.createHash('sha256').update(indexHtml).digest('hex').slice(0, 12);
+      const taggedHtml = indexHtml.includes('name="ff-build"')
+        ? indexHtml
+        : indexHtml.replace('</head>', `<meta name="ff-build" content="${buildId}">\n</head>`);
+      response.setHeader('Content-Type', 'text/html; charset=utf-8');
+      response.setHeader('Cache-Control', 'public, max-age=0');
+      response.send(taggedHtml);
     } catch (error) {
       next(error);
     }

@@ -185,6 +185,14 @@ function formatElapsed(seconds: number) {
   return minutes > 0 ? `${minutes}:${String(rest).padStart(2, '0')}` : `${rest}s`;
 }
 
+function readBuildId() {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="ff-build"]');
+  return typeof meta?.content === 'string' && meta.content.trim() ? meta.content.trim() : null;
+}
+
 export function AiArrangeDialog({
   maxPhotos: maxPhotosProp,
   onApply,
@@ -197,6 +205,7 @@ export function AiArrangeDialog({
   availableAssets,
 }: AiArrangeDialogProps) {
   const t = useT();
+  const [buildId] = useState(readBuildId);
   const [status, setStatus] = useState<AiStatus | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [photos, setPhotos] = useState<AiPhoto[]>([]);
@@ -555,7 +564,10 @@ export function AiArrangeDialog({
       <div className="ai-dialog surface-popover" role="dialog" aria-modal="true" aria-labelledby="ai-dialog-title">
         <header className="ai-dialog__header">
           <div>
-            <p className="eyebrow">{t('AI arrangement')}</p>
+            <p className="eyebrow">
+              {t('AI arrangement')}
+              {buildId ? ` · v${buildId.slice(0, 8)}` : ''}
+            </p>
             <h2 id="ai-dialog-title">{t('Pick photos, generate layout plans')}</h2>
           </div>
           <button

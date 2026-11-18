@@ -1808,11 +1808,14 @@ a:focus-visible {
 }
 
 .asset-tile.is-selected {
-  border-color: rgba(17, 17, 17, 0.24);
+  border-color: #111111;
   background:
     linear-gradient(180deg, rgba(247, 243, 237, 0.96), rgba(239, 234, 226, 0.88)),
     rgba(255, 255, 255, 0.84);
-  box-shadow: var(--pressed-card-shadow);
+  box-shadow:
+    inset 0 0 0 1px #111111,
+    inset 0 0 0 2px #ffffff,
+    inset 0 0 0 3px #111111;
 }
 
 .asset-tile__delete {
@@ -9823,12 +9826,16 @@ html[lang='zh-CN'] body {
   border-color: rgba(17, 17, 17, 0.26);
 }
 
-/* Selection reads on the tile edge itself: solid ink border plus a thick inset
-   line, so it stays obvious on any photo content. Nothing overflows the tile. */
+/* Selection reads on the tile edge itself: an ink border with a white separator
+   and an inner ink line, so it stays obvious on both dark and light photos.
+   Nothing is drawn outside the tile. */
 .ai-library-item.is-selected {
   border-color: #111111;
   background: #fff;
-  box-shadow: inset 0 0 0 2px #111111;
+  box-shadow:
+    inset 0 0 0 1px #111111,
+    inset 0 0 0 2px #ffffff,
+    inset 0 0 0 3px #111111;
 }
 
 .ai-library-item:disabled {
