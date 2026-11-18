@@ -9311,6 +9311,40 @@ html[lang='zh-CN'] body {
   line-height: 1.45;
 }
 
+.ai-dialog__error-block {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-left: 2px solid rgba(141, 58, 58, 0.55);
+  background: rgba(141, 58, 58, 0.06);
+}
+
+.ai-dialog__error-list {
+  margin: 0;
+  padding-left: 16px;
+  color: rgba(17, 17, 17, 0.82);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.ai-dialog__error-raw summary {
+  cursor: pointer;
+  color: rgba(17, 17, 17, 0.55);
+  font-size: 0.72rem;
+}
+
+.ai-dialog__error-raw code {
+  display: block;
+  margin-top: 4px;
+  color: rgba(17, 17, 17, 0.62);
+  font-size: 0.7rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .ai-dialog__error-detail {
   margin: 6px 0 0;
   padding: 8px 10px;

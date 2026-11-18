@@ -344,7 +344,11 @@ async function readJson<T>(input: RequestInfo | URL, init?: RequestInit): Promis
 
   if (!response.ok) {
     redirectToTermsIfNeeded(payload);
-    throw createApiError(payload, fallbackErrorMessage(response.status));
+    const error = createApiError(payload, fallbackErrorMessage(response.status)) as Error & {
+      status?: number;
+    };
+    error.status = response.status;
+    throw error;
   }
 
   return (payload ?? ({} as T)) as T;

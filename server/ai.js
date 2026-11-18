@@ -657,8 +657,10 @@ async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000 } 
         20_000,
         Math.min(45_000, Math.floor((deadline - Date.now()) / (providers.length - providerIndex))),
       );
+      const laterProviders = providers.length - providerIndex - 1;
+      const reserveForLater = 25_000 * laterProviders;
       const sliceMs = avgLatencyMs
-        ? Math.max(25_000, Math.min(75_000, Math.round(avgLatencyMs * 1.6)))
+        ? Math.max(25_000, Math.min(90_000, Math.round(avgLatencyMs * 1.4)))
         : equalShare;
       for (let attempt = 0; attempt < 2; attempt += 1) {
         const remaining = deadline - Date.now();
@@ -667,8 +669,9 @@ async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000 } 
         }
         const attemptTimeout = Math.min(
           config.requestTimeoutMs,
-          Math.max(5_000, Math.min(sliceMs, remaining)),
+          Math.max(15_000, Math.min(sliceMs, remaining - reserveForLater)),
         );
+        const attemptStartedAt = Date.now();
         try {
           const result = await callProvider(provider, messages, {
             timeoutMs: attemptTimeout,
@@ -690,10 +693,15 @@ async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000 } 
         } catch (error) {
           lastError = error;
           await recordProviderStat(provider.id, { ok: false });
-          if (attempt > 0 || !canRetry(error) || deadline - Date.now() < 10_000) {
+          const message = error instanceof Error ? error.message : '';
+          // A timeout already used its share of the budget: switch to the next
+          // provider immediately instead of retrying the same one.
+          const timedOut = /Timed out/i.test(message);
+          const failedFast = Date.now() - attemptStartedAt < 15_000;
+          if (attempt > 0 || !canRetry(error) || timedOut || !failedFast || deadline - Date.now() < 15_000) {
             break;
           }
-          await new Promise((resolve) => setTimeout(resolve, 700));
+          await new Promise((resolve) => setTimeout(resolve, 600));
         }
       }
       failures.push(

@@ -165,17 +165,122 @@ function localizeAiError(message: string, t: (key: string) => string) {
   return t(message);
 }
 
-function splitProviderErrorDetail(message: string): string | null {
-  if (!/^All AI providers failed/i.test(message)) {
-    return null;
+function localizeProviderReason(reason: string, t: (key: string) => string) {
+  const timeout = /^Timed out after (\d+)s\.?$/i.exec(reason);
+  if (timeout) {
+    return t('Timed out after %ss.').replace('%s', timeout[1]);
   }
-  return message.replace(/^All AI providers failed\.?\s*/, '').trim() || null;
+  if (/^Skipped because/i.test(reason) || /Skipped because/i.test(reason)) {
+    return t('Skipped: the earlier providers used the whole time budget.');
+  }
+  const http = /^HTTP (\d{3})/i.exec(reason);
+  if (http) {
+    return t('The provider returned HTTP %s.').replace('%s', http[1]);
+  }
+  if (/empty message/i.test(reason)) {
+    return t('The provider returned an empty response.');
+  }
+  if (/cut the response off/i.test(reason)) {
+    return t('The response was cut off before it finished.');
+  }
+  if (/did not include any plans/i.test(reason)) {
+    return t('The response did not contain any usable plans.');
+  }
+  if (/non-JSON/i.test(reason)) {
+    return t('The provider returned a non-JSON response.');
+  }
+  if (/fetch failed|ECONNRESET|ENOTFOUND|socket hang up/i.test(reason)) {
+    return t('The network connection to the provider failed.');
+  }
+  return reason;
+}
+
+type AiErrorReport = { headline: string; details: string[]; raw: string };
+
+function describeAiError(message: string, t: (key: string) => string): AiErrorReport {
+  const statusMatch = /\[HTTP (\d{3})\]$/i.exec(message);
+  if (statusMatch && !/^All AI providers failed/i.test(message)) {
+    const status = statusMatch[1];
+    const explanation =
+      status === '502' || status === '503' || status === '504'
+        ? t('The gateway or service failed before the AI providers answered.')
+        : t('The server rejected the request.');
+    return {
+      headline: t('The server returned HTTP %s.').replace('%s', status),
+      details: [explanation],
+      raw: message,
+    };
+  }
+  if (/Network connection failed|Failed to fetch|NetworkError/i.test(message)) {
+    return {
+      headline: t('Could not reach the server.'),
+      details: [t('The request was interrupted before any AI provider answered. Check the network and try again.')],
+      raw: message,
+    };
+  }
+
+  const providerFailure = /^All AI providers failed\.?\s*/i.test(message);
+  if (providerFailure) {
+    const rest = message.replace(/^All AI providers failed\.?\s*/i, '').trim();
+    const details = rest
+      .split('|')
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+      .map((entry) => {
+        const separator = entry.indexOf(':');
+        const name = separator > 0 ? entry.slice(0, separator).trim() : '';
+        const reason = separator > 0 ? entry.slice(separator + 1).trim() : entry;
+        return `${name}${name ? '：' : ''}${localizeProviderReason(reason, t)}`;
+      });
+    return { headline: t('AI arrangement failed on every provider.'), details, raw: message };
+  }
+
+  const headline = localizeAiError(message, t);
+  return { headline, details: [], raw: headline === message ? '' : message };
 }
 
 function isTransientAiError(error: unknown) {
   const message = error instanceof Error ? error.message : '';
   return /Network connection failed|Failed to fetch|NetworkError|temporarily unavailable|Request failed \(5\d\d\)|All AI providers failed/i.test(
     message,
+  );
+}
+
+function rawErrorMessage(error: unknown) {
+  if (!(error instanceof Error)) {
+    return '';
+  }
+  const status = (error as { status?: number }).status;
+  return status ? `${error.message} [HTTP ${status}]` : error.message;
+}
+
+function AiErrorReportView({
+  report,
+  t,
+}: {
+  report: AiErrorReport;
+  t: (key: string) => string;
+}) {
+  return (
+    <div className="ai-dialog__error-block" role="alert">
+      <p className="ai-dialog__error">{report.headline}</p>
+      {report.details.length ? (
+        <ul className="ai-dialog__error-list">
+          {report.details.map((detail) => (
+            <li key={detail}>{detail}</li>
+          ))}
+        </ul>
+      ) : null}
+      {report.raw ? (
+        <details className="ai-dialog__error-raw">
+          <summary>{t('Technical details')}</summary>
+          <code>{report.raw}</code>
+        </details>
+      ) : null}
+      <p className="ai-dialog__error-hint">
+        {t('If this keeps failing, check the AI provider settings (endpoint URL, model, and API key).')}
+      </p>
+    </div>
   );
 }
 
@@ -221,9 +326,6 @@ export function AiArrangeDialog({
   const [bundle, setBundle] = useState<AiPlanBundle | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // Per-provider failure detail straight from the server: when the whole pool
-  // is down the generic line alone cannot tell an admin what to fix.
-  const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [sourcePanel, setSourcePanel] = useState<'none' | 'upload' | 'url'>('none');
@@ -274,7 +376,7 @@ export function AiArrangeDialog({
       })
       .catch((statusFetchError) => {
         if (!cancelled) {
-          setStatusError(statusFetchError instanceof Error ? localizeAiError(statusFetchError.message, t) : t('Unable to load AI settings.'));
+          setStatusError(rawErrorMessage(statusFetchError) || t('Unable to load AI settings.'));
         }
       });
 
@@ -474,7 +576,6 @@ export function AiArrangeDialog({
 
     setPhase('generating');
     setError(null);
-    setErrorDetail(null);
     setBundle(null);
     setSelectedPlanId(null);
     const controller = new AbortController();
@@ -508,8 +609,11 @@ export function AiArrangeDialog({
       try {
         response = await requestPlans();
       } catch (firstError) {
-        const failedFast = Date.now() - attemptStartedAt < 15_000;
-        if (controller.signal.aborted || !failedFast || !isTransientAiError(firstError)) {
+        // Retry once for transient failures, including a slow failure, but never
+        // double a request that already spent the full pool budget.
+        const spentMs = Date.now() - attemptStartedAt;
+        const worthRetrying = spentMs < 75_000;
+        if (controller.signal.aborted || !worthRetrying || !isTransientAiError(firstError)) {
           throw firstError;
         }
         await new Promise((resolve) => window.setTimeout(resolve, 900));
@@ -527,9 +631,9 @@ export function AiArrangeDialog({
         setPhase('select');
         return;
       }
-      const rawMessage = generateError instanceof Error ? generateError.message : '';
-      setError(generateError instanceof Error ? localizeAiError(rawMessage, t) : t('AI arrangement failed. Try again.'));
-      setErrorDetail(splitProviderErrorDetail(rawMessage));
+      // Keep the raw server message: the renderer turns it into a readable,
+      // per-provider explanation, and the raw text stays available for support.
+      setError(rawErrorMessage(generateError) || t('AI arrangement failed. Try again.'));
       setPhase('select');
     } finally {
       abortRef.current = null;
@@ -547,9 +651,7 @@ export function AiArrangeDialog({
       await onApply(bundle, selectedPlan, photos);
       onClose();
     } catch (applyError) {
-      const applyMessage = applyError instanceof Error ? applyError.message : '';
-      setError(applyError instanceof Error ? localizeAiError(applyMessage, t) : t('Unable to apply this AI plan.'));
-      setErrorDetail(splitProviderErrorDetail(applyMessage));
+      setError(rawErrorMessage(applyError) || t('Unable to apply this AI plan.'));
       setPhase('results');
     }
   }
@@ -558,6 +660,9 @@ export function AiArrangeDialog({
     abortRef.current?.abort();
     setPhase('select');
   }
+
+  const errorReport = error ? describeAiError(error, t) : null;
+  const statusReport = statusError ? describeAiError(statusError, t) : null;
 
   return (
     <div className="ai-dialog-overlay" role="presentation">
@@ -587,9 +692,9 @@ export function AiArrangeDialog({
           </button>
         </header>
 
-        {statusError ? (
+        {statusReport ? (
           <div className="ai-dialog__body ai-dialog__body--message">
-            <p className="ai-dialog__error">{t(statusError)}</p>
+            <AiErrorReportView report={statusReport} t={t} />
           </div>
         ) : phase === 'generating' ? (
           <div className="ai-dialog__body ai-dialog__body--message">
@@ -666,15 +771,7 @@ export function AiArrangeDialog({
                   {t('Generated by %s').replace('%s', bundle.providerName)}
                 </p>
               ) : null}
-              {error ? <p className="ai-dialog__error" role="alert">{t(error)}</p> : null}
-              {errorDetail ? (
-                <div className="ai-dialog__error-detail">
-                  <p>{errorDetail}</p>
-                  <p className="ai-dialog__error-hint">
-                    {t('If this keeps failing, check the AI provider settings (endpoint URL, model, and API key).')}
-                  </p>
-                </div>
-              ) : null}
+              {errorReport ? <AiErrorReportView report={errorReport} t={t} /> : null}
             </div>
             <footer className="ai-dialog__footer">
               <button
@@ -956,15 +1053,7 @@ export function AiArrangeDialog({
                 {quotaExhausted ? (
                   <p className="ai-dialog__error">{t('You have no AI arrangement uses left right now.')}</p>
                 ) : null}
-                {error ? <p className="ai-dialog__error" role="alert">{t(error)}</p> : null}
-                {errorDetail ? (
-                  <div className="ai-dialog__error-detail">
-                    <p>{errorDetail}</p>
-                    <p className="ai-dialog__error-hint">
-                      {t('If this keeps failing, check the AI provider settings (endpoint URL, model, and API key).')}
-                    </p>
-                  </div>
-                ) : null}
+                {errorReport ? <AiErrorReportView report={errorReport} t={t} /> : null}
               </section>
             </div>
             <footer className="ai-dialog__footer">

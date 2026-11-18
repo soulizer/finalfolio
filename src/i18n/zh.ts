@@ -1885,6 +1885,21 @@ const zh: Record<string, string> = {
   'Title font': '标题字体',
   'Deck font': '导语字体',
   'Caption font': '图注字体',
+  'AI arrangement failed on every provider.': '所有 AI 接口都失败了，原因如下：',
+  'Timed out after %ss.': '超时（%s 秒）',
+  'Skipped: the earlier providers used the whole time budget.': '未轮到：前面的接口用完了总时长',
+  'The provider returned HTTP %s.': '接口返回 HTTP %s',
+  'The provider returned an empty response.': '接口返回了空内容',
+  'The response was cut off before it finished.': '响应被截断（没有写完）',
+  'The response did not contain any usable plans.': '响应里没有可用的方案',
+  'The provider returned a non-JSON response.': '接口返回的不是 JSON',
+  'The network connection to the provider failed.': '无法连接到该接口（网络失败）',
+  'Technical details': '技术详情（可复制）',
+  'The server returned HTTP %s.': '服务器返回 HTTP %s',
+  'The gateway or service failed before the AI providers answered.': '网关或服务在 AI 接口响应前就失败了（不是 AI 接口本身的问题）',
+  'The server rejected the request.': '服务器拒绝了这次请求',
+  'Could not reach the server.': '无法连接到服务器',
+  'The request was interrupted before any AI provider answered. Check the network and try again.': '请求在 AI 接口响应前就中断了，请检查网络后重试。',
 };
 
 
