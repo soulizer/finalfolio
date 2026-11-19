@@ -3746,12 +3746,20 @@ a:focus-visible {
 .magazine-diptych,
 .magazine-panorama {
   grid-template-rows: auto minmax(0, 1fr) auto;
+  /* These four templates put the caption in a footer row directly after the
+     frames. Without a row gap the caption sat flush against the image, which
+     reads as a layout mistake rather than a caption. */
+  gap: var(--page-rail-gap);
 }
 
 .magazine-mosaic,
 .magazine-triptych,
 .magazine-custom {
   grid-template-rows: minmax(0, 1fr);
+}
+
+.magazine-mosaic {
+  gap: var(--page-rail-gap);
 }
 
 .magazine-folio__header,

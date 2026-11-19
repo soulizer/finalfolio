@@ -253,6 +253,8 @@
 | 首页滚动揭示依赖 IntersectionObserver，失败时内容永久透明 | 无兜底、无 reduced-motion/打印处理 | 增加 1.2 s 兜底揭示、无 Observer 时直接显示、reduced-motion 与打印强制可见 |
 | 排版卡片名称被截成"Editori… Split" | 同时声明 `nowrap` 与 `normal`，且行数截断写法无效 | 改为两行 `line-clamp` + 词边界换行 |
 | 死代码与重复规则 | `.editor-project-bar*`、`.asset-tile__delete/__action`、重复 `.admin-ai-limits` 等 | 已在前一轮清理；本轮继续删除 `.magazine-custom__label` 与无用 transform 过渡 |
+| AI 方案保存提示 "Page title is required"（方案明明有标题） | 模型返回空标题；我们补齐奇数页/未用照片时生成的页也没有标题 | 按模板补本地化标题（封面→"未命名作品集"、主图页→"让一张图撑满整页"等）；奇数页与补图页统一走 `createEmptyPlanPage`；应用前再兜底；新增"保存成功"用例 |
+| 图注紧贴图片，像排版错误 | `.magazine-folio/.grid/.diptych/.panorama` 的网格没有行间距，图注与图框 0mm；mosaic 同样 | 统一 `gap: var(--page-rail-gap)`（4mm）；全模板实测图注间距 ≥4mm、页面溢出 0 |
 
 ## R3. 设计令牌与复用组件清单
 

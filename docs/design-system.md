@@ -68,6 +68,10 @@ optical tweaks but new rules should land on the scale.
 - Panel padding: **12–14px**.
 - Page chip padding: **12px**, plus the 1px border, puts the action row **13px**
   from the chip edge.
+- A caption that follows a frame keeps at least `--page-rail-gap` (4mm) from the
+  image. If the caption needs to sit on the image instead, it must be a
+  translucent overlay with its own contrast treatment — never flush against the
+  frame edge.
 - Thumbnail corner actions sit **13px** from the top and right edges so their
   optical inset matches the page-chip actions.
 

@@ -1,6 +1,8 @@
+import { translate } from '../i18n';
 import {
   createPageDraft,
   getPageSlotOrder,
+  pageStarters,
   templateMeta,
 } from './demoData';
 import {
@@ -80,8 +82,28 @@ function pageCapacity(page: AiPlanPage) {
   return planPageCapacity(page.template);
 }
 
+/**
+ * Every page must carry a title: the server rejects projects with empty page
+ * titles, and a blank heading is a broken page for the reader. Providers
+ * sometimes omit the title, and the padding pages we add ourselves (odd page
+ * count, unused photos) have no model copy at all — both get the localized
+ * starter title for their template instead.
+ */
+function defaultPlanPageTitle(template: TemplateId) {
+  return translate(pageStarters[template]?.title ?? 'Untitled page');
+}
+
 function createEmptyPlanPage(template: TemplateId, theme: PageThemeId): AiPlanPage {
-  return { template, theme, kicker: '', title: '', deck: '', body: '', caption: '', assetIndexes: [] };
+  return {
+    template,
+    theme,
+    kicker: '',
+    title: defaultPlanPageTitle(template),
+    deck: '',
+    body: '',
+    caption: '',
+    assetIndexes: [],
+  };
 }
 
 /**
@@ -181,7 +203,7 @@ function normalizePage(value: unknown, imageCount: number): AiPlanPage | null {
     template: template as TemplateId,
     theme,
     kicker: sanitizeString(page.kicker),
-    title: sanitizeString(page.title),
+    title: sanitizeString(page.title) || defaultPlanPageTitle(template as TemplateId),
     deck: sanitizeString(page.deck),
     body: sanitizeString(page.body),
     caption: sanitizeString(page.caption),
@@ -213,16 +235,9 @@ export function normalizeAiPlanBundle(value: unknown, prompt: string, imageCount
       if (pages.length % 2 === 1 && pages.length < PROJECT_PAGE_LIMIT) {
         const lastPage = pages[pages.length - 1];
         const closingAssetIndex = [...lastPage.assetIndexes].reverse().find((index) => index >= 0 && index < imageCount);
-        pages.push({
-          template: 'folio',
-          theme: lastPage.theme,
-          kicker: '',
-          title: '',
-          deck: '',
-          body: '',
-          caption: '',
-          assetIndexes: closingAssetIndex === undefined ? [] : [closingAssetIndex],
-        });
+        const closingPage = createEmptyPlanPage('folio', lastPage.theme);
+        closingPage.assetIndexes = closingAssetIndex === undefined ? [] : [closingAssetIndex];
+        pages.push(closingPage);
       }
 
       const filledPages = [...ensureAllPhotosUsed(pages, imageCount)];
@@ -291,7 +306,7 @@ export function applyAiPlanToProject({
     return createPageDraft(page.template, createPageId(), {
       theme: page.theme,
       kicker: page.kicker,
-      title: page.title,
+      title: page.title.trim() || defaultPlanPageTitle(page.template),
       deck: page.deck,
       body: page.body,
       caption: page.caption,

@@ -180,6 +180,42 @@ test('AI plans are padded to an even page count', async ({ page }) => {
   await expect(firstPlan).toContainText('4 pages');
 });
 
+test('AI plans without titles still produce saveable pages', async ({ page }) => {
+  const untitledBundle = {
+    ...bundle,
+    plans: [
+      {
+        ...bundle.plans[0],
+        id: 'untitled-plan',
+        pageCount: 3,
+        pages: [
+          { ...planPages[0], title: '' },
+          { ...planPages[1], title: '' },
+          { ...planPages[0], title: '' },
+        ],
+      },
+    ],
+  };
+  await page.route('**/api/ai/status', (route) => route.fulfill({ json: status }));
+  await page.route('**/api/ai/plans', (route) => route.fulfill({ json: untitledBundle }));
+  await signIn(page, '/editor');
+
+  await page.getByRole('button', { name: 'Lay out with AI' }).click();
+  const dialog = page.locator('.ai-dialog');
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Upload from device' }).click();
+  await dialog.locator('input[type="file"]').setInputFiles('public/icon-192.png');
+  await page.getByRole('button', { name: 'Generate plans' }).click();
+  await page.getByRole('button', { name: 'Apply this plan' }).click();
+  await expect(dialog).toHaveCount(0);
+
+  // The empty titles from the provider (and the padding page we add) must be
+  // filled before the project reaches the server, which rejects empty titles.
+  await expect(page.locator('.panel-note--status')).not.toContainText('Page title is required');
+  await page.getByRole('button', { name: 'Save folio' }).click();
+  await expect(page).toHaveURL(/\/editor\/[a-z0-9_-]+$/, { timeout: 20_000 });
+});
+
 test('AI arrangement asks guests to sign in first', async ({ page }) => {
   await page.goto('/editor');
   await expect(page.getByRole('button', { name: 'Lay out with AI' })).toBeVisible();
