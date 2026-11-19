@@ -588,8 +588,8 @@ a:focus-visible {
 .hero-proof__grid {
   position: relative;
   overflow: hidden;
-  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 52px, #000 calc(100% - 18px), transparent 100%);
-  mask-image: linear-gradient(90deg, transparent 0, #000 52px, #000 calc(100% - 18px), transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 84px, #000 calc(100% - 22px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 84px, #000 calc(100% - 22px), transparent 100%);
 }
 
 
@@ -7251,8 +7251,42 @@ html:lang(zh) .magazine-page h2,
 html:lang(zh-CN) .magazine-page h2,
 :lang(zh) .magazine-page h2,
 :lang(zh-CN) .magazine-page h2 {
-  line-height: 1.18;
+  line-height: 1.22;
   letter-spacing: -0.01em;
+}
+
+/* CJK display type: Latin headings can sit at 1.04–1.08, but stacked Chinese
+   lines need air between them. Open the leading only when Chinese is active so
+   the Latin layout keeps its tight editorial rhythm. */
+html[lang='zh-CN'] .site-main h1,
+html[lang='zh-CN'] .site-main h2,
+html[lang='zh-CN'] .site-main h3 {
+  line-height: 1.26;
+  letter-spacing: 0;
+}
+
+html[lang='zh-CN'] .hero h1 {
+  /* 9.4ch is a Latin measure; Chinese glyphs are one em wide, so the same box
+     wrapped the headline into three ragged lines. Six characters per line
+     gives the intended two-line break. */
+  max-width: 6.05em;
+  line-height: 1.18;
+  letter-spacing: 0;
+}
+
+/* The folio preview keeps its own printed type scale. */
+html[lang='zh-CN'] .site-main .magazine-page h1,
+html[lang='zh-CN'] .site-main .magazine-page h2,
+html[lang='zh-CN'] .site-main .magazine-page h3 {
+  line-height: 1.22;
+}
+
+html[lang='zh-CN'] .product-brief-card strong,
+html[lang='zh-CN'] .hero-proof__caption strong,
+html[lang='zh-CN'] .browser-stage__toolbar strong,
+html[lang='zh-CN'] .browser-stage__canvas-copy strong,
+html[lang='zh-CN'] .admin-stat-card strong {
+  line-height: 1.4;
 }
 
 @media (max-width: 980px) {

@@ -76,6 +76,10 @@ optical tweaks but new rules should land on the scale.
 - UI chrome (buttons, labels, tags, eyebrows, tables, hints) always uses
   `--font-ui`. Monospace is reserved for values where digit alignment matters:
   the zoom input, AI elapsed time, page numbers and the captcha code.
+- CJK display type needs more leading than Latin: `html[lang='zh-CN']`
+  headings use 1.26 (hero 1.18) while the Latin layout keeps 1.04–1.08.
+  A Chinese headline must not wrap at a Latin `ch` measure: the hero uses a
+  6.05em box so six characters fit per line; `ch` is a Latin digit width.
 - The editorial serif is only used inside `.magazine-page`. Every text node on
   a page must carry a role class so the four project fonts reach it:
   title, deck, caption (kickers and small labels), body.
