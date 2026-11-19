@@ -260,4 +260,37 @@ test('editor controls share one dense control height', async ({ page }) => {
         .map((element) => Math.round(element.getBoundingClientRect().height)),
     );
   expect([...new Set(heights)]).toEqual([36]);
+
+  // Fields inside the dense sidebar resolve to the same tier as its buttons,
+  // because the sidebar re-scopes --control-height instead of re-declaring it.
+  const fieldHeights = await page
+    .locator('.editor-sidebar .field input, .editor-sidebar .field select')
+    .evaluateAll((elements) =>
+      elements
+        .filter((element) => element.offsetParent !== null)
+        .map((element) => Math.round(element.getBoundingClientRect().height)),
+    );
+  expect(fieldHeights.length).toBeGreaterThan(0);
+  expect([...new Set(fieldHeights)]).toEqual([36]);
+
+  // Panel chevrons are the one icon tier: 24px everywhere.
+  const toggleHeights = await page.locator('.editor-panel__toggle').evaluateAll((elements) =>
+    elements
+      .filter((element) => element.offsetParent !== null)
+      .map((element) => Math.round(element.getBoundingClientRect().height)),
+  );
+  expect([...new Set(toggleHeights)]).toEqual([24]);
+
+  // Every single-line field in the editor shares one outline token.
+  const borders = await page
+    .locator(
+      ".editor-shell input:not([type='checkbox']):not([type='range']):not([type='file']):not([type='color']), .editor-shell select",
+    )
+    .evaluateAll((elements) =>
+      elements
+        .filter((element) => element.offsetParent !== null)
+        .map((element) => getComputedStyle(element).borderTopColor),
+    );
+  expect(borders.length).toBeGreaterThan(0);
+  expect([...new Set(borders)]).toEqual(['rgba(17, 17, 17, 0.16)']);
 });

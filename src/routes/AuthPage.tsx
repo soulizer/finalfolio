@@ -445,7 +445,7 @@ export function AuthPage() {
                     )}
                     <button
                       type="button"
-                      className="button button--ghost button--small auth-captcha__refresh"
+                      className="button button--ghost auth-captcha__refresh"
                       disabled={busy || captchaBusy}
                       onClick={() => void loadCaptcha()}
                     >

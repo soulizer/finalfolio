@@ -1385,7 +1385,12 @@ try {
     assert.match(styles, /\.page-chip--theme-warm-beige/);
     assert.match(styles, /\.page-chip--theme-butter-cream/);
     assert.match(styles, /\.editor-collapsible-meta/);
-    assert.match(styles, /\.editor-project-url/);
+    assert.match(styles, /\.editor-panel--project-actions/);
+    assert.doesNotMatch(styles, /\.editor-project-bar/);
+    // One control scale: xs 24 / sm 36 / default 40, and one field outline.
+    assert.match(styles, /--control-height-xs: 24px;/);
+    assert.match(styles, /--field-border: 1px solid var\(--field-border-color\);/);
+    assert.doesNotMatch(styles, /[\n;{]border(-color)?:[^;]*rgba\(17, 17, 17, 0\.16\)/);
     assert.match(styles, /\.editor-button-grid/);
     assert.match(styles, /\.page-chip__action span/);
     assert.match(styles, /\.editor-panel__section/);
