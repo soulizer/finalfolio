@@ -164,10 +164,12 @@ export function AdminOverviewPanel({
         <section className="editor-panel admin-panel">
           <div className="editor-panel__heading">
             <div>
-              <p className="eyebrow">{t('Failures')}</p>
-              <h2>{t('Error pressure')}</h2>
+              <p className="eyebrow">{t('Last 24 hours')}</p>
+              <h2>{t('Activity by hour')}</h2>
             </div>
-            <span className="panel-tag">{summary.failures.length}</span>
+            <span className="panel-tag">
+              {countLabel(summary.failures.length, '1 failure', '%s failures')}
+            </span>
                     <PanelCollapseToggle />
           </div>
           {activeHourlyTrend.length ? (

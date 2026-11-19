@@ -219,3 +219,91 @@
 | 容器 | `finalfolio-web` healthy，非 root（uid 1000） |
 | AI 预算 | 生产 `data/ai/config.json` `requestTimeoutMs` 120000 → **180000** |
 | 校验 | 线上 bundle 含中文“指定素材后由 AI 完成整体排版。”与新令牌 `--control-height-xs`、`.editor-project-action__hint` |
+
+---
+
+# 第二轮：全站审计与一致性整改（2026-11-19 晚）
+
+本轮以"用户点名的问题只是入口"为前提，重新审计了首页、编辑器、账户、后台的全部可见界面和交互，并把同类问题一次性收敛到共享组件与令牌。
+
+## R1. 问题清单、根因与修复
+
+| # | 问题 | 根因 | 修复 | 证据 |
+| --- | --- | --- | --- | --- |
+| 1 | 首页中文像机翻 | 英文源文案本身是内部说明（"governance language"、"one-shot canvas"、"the product falls back to…"），中文逐句直译 | 重写英文源 + 中文重写（默认值同步 `src/product/defaults.ts`、`server/site.js`，客户端硬编码文案同步），术语统一 | `docs/evidence/home-zh.png` |
+| 2 | 衬线/无衬线混用、圆角不统一 | UI 标签 41 处使用等宽字体；圆角散落 3–32px 共 18 种取值 | UI 全部改 `--font-ui`（等宽只保留缩放值、AI 计时、页码、验证码）；圆角收敛为 4/8/12/20/28/999 六档令牌 | `docs/evidence/editor-after.png`；§R2 |
+| 3 | 使用流程右侧"页面顺序"激活后右移 | `.browser-stage__rail-card.is-active { transform: translateX(4px) }` | 删除位移，选中态改用描边 + 内环 + 表面变化；同时移除已无用的 transform 过渡 | `tests/e2e/consistency.spec.ts` 用例 1（实测 `transform: none`） |
+| 4 | 默认选中"封面"但"编辑排版"禁用 | 只有已保存的自定义排版才能编辑（`activeCustomLayout`） | 任何选中排版都可编辑：内置排版按当前页面实测几何生成自定义副本（`layoutFromPage.ts`），应用后保留照片与文案 | 用例 3（按钮可用、对话框含真实 Hero 图框）；`docs/evidence/layout-edit-dialog.png` |
+| 5 | 排版卡片同时出现介绍气泡和名称气泡 | 按钮带原生 `title`，外层又有自定义悬停预览 | 移除原生 `title`（名称已在卡片内可见），只保留一个预览 | 用例 2（全部卡片 `title=null`，预览仅 1 个） |
+| 6 | "用作新项目"按钮不是统一轻拟物风格 | 使用了 `button--danger-ghost`（危险色） | 改为共享 `button--ghost`；破坏性由二次确认承担 | 用例 6（class 与 4px 圆角断言） |
+| 7 | 改字体后预览有时不变 | 封面/瀑布页的导语是无角色类的 `<p>`；封面导语甚至用 kicker 样式；kicker 的字体声明被页面兜底规则覆盖 | 所有文本节点带角色类（deck/caption/body/title），kicker 走 caption 角色；封面导语使用 deck 角色与真实导语样式 | 用例 5（切换字体后 computed font-family 立即变化） |
+| 8 | "页面内容"里收起画框会收起整个面板 | 子区块复用了 `PanelCollapseToggle`，委托逻辑总是收起最近的 `.editor-panel` | 新增共享 `EditorSubsection`（原生 `<details>` + 统一表皮），用于"图片与画框""图片圆角""作品集信息"；不会触发面板折叠 | 用例 4（子区块关闭后父面板仍展开、文字区仍可见）；`docs/evidence/content-panel.png` |
+
+## R2. 审计中主动发现并修复的问题
+
+| 问题 | 根因 | 修复 |
+| --- | --- | --- |
+| 自定义排版的名称被印在页面上（"Editorial Split"） | `.magazine-custom__label` 直接渲染模板名 | 删除该标签；排版名属于库元数据 |
+| 内置排版转自定义后文字溢出/导语被裁 | 自定义文本框字号按视口 `vw` 计算，与文本框高度无关；文本框还带标签和固定内边距 | 文本框改为容器查询单位（`cqh`），标题/导语/正文随文本框高度缩放；实测溢出 0 |
+| 保存状态行重复同一句 | 生命周期把草稿提示同时写入 `message` 和兜底状态 | 草稿提示只由兜底状态输出；动作消息与保存提示合并时先翻译再拼接，避免混入英文 |
+| 中文界面底部声明仍是英文 | 组件字符串已换新，词条未同步 | 同步英文源与 `zh.ts` |
+| 分享链接输入框占位文字被截断 | 用整句占位符填充窄输入框 | 改为"保存后生成链接。"等短句 |
+| 后台"错误情况"面板显示的是每小时事件总数，标题却叫 Failures | 面板把 `bucket.total` 当主数值 | 标题改为"最近 24 小时 / 每小时活动"，徽标显示失败次数 |
+| 账户/后台头图文案是内部术语 | "information architecture and governance language" 等 | 改为"你的项目、照片与账户。""管理整个产品。" |
+| 首页滚动揭示依赖 IntersectionObserver，失败时内容永久透明 | 无兜底、无 reduced-motion/打印处理 | 增加 1.2 s 兜底揭示、无 Observer 时直接显示、reduced-motion 与打印强制可见 |
+| 排版卡片名称被截成"Editori… Split" | 同时声明 `nowrap` 与 `normal`，且行数截断写法无效 | 改为两行 `line-clamp` + 词边界换行 |
+| 死代码与重复规则 | `.editor-project-bar*`、`.asset-tile__delete/__action`、重复 `.admin-ai-limits` 等 | 已在前一轮清理；本轮继续删除 `.magazine-custom__label` 与无用 transform 过渡 |
+
+## R3. 设计令牌与复用组件清单
+
+| 类别 | 令牌/组件 | 说明 |
+| --- | --- | --- |
+| 控件高度 | `--control-height-xs/sm/默认` 24/36/40 | 密集区域重定令牌，不重写高度 |
+| 圆角 | `--radius-xs/sm/md/lg/xl/pill` + `--radius`/`--surface-radius`/`--control-radius` | 六档收敛全部界面圆角 |
+| 间距 | `--space-1…6`（4/8/12/16/20/24） | 新规则必须落在此刻度 |
+| 描边 | `--field-border(-color)` | 16 处硬编码全部替换，静态守卫禁止回退 |
+| 字体 | `--font-ui` / `--font-display` / `--page-font-*` | UI 无衬线；衬线仅作品内容；四个角色覆盖全部文本节点 |
+| 按钮 | `.button` + `--primary/--ghost/--small/--micro` | 统一的暖色轻拟物材质，无 hover 位移 |
+| 输入 | 共享字段规则 + `:where()` 高度兜底 | 含无 `type` 属性输入框 |
+| 面板 | `.editor-panel` + `PanelCollapseToggle` | 全站一致的折叠头 |
+| 子区块 | `EditorSubsection` / `.editor-subsection` | 作品集信息、图片圆角、图片与画框 |
+| 模态 | `.surface-popover` / 确认对话框材质 | AI 对话、删除确认、导出中心同源 |
+| 浮层 | portal + 视口夹取 | 颜色选择器、排版预览 |
+| 颜色 | `--page-paper`、`--ink`、`--muted`、`--field-border-color` | 禁止新增一次性灰色 |
+
+## R4. 样式一致性检查结果
+
+- 控件高度：侧栏按钮/输入/下拉 36、独立字段 40、图标控件 24（第二轮复测通过）。
+- 圆角：`button 4 / panel 12 / subsection 8 / chip 4 / toggle 4`，无 3–32px 散值残留（50%、1–2px 缩略图、内容圆角除外）。
+- 字体：等宽仅 4 处（缩放值、AI 计时、页码、验证码）；UI 其余全部无衬线。
+- 溢出：390/768/1440 × 浅色/深色 × 5 个路由，横向溢出 0，控制台错误 0。
+- 滚动揭示：全部 `[data-reveal]` 最终可见（隐藏数 0）。
+
+## R5. 性能与稳定性
+
+- 新增的 `EditorSubsection` 与测量式排版副本均为纯前端同步逻辑，无额外请求。
+- 自定义文本使用容器查询单位，避免按视口缩放导致编辑器与导出一致性问题。
+- 首页揭示兜底不增加轮询：一次性定时器 + 观察器，路由切换时清理。
+- 全量回归：41 个 Playwright 用例（新增 7 个一致性用例）1.7 分钟通过。
+
+## R6. 参考与差距对照（本轮新增）
+
+| 参考 | 采纳 | 差距/未采纳 |
+| --- | --- | --- |
+| Figma / Canva 的"编辑当前选中对象"模式 | 选中任何排版即可"编辑排版"，不再要求先保存为自定义排版 | 未做无限画布；内置排版转自定义副本而非原地改代码 |
+| Notion / Linear 的二级 disclosure | 用原生 `<details>` 做子区块，父面板不受影响 | 未做动画高度过渡（保持即时开合，减少抖动） |
+| Radix 的浮层单一来源 | 一个预览、一个颜色浮层，移除原生 tooltip 叠加 | 未引入依赖 |
+| Uppy 的错误保留 | URL 导入失败保留输入与原链接，可直接重试 | 未做断点续传协议 |
+| Primer 的令牌纪律 | 圆角、间距、描边全部令牌化并加静态守卫 | 未引入完整主题系统 |
+
+## R7. 剩余待验证项
+
+1. 生产环境的站点文案是否被后台覆盖：已确认 `data/site/site-content.json` 不存在，部署后直接使用新默认值。
+2. 自定义排版转为内置副本的几何为"实测近似"：封面/随笔等单文本区页面几乎一致；多文本区页面（如网格）会把正文与图注收进同一文本区，属于自定义排版的已知边界。
+3. 深色模式仍非产品特性，仅在深色系统偏好下验证不被反转。
+
+## R8. 本轮验证与部署
+
+- `tsc --noEmit`、`vite build`、`validate:mvp`、41/41 Playwright 全部通过。
+- 新增 `tests/e2e/consistency.spec.ts`（7 个用例）覆盖上述 1、3、4、5、6、7、8 号问题与状态行重复。
+- 提交与 CI 状态见仓库；部署后需复核 `https://finalfolio.com/api/site-content` 返回新文案。

@@ -569,7 +569,7 @@ export function AccountPage() {
                 <div className="editor-panel__heading">
                   <div>
                     <p className="eyebrow">{t('Overview')}</p>
-                    <h2>{t('Your working set')}</h2>
+                    <h2>{t('Your library at a glance')}</h2>
                   </div>
                   <span className="panel-tag">{t('Loading')}</span>
                                 <PanelCollapseToggle />

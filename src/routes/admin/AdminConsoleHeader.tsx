@@ -37,9 +37,9 @@ export function AdminConsoleHeader({
       <div className="editor-panel__heading">
         <div>
           <p className="eyebrow">{t('Admin')}</p>
-          <h2>{t('Operations console for product governance.')}</h2>
+          <h2>{t('Run the product.')}</h2>
           <p className="panel-note admin-hero__lede">
-            {t('Switch between focused backend views instead of cramming overview, folio governance, asset governance, and product             settings into one scrolling page.')}</p>
+            {t('Accounts, projects, photos, content and storage — one focused view at a time.')}</p>
         </div>
         <div className="admin-hero__meta">
           <span className="panel-tag">

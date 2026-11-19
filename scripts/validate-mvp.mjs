@@ -1475,7 +1475,7 @@ try {
     assert.doesNotMatch(accountPage, /function AccountInlineField/);
     assert.doesNotMatch(accountPage, /const ACCOUNT_SECTIONS/);
     assert.doesNotMatch(accountPage, /function normalizeAccountSection/);
-    assert.doesNotMatch(accountPage, /Manage your own projects, uploads, and identity\./);
+    assert.doesNotMatch(accountPage, /Your projects, photos and account\./);
     assert.doesNotMatch(accountPage, /Search projects/);
     assert.doesNotMatch(accountPage, /Search uploads/);
     assert.doesNotMatch(accountPage, /My templates/);
@@ -1516,7 +1516,7 @@ try {
     assert.match(adminPage, /<AdminStoragePanel/);
     assert.match(adminPage, /<AdminLoadingState/);
     assert.match(adminPage, /<AdminUnavailableState/);
-    assert.doesNotMatch(adminPage, /Operations console/);
+    assert.doesNotMatch(adminPage, /Run the product\./);
     assert.doesNotMatch(adminPage, /async function loadAdminData/);
     assert.doesNotMatch(adminPage, /const filteredProjects = useMemo/);
     assert.doesNotMatch(adminPage, /fetchAdminSummary/);
@@ -1546,7 +1546,7 @@ try {
     assert.doesNotMatch(adminPage, /Operational snapshot/);
     assert.doesNotMatch(adminPage, /Featured folio on landing page/);
     assert.doesNotMatch(adminPage, /Recent activity/);
-    assert.doesNotMatch(adminPage, /Error pressure/);
+    assert.doesNotMatch(adminPage, /Activity by hour/);
     assert.doesNotMatch(adminPage, /Live counts, failures, and governance controls will load in place\./);
     assert.doesNotMatch(adminPage, /editor-empty-state/);
     assert.doesNotMatch(adminPage, /Recent errors and activity/);
@@ -1830,7 +1830,10 @@ try {
     assert.match(editorPage, /from '\.\/editor\/EditorShellStates'/);
     assert.match(styles, /\.loading-tab \{\s+display: block;\s+flex: none;\s+height: 0\.42rem;/);
     assert.match(styles, /\.loading-field \{\s+display: flex;\s+align-items: center;\s+min-height: 0;/);
-    assert.match(styles, /\.issue-viewer__placeholder-page \{\s+min-height: clamp\(280px, 48vh, 520px\);\s+border-radius: 18px;/);
+    assert.match(
+      styles,
+      /\.issue-viewer__placeholder-page \{\s+min-height: clamp\(280px, 48vh, 520px\);\s+border-radius: var\(--radius-lg\);/,
+    );
     assert.match(editorProjectLifecycle, /export function buildDraftProjectHydration/);
     assert.match(editorProjectLifecycle, /export function normalizeEditorProjectRecord/);
     assert.match(editorProjectPersistence, /export function applyServerProjectRecordState/);
@@ -1912,11 +1915,11 @@ try {
     assert.match(editorUseEditorUiState, /commitZoomInputValue/);
     assert.match(editorUseEditorUiState, /handleCropMetricsChange/);
     assert.match(accountConsoleHeader, /export function AccountConsoleHeader/);
-    assert.match(accountConsoleHeader, /Manage your own projects, uploads, and identity\./);
+    assert.match(accountConsoleHeader, /Your projects, photos and account\./);
     assert.match(accountConsoleHeader, /admin-section-nav/);
     assert.match(accountConsoleHeader, /getUserPrimaryIdentity/);
     assert.match(accountOverviewPanel, /export function AccountOverviewPanel/);
-    assert.match(accountOverviewPanel, /Your working set/);
+    assert.match(accountOverviewPanel, /Your library at a glance/);
     assert.match(accountOverviewPanel, /Continue editing/);
     assert.match(accountOverviewPanel, /Latest account actions/);
     assert.match(accountProjectsPanel, /export function AccountProjectsPanel/);
@@ -1996,7 +1999,7 @@ try {
     assert.match(adminUseAdminShellState, /Sign in with an admin account/);
     assert.match(adminUseAdminShellState, /Loading admin backend/);
     assert.match(adminConsoleHeader, /export function AdminConsoleHeader/);
-    assert.match(adminConsoleHeader, /Operations console for product governance/);
+    assert.match(adminConsoleHeader, /Run the product\./);
     assert.match(adminConsoleHeader, /admin-section-nav/);
     assert.match(adminConsoleHeader, /admin-hero/);
     assert.match(adminConsoleHeader, /getUserPrimaryIdentity/);
@@ -2031,7 +2034,7 @@ try {
     assert.match(adminOverviewPanel, /Operational snapshot/);
     assert.match(adminOverviewPanel, /Featured folio on landing page/);
     assert.match(adminOverviewPanel, /Recent activity/);
-    assert.match(adminOverviewPanel, /Error pressure/);
+    assert.match(adminOverviewPanel, /Activity by hour/);
     assert.match(adminOverviewPanel, /admin-dashboard__primary/);
     assert.match(adminOverviewPanel, /admin-dashboard__secondary/);
     assert.match(adminOverviewPanel, /from '\.\/adminFormatting'/);

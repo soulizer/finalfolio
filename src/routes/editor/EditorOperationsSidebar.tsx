@@ -13,6 +13,7 @@ import {
 } from '../../editor/limits';
 import type { ProjectRecord, ProjectState, UserTemplateKind } from '../../editor/types';
 import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
+import { EditorSubsection } from '../../ui/EditorSubsection';
 
 type SaveState = 'draft' | 'dirty' | 'saving' | 'saved' | 'error';
 type ProjectActionBusy = 'duplicate' | 'archive' | 'unarchive' | null;
@@ -163,7 +164,7 @@ export function EditorOperationsSidebar({
                 ? guestUploadTransferBusy
                   ? t('Recovered local photos are being attached to this account now. Saving will unlock as soon as that finishes.')
                   : t('This account can save links and keep uploads. Recovered local photos below stay visible and will be attached to this account before saving.')
-                : t('Uploads, saved project links, and deletion governance now stay tied to this account.')
+                : t('Your photos, project links and deletion records stay with this account.')
               : t('Guest mode can stage uploads locally on this device and export, but saved or shareable links still require sign-in.')}
         </p>
         <div className="editor-panel__actions editor-panel__actions--tight">
@@ -336,11 +337,11 @@ export function EditorOperationsSidebar({
               value={!projectRecord || !projectRecord.share.enabled ? '' : publicShareUrl}
               placeholder={
                 !projectRecord
-                  ? t('Save this folio first to create a public viewer link.')
+                  ? t('Save to create a link.')
                   : projectRecord.share.enabled
                     ? undefined
                     : projectMutationLocked
-                      ? t('Duplicate this legacy folio into your account before enabling public sharing.')
+                      ? t('Duplicate to enable sharing.')
                       : t('Enable sharing to publish a read-only viewer.')
               }
             />
@@ -455,15 +456,12 @@ export function EditorOperationsSidebar({
           </section>
         ) : null}
 
-        <details
-          className="editor-project-details"
+        <EditorSubsection
+          label={t('Folio details')}
+          meta={project.issue}
           open={projectDetailsOpen}
-          onToggle={(event) => setProjectDetailsOpen(event.currentTarget.open)}
+          onToggle={setProjectDetailsOpen}
         >
-          <summary>
-            <span>{t('Folio details')}</span>
-            <small>{project.issue}</small>
-          </summary>
           <section className="editor-panel__section">
           <label className="field">
             <span>{t('Subtitle')}</span>
@@ -483,13 +481,9 @@ export function EditorOperationsSidebar({
             />
           </label>
         </section>
+        </EditorSubsection>
 
-        <section className="editor-panel__section">
-          <div className="editor-panel__toolbar">
-            <span className="editor-panel__label">{t('Image corners')}</span>
-            <span className="panel-tag">{frameRadiusLabel}</span>
-                    <PanelCollapseToggle />
-          </div>
+        <EditorSubsection className="editor-corners-section" label={t('Image corners')} meta={frameRadiusLabel}>
           <div className="segmented-control segmented-control--three" role="group" aria-label={t('Image corner presets')}>
             <button type="button" className={project.frameRadius <= 2 ? 'is-active' : ''} onClick={() => updateFrameRadius(0)}>
               {t('Square')}</button>
@@ -517,8 +511,7 @@ export function EditorOperationsSidebar({
               onChange={(event) => updateFrameRadius(Number(event.target.value))}
             />
           </label>
-        </section>
-        </details>
+        </EditorSubsection>
       </section>
     </aside>
   );

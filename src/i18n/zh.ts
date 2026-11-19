@@ -15,8 +15,8 @@ const zh: Record<string, string> = {
   'Sign in': '登录',
   'Open editor': '开始创作',
   'Account and access': '账户与登录',
-  'Self-service workspace': '个人中心',
-  'Product backend': '管理后台',
+  'Your workspace': '个人工作台',
+  'Admin backend': '管理后台',
   'Page not found': '页面不存在',
   'Terms of Service': '服务条款',
   'Privacy Policy': '隐私政策',
@@ -196,60 +196,47 @@ const zh: Record<string, string> = {
   'Unable to sign out.': '退出登录失败。',
 
   // ── 首页文案 ──────────────────────────────────────────
-  'Folios, not endless galleries': '做成作品集，而不是堆砌图库',
-  'Turn your photographs into a paced folio.': '把照片编成一本有呼吸感的作品集。',
-  'FinalFolio gives photographers, studios, and brand teams a calmer workflow to upload, sequence, write, crop, and export polished pages that still hold up as a PDF.':
-    'FinalFolio 为摄影师、工作室和品牌团队提供一套从容的编辑流程：上传、编排、撰写、裁切，导出经得起打印的页面。',
+  'Folios, not galleries': '成册，而非堆图',
+  'Turn photographs into a folio.': '把照片，编成一本作品集。',
+  'FinalFolio is for photographers, studios and brand teams: upload, sequence, write and crop in one calm flow, then export pages that are ready to print.': '为摄影师、工作室和品牌团队而作：上传、排序、撰写、裁切，一气呵成，导出即可付印。',
   'Start a folio': '开始创作',
   'See the workflow': '看看怎么用',
-  'Designed for teams that want editorial restraint, multi-page pacing, and a calmer publishing flow before committing to heavyweight desktop layout software.':
-    '为讲究编辑克制与页面节奏的团队而设计，在动用重型桌面排版软件之前，先把作品编好。',
-  'Folio composition, not asset dumping': '编排作品，而不是堆放素材',
-  'Build a paced sequence of pages with cover, essay, grid, panorama, diptych, and triptych rhythms instead of dropping images into an endless strip.':
-    '用封面、随笔、网格、全景、双联、三联组织出有节奏的页面，而不是把照片丢进一条无限长的瀑布流。',
-  'Preview that stays close to export': '预览所见，即成稿所得',
-  'Crop, fit, copy, and page geometry stay grounded in the same page model the product uses when you print or export to PDF.':
-    '裁剪、填充、文字和页面比例都基于同一套页面模型，打印或导出 PDF 时不会走样。',
-  'Projects that belong to a product': '每个项目都有归属',
-  'Accounts, uploads, projects, exports, and failures stay attached to users and can be reviewed from the admin backend instead of disappearing into a demo sandbox.':
-    '账户、图片、项目、导出与失败记录都绑定到具体用户，并可在后台追溯，而不是散落在演示沙盒里。',
+  'For teams that care about restraint and pacing: compose the folio before opening heavy desktop publishing software.': '给讲究克制与节奏的团队：先把作品编好，再考虑打开沉重的桌面排版软件。',
+  'Compose by page, not by dump': '按页编排，而不是堆图',
+  'Cover, essay, grid, panorama, diptych and triptych give the sequence rhythm, so photographs stop being an endless strip.': '封面、随笔、网格、全景、双联、三联，用页面撑起节奏，照片不再是一条拉不到头的图库。',
+  'Preview matches export': '预览即导出',
+  'Crop, fit, copy and page proportions share one layout model, so the editor, the share link and the PDF stay identical.': '裁切、填充、文案与页面比例共用同一套版式，编辑器、分享链接与 PDF 始终一致。',
+  'The work stays yours': '作品归你所有',
+  'Accounts, photos, folios and export history stay attached to you, and an admin console keeps the system in view.': '账户、照片、作品集与导出记录都归属于你，后台还能统一查看与治理。',
   Workflow: '使用流程',
-  'From upload to folio, without jumping into desktop publishing too early.':
-    '从上传到成册，不必一上来就打开桌面排版软件。',
-  'Start from a starter pack, shape the story page by page, refine crop and fit in place, and export a calmer PDF without losing sight of the final form.':
-    '选一套起始模板，逐页编排故事，就地调整裁剪与填充，导出成稿时始终看得到最终效果。',
-  'Upload photographs and keep them attached to a real project on the server.':
-    '上传照片，存进服务器上的真实项目。',
-  'Sequence cover, essay, grid, panorama, and custom pages while the folio stays visible.':
-    '在作品集始终可见的情况下，安排封面、随笔、网格、全景与自定义页面。',
-  'Save the project at a stable URL, then print or export the finished folio.':
-    '保存为固定链接，然后打印或导出成稿。',
+  'From upload to folio, without opening desktop publishing first.': '从上传到成册，不必先打开桌面排版软件。',
+  'Start from a pack, shape the story page by page, refine crop and fit in place, and export while the finished page stays in view.': '选一套起始模板，逐页编排故事，就地调整裁切与填充；导出时，看到的仍是最终成稿。',
+  'Upload photographs into a real project on the server.': '上传照片，存进服务器上的真实项目。',
+  'Cover, essay, grid, panorama and custom pages, composed while the finished folio stays in view.': '封面、随笔、网格、全景与自定义页面，编排时始终看得见成稿。',
+  'Save to a stable link, then print or export the finished folio.': '保存为固定链接，随时打印或导出成稿。',
   Positioning: '产品定位',
-  'Closer to a lightweight editorial studio than a generic photo SaaS.':
-    '更像一间轻量编辑工作室，而不是通用图片工具。',
-  'FinalFolio is built around pacing, page rhythm, and printable output. The editor handles creation, the homepage proves the product, and the admin backend governs the system.':
-    'FinalFolio 关注节奏、页面韵律与可打印的成稿：编辑器负责创作，首页展示成品，后台管理系统运行。',
+  'Closer to a small editorial studio than a generic photo tool.': '更像一间轻量编辑工作室，而不是通用图片工具。',
+  'FinalFolio is designed around pacing, page relationships and printable output: the editor creates, the homepage shows the result, the admin console runs it.': 'FinalFolio 围绕节奏、页面关系与可打印的成稿设计：编辑器负责创作，首页展示成品，后台负责治理。',
   Editor: '编辑器',
-  'Start shaping a folio now.': '现在就开始编排你的作品集。',
-  'Upload a real set of photographs, compose the sequence page by page, and keep the final export model visible while you work.':
-    '上传一组照片，逐页编排，创作时始终看得到最终导出效果。',
+  'Start composing your folio.': '现在就开始编排你的作品集。',
+  'Upload a set of photographs, compose page by page, and keep the final export in view the whole time.': '上传一组照片，逐页编排，创作时始终看得到最终导出效果。',
   'Open Editor': '开始创作',
   'Open sign in': '去登录',
   'Featured folio output': '成品效果',
-  'What the system actually renders': '系统实际渲染的样子',
-  'The homepage preview uses the same page renderer as the editor. Admin can pin a live folio here, or the product falls back to a built-in demonstration sequence.':
-    '首页预览与编辑器使用同一套页面渲染。后台可以固定一本线上作品集，也可以使用内置演示。',
-  'Product path': '使用流程',
-  'Upload, arrange, save, and share from one product.': '上传、编排、保存、分享，一个地方完成。',
-  'FinalFolio is built for paced editorial output, not an endless gallery dump. The editor keeps crop, copy, page rhythm, and public delivery tied to the same folio.':
-    'FinalFolio 面向讲究节奏的成册输出，而不是无限图库。裁剪、文案、页面节奏与公开链接都围绕同一本作品集。',
+  'Featured folio': '成品示例',
+  'Sequence cover, essay, grid, panorama and custom pages.': '安排封面、随笔、网格、全景与自定义页面。',
+  'Pages as they really render': '真实渲染的页面',
+  'From the cover to the inside pages, what you see is the finished folio.': '从封面到内页，看到的就是最终成稿。',
+  'Product overview': '产品全貌',
+  'Upload, compose, save and share in one place.': '上传、编排、保存、分享，一处完成。',
+  'FinalFolio is built around paced editorial output: crop, copy, page relationships and the public link all describe the same folio.': 'FinalFolio 围绕有节奏的编辑成稿：裁切、文案、页面关系与公开链接，说的都是同一本作品集。',
   Sequence: '页面顺序',
   Preview: '预览',
   Share: '分享',
   Paused: '已暂停',
   Auto: '自动',
   'Page preview': '页面预览',
-  'Keep the finished folio in view while you edit.': '编辑时始终看到成稿效果。',
+  'Keep the finished folio in view while you edit.': '编排时始终看得见成稿。',
   Inspector: '页面信息',
   'Page setup': '页面设置',
   Page: '页面',
@@ -304,23 +291,21 @@ const zh: Record<string, string> = {
   Balance: '平衡',
   'Folio 01': '作品集 01',
   'Quiet Streets': '安静的街道',
-  'A wider sequence of cover, feature, grid, and panorama pages rendered from the same page engine used inside the editor.':
-    '由同一套页面引擎渲染的封面、专题、网格与全景页面。',
+  'Cover, feature, grid and panorama pages, rendered by the same engine as the editor.': '封面、专题、网格与全景页面，与编辑器同一套引擎渲染。',
   'A restrained opening page with one clear lead image.': '克制的开篇页，只有一张清晰的主图。',
   'Editor note': '编辑手记',
   'Sequence first, then details.': '先定节奏，再谈细节。',
-  'Essay pages keep a lead image and the opening note on the same sheet.':
-    '随笔页把主图和开篇手记放在同一张纸上。',
+  'Essay pages keep a lead image and the opening note on the same sheet.': '随笔页把主图与开篇文字放在同一页。',
   'Instead of tuning crop, fit, and text in disconnected panels, FinalFolio keeps the page itself in view while you shape the folio.':
     '不用在割裂的面板之间来回调整，FinalFolio 让你在编排时始终看到页面本身。',
   'One image, one block of copy, one calm editorial page.': '一张图、一段文字、一个安静的编辑页。',
   'Interior rhythm': '内页节奏',
-  'Use smaller frames to pace the folio.': '用更小的图框控制节奏。',
+  'Use smaller frames to pace the folio.': '用小图框放缓节奏。',
   'Grids slow the sequence down and make room for detail, contrast, or supporting images.':
     '网格页让节奏慢下来，为细节、对比或辅助图片留出空间。',
   'Four frames, one page rhythm.': '四个图框，一种页面节奏。',
   'Built-in demo sequence': '内置示例',
-  'Built-in demo': '内置演示',
+  'Built-in demo': '内置示例',
   'Pinned live folio': '已固定的线上作品集',
   'Same page renderer as the editor preview': '与编辑器预览同一套渲染',
 
@@ -875,13 +860,12 @@ const zh: Record<string, string> = {
   // ── 个人中心 ──────────────────────────────────────────
   'Account workspace': '个人中心',
   'Account workspace.': '个人中心',
-  'Manage your own projects, uploads, and identity.': '管理你的项目、图片与账户信息。',
-  'This workspace keeps the same information architecture and governance language as admin, but scoped to your own content.':
-    '这里沿用后台的信息结构，但只展示属于你的内容。',
+  'Your projects, photos and account.': '你的项目、照片与账户。',
+  'Everything you create lives here: open a folio, manage uploads and keep your details current.': '你创建的一切都在这里：打开作品集、管理图片、维护账户信息。',
   'Checking the active session and loading projects, uploads, templates, and settings.':
     '正在检查登录状态，加载项目、图片、模板与设置。',
   'Checking session': '正在检查登录状态',
-  'Your working set': '工作概览',
+  'Your library at a glance': '一眼看清你的资料',
   'Recent activity': '最近动态',
   'Sign in to open your workspace.': '登录后进入个人中心。',
   'Projects, uploads, and account settings now live in a dedicated self-service backend.':
@@ -895,7 +879,7 @@ const zh: Record<string, string> = {
   'Verification': '验证状态',
   Verified: '已验证',
   Pending: '待验证',
-  'Identity and access': '身份与权限',
+  'Account details': '账户信息',
   'Primary identity': '主账号',
   'Last active': '最近登录',
   Created: '注册时间',
@@ -1004,9 +988,8 @@ const zh: Record<string, string> = {
   Storage: '存储',
   Users: '用户',
   Events: '事件',
-  'Operations console for product governance.': '产品运营管理台。',
-  'Switch between focused backend views instead of cramming overview, folio governance, asset governance, and product             settings into one scrolling page.':
-    '概览、作品集管理、图片管理与站点设置分栏查看，不再堆在一个长页面里。',
+  'Run the product.': '管理整个产品。',
+  'Accounts, projects, photos, content and storage — one focused view at a time.': '账户、项目、图片、内容与存储，按用途分区查看。',
   'Session required': '需要登录',
   'Admin sections': '后台分区',
   'Admin console': '管理后台',
@@ -1051,6 +1034,7 @@ const zh: Record<string, string> = {
   'Secondary diagnostic view': '辅助诊断',
   'Last 7 days': '近 7 天',
   'Last 24 hours': '近 24 小时',
+  'Activity by hour': '每小时活动',
   Authentication: '登录',
   Exports: '导出',
   Sharing: '分享',
@@ -1231,8 +1215,7 @@ const zh: Record<string, string> = {
   'Search photos': '搜索照片',
   'Search by file name': '按文件名搜索',
   'Use the upload button above, or drag photos straight onto the page.': '点上方「上传」添加照片，也可以直接把照片拖到页面上。',
-  'Session cookies keep accounts signed in. Uploads are stored on object storage, and shared folio links should be treated as public.':
-    '登录状态由 Cookie 维持。图片存储在对象存储上，分享出去的链接应视为公开内容。',
+  'Sign-in uses cookies. Photos live in object storage, and a shared link is public — treat it that way.': '登录状态由 Cookie 保持。照片存放在对象存储中，分享出去的链接即公开内容，请勿上传敏感照片。',
   'Signed in': '登录',
   'Signed out': '退出登录',
   'Created a project': '创建了项目',
@@ -1271,25 +1254,19 @@ const zh: Record<string, string> = {
   'Admin account required.': '需要管理员账户',
   'Create first admin': '创建首个管理员',
   'Retry': '重试',
-  'Upload real selects': '上传精选照片',
-  'Bring in source images and keep them attached to a real project instead of a temporary demo state.':
-    '把原始照片传进真实项目，而不是临时演示状态。',
-  'Arrange page rhythm': '安排页面节奏',
-  'Save the project': '保存项目',
-  'Keep the working state on the server so you can reopen the same project URL and continue editing later.':
-    '项目保存在服务器上，之后打开同一链接就能继续编辑。',
+  'Upload your selects': '上传精选照片',
+  'Photos live in a real project, so they are still there after a refresh or on another device.': '照片存进真实项目，刷新页面、换个设备，它们都还在。',
+  'Set the page rhythm': '安排页面节奏',
+  'Save to the server': '保存到云端',
+  'The project lives on the server; reopen the link and keep editing.': '项目保存在服务器上，打开链接就能接着编。',
   'Share or export': '分享或导出',
-  'Publish a read-only folio for review or export the same page model for print and PDF output.':
-    '发布只读作品集供审阅，或导出同一套页面用于打印与 PDF。',
-  'Project-backed editing': '项目化管理',
-  'Uploads, pages, and exports stay attached to named projects instead of disappearing into a one-shot canvas.':
-    '图片、页面和导出都归属于具体项目，不会随一次性画布消失。',
-  'Operational storage': '稳定的存储',
-  'Uploaded images are stored through object storage delivery today, and CDN acceleration may be layered on later for public viewing.':
-    '图片目前通过对象存储交付，后续可为公开访问叠加 CDN 加速。',
-  'Account and recovery': '账户与找回',
-  'Session cookies keep accounts signed in, while email verification and password reset flows protect account ownership.':
-    '登录状态由会话保持，邮箱验证与密码重置保护账户归属。',
+  'Send a read-only link for review, or export the same layout as a print-ready PDF.': '生成只读链接供审阅，或把同一版式导出为可付印的 PDF。',
+  'Project-based editing': '项目化管理',
+  'Photos, pages and exports belong to a named folio instead of disappearing with a one-off canvas.': '照片、页面与导出都归属具体作品集，不会随一次性画布消失。',
+  'Photos that stay available': '图片随时可看',
+  'Images are delivered through object storage, so share links stay reliable for reviewers.': '图片经对象存储分发，分享出去的链接随时打得开。',
+  'Account recovery': '账户与找回',
+  'Sessions keep you signed in, while email verification and password reset protect the account.': '登录状态由会话保持，邮箱验证与密码重置守住账户。',
   'Sign in with an admin account.': '请用管理员账户登录',
   'Admin backend failed to load.': '管理后台加载失败',
   'Loading admin backend.': '正在加载管理后台',
@@ -1306,11 +1283,11 @@ const zh: Record<string, string> = {
 
   // 首页演示内容
   'Closing spread': '收尾跨页',
-  'Wide frames stay predictable.': '宽幅页面，所见即所得。',
+  'Wide frames stay predictable.': '宽幅页面，比例稳定。',
   'Panorama pages keep horizontal images tied to the same printable geometry.': '全景页让横幅照片保持同一套可打印比例。',
   'Top-and-tail pacing without layout drift.': '首尾呼应，版面不跑偏。',
   'Feature page': '专题页',
-  'Let one page carry the room.': '让一页撑起整段呼吸。',
+  'Let one page carry the room.': '让一页，留出呼吸。',
   'Folio pages give a single image enough air before the sequence returns to smaller frames.':
     '主图页给单张照片足够的空间，再回到更小的节奏。',
   'One image, one page, no layout drift.': '一张图，一整页，版面稳定。',
@@ -1398,8 +1375,7 @@ const zh: Record<string, string> = {
     '正在把恢复的本地照片关联到账户，完成后即可保存。',
   'This account can save links and keep uploads. Recovered local photos below stay visible and will be attached to this account before saving.':
     '登录后可以保存链接、保留图片。下方恢复的本地照片会在保存前关联到账户。',
-  'Uploads, saved project links, and deletion governance now stay tied to this account.':
-    '图片、项目链接与删除权限都归属于这个账户。',
+  'Your photos, project links and deletion records stay with this account.': '照片、项目链接与删除记录都归属这个账户。',
   'Guest mode can stage uploads locally on this device and export, but saved or shareable links still require sign-in.':
     '访客可以先在本机上传并导出，但保存和分享需要登录。',
   Project: '项目',
@@ -1418,9 +1394,8 @@ const zh: Record<string, string> = {
   Live: '已开启',
   Off: '已关闭',
   'Share link': '分享链接',
-  'Save this folio first to create a public viewer link.': '保存后即可生成公开链接。',
-  'Duplicate this legacy folio into your account before enabling public sharing.':
-    '请先把这本旧版作品集复制到你的账户，再开启分享。',
+  'Save to create a link.': '保存后生成链接。',
+  'Duplicate to enable sharing.': '复制到账户后即可分享。',
   'Enable sharing to publish a read-only viewer.': '开启后，任何人可通过链接只读浏览。',
   'The public route opens a read-only folio viewer with swipe, drag, keyboard, and button navigation.':
     '公开页面是只读的，支持滑动、拖拽、键盘与按钮翻页。',

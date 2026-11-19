@@ -14,7 +14,7 @@ export function SiteLegalFooter() {
       </div>
       <p className="site-legal-footer__note">
         {t(
-          'Session cookies keep accounts signed in. Uploads are stored on object storage, and shared folio links should be treated as public.',
+          'Sign-in uses cookies. Photos live in object storage, and a shared link is public — treat it that way.',
         )}
       </p>
     </footer>

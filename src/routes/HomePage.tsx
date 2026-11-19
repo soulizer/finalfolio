@@ -17,38 +17,38 @@ const MOBILE_HOME_PREVIEW_MEDIA_QUERY = '(max-width: 760px) and (hover: none) an
 const productCapabilityCards = [
   {
     step: '01',
-    title: 'Upload real selects',
-    copy: 'Bring in source images and keep them attached to a real project instead of a temporary demo state.',
+    title: 'Upload your selects',
+    copy: 'Photos live in a real project, so they are still there after a refresh or on another device.',
   },
   {
     step: '02',
-    title: 'Arrange page rhythm',
-    copy: 'Sequence cover, essay, grid, panorama, and custom pages while the folio stays visible.',
+    title: 'Set the page rhythm',
+    copy: 'Cover, essay, grid, panorama and custom pages, composed while the finished folio stays in view.',
   },
   {
     step: '03',
-    title: 'Save the project',
-    copy: 'Keep the working state on the server so you can reopen the same project URL and continue editing later.',
+    title: 'Save to the server',
+    copy: 'The project lives on the server; reopen the link and keep editing.',
   },
   {
     step: '04',
     title: 'Share or export',
-    copy: 'Publish a read-only folio for review or export the same page model for print and PDF output.',
+    copy: 'Send a read-only link for review, or export the same layout as a print-ready PDF.',
   },
 ];
 
 const productTrustNotes = [
   {
-    title: 'Project-backed editing',
-    copy: 'Uploads, pages, and exports stay attached to named projects instead of disappearing into a one-shot canvas.',
+    title: 'Project-based editing',
+    copy: 'Photos, pages and exports belong to a named folio instead of disappearing with a one-off canvas.',
   },
   {
-    title: 'Operational storage',
-    copy: 'Uploaded images are stored through object storage delivery today, and CDN acceleration may be layered on later for public viewing.',
+    title: 'Photos that stay available',
+    copy: 'Images are delivered through object storage, so share links stay reliable for reviewers.',
   },
   {
-    title: 'Account and recovery',
-    copy: 'Session cookies keep accounts signed in, while email verification and password reset flows protect account ownership.',
+    title: 'Account recovery',
+    copy: 'Sessions keep you signed in, while email verification and password reset protect the account.',
   },
 ];
 
@@ -502,8 +502,8 @@ export function HomePage() {
         <section className="product-brief" data-reveal>
           <div className="product-brief__intro">
             <p className="eyebrow">{t('Product path')}</p>
-            <h2>{t('Upload, arrange, save, and share from one product.')}</h2>
-            <p>{t('FinalFolio is built for paced editorial output, not an endless gallery dump. The editor keeps crop, copy, page rhythm, and public delivery tied to the same folio.')}</p>
+            <h2>{t('Upload, compose, save and share in one place.')}</h2>
+            <p>{t('FinalFolio is built around paced editorial output: crop, copy, page relationships and the public link all describe the same folio.')}</p>
           </div>
           <div className="product-brief__grid">
             {productCapabilityCards.map((card) => (

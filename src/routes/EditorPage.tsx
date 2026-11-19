@@ -10,6 +10,8 @@ import { getConfirmationMessage } from '../editor/confirmations';
 import { formatDateTime } from '../editor/dateFormat';
 import { getAssetSource } from '../editor/assetResources';
 import { buildProjectFontVars } from '../editor/fonts';
+import { DRAFT_ONLY_MESSAGE } from './editor/projectLifecycle';
+import { customTemplateFromPageElement } from '../editor/layoutFromPage';
 import {
   cloneCustomTemplateDefinition,
   countImageSlots,
@@ -779,6 +781,45 @@ export function EditorPage() {
     [selectCustomLayout],
   );
 
+  // Every selected layout can be edited. Saved custom layouts reopen in place;
+  // built-in layouts and unsaved custom pages open a measured copy, so the
+  // button never sits disabled on the default selection.
+  const openEditSelectedLayout = useCallback(() => {
+    if (activeCustomLayout) {
+      openEditLayoutEditor(activeCustomLayout);
+      return;
+    }
+
+    if (selectedPage.template === 'custom' && selectedPage.customTemplate) {
+      setLayoutEditor({
+        mode: 'new',
+        layoutId: null,
+        template: cloneCustomTemplateDefinition(selectedPage.customTemplate),
+        name: '',
+      });
+      return;
+    }
+
+    const pageElement = document.querySelector<HTMLElement>('.magazine-sheet--editor .magazine-page');
+    const canvas = pageElement?.querySelector<HTMLElement>(`.magazine-${selectedPage.template}`) ?? null;
+    if (!canvas) {
+      return;
+    }
+    const labels = Array.from(canvas.querySelectorAll('.asset-frame__hint')).map(
+      (node) => node.textContent?.trim() ?? '',
+    );
+    const template = customTemplateFromPageElement({
+      canvas,
+      templateId: selectedPage.template,
+      name: t('%s copy').replace('%s', getTemplateLabel(selectedPage.template, null)),
+      labels,
+    });
+    if (!template) {
+      return;
+    }
+    setLayoutEditor({ mode: 'new', layoutId: null, template, name: '' });
+  }, [activeCustomLayout, openEditLayoutEditor, selectedPage, t]);
+
   const handleSaveLayoutEditor = useCallback(
     (template: CustomTemplateDefinition, applyToPage: boolean) => {
       const record = upsertCustomLayout(layoutEditor?.layoutId ?? null, template);
@@ -1115,6 +1156,9 @@ export function EditorPage() {
   // "Preset applied"; the user needs to see that the folio still has to be saved.
   const showSaveState =
     saveState === 'dirty' || saveState === 'saving' || saveState === 'error' || !projectRecord || legacyProjectReadOnly;
+  // The lifecycle re-sends the draft hint as an action message; it is already
+  // the fallback, so showing both would print the same sentence twice.
+  const actionMessage = message && message !== DRAFT_ONLY_MESSAGE ? t(message) : null;
   const statusText =
     printBusy
       ? t('Preparing print-ready pages %s/%s...')
@@ -1132,10 +1176,10 @@ export function EditorPage() {
             ? // Keep the unsaved/read-only hint, but never swallow the action
               // result: a failed URL import in a new draft used to disappear
               // behind "Draft only" with no visible error at all.
-              message && message !== fallbackStatus
-              ? `${message} · ${fallbackStatus}`
+              actionMessage && actionMessage !== fallbackStatus
+              ? `${actionMessage} · ${fallbackStatus}`
               : fallbackStatus
-            : message ?? fallbackStatus;
+            : actionMessage ?? fallbackStatus;
   const sequenceLabel =
     project.pages.length === 1 ? t('1 page') : t('%s pages').replace('%s', String(project.pages.length));
   const selectedPagePositionLabel = t('Page %s of %s')
@@ -1259,7 +1303,6 @@ export function EditorPage() {
             type="button"
             className="layout-card__pick"
             aria-pressed={isSelected}
-            title={t(layout.name)}
             onClick={() => void selectCustomLayout(layout)}
             onFocus={(event) => openPreview(event.currentTarget)}
             onBlur={clearTemplateHoverPreview}
@@ -1288,7 +1331,6 @@ export function EditorPage() {
           type="button"
           className="layout-card__pick"
           aria-pressed={isSelected}
-          title={t(templateMeta[templateId].label)}
           onClick={() => void selectBuiltinLayout(templateId)}
           onFocus={(event) => openPreview(event.currentTarget)}
           onBlur={clearTemplateHoverPreview}
@@ -1621,13 +1663,8 @@ export function EditorPage() {
                     </button>
                     <button
                       type="button"
-                      className="button button--ghost button--small"
-                      disabled={!activeCustomLayout}
-                      onClick={() => {
-                        if (activeCustomLayout) {
-                          openEditLayoutEditor(activeCustomLayout);
-                        }
-                      }}
+                      className="button button--ghost button--small layout-selection-actions__edit"
+                      onClick={openEditSelectedLayout}
                     >
                       {t('Edit layout')}
                     </button>
@@ -1695,7 +1732,7 @@ export function EditorPage() {
                       <div className="template-pack-card__actions">
                         <button
                           type="button"
-                          className="button button--danger-ghost button--small"
+                          className="button button--ghost button--small"
                           title={t('Replaces every page in this folio. Photos stay in the media library.')}
                           onClick={() => applyTemplatePack(packId, 'replace')}
                         >

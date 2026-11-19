@@ -41,6 +41,21 @@ and the collapse chevron all measure 24px inside a 32px toolbar. Never give the
 tag a taller box than the chevron; the row then looks ragged even when the
 centres match.
 
+## 1b. Radius scale
+
+One scale, referenced by token. A literal radius in a rule is a bug unless it is
+`50%` (circles), `1–2px` (miniature schematic art) or a page-content radius that
+the user controls (`--page-frame-radius`).
+
+| Token | Value | Use |
+| --- | --- | --- |
+| `--radius-xs` (`--control-radius`) | 4px | Buttons, inputs, chips, thumbnails |
+| `--radius-sm` (`--surface-radius`) | 8px | Sub-panels, popovers, small cards |
+| `--radius-md` | 12px | Panels, layout cards, the editor canvas |
+| `--radius-lg` (`--radius`) | 20px | Dialogs, topbar, large cards |
+| `--radius-xl` | 28px | Marketing cards and feature panels |
+| `--radius-pill` | 999px | Tags and pills |
+
 ## 2. Spacing
 
 Use the 4px scale: `--space-1` 4, `--space-2` 8, `--space-3` 12, `--space-4` 16,
@@ -55,6 +70,16 @@ optical tweaks but new rules should land on the scale.
   from the chip edge.
 - Thumbnail corner actions sit **13px** from the top and right edges so their
   optical inset matches the page-chip actions.
+
+## 2b. Type roles
+
+- UI chrome (buttons, labels, tags, eyebrows, tables, hints) always uses
+  `--font-ui`. Monospace is reserved for values where digit alignment matters:
+  the zoom input, AI elapsed time, page numbers and the captcha code.
+- The editorial serif is only used inside `.magazine-page`. Every text node on
+  a page must carry a role class so the four project fonts reach it:
+  title, deck, caption (kickers and small labels), body.
+- The layout name is library metadata. It must never be printed on the page.
 
 ## 3. Text and icon actions
 
@@ -127,18 +152,32 @@ A selected card or photo must be readable without hunting for a tiny check:
 - The selection must not change the tile's size, so horizontal and vertical
   grid gaps stay identical.
 
-## 6b. Panel collapse
+## 6b. Panel collapse and sub-sections
 
 Every `.editor-panel` on the site (editor sidebars, editor canvas panels,
 admin console, account console) is collapsible:
 
 - `PanelCollapseToggle` renders a 24px skeuomorphic chevron as the last child
-  of the header row (`margin-left: 0`; the label's `margin-right: auto` pushes
-  the tag and chevron to the right). Headers need no reserved right padding.
+  of the header row (the label's `margin-right: auto` pushes the tag and
+  chevron to the right). Headers need no reserved right padding.
 - Toggling adds `is-collapsed` to the section; CSS hides every direct child
   except the header. The delegated behavior lives in `ui/panelCollapse.ts`,
   and the collapsed state is remembered per route in localStorage.
 - Never build a one-off collapse control inside a panel; reuse this one.
+
+A panel that contains two editing regions (for example Page content = text +
+image frame) uses `EditorSubsection` — a native `<details>` styled by
+`.editor-subsection` — for the secondary region. The native element cannot
+trigger the delegated panel collapse, so folding "Image frame", "Image corners"
+or "Folio details" keeps the parent panel open.
+
+## 6c. Copy voice
+
+- Write what the user gets, not how the system is built. No "governance
+  language", "one-shot canvas", "the product falls back to…" on customer pages.
+- Chinese is written as Chinese, not translated English: short clauses, real
+  verbs, no stacked 的/进行/一个. Avoid "有呼吸感"、"所见即所得" as filler.
+- Admin copy may be operational, but still names the object and the action.
 
 ## 7. Typography and colour
 

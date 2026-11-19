@@ -272,6 +272,7 @@ test('every built-in layout commits in-place copy without a popover', async ({ p
     await moreLayouts.click();
   }
   const cards = page.locator('.layout-grid .layout-card');
+  await expect(cards.first()).toBeVisible();
   const names = await cards.locator('.layout-card__name').allInnerTexts();
   expect(names.length).toBeGreaterThanOrEqual(6);
 

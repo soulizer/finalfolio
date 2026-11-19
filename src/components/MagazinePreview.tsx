@@ -621,7 +621,7 @@ export function MagazinePreview({
         <div className="magazine-cover">
           <div className="magazine-cover__image">{renderSlot('hero', { hintLabel: t('Hero') })}</div>
           <div className="magazine-cover__copy magazine-heading-block">
-            {hasDeck ? <p className="magazine-kicker">{renderText('deck')}</p> : null}
+            {hasDeck ? <p className="magazine-cover__deck magazine-text magazine-text--deck">{renderText('deck')}</p> : null}
             <h2 className="magazine-text magazine-text--title">{renderText('title')}</h2>
             {hasCaption ? <p className="magazine-text magazine-text--caption">{renderText('caption')}</p> : null}
           </div>
@@ -650,7 +650,7 @@ export function MagazinePreview({
               {hasKicker ? <p className="magazine-kicker">{renderText('kicker')}</p> : null}
               <h2 className="magazine-text magazine-text--title">{renderText('title')}</h2>
             </div>
-            {hasDeck ? <p>{renderText('deck')}</p> : null}
+            {hasDeck ? <p className="magazine-folio__deck magazine-text magazine-text--deck">{renderText('deck')}</p> : null}
           </div>
           <div className="magazine-folio__visual">{renderSlot('hero', { hintLabel: t('Hero') })}</div>
           {hasCaption ? <footer className="magazine-text magazine-text--caption">{renderText('caption')}</footer> : null}
@@ -685,7 +685,7 @@ export function MagazinePreview({
               {hasKicker ? <p className="magazine-kicker">{renderText('kicker')}</p> : null}
               <h2 className="magazine-text magazine-text--title">{renderText('title')}</h2>
             </div>
-            {hasDeck ? <p>{renderText('deck')}</p> : null}
+            {hasDeck ? <p className="magazine-diptych__deck magazine-text magazine-text--deck">{renderText('deck')}</p> : null}
           </div>
           <div className="magazine-diptych__frames">
             {renderSlot('left', { hintLabel: t('Left frame') })}
@@ -707,7 +707,7 @@ export function MagazinePreview({
               {hasKicker ? <p className="magazine-kicker">{renderText('kicker')}</p> : null}
               <h2 className="magazine-text magazine-text--title">{renderText('title')}</h2>
             </div>
-            {hasDeck ? <p>{renderText('deck')}</p> : null}
+            {hasDeck ? <p className="magazine-panorama__deck magazine-text magazine-text--deck">{renderText('deck')}</p> : null}
           </div>
           <div className="magazine-panorama__frames">
             {renderSlot('top', { hintLabel: t('Top frame') })}
@@ -774,7 +774,8 @@ export function MagazinePreview({
               </div>
             ))}
             <section className="magazine-custom__text" style={areaStyle(customTemplate.text)}>
-              <span className="magazine-custom__label">{t(customTemplate.name)}</span>
+              {/* The layout name is library metadata, not page copy: printing it
+                  would put "Editorial Split" on the finished folio. */}
               <div className="magazine-heading-block">
                 {hasKicker ? <p className="magazine-kicker">{renderText('kicker')}</p> : null}
                 <h2 className="magazine-text magazine-text--title">{renderText('title')}</h2>

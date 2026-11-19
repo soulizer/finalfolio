@@ -23,9 +23,9 @@ export function AccountConsoleHeader({
       <div className="editor-panel__heading">
         <div>
           <p className="eyebrow">{t('Account')}</p>
-          <h2>{t('Manage your own projects, uploads, and identity.')}</h2>
+          <h2>{t('Your projects, photos and account.')}</h2>
           <p className="panel-note admin-hero__lede">
-            {t('This workspace keeps the same information architecture and governance language as admin, but scoped to your own content.')}</p>
+            {t('Everything you create lives here: open a folio, manage uploads and keep your details current.')}</p>
         </div>
         <div className="admin-hero__meta">
           <span className="panel-tag">{`${getUserPrimaryIdentity(session)} · ${t(session.role)}`}</span>

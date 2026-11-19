@@ -31,6 +31,16 @@ function useRevealObserver(pathname: string) {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' });
 
+    const revealAll = () => {
+      document.querySelectorAll<HTMLElement>('[data-reveal]').forEach((node) => node.classList.add('is-visible'));
+    };
+
+    // No observer (older engines, embedded webviews): never leave the page blank.
+    if (typeof IntersectionObserver === 'undefined') {
+      revealAll();
+      return undefined;
+    }
+
     const observedNodes = new WeakSet<HTMLElement>();
     const observer = new IntersectionObserver(
       (entries) => {
@@ -41,7 +51,7 @@ function useRevealObserver(pathname: string) {
           }
         });
       },
-      { threshold: 0.14 },
+      { threshold: 0.04, rootMargin: '0px 0px -32px 0px' },
     );
 
     const observeRevealNodes = () => {
@@ -58,6 +68,10 @@ function useRevealObserver(pathname: string) {
 
     observeRevealNodes();
 
+    // Safety net: if a section is skipped (fast scroll, background tab, an
+    // observer miss), reveal it anyway instead of leaving hidden content.
+    const fallback = window.setTimeout(revealAll, 1200);
+
     const mutationObserver = new MutationObserver(() => {
       observeRevealNodes();
     });
@@ -68,6 +82,7 @@ function useRevealObserver(pathname: string) {
     });
 
     return () => {
+      window.clearTimeout(fallback);
       window.cancelAnimationFrame(frameId);
       mutationObserver.disconnect();
       observer.disconnect();

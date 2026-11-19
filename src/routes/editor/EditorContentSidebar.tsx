@@ -18,6 +18,7 @@ import {
 import type { Asset, CropSettings, PageData } from '../../editor/types';
 import type { UploadState } from './uploadState';
 import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
+import { EditorSubsection } from '../../ui/EditorSubsection';
 
 type AssetPlacement = {
   pageId: string;
@@ -470,7 +471,8 @@ export function EditorContentSidebar({
                 <PanelCollapseToggle />
         </div>
 
-        <section className="editor-panel__section">
+        <section className="editor-panel__section editor-panel__section--text">
+          <span className="editor-panel__section-label">{t('Text')}</span>
           {selectedPageUsesKicker ? (
             <label className="field">
               <span>{t('Kicker')}</span>
@@ -527,18 +529,18 @@ export function EditorContentSidebar({
           </label>
         </section>
 
-        <section className="editor-panel__section">
-          <div className="editor-panel__toolbar">
-            <span className="editor-panel__label">{t('Selected frame')}</span>
-            {selectedAsset ? <span className="panel-tag">{currentCrop?.fit === 'contain' ? t('Fit') : t('Fill')}</span> : null}
-                    <PanelCollapseToggle />
-          </div>
-          <p className="editor-panel__value">{selectedFrameLabel ?? t('No frame selected')}</p>
+        <EditorSubsection
+          className="editor-frame-section"
+          label={t('Image frame')}
+          meta={selectedFrameLabel ?? t('No frame selected')}
+          defaultOpen
+        >
           <p className="selected-frame-status">
             {selectedAsset
               ? t('Assigned image: %s').replace('%s', selectedAsset.name)
               : t('No image assigned to this frame yet.')}
           </p>
+          {selectedAsset ? <span className="panel-tag editor-frame-section__fit">{currentCrop?.fit === 'contain' ? t('Fit') : t('Fill')}</span> : null}
           {selectedAssetPlacements.length ? (
             <div className="placement-list" aria-label={t('Asset placements')}>
               {selectedAssetPlacements.map((placement) => {
@@ -677,7 +679,7 @@ export function EditorContentSidebar({
               </div>
             </>
           ) : null}
-        </section>
+        </EditorSubsection>
       </section>
     </aside>
   );

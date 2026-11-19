@@ -4,68 +4,68 @@ import { createBadRequest } from './lib/httpErrors.js';
 
 const DEFAULT_SITE_CONTENT = {
   hero: {
-    eyebrow: 'Folios, not endless galleries',
-    title: 'Turn your photographs into a paced folio.',
+    eyebrow: 'Folios, not galleries',
+    title: 'Turn photographs into a folio.',
     lede:
-      'FinalFolio gives photographers, studios, and brand teams a calmer workflow to upload, sequence, write, crop, and export polished pages that still hold up as a PDF.',
+      'FinalFolio is for photographers, studios and brand teams: upload, sequence, write and crop in one calm flow, then export pages that are ready to print.',
     primaryCtaLabel: 'Start a folio',
     secondaryCtaLabel: 'Sign in',
     tertiaryCtaLabel: 'See the workflow',
   },
   editorialNote: {
     body:
-      'Designed for teams that want editorial restraint, multi-page pacing, and a calmer publishing flow before committing to heavyweight desktop layout software.',
+      'For teams that care about restraint and pacing: compose the folio before opening heavy desktop publishing software.',
   },
   features: [
     {
       id: 'issue-composition',
-      title: 'Folio composition, not asset dumping',
+      title: 'Compose by page, not by dump',
       copy:
-        'Build a paced sequence of pages with cover, essay, grid, panorama, diptych, and triptych rhythms instead of dropping images into an endless strip.',
+        'Cover, essay, grid, panorama, diptych and triptych give the sequence rhythm, so photographs stop being an endless strip.',
     },
     {
       id: 'preview-to-pdf',
-      title: 'Preview that stays close to export',
+      title: 'Preview matches export',
       copy:
-        'Crop, fit, copy, and page geometry stay grounded in the same page model the product uses when you print or export to PDF.',
+        'Crop, fit, copy and page proportions share one layout model, so the editor, the share link and the PDF stay identical.',
     },
     {
       id: 'governed-projects',
-      title: 'Projects that belong to a product',
+      title: 'The work stays yours',
       copy:
-        'Accounts, uploads, projects, exports, and failures stay attached to users and can be reviewed from the admin backend instead of disappearing into a demo sandbox.',
+        'Accounts, photos, folios and export history stay attached to you, and an admin console keeps the system in view.',
     },
   ],
   workflow: {
     eyebrow: 'Workflow',
-    title: 'From upload to folio, without jumping into desktop publishing too early.',
+    title: 'From upload to folio, without opening desktop publishing first.',
     body:
-      'Start from a starter pack, shape the story page by page, refine crop and fit in place, and export a calmer PDF without losing sight of the final form.',
+      'Start from a pack, shape the story page by page, refine crop and fit in place, and export while the finished page stays in view.',
     steps: [
-      'Upload photographs and keep them attached to a real project on the server.',
-      'Sequence cover, essay, grid, panorama, and custom pages while the folio stays visible.',
-      'Save the project at a stable URL, then print or export the finished folio.',
+      'Upload photographs into a real project on the server.',
+      'Sequence cover, essay, grid, panorama and custom pages.',
+      'Save to a stable link, then print or export the finished folio.',
     ],
   },
   positioning: {
     eyebrow: 'Positioning',
-    title: 'Closer to a lightweight editorial studio than a generic photo SaaS.',
+    title: 'Closer to a small editorial studio than a generic photo tool.',
     body:
-      'FinalFolio is built around pacing, page rhythm, and printable output. The editor handles creation, the homepage proves the product, and the admin backend governs the system.',
+      'FinalFolio is designed around pacing, page relationships and printable output: the editor creates, the homepage shows the result, the admin console runs it.',
   },
   cta: {
     eyebrow: 'Editor',
-    title: 'Start shaping a folio now.',
+    title: 'Start composing your folio.',
     body:
-      'Upload a real set of photographs, compose the sequence page by page, and keep the final export model visible while you work.',
-    primaryLabel: 'Open Editor',
-    secondaryLabel: 'Open sign in',
+      'Upload a set of photographs, compose page by page, and keep the final export in view the whole time.',
+    primaryLabel: 'Open editor',
+    secondaryLabel: 'Sign in',
   },
   featuredIssue: {
-    eyebrow: 'Featured folio output',
-    title: 'What the system actually renders',
+    eyebrow: 'Featured folio',
+    title: 'Pages as they really render',
     body:
-      'The homepage preview uses the same page renderer as the editor. Admin can pin a live folio here, or the product falls back to a built-in demonstration sequence.',
+      'From the cover to the inside pages, what you see is the finished folio.',
     projectId: null,
     pageIds: [],
   },

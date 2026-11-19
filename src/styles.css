@@ -81,8 +81,17 @@
   --paper: #faf8f3;
   --shadow: 0 24px 70px rgba(17, 17, 17, 0.08);
   --pressed-card-shadow: inset 0px 1px 7px 4px #11111114;
-  --radius: 20px;
-  --control-radius: 4px;
+  /* One radius scale for the whole product. Component rules must reference
+     these tokens instead of inventing another value. */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+  --radius: var(--radius-lg);
+  --surface-radius: var(--radius-sm);
+  --control-radius: var(--radius-xs);
   /* Three control tiers only: xs = icon/micro controls, sm = dense rows that
      sit next to small buttons, the default = every standalone field. */
   --control-height-xs: 24px;
@@ -124,7 +133,6 @@
   --overlay-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.9),
     0 24px 60px rgba(17, 17, 17, 0.16);
-  --surface-radius: 8px;
   --site-width: min(1240px, calc(100vw - 48px));
   --site-section-space: clamp(58px, 7vw, 88px);
   --site-panel-space: clamp(22px, 3vw, 32px);
@@ -489,7 +497,7 @@ a:focus-visible {
   min-height: var(--control-height-xs);
   height: var(--control-height-xs);
   padding: 0 var(--space-2);
-  border-radius: 7px;
+  border-radius: var(--radius-xs);
   font-size: 0.72rem;
 }
 
@@ -535,7 +543,7 @@ a:focus-visible {
   gap: 18px;
   align-content: start;
   padding: 24px;
-  border-radius: 32px;
+  border-radius: var(--radius-xl);
   background: linear-gradient(180deg, rgba(250, 248, 243, 0.92), rgba(244, 239, 230, 0.82));
   border: 1px solid rgba(17, 17, 17, 0.12);
   box-shadow: var(--shadow);
@@ -570,7 +578,7 @@ a:focus-visible {
 }
 
 .hero-proof__meta span {
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.72rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -602,7 +610,7 @@ a:focus-visible {
   flex: 0 0 clamp(150px, 13.5vw, 196px);
   gap: 10px;
   padding: 14px;
-  border-radius: 24px;
+  border-radius: var(--radius-lg);
   border: 1px solid rgba(17, 17, 17, 0.1);
   background: rgba(255, 255, 255, 0.6);
   overflow: hidden;
@@ -620,7 +628,7 @@ a:focus-visible {
 
 .hero-proof__caption span,
 .hero-proof__caption small {
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.72rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -683,14 +691,14 @@ a:focus-visible {
 
 .feature-card {
   padding: 28px;
-  border-radius: 28px;
+  border-radius: var(--radius-xl);
   min-height: 280px;
 }
 
 .feature-card__index {
   margin: 0 0 52px;
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.78rem;
 }
 
@@ -768,7 +776,7 @@ a:focus-visible {
   left: 0;
   top: 15px;
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.72rem;
   letter-spacing: 0.08em;
 }
@@ -779,7 +787,7 @@ a:focus-visible {
   max-width: none;
   align-self: start;
   justify-self: end;
-  border-radius: 30px;
+  border-radius: var(--radius-xl);
   overflow: hidden;
 }
 
@@ -794,7 +802,7 @@ a:focus-visible {
 .browser-chrome span {
   width: 10px;
   height: 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(17, 17, 17, 0.2);
 }
 
@@ -839,8 +847,8 @@ a:focus-visible {
 .browser-stage__rail-head span,
 .browser-stage__panel-head span,
 .browser-stage__field span {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-family: var(--font-ui);
+  font-size: 0.76rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
@@ -849,7 +857,7 @@ a:focus-visible {
 .browser-stage__rail-head strong,
 .browser-stage__panel-head strong,
 .browser-stage__field strong {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   line-height: 1.2;
 }
 
@@ -859,7 +867,7 @@ a:focus-visible {
   width: 100%;
   min-width: 0;
   padding: 12px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   border: 1px solid rgba(17, 17, 17, 0.08);
   background: rgba(255, 255, 255, 0.62);
   appearance: none;
@@ -868,7 +876,6 @@ a:focus-visible {
   font: inherit;
   cursor: pointer;
   transition:
-    transform 240ms ease,
     border-color 240ms ease,
     background 240ms ease,
     box-shadow 240ms ease;
@@ -877,7 +884,7 @@ a:focus-visible {
 .browser-stage__rail-card strong,
 .browser-stage__rail-card small,
 .browser-stage__rail-head strong {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .browser-stage__rail-card strong {
@@ -898,10 +905,12 @@ a:focus-visible {
 }
 
 .browser-stage__rail-card.is-active {
-  transform: translateX(4px);
+  /* Active state must not move the card: the list would jitter as the
+     preview cycles. Use border, surface and an inset ring instead. */
   border-color: var(--field-border-color);
   background: rgba(255, 255, 255, 0.92);
   box-shadow:
+    inset 0 0 0 1px rgba(17, 17, 17, 0.14),
     inset 0 1px 0 rgba(255, 255, 255, 0.96),
     0 10px 20px rgba(17, 17, 17, 0.06);
 }
@@ -954,10 +963,10 @@ a:focus-visible {
 
 .browser-stage__toolbar-actions span {
   padding: 6px 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(17, 17, 17, 0.06);
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.7rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -983,7 +992,7 @@ a:focus-visible {
   min-width: 0;
   min-height: 418px;
   padding: 22px 18px;
-  border-radius: 28px;
+  border-radius: var(--radius-xl);
   overflow: hidden;
   border: 1px solid rgba(17, 17, 17, 0.08);
   background:
@@ -1052,7 +1061,7 @@ a:focus-visible {
   min-height: 126px;
   justify-self: center;
   padding: 18px;
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   border: 1px solid rgba(17, 17, 17, 0.08);
   background: rgba(250, 248, 243, 0.92);
   box-shadow: 0 12px 28px rgba(17, 17, 17, 0.08);
@@ -1060,7 +1069,7 @@ a:focus-visible {
 
 .browser-stage__copy p {
   margin: 0 0 8px;
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -1082,7 +1091,7 @@ a:focus-visible {
   display: grid;
   gap: 4px;
   padding: 12px 12px 13px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   border: 1px solid rgba(17, 17, 17, 0.08);
   background: rgba(255, 255, 255, 0.62);
 }
@@ -1101,7 +1110,7 @@ a:focus-visible {
   display: inline-flex;
   align-items: center;
   padding: 8px 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 1px solid rgba(17, 17, 17, 0.06);
   background: rgba(255, 255, 255, 0.74);
 }
@@ -1113,7 +1122,7 @@ a:focus-visible {
   gap: clamp(20px, 2.4vw, 32px);
   align-items: start;
   padding: 32px;
-  border-radius: 28px;
+  border-radius: var(--radius-xl);
   margin-bottom: var(--site-panel-space);
 }
 
@@ -1217,7 +1226,7 @@ a:focus-visible {
   width: var(--site-width);
   margin: 0 auto 12px;
   padding: 14px 18px;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
 }
 
 .editor-topbar__actions {
@@ -1292,7 +1301,7 @@ a:focus-visible {
 .editor-panel,
 .page-strip-panel {
   padding: 14px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--surface-editor-border);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 244, 237, 0.82));
   box-shadow:
@@ -1323,6 +1332,27 @@ a:focus-visible {
 
 .editor-panel__section {
   margin-top: 16px;
+}
+
+/* Region label inside a panel that holds more than one editing area (e.g.
+   Page content = Text + Image frame). */
+.editor-panel__section-label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.editor-frame-section .editor-subsection__body {
+  gap: 10px;
+}
+
+.editor-frame-section__fit {
+  justify-self: start;
 }
 
 .editor-panel__section + .editor-panel__section {
@@ -1394,7 +1424,7 @@ a:focus-visible {
   padding: 0 8px;
   font-size: 0.72rem;
   line-height: 1;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(252, 250, 246, 0.96);
   border: 1px solid rgba(17, 17, 17, 0.14);
   color: rgba(17, 17, 17, 0.82);
@@ -1414,7 +1444,7 @@ a:focus-visible {
 
 .editor-stack-field__label {
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.76rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1431,11 +1461,11 @@ a:focus-visible {
 .editor-filter-chip {
   min-height: var(--control-height-sm);
   padding: 0 12px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 1px solid rgba(17, 17, 17, 0.12);
   background: rgba(255, 255, 255, 0.82);
   color: rgba(17, 17, 17, 0.78);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.74rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -1466,7 +1496,7 @@ a:focus-visible {
   gap: 4px;
   width: 100%;
   padding: 12px 14px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   border: 1px solid rgba(170, 118, 34, 0.22);
   background: linear-gradient(180deg, rgba(255, 249, 238, 0.96), rgba(248, 241, 228, 0.88));
   text-align: left;
@@ -1499,7 +1529,7 @@ a:focus-visible {
   max-height: min(88vh, 920px);
   overflow: auto;
   padding: 18px;
-  border-radius: 24px;
+  border-radius: var(--radius-lg);
   border: var(--overlay-border);
   background: var(--overlay-bg-strong);
   box-shadow: var(--overlay-shadow);
@@ -1631,7 +1661,7 @@ a:focus-visible {
 
 .upload-progress__meta span {
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.76rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1641,7 +1671,7 @@ a:focus-visible {
   position: relative;
   height: 8px;
   overflow: hidden;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(17, 17, 17, 0.08);
 }
 
@@ -1682,7 +1712,7 @@ a:focus-visible {
 
 .upload-progress__queue-item span {
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.68rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1934,7 +1964,7 @@ a:focus-visible {
 
 .asset-tile__copy span {
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.68rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1946,7 +1976,7 @@ a:focus-visible {
   width: 10px;
   height: 10px;
   margin-top: 0.18rem;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 1px solid rgba(17, 17, 17, 0.12);
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.82);
@@ -1994,7 +2024,7 @@ a:focus-visible {
   min-width: 0;
   min-height: 0;
   padding: 10px;
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
 }
 
 .editor-panel__actions,
@@ -2010,7 +2040,7 @@ a:focus-visible {
   width: min(760px, 100%);
   margin: 0 auto;
   padding: 48px 36px;
-  border-radius: 28px;
+  border-radius: var(--radius-xl);
   background: rgba(250, 248, 243, 0.72);
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
@@ -2062,7 +2092,7 @@ a:focus-visible {
 .loading-placeholder {
   display: block;
   min-width: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   border: 0;
   background:
     linear-gradient(
@@ -2086,13 +2116,13 @@ a:focus-visible {
 .loading-placeholder--eyebrow {
   width: 4.9rem;
   height: 0.5rem;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 .loading-placeholder--title {
   width: min(18rem, 100%);
   height: 1rem;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
 }
 
 .loading-placeholder--line-short {
@@ -2125,7 +2155,7 @@ a:focus-visible {
   display: block;
   flex: none;
   height: 0.42rem;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(17, 17, 17, 0.08);
 }
 
@@ -2295,7 +2325,7 @@ a:focus-visible {
   width: 100%;
   min-height: 92px;
   height: 92px;
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   object-fit: contain;
 }
 
@@ -2441,7 +2471,7 @@ a:focus-visible {
 .admin-section-tab {
   min-width: 108px;
   padding-inline: var(--control-pad-x-sm);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: var(--control-font-sm);
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -2479,7 +2509,7 @@ a:focus-visible {
   gap: 8px;
   justify-items: center;
   padding: 18px 22px;
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   border: var(--overlay-border);
   background: var(--overlay-bg-strong);
   box-shadow: var(--overlay-shadow);
@@ -2488,7 +2518,7 @@ a:focus-visible {
 }
 
 .admin-notice__label {
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.72rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -2574,7 +2604,7 @@ a:focus-visible {
 }
 
 .admin-overview-card__header span {
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.72rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -2701,7 +2731,7 @@ a:focus-visible {
   width: 92px;
   min-width: 92px;
   aspect-ratio: 1 / 1;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   background: rgba(245, 239, 230, 0.86);
   border: 1px solid rgba(17, 17, 17, 0.08);
@@ -2768,7 +2798,7 @@ a:focus-visible {
 
 .admin-row__subline {
   color: rgba(17, 17, 17, 0.7);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.72rem;
   letter-spacing: 0.03em;
   overflow-wrap: anywhere;
@@ -2785,7 +2815,7 @@ a:focus-visible {
   align-items: center;
   min-height: 24px;
   padding: 0 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 1px solid rgba(17, 17, 17, 0.12);
   background: rgba(255, 255, 255, 0.96);
   color: rgba(17, 17, 17, 0.76);
@@ -2855,7 +2885,7 @@ a:focus-visible {
   place-items: center;
   min-height: 0;
   padding: 16px;
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   background: linear-gradient(180deg, rgba(248, 245, 239, 0.88), rgba(238, 231, 220, 0.82));
 }
 
@@ -2891,7 +2921,7 @@ a:focus-visible {
 
 .admin-detail-preview__caption span {
   color: rgba(17, 17, 17, 0.58);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.68rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -2931,7 +2961,7 @@ a:focus-visible {
 .admin-upload-preview__placeholder {
   width: 100%;
   min-height: 280px;
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
 }
 
 .admin-detail-card--loading {
@@ -2977,7 +3007,7 @@ a:focus-visible {
   gap: 4px;
   min-width: 0;
   padding: 12px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.66);
   border: 1px solid rgba(17, 17, 17, 0.08);
 }
@@ -3019,7 +3049,7 @@ a:focus-visible {
   justify-content: space-between;
   gap: 12px;
   padding: 14px 16px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   border: 1px solid rgba(17, 17, 17, 0.1);
   background: rgba(255, 255, 255, 0.62);
 }
@@ -3052,11 +3082,11 @@ a:focus-visible {
   align-items: center;
   min-height: 28px;
   padding: 0 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(244, 239, 231, 0.96);
   border: 1px solid rgba(17, 17, 17, 0.08);
   color: rgba(17, 17, 17, 0.76);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.72rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -3116,7 +3146,7 @@ a:focus-visible {
 
 .admin-inline-field__label {
   color: rgba(17, 17, 17, 0.72);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.72rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -3235,7 +3265,7 @@ a:focus-visible {
   list-style: none;
   cursor: pointer;
   padding: 12px 14px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   border: 1px solid rgba(17, 17, 17, 0.12);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(246, 241, 233, 0.82)),
@@ -3255,7 +3285,7 @@ a:focus-visible {
 
 .admin-collapsible summary small {
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.7rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -3343,7 +3373,7 @@ a:focus-visible {
   height: 100%;
   padding: 10px;
   overflow: hidden;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background:
     radial-gradient(circle at top, rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0) 48%),
     linear-gradient(180deg, rgba(250, 248, 243, 0.78), rgba(228, 223, 214, 0.58));
@@ -3365,7 +3395,7 @@ a:focus-visible {
   align-content: space-between;
   gap: 18px;
   padding: 22px;
-  border-radius: 26px;
+  border-radius: var(--radius-xl);
   border: 1px solid rgba(17, 17, 17, 0.08);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(247, 242, 235, 0.84)),
@@ -3596,11 +3626,17 @@ a:focus-visible {
 
 .magazine-kicker {
   margin: 0;
-  font-family: var(--font-mono);
   font-size: 0.76rem;
   color: var(--page-muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
+}
+
+/* Kickers are small supporting copy: they follow the caption role so all four
+   project fonts reach every text node on the page. The extra .magazine-page
+   step is required to outrank the page-wide display-font default. */
+.magazine-page .magazine-kicker {
+  font-family: var(--page-font-caption, var(--font-display));
 }
 
 .magazine-heading-block {
@@ -3638,6 +3674,22 @@ a:focus-visible {
   display: grid;
   gap: calc(var(--page-copy-gap) + 1mm);
   min-height: 0;
+}
+
+.magazine-cover__deck {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: var(--page-muted);
+}
+
+.magazine-folio__deck,
+.magazine-diptych__deck,
+.magazine-panorama__deck {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--page-muted);
 }
 
 /* The cover title used to run at display size against the page edge; keep it
@@ -3683,9 +3735,10 @@ a:focus-visible {
 .magazine-panorama,
 .magazine-mosaic,
 .magazine-triptych,
+/* The custom canvas is the only child; no row gap, so measured geometry from
+   a built-in page maps 1:1 onto a custom copy. */
 .magazine-custom {
   display: grid;
-  gap: var(--page-rail-gap);
 }
 
 .magazine-folio,
@@ -3698,7 +3751,7 @@ a:focus-visible {
 .magazine-mosaic,
 .magazine-triptych,
 .magazine-custom {
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr);
 }
 
 .magazine-folio__header,
@@ -3873,7 +3926,7 @@ button.asset-frame {
   left: 8px;
   top: 8px;
   padding: 3px 7px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   border: 1px solid rgba(17, 17, 17, 0.08);
   background: rgba(255, 255, 255, 0.82);
   z-index: 1;
@@ -3954,6 +4007,23 @@ button.asset-frame {
   border-radius: max(var(--page-frame-radius), 5px);
   background: var(--page-chip-bg);
   overflow: hidden;
+  /* Custom layouts can size the text box freely, so the type scales with the
+     box height instead of the browser viewport (which also keeps the printed
+     sheet identical to the editor preview). */
+  container-type: size;
+}
+
+.magazine-page--custom .magazine-custom__text h2.magazine-text--title {
+  font-size: clamp(1.3rem, 17cqh, 2.8rem);
+  line-height: 1.12;
+}
+
+.magazine-page--custom .magazine-custom__text .magazine-text--deck {
+  font-size: clamp(0.72rem, 3.6cqh, 0.95rem);
+}
+
+.magazine-page--custom .magazine-custom__text .magazine-text--body {
+  font-size: clamp(0.7rem, 3cqh, 0.92rem);
 }
 
 .magazine-custom__body {
@@ -4043,7 +4113,7 @@ button.asset-frame {
   gap: 8px;
   margin-bottom: 10px;
   padding: 10px 11px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   border: 1px solid rgba(154, 118, 33, 0.22);
   background:
     linear-gradient(180deg, rgba(255, 250, 238, 0.94), rgba(249, 242, 224, 0.9)),
@@ -4096,7 +4166,7 @@ button.asset-frame {
   row-gap: 8px;
   min-width: 0;
   padding: 12px 14px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--page-chip-border);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.04)), var(--page-chip-surface);
   box-shadow:
@@ -4163,7 +4233,7 @@ button.asset-frame {
   min-width: var(--control-height-xs);
   height: var(--control-height-xs);
   padding: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-xs);
   border: 1px solid rgba(17, 17, 17, 0.14);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(242, 237, 229, 0.82)),
@@ -4359,7 +4429,7 @@ button.asset-frame {
   gap: 10px;
   width: 214px;
   padding: 12px;
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   border: var(--overlay-border);
   background: var(--overlay-bg-strong);
   box-shadow: var(--overlay-shadow);
@@ -4379,7 +4449,7 @@ button.asset-frame {
 .template-hover-preview__meta span,
 .template-hover-preview__meta small {
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.72rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -4413,7 +4483,7 @@ button.asset-frame {
   width: calc(var(--sheet-width) * var(--template-preview-scale));
   height: calc(var(--sheet-height) * var(--template-preview-scale));
   overflow: hidden;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   filter: drop-shadow(0 14px 28px rgba(17, 17, 17, 0.12));
 }
 
@@ -4438,7 +4508,7 @@ button.asset-frame {
   gap: 14px;
   align-content: start;
   padding: 14px;
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
   border: 1px solid rgba(17, 17, 17, 0.12);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(245, 239, 231, 0.88)),
@@ -4465,7 +4535,7 @@ button.asset-frame {
   width: 100%;
   max-width: 220px;
   overflow: hidden;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   border: 1px solid rgba(17, 17, 17, 0.08);
   background: rgba(244, 239, 231, 0.8);
 }
@@ -4512,7 +4582,7 @@ button.asset-frame {
 
 .template-library-card__meta {
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.73rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -4695,7 +4765,7 @@ button.asset-frame {
   gap: 12px;
   min-width: 0;
   padding: 18px 20px;
-  border-radius: 24px;
+  border-radius: var(--radius-lg);
   border: 1px solid rgba(17, 17, 17, 0.1);
   background: rgba(255, 251, 245, 0.74);
   overflow-x: clip;
@@ -4792,7 +4862,7 @@ button.asset-frame {
 
 .issue-viewer__placeholder-page {
   min-height: clamp(280px, 48vh, 520px);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   border: 1px solid rgba(17, 17, 17, 0.06);
   background: rgba(255, 255, 255, 0.74);
   box-shadow: none;
@@ -4893,7 +4963,7 @@ button.asset-frame {
   z-index: -1;
   pointer-events: none;
   opacity: 0;
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
   box-shadow: none;
   will-change: auto;
 }
@@ -5280,7 +5350,7 @@ button.asset-frame {
 .issue-viewer__page-stack--closed {
   left: 50%;
   width: calc(var(--sheet-width) - 12px);
-  border-radius: 22px;
+  border-radius: var(--radius-lg);
   transform: translateX(-50%) translateY(8px);
   background:
     linear-gradient(90deg, rgba(214, 204, 188, 0.88), rgba(255, 255, 255, 0.9) 20%, rgba(217, 206, 190, 0.84) 100%);
@@ -5294,7 +5364,7 @@ button.asset-frame {
 .issue-viewer__page-stack--left,
 .issue-viewer__page-stack--right {
   width: 18px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(216, 206, 189, 0.56)),
     linear-gradient(90deg, rgba(17, 17, 17, 0.12), rgba(255, 255, 255, 0.16));
@@ -5320,7 +5390,7 @@ button.asset-frame {
   z-index: 4;
   width: 4px;
   transform: translateX(-50%);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(17, 17, 17, 0.22) 22%, rgba(17, 17, 17, 0.1) 78%, rgba(255, 255, 255, 0.14));
   box-shadow: none;
@@ -5406,7 +5476,7 @@ button.asset-frame {
 
 .issue-viewer__blank-copy span {
   color: rgba(17, 17, 17, 0.42);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.8rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -5580,7 +5650,7 @@ button.asset-frame {
   align-items: center;
   justify-content: center;
   min-width: 0.8em;
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.88rem;
   letter-spacing: 0.04em;
 }
@@ -5595,7 +5665,7 @@ button.asset-frame {
   justify-content: center;
   gap: 10px;
   padding: 10px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   border: var(--overlay-border);
   background: var(--overlay-bg);
   box-shadow: var(--overlay-shadow);
@@ -5668,7 +5738,7 @@ button.asset-frame {
   gap: 12px;
   align-items: center;
   padding: 12px 14px;
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   border: var(--overlay-border);
   background: var(--overlay-bg);
   box-shadow: var(--overlay-shadow);
@@ -5740,7 +5810,7 @@ button.asset-frame {
   padding: 12px 14px;
   color: var(--ink);
   text-align: left;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   border: 1px solid rgba(17, 17, 17, 0.1);
   background: rgba(255, 251, 245, 0.88);
   box-shadow:
@@ -5799,7 +5869,7 @@ button.asset-frame {
 .issue-view-mobile-sheet__card {
   width: 100%;
   max-height: min(74vh, 700px);
-  border-radius: 22px 22px 0 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   border: 1px solid rgba(17, 17, 17, 0.1);
   background: rgba(252, 248, 241, 0.96);
   box-shadow:
@@ -5833,7 +5903,7 @@ button.asset-frame {
 
 .issue-view-mobile-sheet .issue-view-copy {
   padding: 16px;
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   background: rgba(255, 251, 245, 0.74);
 }
 
@@ -5949,7 +6019,7 @@ button.asset-frame {
 
 .theme-card strong {
   display: block;
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.64rem;
   font-weight: 500;
   letter-spacing: 0.04em;
@@ -6088,7 +6158,7 @@ button.asset-frame {
   cursor: pointer;
   padding: 12px 14px;
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.76rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -6158,7 +6228,7 @@ button.asset-frame {
 .custom-layout-map__text span,
 .custom-layout-map__frame span {
   overflow: hidden;
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.66rem;
   line-height: 1.2;
   letter-spacing: 0.04em;
@@ -6187,9 +6257,8 @@ button.asset-frame {
 }
 
 .template-pack-card__copy span,
-.template-pack-card__sequence,
-.magazine-custom__label {
-  font-family: var(--font-mono);
+.template-pack-card__sequence {
+  font-family: var(--font-ui);
   font-size: 0.76rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -6198,10 +6267,6 @@ button.asset-frame {
 .template-pack-card__copy span,
 .template-pack-card__sequence {
   color: var(--muted);
-}
-
-.magazine-custom__label {
-  color: var(--page-muted);
 }
 
 .template-pack-card__copy strong {
@@ -6343,7 +6408,7 @@ button.asset-frame {
 
 .editor-crop-cluster__label {
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.68rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -6734,7 +6799,7 @@ button.asset-frame {
     width: min(340px, calc(100vw - 28px));
     padding: 14px;
     border: 1px solid var(--line);
-    border-radius: 24px;
+    border-radius: var(--radius-lg);
     background: var(--overlay-bg-strong);
     box-shadow: var(--overlay-shadow);
     backdrop-filter: var(--overlay-blur);
@@ -7089,14 +7154,14 @@ button.asset-frame {
   display: grid;
   gap: 10px;
   padding: 22px;
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
   border: 1px solid var(--line);
   background: rgba(250, 248, 243, 0.78);
   box-shadow: var(--shadow);
 }
 
 .product-brief-card span {
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.74rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -7135,7 +7200,7 @@ button.asset-frame {
 
 .site-legal-footer__links a {
   padding: 3px 0;
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.74rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -7286,7 +7351,7 @@ html:lang(zh-CN) .magazine-page h2,
 .route-fallback__mark {
   width: 30px;
   height: 30px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 1px solid rgba(17, 17, 17, 0.18);
   border-top-color: var(--ink);
   animation: route-fallback-spin 900ms linear infinite;
@@ -7306,7 +7371,7 @@ html:lang(zh-CN) .magazine-page h2,
 
 .surface-popover {
   border: var(--overlay-border);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: var(--overlay-bg);
   box-shadow: var(--overlay-shadow);
   backdrop-filter: var(--overlay-blur);
@@ -7466,7 +7531,7 @@ html:lang(zh-CN) .magazine-page h2,
   padding: 10px;
   display: grid;
   gap: 10px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: rgba(252, 250, 246, 0.99);
   box-shadow: 0 16px 32px rgba(17, 17, 17, 0.16);
 }
@@ -7483,7 +7548,7 @@ html:lang(zh-CN) .magazine-page h2,
   height: var(--control-height-xs);
   min-height: 0;
   padding: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: var(--field-border);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
   cursor: pointer;
@@ -7508,7 +7573,7 @@ html:lang(zh-CN) .magazine-page h2,
 
 .page-color-popover__apply-all {
   padding: 6px 8px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 1px solid rgba(17, 17, 17, 0.14);
   background: rgba(255, 255, 255, 0.72);
   font: inherit;
@@ -7519,7 +7584,7 @@ html:lang(zh-CN) .magazine-page h2,
 .template-card__thumb {
   width: 100%;
   aspect-ratio: 4 / 3;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   background: rgba(255, 255, 255, 0.6);
   margin-bottom: 2px;
@@ -7540,7 +7605,7 @@ html:lang(zh-CN) .magazine-page h2,
   flex: 1;
   min-width: 0;
   padding: 7px 9px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: var(--field-border);
   background: rgba(255, 255, 255, 0.86);
   font: inherit;
@@ -7552,7 +7617,7 @@ html:lang(zh-CN) .magazine-page h2,
 
 .magazine-editable {
   cursor: text;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   transition: background 120ms ease, box-shadow 120ms ease;
 }
 
@@ -7783,7 +7848,7 @@ html:lang(zh-CN) .magazine-page h2,
   min-width: 0;
   gap: 6px;
   padding: 7px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 1px solid rgba(17, 17, 17, 0.12);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(246, 241, 233, 0.6));
   transition: border-color 160ms ease, box-shadow 160ms ease;
@@ -7808,14 +7873,14 @@ html:lang(zh-CN) .magazine-page h2,
 }
 
 .layout-card__name {
-  display: block;
+  display: -webkit-box;
   max-width: 100%;
   overflow: hidden;
-  text-align: center;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  white-space: normal;
+  text-align: center;
+  overflow-wrap: break-word;
+  word-break: normal;
   font-size: 0.76rem;
   font-weight: 600;
   line-height: 1.2;
@@ -8104,58 +8169,70 @@ html[lang='zh-CN'] body {
   letter-spacing: 0.04em;
 }
 
-/* Project info disclosure in the editor operations sidebar */
-.editor-project-details {
+/* Secondary disclosure inside a panel: Folio details, Image corners, the
+   frame tools under Page content. A native <details> cannot trigger the
+   site-wide panel collapse, so a sub-section never folds its parent panel. */
+.editor-subsection {
   display: grid;
   gap: 10px;
 }
 
-.editor-project-details > summary {
+.editor-subsection > summary {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: var(--control-radius);
-  border: 1px solid rgba(17, 17, 17, 0.1);
-  background: rgba(255, 255, 255, 0.5);
+  align-items: center;
+  gap: 8px;
+  min-height: var(--control-height-sm);
+  padding: 0 var(--control-pad-x-sm);
+  border-radius: var(--radius-sm);
+  border: var(--field-border);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(246, 241, 233, 0.52)),
+    rgba(255, 255, 255, 0.5);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
   cursor: pointer;
   list-style: none;
+  font-family: var(--font-ui);
+  font-size: 0.86rem;
 }
 
-.editor-project-details > summary::-webkit-details-marker {
+.editor-subsection > summary::-webkit-details-marker {
   display: none;
 }
 
-.editor-project-details > summary::marker {
+.editor-subsection > summary::marker {
   content: '';
 }
 
-.editor-project-details > summary::after {
-  content: '＋';
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-
-.editor-project-details[open] > summary::after {
-  content: '－';
-}
-
-.editor-project-details > summary span {
-  flex: 0 0 auto;
+.editor-subsection__label {
+  min-width: 0;
   font-weight: 600;
-  font-size: 0.9rem;
 }
 
-.editor-project-details > summary small {
+.editor-subsection__meta {
   margin-left: auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  text-align: right;
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
+}
+
+.editor-subsection__chevron {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+  transition: transform 180ms ease;
+}
+
+.editor-subsection[open] > summary .editor-subsection__chevron {
+  transform: rotate(180deg);
+}
+
+.editor-subsection__body {
+  display: grid;
+  gap: 10px;
 }
 
 .editor-project-title-field {
@@ -8293,7 +8370,7 @@ html[lang='zh-CN'] body {
 
 .page-chip--drop {
   border: 1px dashed rgba(17, 17, 17, 0.4);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.32);
   align-self: stretch;
   min-height: 96px;
@@ -8379,7 +8456,7 @@ html[lang='zh-CN'] body {
   width: var(--control-height-xs);
   height: var(--control-height-xs);
   padding: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-xs);
   border: var(--field-border);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(240, 235, 227, 0.86)),
@@ -8645,7 +8722,7 @@ html[lang='zh-CN'] body {
   grid-template-rows: auto minmax(0, 1fr) auto;
   width: min(1560px, 96vw);
   height: min(940px, 92vh);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   border: 1px solid rgba(255, 255, 255, 0.64);
   background: linear-gradient(180deg, rgba(252, 250, 246, 0.99), rgba(244, 239, 231, 0.98));
   box-shadow:
@@ -8800,7 +8877,7 @@ html[lang='zh-CN'] body {
   display: grid;
   gap: 7px;
   padding: 9px 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 1px solid rgba(17, 17, 17, 0.12);
   background: rgba(255, 255, 255, 0.62);
 }
@@ -8827,7 +8904,7 @@ html[lang='zh-CN'] body {
   padding: 0 7px;
   font-size: 0.66rem;
   white-space: nowrap;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   border: 1px solid transparent;
   background: transparent;
   color: var(--muted);
@@ -9128,7 +9205,7 @@ html[lang='zh-CN'] body {
   width: min(1180px, 94vw);
   height: auto;
   max-height: min(860px, 90vh);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   border: 1px solid rgba(255, 255, 255, 0.64);
   background: linear-gradient(180deg, rgba(252, 250, 246, 0.99), rgba(244, 239, 231, 0.98));
   box-shadow:
@@ -9205,7 +9282,7 @@ html[lang='zh-CN'] body {
   justify-items: center;
   gap: 6px;
   padding: 26px 18px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   border: 1px dashed rgba(17, 17, 17, 0.24);
   background: rgba(255, 255, 255, 0.46);
   text-align: center;
@@ -9246,7 +9323,7 @@ html[lang='zh-CN'] body {
   position: relative;
   margin: 0;
   aspect-ratio: 1;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   border: 1px solid rgba(17, 17, 17, 0.12);
   background: rgba(255, 255, 255, 0.6);
   overflow: hidden;
@@ -9293,7 +9370,7 @@ html[lang='zh-CN'] body {
   width: 22px;
   height: 22px;
   padding: 0;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   border: 1px solid rgba(255, 255, 255, 0.4);
   background: rgba(17, 17, 17, 0.46);
   color: #fff;
@@ -9322,7 +9399,7 @@ html[lang='zh-CN'] body {
   border: var(--field-border);
   background: rgba(255, 255, 255, 0.72);
   color: var(--ink);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.76rem;
   line-height: 1.55;
   resize: vertical;
@@ -9501,7 +9578,7 @@ html[lang='zh-CN'] body {
   gap: 7px;
   align-content: start;
   padding: 13px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   border: 1px solid rgba(17, 17, 17, 0.14);
   background: rgba(255, 255, 255, 0.66);
   text-align: left;
@@ -9521,7 +9598,7 @@ html[lang='zh-CN'] body {
 
 .ai-plan-card__eyebrow {
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.7rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -9677,7 +9754,7 @@ html[lang='zh-CN'] body {
   flex-wrap: wrap;
   gap: 6px 12px;
   padding: 9px 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 1px solid rgba(17, 17, 17, 0.1);
   background: rgba(255, 255, 255, 0.5);
 }
@@ -9695,7 +9772,7 @@ html[lang='zh-CN'] body {
 .admin-config-table {
   display: grid;
   margin-top: 8px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 1px solid rgba(17, 17, 17, 0.12);
   background: rgba(255, 255, 255, 0.52);
   overflow: hidden;
@@ -9713,7 +9790,7 @@ html[lang='zh-CN'] body {
   border-bottom: 1px solid rgba(17, 17, 17, 0.1);
   background: rgba(244, 239, 231, 0.72);
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.66rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -9765,7 +9842,7 @@ html[lang='zh-CN'] body {
 .admin-config-table__cell-label {
   display: none;
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.62rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -9819,7 +9896,7 @@ html[lang='zh-CN'] body {
   border: var(--field-border);
   background: rgba(244, 239, 231, 0.72);
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.78rem;
   line-height: 1.5;
   resize: vertical;
@@ -9836,7 +9913,7 @@ html[lang='zh-CN'] body {
   grid-template-rows: auto minmax(0, 1fr) auto;
   width: min(720px, 92vw);
   max-height: 90vh;
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   border: 1px solid rgba(255, 255, 255, 0.64);
   background: linear-gradient(180deg, rgba(252, 250, 246, 0.99), rgba(244, 239, 231, 0.98));
   box-shadow:
@@ -9900,7 +9977,7 @@ html[lang='zh-CN'] body {
 .admin-ai-provider-card__meta {
   margin: 3px 0 0;
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.7rem;
   line-height: 1.4;
   overflow-wrap: anywhere;
@@ -10010,7 +10087,7 @@ html[lang='zh-CN'] body {
   display: flex;
   gap: 4px;
   padding: 3px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 1px solid rgba(17, 17, 17, 0.1);
   background: rgba(244, 239, 231, 0.66);
 }
@@ -10020,7 +10097,7 @@ html[lang='zh-CN'] body {
   min-height: var(--control-height-sm);
   padding: 0 var(--space-2);
   border: 1px solid transparent;
-  border-radius: 5px;
+  border-radius: var(--radius-xs);
   background: transparent;
   color: var(--muted);
   font-family: var(--font-ui);
@@ -10064,7 +10141,7 @@ html[lang='zh-CN'] body {
 .ai-style-pill {
   height: 28px;
   padding: 0 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: var(--field-border);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(242, 237, 229, 0.82)),
@@ -10102,7 +10179,7 @@ html[lang='zh-CN'] body {
   min-height: 96px;
   aspect-ratio: 1;
   padding: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   border: 1px solid rgba(17, 17, 17, 0.12);
   background: rgba(255, 255, 255, 0.6);
   overflow: hidden;
@@ -10185,7 +10262,7 @@ html[lang='zh-CN'] body {
   bottom: 24px;
   z-index: 1;
   padding: 2px 5px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.92);
   color: rgba(17, 17, 17, 0.76);
   font-size: 0.62rem;
@@ -10200,7 +10277,7 @@ html[lang='zh-CN'] body {
 .ai-upload-progress__track {
   height: 5px;
   overflow: hidden;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(17, 17, 17, 0.12);
 }
 
@@ -10221,7 +10298,7 @@ html[lang='zh-CN'] body {
   display: grid;
   gap: 8px;
   padding: 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 1px solid rgba(17, 17, 17, 0.1);
   background: rgba(255, 255, 255, 0.48);
 }
@@ -10269,14 +10346,14 @@ html[lang='zh-CN'] body {
   gap: 3px;
   min-width: 0;
   padding: 9px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   border: 1px solid rgba(17, 17, 17, 0.1);
   background: rgba(255, 255, 255, 0.5);
 }
 
 .admin-storage-summary__item span {
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 0.64rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -10312,7 +10389,7 @@ html[lang='zh-CN'] body {
 
 .admin-danger-zone {
   padding: 0 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 1px solid rgba(122, 46, 46, 0.16);
   background: rgba(255, 255, 255, 0.4);
 }
@@ -10381,7 +10458,7 @@ html[lang='zh-CN'] body {
   max-height: min(860px, calc(100dvh - 32px));
   grid-template-rows: auto auto auto;
   border: var(--overlay-border);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: var(--overlay-bg-strong);
   box-shadow: var(--overlay-shadow);
   backdrop-filter: var(--overlay-blur);
@@ -10421,7 +10498,7 @@ html[lang='zh-CN'] body {
   justify-items: center;
   gap: 4px;
   padding: 30px 18px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 1px dashed rgba(17, 17, 17, 0.18);
   background: rgba(255, 255, 255, 0.38);
   text-align: center;
@@ -10447,7 +10524,7 @@ html[lang='zh-CN'] body {
   gap: 3px;
   align-content: start;
   padding: 9px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   border: 1px solid rgba(17, 17, 17, 0.12);
   background: rgba(255, 255, 255, 0.56);
   color: var(--ink);
@@ -10522,7 +10599,7 @@ html[lang='zh-CN'] body {
   padding: 0;
   font-size: 0.66rem;
   white-space: nowrap;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 1px solid rgba(17, 17, 17, 0.14);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(242, 237, 229, 0.82)),
@@ -10602,7 +10679,7 @@ html[lang='zh-CN'] body {
   display: grid;
   gap: 10px;
   padding: 14px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   border: 1px solid rgba(17, 17, 17, 0.1);
   background: rgba(255, 255, 255, 0.46);
 }
@@ -10641,7 +10718,7 @@ html[lang='zh-CN'] body {
   gap: 10px;
   align-items: end;
   padding: 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 1px solid rgba(17, 17, 17, 0.08);
   background: rgba(255, 255, 255, 0.78);
 }
@@ -10757,3 +10834,19 @@ html[lang='zh-CN'] body {
   grid-column: 1 / -1;
 }
 
+
+/* Reveal-on-scroll must never hide content for reduced-motion users or print. */
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+@media print {
+  [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

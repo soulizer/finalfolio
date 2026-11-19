@@ -69,7 +69,7 @@ export function AccountOverviewPanel({
           <div className="editor-panel__heading">
             <div>
               <p className="eyebrow">{t('Overview')}</p>
-              <h2>{t('Your working set')}</h2>
+              <h2>{t('Your library at a glance')}</h2>
             </div>
             <span className="panel-tag">{summary ? formatTimestamp(summary.account.updatedAt) : t('Loading')}</span>
                     <PanelCollapseToggle />
@@ -147,7 +147,7 @@ export function AccountOverviewPanel({
           <div className="editor-panel__heading">
             <div>
               <p className="eyebrow">{t('Account status')}</p>
-              <h2>{t('Identity and access')}</h2>
+              <h2>{t('Account details')}</h2>
             </div>
             <span className="panel-tag">{t(session.role)}</span>
                     <PanelCollapseToggle />

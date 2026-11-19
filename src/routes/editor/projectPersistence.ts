@@ -577,7 +577,8 @@ export function startNewDraftProject({
   setLoadState('ready');
   setSaveState('draft');
   setLoadError(null);
-  setMessage(DRAFT_ONLY_MESSAGE);
+  // The status line derives the draft hint from the missing project record, so
+  // setting it here duplicated the sentence in the sidebar.
   setCopyState('idle');
   setShareCopyState('idle');
   startTransition(() => navigate('/editor'));

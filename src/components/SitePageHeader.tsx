@@ -7,8 +7,8 @@ type SitePageKey = 'home' | 'auth' | 'account' | 'admin' | 'terms' | 'privacy' |
 
 const PAGE_SUBTITLE_BY_KEY: Partial<Record<SitePageKey, string>> = {
   auth: 'Account and access',
-  account: 'Self-service workspace',
-  admin: 'Product backend',
+  account: 'Your workspace',
+  admin: 'Admin backend',
   terms: 'Terms of Service',
   privacy: 'Privacy Policy',
   'not-found': 'Page not found',
