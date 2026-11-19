@@ -173,6 +173,24 @@ function localizeProviderReason(reason: string, t: (key: string) => string) {
   if (timeout) {
     return t('Timed out after %ss.').replace('%s', timeout[1]);
   }
+  const noContent = /^The provider accepted the request but sent no content for (\d+)s\.?$/i.exec(reason);
+  if (noContent) {
+    return t('The provider accepted the request but sent no content for %ss.').replace('%s', noContent[1]);
+  }
+  const stoppedSending = /^The provider stopped sending for (\d+)s\.?$/i.exec(reason);
+  if (stoppedSending) {
+    return t('The provider stopped sending for %ss.').replace('%s', stoppedSending[1]);
+  }
+  const didNotFinish = /^The provider did not finish within (\d+)s\.?$/i.exec(reason);
+  if (didNotFinish) {
+    return t('The provider did not finish within %ss.').replace('%s', didNotFinish[1]);
+  }
+  if (/token limit/i.test(reason)) {
+    return t('The response hit the token limit before finishing.');
+  }
+  if (/unknown page template|unknown page colour|had no usable pages|without photo references/i.test(reason)) {
+    return t('The response used an invalid page layout.');
+  }
   if (/^Skipped because/i.test(reason) || /Skipped because/i.test(reason)) {
     return t('Skipped: the earlier providers used the whole time budget.');
   }
@@ -189,7 +207,7 @@ function localizeProviderReason(reason: string, t: (key: string) => string) {
   if (/did not include any plans/i.test(reason)) {
     return t('The response did not contain any usable plans.');
   }
-  if (/non-JSON/i.test(reason)) {
+  if (/non-JSON|did not return valid JSON/i.test(reason)) {
     return t('The provider returned a non-JSON response.');
   }
   if (/fetch failed|ECONNRESET|ENOTFOUND|socket hang up/i.test(reason)) {
@@ -742,7 +760,7 @@ export function AiArrangeDialog({
               <span className="ai-waiting__spinner" aria-hidden="true" />
               <h3>{t('AI is analysing %s photos').replace('%s', String(photos.length))}</h3>
               <p>
-                {t('This usually takes 20–90 seconds. Please keep this window open; the AI pool tries interfaces in order.')}
+                {t('The AI is streaming its answer and usually takes 1–3 minutes. The interface pool switches and retries on its own; please keep this window open.')}
               </p>
               <span className="ai-waiting__elapsed">{t('Elapsed %s').replace('%s', formatElapsed(elapsedSeconds))}</span>
               <button type="button" className="button button--ghost button--small" onClick={handleCancelGeneration}>

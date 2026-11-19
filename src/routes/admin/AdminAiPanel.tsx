@@ -366,7 +366,7 @@ export function AdminAiPanel({
                 onChange={(event) => updateField('maxImages', Number(event.target.value) || 1)}
               />
             </AdminInlineField>
-            <AdminInlineField label={t('Provider timeout (seconds)')} stacked>
+            <AdminInlineField label={t('Generation budget (seconds)')} stacked>
               <input
                 type="number"
                 min={15}
@@ -379,6 +379,9 @@ export function AdminAiPanel({
         </div>
         <p className="panel-note">
           {t('0 means unlimited. The daily limit resets at UTC midnight.')}
+        </p>
+        <p className="panel-note">
+          {t('The generation budget bounds one whole request. Inside it the pool streams each interface, switches to the next one when a call stalls, and retries an unusable answer once.')}
         </p>
 
         <AdminAiUsagePanel />

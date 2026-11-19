@@ -1719,6 +1719,15 @@ try {
     assert.match(serverAi, /createAiStore/);
     assert.match(serverAi, /DEFAULT_AI_PROMPT/);
     assert.match(serverAi, /generatePlans/);
+    // Root-cause guard: generations must stream (three stall budgets) instead
+    // of being killed by one 90s wall-clock timeout, and unusable answers must
+    // get one self-correction round against the same provider.
+    assert.match(serverAi, /stream: true/);
+    assert.match(serverAi, /AI_FIRST_CONTENT_TIMEOUT_MS/);
+    assert.match(serverAi, /AI_IDLE_TIMEOUT_MS/);
+    assert.match(serverAi, /validatePlanBundle/);
+    assert.doesNotMatch(serverAi, /Math\.min\(config\.requestTimeoutMs, 90_000\)/);
+    assert.match(aiArrangeDialog, /streaming its answer and usually takes 1–3 minutes/);
     assert.match(editorPage, /templateUsesDeck/);
     assert.match(editorPage, /templateUsesBody/);
     assert.match(editorPageOperations, /Replaced every page with the \$\{pack\.label\} template/);

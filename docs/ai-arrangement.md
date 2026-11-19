@@ -14,7 +14,8 @@ Admin → **AI**:
 - Global on/off switch.
 - Per-user total uses and daily uses (`0` means unlimited).
 - Maximum photos per request (capped at 50).
-- Provider timeout.
+- Generation budget (**Provider timeout**, 15–300 s, default 180 s): the ceiling
+  for one whole generation across the pool.
 - Default prompt (shown to users; users may edit a temporary copy).
 - Interface pool: name, model, Base URL, API key, enabled flag and priority.
 - **Test connection** for any provider from the focused edit dialog.
@@ -57,7 +58,8 @@ generation. The current model is ready for a future credit/recharge flow.
    shown or editable in the editor.
 5. Generate three plans. The prompt sent to the provider appends the chosen
    style and the user's notes to the admin-owned base prompt. The waiting screen
-   shows elapsed time and explains that the pool tries interfaces in order.
+   shows elapsed time and explains that the pool switches interfaces and retries
+   on its own.
 6. Compare plan name, style, page count, used photo count, themes and page
    sequence.
 7. Apply one plan. Photos selected from the library or URL import are already
@@ -69,6 +71,35 @@ The AI response is normalised client-side. Only the built-in page templates are
 accepted (`cover`, `essay`, `folio`, `grid`, `diptych`, `panorama`, `mosaic`,
 `triptych`), themes are validated, asset indexes are clamped to the selected
 photo set, and text is trimmed by the existing page limits.
+
+## Request lifecycle (streaming, hedging, self-correction)
+
+- `POST /api/ai/plans` returns `202` with a `jobId` immediately; the dialog polls
+  `GET /api/ai/plans/:jobId` every 1.2 s for up to five minutes. Long
+  generations therefore never hit the Cloudflare ~100 s gateway timeout (524)
+  that used to kill them while the model was still writing.
+- Providers are called with `stream: true`. Three separate budgets replace the
+  old single 90 s wall-clock kill switch:
+  - **first content — 90 s** from request start until the first token. This must
+    cover a whole buffered generation, because a provider that ignores `stream`
+    only sends headers together with the finished body (observed healthy runs
+    finish in 50–82 s).
+  - **idle — 60 s** maximum gap between tokens once streaming has started.
+  - **total — the configured budget, capped at 280 s** for the whole generation.
+  A stall reports its own reason (`sent no content for 90s`, `stopped sending
+  for 60s`, `did not finish within Ns`) instead of a generic timeout.
+- Hedged race: the next enabled provider starts as soon as the previous one
+  fails, or in parallel once the fastest healthy latency in
+  `data/ai/provider-stats.json` is exceeded (about half of the total budget),
+  whichever comes first. The first complete answer wins and the rest abort.
+- Self-correction: when a provider answers but the answer is unusable (invalid
+  JSON, no `plans`, unknown `template`/`theme`, page without `assetIndexes`),
+  the error plus the provider's own answer is sent back to the *same* provider
+  for one corrected retry before it counts as a failure. Successful corrections
+  are counted as `corrections` in `provider-stats.json`.
+- Provider statistics (`successes`, `failures`, `totalLatencyMs`, `lastOk`,
+  `corrections`) feed provider ordering, so a slow or failing relay sinks to the
+  back of the pool automatically.
 
 ## Privacy and failure behaviour
 
@@ -97,5 +128,6 @@ photo set, and text is trimmed by the existing page limits.
   but the copy and image-to-page choices still need a human review.
 - Quotas are per-user total/daily counts. There is no recharge or per-user
   override UI yet; the usage file is structured so a credit flow can be added.
-- Requests are synchronous and can take up to the configured timeout (120s by
-  default). The dialog shows elapsed time and allows cancellation.
+- A generation runs as a background job for up to the configured budget (180 s
+  by default, 280 s hard cap) while the dialog polls; it shows elapsed time and
+  allows cancellation, which aborts the job's provider calls.

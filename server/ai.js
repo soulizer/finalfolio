@@ -8,6 +8,26 @@ const MAX_PROVIDERS = 20;
 const MAX_IMAGES = 50;
 const MAX_THUMBNAIL_CHARS = 160_000;
 const MAX_TOTAL_THUMBNAIL_CHARS = 4_000_000;
+// Streaming budgets. A healthy generation streams tokens continuously, so a
+// single wall-clock timeout cannot tell "still working" from "connection
+// dead". Separate budgets can:
+//  - first content: request start until the first token arrives. Providers
+//    that ignore `stream` only send headers with the finished body, so this
+//    budget must cover a whole buffered generation (observed healthy runs
+//    finish in 50-82s), not just a TCP connect.
+//  - idle: max gap between tokens once streaming has started.
+const AI_FIRST_CONTENT_TIMEOUT_MS = 90_000;
+const AI_IDLE_TIMEOUT_MS = 60_000;
+// If a provider is still running past every healthy latency in the stats,
+// start the next one in parallel instead of waiting out its full timeout.
+const AI_SLOW_PROVIDER_HEDGE_MS = 100_000;
+// Hard ceiling for one whole generation (client polls for 5 minutes).
+const AI_TOTAL_BUDGET_MS = 280_000;
+const AI_PAGE_TEMPLATES = new Set(['cover', 'essay', 'folio', 'grid', 'diptych', 'panorama', 'mosaic', 'triptych']);
+const AI_PAGE_THEMES = new Set([
+  'warm-beige', 'butter-cream', 'pale-blue', 'sea-glass', 'pure-white',
+  'light-gray', 'sandstone', 'sage-mist', 'dusty-rose', 'pearl-blush',
+]);
 
 export const DEFAULT_AI_PROMPT = `你是一位资深摄影画册编辑与图片编辑。你会收到一组照片缩略图（按上传顺序编号，从 0 开始）以及每张照片的名称和尺寸。请分析照片的内容、主次关系、色调、横竖构图和叙事节奏，并设计 3 套完整、可执行的画册方案。
 
@@ -91,7 +111,7 @@ const DEFAULT_AI_CONFIG = {
   userTotalLimit: 10,
   dailyLimit: 3,
   maxImages: MAX_IMAGES,
-  requestTimeoutMs: 120_000,
+  requestTimeoutMs: 180_000,
   prompt: DEFAULT_AI_PROMPT,
   providers: [],
 };
@@ -240,6 +260,70 @@ function extractJson(text) {
   }
 }
 
+/**
+ * Structural check for a generated bundle. Anything that would silently drop
+ * pages or plans in the client normalizer is treated as an invalid answer and
+ * sent back to the same provider for one corrected retry.
+ * Returns null when valid, otherwise { reason, detail } where `reason` is the
+ * user-facing (localizable) English text and `detail` is what the model sees.
+ */
+function validatePlanBundle(parsed) {
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return { reason: 'The AI provider did not return valid JSON.', detail: '回复不是 JSON 对象。' };
+  }
+  const plans = Array.isArray(parsed.plans) ? parsed.plans : [];
+  if (!plans.length) {
+    return { reason: 'The AI response did not include any plans.', detail: '缺少 plans 数组或 plans 为空。' };
+  }
+  try {
+  plans.forEach((plan, planIndex) => {
+    const pages = Array.isArray(plan?.pages) ? plan.pages : [];
+    if (!pages.length) {
+      throw new PlanValidationError(
+        `Plan ${planIndex + 1} had no usable pages.`,
+        `第 ${planIndex + 1} 套方案没有 pages 页面数组。`,
+      );
+    }
+    pages.forEach((page, pageIndex) => {
+      const template = typeof page?.template === 'string' ? page.template.toLowerCase() : '';
+      if (!AI_PAGE_TEMPLATES.has(template)) {
+        throw new PlanValidationError(
+          `Plan ${planIndex + 1} used an unknown page template: ${String(page?.template ?? '').slice(0, 20)}.`,
+          `第 ${planIndex + 1} 套方案第 ${pageIndex + 1} 页的 template「${String(page?.template ?? '').slice(0, 20)}」不在允许列表 cover|essay|folio|grid|diptych|panorama|mosaic|triptych 内。`,
+        );
+      }
+      const theme = typeof page?.theme === 'string' ? page.theme.toLowerCase() : '';
+      if (theme && !AI_PAGE_THEMES.has(theme)) {
+        throw new PlanValidationError(
+          `Plan ${planIndex + 1} used an unknown page colour: ${theme.slice(0, 20)}.`,
+          `第 ${planIndex + 1} 套方案第 ${pageIndex + 1} 页的 theme「${theme.slice(0, 20)}」不在允许的纸色列表内。`,
+        );
+      }
+      if (!Array.isArray(page.assetIndexes)) {
+        throw new PlanValidationError(
+          `Plan ${planIndex + 1} had a page without photo references.`,
+          `第 ${planIndex + 1} 套方案第 ${pageIndex + 1} 页缺少 assetIndexes 数组。`,
+        );
+      }
+    });
+  });
+  } catch (error) {
+    if (error instanceof PlanValidationError) {
+      return { reason: error.reason, detail: error.detail };
+    }
+    throw error;
+  }
+  return null;
+}
+
+class PlanValidationError extends Error {
+  constructor(reason, detail) {
+    super(reason);
+    this.reason = reason;
+    this.detail = detail;
+  }
+}
+
 async function readJsonFile(filename, fallback) {
   try {
     return JSON.parse(await fs.readFile(filename, 'utf8'));
@@ -299,15 +383,18 @@ async function readProviderStats() {
   return parsed && typeof parsed === 'object' ? parsed : { providers: {} };
 }
 
-async function recordProviderStat(providerId, { latencyMs = null, ok }) {
+async function recordProviderStat(providerId, { latencyMs = null, ok, corrected = false }) {
   if (!providerId) {
     return;
   }
   const stats = await readProviderStats();
   const providers = stats.providers ?? {};
-  const entry = providers[providerId] ?? { successes: 0, failures: 0, totalLatencyMs: 0 };
+  const entry = providers[providerId] ?? { successes: 0, failures: 0, totalLatencyMs: 0, corrections: 0 };
   if (ok) {
     entry.successes += 1;
+    if (corrected) {
+      entry.corrections = (entry.corrections ?? 0) + 1;
+    }
     if (typeof latencyMs === 'number' && Number.isFinite(latencyMs)) {
       entry.totalLatencyMs += latencyMs;
       entry.lastLatencyMs = latencyMs;
@@ -497,71 +584,196 @@ async function selectProviders(config) {
   return url.toString();
 }
 
-async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000, signal: externalSignal } = {}) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    const forwardAbort = () => controller.abort();
-    if (externalSignal) {
-      if (externalSignal.aborted) {
-        controller.abort();
-      } else {
-        externalSignal.addEventListener('abort', forwardAbort, { once: true });
-      }
+async function callProvider(provider, messages, { timeoutMs = AI_TOTAL_BUDGET_MS, maxTokens = 8000, signal: externalSignal } = {}) {
+  const controller = new AbortController();
+  const startedAt = Date.now();
+  const budgetMs = Math.max(15_000, timeoutMs);
+  const firstContentMs = Math.min(AI_FIRST_CONTENT_TIMEOUT_MS, budgetMs);
+  let phase = 'connecting';
+  let receivedContent = false;
+  let lastActivityAt = startedAt;
+  let abortCause = null;
+
+  const abortWith = (cause) => {
+    abortCause = cause;
+    controller.abort();
+  };
+  const hardStop = setTimeout(() => abortWith('budget'), budgetMs);
+  const stallCheck = setInterval(() => {
+    const idleFor = Date.now() - lastActivityAt;
+    if (receivedContent ? idleFor > AI_IDLE_TIMEOUT_MS : idleFor > firstContentMs) {
+      abortWith(receivedContent ? 'idle' : 'first-content');
     }
-    const startedAt = Date.now();
-    try {
-      const response = await fetch(buildChatCompletionsUrl(provider.baseUrl), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${provider.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: provider.model,
-          messages,
-          temperature: 0.6,
-          max_tokens: maxTokens,
-        }),
-        signal: controller.signal,
-      });
-      const bodyText = await response.text();
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${bodyText.slice(0, 300)}`);
-      }
-      let payload;
-      try {
-        payload = JSON.parse(bodyText);
-      } catch {
-        throw new Error('The AI provider returned a non-JSON response.');
-      }
-      if (payload?.choices?.[0]?.finish_reason === 'length') {
-        throw new Error('The AI provider cut the response off before it finished.');
-      }
-      let content = payload?.choices?.[0]?.message?.content;
-      if (Array.isArray(content)) {
-        // Some relays return Anthropic-style content parts; keep the text parts.
-        content = content
-          .map((part) => (typeof part?.text === 'string' ? part.text : ''))
-          .filter(Boolean)
-          .join('');
-      }
-      if (typeof content !== 'string' || !content.trim()) {
-        throw new Error('The AI provider returned an empty message.');
-      }
-      return {
-        content,
-        latencyMs: Date.now() - startedAt,
-      };
-    } catch (error) {
-      if (error?.name === 'AbortError') {
-        throw new Error(`Timed out after ${Math.round(timeoutMs / 1000)}s.`);
-      }
-      throw error;
-    } finally {
-      clearTimeout(timer);
-      externalSignal?.removeEventListener('abort', forwardAbort);
+  }, 1_000);
+  const forwardAbort = () => abortWith('caller');
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      abortWith('caller');
+    } else {
+      externalSignal.addEventListener('abort', forwardAbort, { once: true });
     }
   }
+
+  try {
+    const response = await fetch(buildChatCompletionsUrl(provider.baseUrl), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${provider.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: provider.model,
+        messages,
+        temperature: 0.6,
+        max_tokens: maxTokens,
+        stream: true,
+      }),
+      signal: controller.signal,
+    });
+    phase = 'receiving';
+    lastActivityAt = Date.now();
+    if (!response.ok) {
+      const bodyText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${bodyText.slice(0, 300)}`);
+    }
+
+    const contentType = response.headers.get('content-type') ?? '';
+    if (contentType.includes('application/json')) {
+      // Provider ignored `stream` and answered in one shot.
+      const bodyText = await response.text();
+      lastActivityAt = Date.now();
+      const content = readChatContent(JSON.parse(bodyText));
+      if (!content.trim()) {
+        throw new Error('The AI provider returned an empty message.');
+      }
+      return { content, latencyMs: Date.now() - startedAt };
+    }
+    if (!response.body) {
+      throw new Error('The AI provider returned an empty response.');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let raw = '';
+    let content = '';
+    let finishReason = null;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      lastActivityAt = Date.now();
+      receivedContent = true;
+      const piece = decoder.decode(value, { stream: true });
+      raw += piece;
+      buffer += piece;
+      let newlineAt = buffer.indexOf('\n');
+      while (newlineAt >= 0) {
+        const line = buffer.slice(0, newlineAt).trim();
+        buffer = buffer.slice(newlineAt + 1);
+        newlineAt = buffer.indexOf('\n');
+        if (!line || line.startsWith(':') || !line.startsWith('data:')) {
+          continue;
+        }
+        const data = line.slice(5).trim();
+        if (data === '[DONE]') {
+          buffer = '';
+          break;
+        }
+        let chunk;
+        try {
+          chunk = JSON.parse(data);
+        } catch {
+          continue;
+        }
+        const choice = chunk?.choices?.[0];
+        if (typeof choice?.delta?.content === 'string') {
+          content += choice.delta.content;
+        }
+        if (typeof choice?.message?.content === 'string' && !content) {
+          content = choice.message.content;
+        }
+        if (choice?.finish_reason) {
+          finishReason = choice.finish_reason;
+        }
+      }
+    }
+    if (!content.trim()) {
+      // Some relays label the stream as text/event-stream but write a plain
+      // JSON body; recover it before giving up on the answer.
+      const recovered = recoverChatContent(raw);
+      content = recovered ?? '';
+    }
+    if (!content.trim()) {
+      throw new Error(
+        finishReason === 'length'
+          ? `The provider stopped at the ${maxTokens} token limit before finishing the JSON.`
+          : 'The AI provider returned an empty message.',
+      );
+    }
+    return { content, latencyMs: Date.now() - startedAt };
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      if (abortCause === 'caller') {
+        throw error;
+      }
+      if (abortCause === 'first-content') {
+        throw new Error(
+          phase === 'receiving'
+            ? `The provider accepted the request but sent no content for ${Math.round(firstContentMs / 1000)}s.`
+            : `Timed out after ${Math.round(firstContentMs / 1000)}s.`,
+        );
+      }
+      if (abortCause === 'idle') {
+        throw new Error(`The provider stopped sending for ${Math.round(AI_IDLE_TIMEOUT_MS / 1000)}s.`);
+      }
+      throw new Error(`The provider did not finish within ${Math.round(budgetMs / 1000)}s.`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(hardStop);
+    clearInterval(stallCheck);
+    externalSignal?.removeEventListener('abort', forwardAbort);
+  }
+}
+
+/** Pull the assistant text out of a non-streaming chat completion payload. */
+function readChatContent(payload) {
+  const choice = payload?.choices?.[0];
+  if (typeof choice?.message?.content === 'string') {
+    return choice.message.content;
+  }
+  if (typeof payload?.content === 'string') {
+    return payload.content;
+  }
+  return '';
+}
+
+/** Last-resort parse for providers that answer `stream` with a JSON body. */
+function recoverChatContent(raw) {
+  const value = String(raw ?? '').trim();
+  if (!value || !value.includes('{')) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(value);
+    const content = readChatContent(parsed);
+    return content.trim() ? content : null;
+  } catch {
+    const start = value.indexOf('{');
+    const end = value.lastIndexOf('}');
+    if (start >= 0 && end > start) {
+      try {
+        const content = readChatContent(JSON.parse(value.slice(start, end + 1)));
+        return content.trim() ? content : null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+}
 
   async function testProvider({ providerId, provider }) {
     const config = await readConfig();
@@ -656,7 +868,68 @@ async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000, s
     const failures = [];
     // Hedged race: the next provider starts on a timer (or immediately when the
     // previous one fails); the first complete answer wins and the rest abort.
-    // This removes the "wait for a slow provider to time out" failure mode.
+    // One wall-clock budget bounds the whole generation (the client polls for
+    // five minutes); inside it every provider streams with its own stall
+    // budgets, so "still generating" is never mistaken for "connection dead".
+    const totalBudgetMs = Math.max(
+      60_000,
+      Math.min(config.requestTimeoutMs || AI_TOTAL_BUDGET_MS, AI_TOTAL_BUDGET_MS),
+    );
+    const hedgeMs = Math.max(30_000, Math.min(AI_SLOW_PROVIDER_HEDGE_MS, Math.floor(totalBudgetMs / 2)));
+    const deadlineAt = Date.now() + totalBudgetMs;
+    const remainingBudgetMs = () => Math.max(15_000, deadlineAt - Date.now());
+
+    // One self-correction round: a transport-level success with an unusable
+    // answer (bad JSON, no plans, unknown template) is worth one short retry
+    // against the same provider with the error and its own answer attached,
+    // instead of throwing away a generation that already cost 60-90 seconds.
+    const attemptAnswer = async (provider, result, providerController) => {
+      let parsed = null;
+      let invalid = null;
+      try {
+        parsed = extractJson(result.content);
+      } catch (error) {
+        invalid = {
+          reason: error instanceof Error ? error.message : 'The AI provider did not return valid JSON.',
+          detail: '回复不是合法 JSON，可能被截断或混入了解释文字。',
+        };
+      }
+      if (!invalid) {
+        invalid = validatePlanBundle(parsed);
+      }
+      let corrected = false;
+      if (invalid) {
+        const fixed = await callProvider(
+          provider,
+          [
+            ...messages,
+            { role: 'assistant', content: result.content.slice(0, 8_000) },
+            {
+              role: 'user',
+              content:
+                `你上一条回复无法使用：${invalid.detail}\n` +
+                '请重新输出一份完整、严格符合系统要求的 JSON：必须包含非空 plans 数组，' +
+                '每页 template 只能在 cover|essay|folio|grid|diptych|panorama|mosaic|triptych 中选择，' +
+                'theme 只能使用给定纸色，assetIndexes 必须是数组。只输出 JSON 本身，不要 Markdown，不要解释。',
+            },
+          ],
+          { timeoutMs: remainingBudgetMs(), maxTokens: 32_000, signal: providerController.signal },
+        );
+        parsed = extractJson(fixed.content);
+        const stillInvalid = validatePlanBundle(parsed);
+        if (stillInvalid) {
+          throw new Error(stillInvalid.reason);
+        }
+        corrected = true;
+      }
+      await recordProviderStat(provider.id, {
+        latencyMs: result.latencyMs,
+        ok: true,
+        corrected,
+      }).catch(() => null);
+      return { provider, parsed };
+    };
+
     const winner = await new Promise((resolve) => {
       let settled = false;
       let nextToStart = 0;
@@ -682,20 +955,11 @@ async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000, s
         const controller = new AbortController();
         controllers.push(controller);
         callProvider(provider, messages, {
-          timeoutMs: Math.min(config.requestTimeoutMs, 90_000),
+          timeoutMs: remainingBudgetMs(),
           maxTokens: 32_000,
           signal: controller.signal,
         })
-          .then(async (result) => {
-            const parsed = extractJson(result.content);
-            if (!parsed || !Array.isArray(parsed.plans) || parsed.plans.length === 0) {
-              throw new Error('The AI response did not include any plans.');
-            }
-            await recordProviderStat(provider.id, { latencyMs: result.latencyMs, ok: true }).catch(
-              () => null,
-            );
-            return { provider, parsed };
-          })
+          .then((result) => attemptAnswer(provider, result, controller))
           .then((value) => finish(value))
           .catch(async (error) => {
             finishedCount += 1;
@@ -716,17 +980,22 @@ async function callProvider(provider, messages, { timeoutMs, maxTokens = 8000, s
           });
       };
       launchNext();
+      // Slow-provider hedge: past the fastest healthy latency in the stats the
+      // next interface runs in parallel rather than waiting out a stall.
       providers.forEach((_provider, index) => {
+        if (index === 0) {
+          return;
+        }
         timers.push(
           setTimeout(() => {
             if (nextToStart <= index) {
               nextToStart = index;
               launchNext();
             }
-          }, index * 20_000),
+          }, Math.min(index * hedgeMs, Math.max(hedgeMs, totalBudgetMs - 45_000))),
         );
       });
-      timers.push(setTimeout(() => finish(null), 150_000));
+      timers.push(setTimeout(() => finish(null), totalBudgetMs));
     });
 
     if (winner) {
