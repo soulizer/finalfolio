@@ -1367,6 +1367,14 @@ export function EditorPage() {
                     className={`page-chip page-chip--theme-${page.theme} ${isActive ? 'is-active' : ''} ${
                       draggedPageId === page.id ? 'is-dragging' : ''
                     }`.trim()}
+                    onClick={(event) => {
+                      const target = event.target as HTMLElement | null;
+                      if (target?.closest('button, a, input, textarea, select')) {
+                        return;
+                      }
+                      selectPage(page.id);
+                      setColorPickerPageId(null);
+                    }}
                     onDragOver={(event) => {
                       if (!draggedPageId) {
                         return;

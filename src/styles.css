@@ -4125,6 +4125,7 @@ button.asset-frame {
 }
 
 .page-chip {
+  cursor: pointer;
   --page-chip-surface: rgba(255, 255, 255, 0.62);
   --page-chip-surface-active: rgba(255, 255, 255, 0.98);
   --page-chip-border: rgba(17, 17, 17, 0.08);
@@ -7877,12 +7878,12 @@ html:lang(zh-CN) .magazine-page h2,
 }
 
 .layout-card__name {
-  display: -webkit-box;
+  display: block;
   max-width: 100%;
-  min-height: 2.4em;
   overflow: hidden;
   text-align: center;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   -webkit-line-clamp: 2;
   white-space: normal;
   font-size: 0.76rem;

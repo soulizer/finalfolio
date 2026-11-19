@@ -864,7 +864,25 @@ export function fetchAiStatus() {
   return readJson<AiStatus>('/api/ai/status');
 }
 
-export function generateAiPlans(
+function waitForPoll(ms: number, signal?: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException('Aborted', 'AbortError'));
+      return;
+    }
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(new DOMException('Aborted', 'AbortError'));
+    };
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+export async function generateAiPlans(
   payload: {
     images: Array<{
       name: string;
@@ -876,7 +894,9 @@ export function generateAiPlans(
   },
   signal?: AbortSignal,
 ) {
-  return readJson<AiPlanResponse>('/api/ai/plans', {
+  // The server starts a job and returns immediately; long generations must not
+  // sit behind a proxy request (Cloudflare cuts those at ~100 seconds with 524).
+  const started = await readJson<AiPlanResponse & { jobId?: string }>('/api/ai/plans', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -884,6 +904,27 @@ export function generateAiPlans(
     body: JSON.stringify(payload),
     signal,
   });
+  if (!started.jobId) {
+    // Backward-compatible direct response (older server or test stub).
+    return started as AiPlanResponse;
+  }
+
+  const deadline = Date.now() + 5 * 60_000;
+  while (Date.now() < deadline) {
+    await waitForPoll(1200, signal);
+    const poll = await readJson<{
+      status: 'pending' | 'succeeded' | 'failed';
+      result?: AiPlanResponse;
+      error?: string;
+    }>(`/api/ai/plans/${encodeURIComponent(started.jobId)}`, { signal });
+    if (poll.status === 'succeeded' && poll.result) {
+      return poll.result;
+    }
+    if (poll.status === 'failed') {
+      throw new Error(poll.error || 'AI arrangement failed.');
+    }
+  }
+  throw new Error('AI arrangement timed out. Please try again.');
 }
 
 export function testAdminObjectStorage(objectStorage: AdminObjectStorageDraft) {

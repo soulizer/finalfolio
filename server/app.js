@@ -2768,27 +2768,93 @@ export function createApp({
     }
   });
 
+  // Long AI generations outlive proxy timeouts (Cloudflare returns 524 at ~100s),
+  // so the POST only starts a job and returns immediately; the client polls.
+  const aiPlanJobs = new Map();
+  const AI_PLAN_JOB_TTL_MS = 15 * 60 * 1000;
+  const sweepAiPlanJobs = () => {
+    const cutoff = Date.now() - AI_PLAN_JOB_TTL_MS;
+    for (const [jobId, job] of aiPlanJobs) {
+      if (job.createdAt < cutoff) {
+        aiPlanJobs.delete(jobId);
+      }
+    }
+  };
+
   app.post('/api/ai/plans', async (request, response, next) => {
     try {
       const user = requireAuthenticated(request);
       await securityStore.consumeRateLimit({ ...AI_PLAN_RATE_LIMIT, key: user.id });
-      const result = await aiStore.generatePlans({
+      sweepAiPlanJobs();
+      const jobId = `aijob-${Date.now().toString(36)}-${crypto.randomBytes(4).toString('hex')}`;
+      const job = {
+        id: jobId,
         userId: user.id,
-        images: request.body?.images,
-        prompt: request.body?.prompt,
+        status: 'pending',
+        createdAt: Date.now(),
+        startedAt: Date.now(),
+        finishedAt: null,
+        result: null,
+        error: null,
+        code: null,
+      };
+      aiPlanJobs.set(jobId, job);
+      response.status(202).json({ jobId });
+
+      void aiStore
+        .generatePlans({
+          userId: user.id,
+          images: request.body?.images,
+          prompt: request.body?.prompt,
+        })
+        .then(async (result) => {
+          job.status = 'succeeded';
+          job.result = result;
+          job.finishedAt = Date.now();
+          await opsStore
+            .recordEvent({
+              type: 'ai',
+              status: 'ok',
+              userId: user.id,
+              detail: {
+                action: 'generate-ai-plans',
+                provider: result.providerName ?? null,
+                imageCount: Array.isArray(request.body?.images) ? request.body.images.length : 0,
+                planCount: Array.isArray(result.plans) ? result.plans.length : 0,
+              },
+            })
+            .catch(() => null);
+        })
+        .catch((error) => {
+          job.status = 'failed';
+          job.error = error instanceof Error ? error.message : 'AI arrangement failed.';
+          job.code = error?.code ?? null;
+          job.finishedAt = Date.now();
+        });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get('/api/ai/plans/:jobId', async (request, response, next) => {
+    try {
+      const user = requireAuthenticated(request);
+      const job = aiPlanJobs.get(String(request.params.jobId ?? ''));
+      if (!job) {
+        response.status(404).json({ error: 'This AI job is no longer available. Start a new generation.' });
+        return;
+      }
+      if (job.userId !== user.id && user.role !== 'admin') {
+        response.status(403).json({ error: 'This AI job belongs to another account.' });
+        return;
+      }
+      response.json({
+        status: job.status,
+        result: job.result ?? undefined,
+        error: job.error ?? undefined,
+        code: job.code ?? undefined,
+        elapsedMs: (job.finishedAt ?? Date.now()) - job.startedAt,
       });
-      await opsStore.recordEvent({
-        type: 'ai',
-        status: 'ok',
-        userId: user.id,
-        detail: {
-          action: 'generate-ai-plans',
-          provider: result.providerName ?? null,
-          imageCount: Array.isArray(request.body?.images) ? request.body.images.length : 0,
-          planCount: Array.isArray(result.plans) ? result.plans.length : 0,
-        },
-      });
-      response.json(result);
     } catch (error) {
       next(error);
     }
