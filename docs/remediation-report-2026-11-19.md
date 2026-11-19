@@ -39,7 +39,7 @@
 - **根因**：照片先到 Node 进程再到存储，前端无法知道真实字节进度；失败即整批失败。
 - **修复**：`POST /api/uploads/presign` 签发 15 分钟、内容类型固定的 PUT URL，浏览器直传对象存储；队列 4 路并发，逐文件显示准备/上传/完成/失败与速率，失败可单条重试；私有部署或无对象存储时回退到服务端多段上传。
 - **文件**：`server/objectStorage.js`、`server/app.js`、`src/editor/upload*`、`docs/uploads.md`。
-- **证据**：`docs/uploads.md` 的时序说明；e2e 上传与失败重试用例。
+- **证据**：`docs/uploads.md` 的时序说明；`validate:mvp` 覆盖“镜像失败时保留本地资源并保留重试”。
 
 ### 2.2 图库与删除：级联且不可复活
 
@@ -131,6 +131,10 @@
 - **修复**：所有动态文案经 `t()`；补齐后台 AI、配额、上限、删除确认、导出、预检、状态栏等词条；术语统一（作品集 / 页面 / 排版 / 图注 / 页边距）。本轮又补了“这本作品集最多容纳 %s 张照片…”“已达到 %s 张照片的上限”等。
 - **证据**：残留英文扫描 0；`docs/evidence/export-preflight-odd-zh.png`、`ai-entry-zh.png`。
 
+### 2.8b 首次进入编辑器
+
+新用户进入编辑器时不会面对一张空白画布：空图框直接给出“上传照片 / 把照片拖到这里”的 CTA，点击即可上传并自动填入该图框；侧栏的“上传 / 从 URL 添加”始终可见；状态行说明当前是本地草稿、保存后才有公开链接。中文环境同样完整（截图见 `docs/evidence/mobile-editor.png` 与 `editor-control-tiers.png`）。
+
 ### 2.9 面板折叠
 
 - 单一 `PanelCollapseToggle`（24 px 拟物箭头）+ `ui/panelCollapse.ts` 委托；状态按路由记忆；标题行标签/标签块/箭头同一 24 px 行高。
@@ -176,7 +180,7 @@
 - `./node_modules/.bin/tsc --noEmit`：通过。
 - `./node_modules/.bin/vite build`：通过。
 - `npm run validate:mvp`：通过（含导出几何、装订、AI 流式、设计令牌静态断言）。
-- `./node_modules/.bin/playwright test`：33/33 通过（新增“每种内置排版都能在页面上直接改字”“失败的 URL 导入保留原链接可重试”）。
+- `./node_modules/.bin/playwright test`：33/33 通过（最终提交上重跑：`33 passed (1.4m)`）（新增“每种内置排版都能在页面上直接改字”“失败的 URL 导入保留原链接可重试”）。
 - GitHub Actions：`main` 与 `fix/comprehensive-review` 在每个提交上均为 success（GitHub 托管 ubuntu-24.04、actions v5）。
 
 ## 7. 开源/产品参考采纳表
