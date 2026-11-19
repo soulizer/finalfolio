@@ -1728,6 +1728,23 @@ try {
     assert.match(serverAi, /validatePlanBundle/);
     assert.doesNotMatch(serverAi, /Math\.min\(config\.requestTimeoutMs, 90_000\)/);
     assert.match(aiArrangeDialog, /streaming its answer and usually takes 1–3 minutes/);
+    // Export geometry guards: sheets are laid out in physical mm with a
+    // binding-safe inner margin, and the export pipeline normalises every
+    // raster to the exact DPI it promises.
+    const pageBox = /\.magazine-page \{[^}]*?width:\s*var\(--sheet-width\);[^}]*?padding:\s*([\d.]+)mm\s+([\d.]+)mm/s.exec(
+      styles,
+    );
+    assert(pageBox, 'the page box must be sized in physical mm with mm padding');
+    const innerMarginMm = Math.min(Number(pageBox[1]), Number(pageBox[2]));
+    assert(innerMarginMm >= 10, `binding-safe inner margin must be at least 10mm, got ${innerMarginMm}mm`);
+    const exportSource = await fs.readFile(path.join(rootDir, 'src/editor/export.ts'), 'utf8');
+    assert.match(exportSource, /getExportTargetPixelSize/);
+    assert.match(exportSource, /normalizeExportRaster/);
+    assert.match(exportSource, /measureExportInnerMarginMm/);
+    const preflightSource = await fs.readFile(path.join(rootDir, 'src/editor/preflight.ts'), 'utf8');
+    assert.match(preflightSource, /odd-page-count/);
+    assert.match(preflightSource, /tight-gutter/);
+
     assert.match(editorPage, /templateUsesDeck/);
     assert.match(editorPage, /templateUsesBody/);
     assert.match(editorPageOperations, /Replaced every page with the \$\{pack\.label\} template/);

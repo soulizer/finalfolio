@@ -1924,6 +1924,10 @@ export function EditorPage() {
           onRunPrint={() => void handlePrint()}
           onSelectPreflightIssue={(issue) => {
             setExportCenterOpen(false);
+            if (!issue.pageId) {
+              // Folio-level warnings (page parity, gutter) have no page to jump to.
+              return;
+            }
             setSelectedPageId(issue.pageId);
             setSelectedSlot(issue.slot ?? getInitialSlot(project.pages[issue.pageIndex]));
           }}

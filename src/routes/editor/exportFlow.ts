@@ -11,6 +11,7 @@ import {
   createProjectExportBlob,
   downloadBlob,
   getExportOptimizationOptions,
+  measureExportInnerMarginMm,
   waitForFontsReady,
 } from '../../editor/export';
 import { createExportDataUrl } from '../../editor/imageOptimization';
@@ -500,7 +501,9 @@ export async function runProjectExportFlow({
   captureJpgPages,
 }: RunProjectExportFlowOptions) {
   const exportProjectRecordId = projectRecordId ?? undefined;
-  const nextIssues = runExportPreflight(project, exportSettings);
+  const nextIssues = runExportPreflight(project, exportSettings, {
+    innerMarginMm: measureExportInnerMarginMm(),
+  });
   setExportPreflightIssues(nextIssues);
   setExportBusy(true);
 

@@ -1,5 +1,5 @@
 import { calculateImageRenderGeometry } from './imageGeometry';
-import { exportPageSizeMeta, getEffectiveExportDpi } from './export';
+import { BINDING_SAFE_MARGIN_MM, exportPageSizeMeta, getEffectiveExportDpi } from './export';
 import { Asset, ExportPreflightIssue, ExportSettings, PageData, ProjectState } from './types';
 
 const builtInSlotAreaRatio: Record<string, Record<string, number>> = {
@@ -68,7 +68,16 @@ function getPlacedAsset(page: PageData, assetsById: Record<string, Asset>, slot:
   return assetId ? assetsById[assetId] ?? null : null;
 }
 
-export function runExportPreflight(project: ProjectState, settings: ExportSettings) {
+export type ExportBindingMetrics = {
+  /** Inner (spine-side) margin of the rendered page, in millimetres. */
+  innerMarginMm: number | null;
+};
+
+export function runExportPreflight(
+  project: ProjectState,
+  settings: ExportSettings,
+  binding?: ExportBindingMetrics,
+) {
   const issues: ExportPreflightIssue[] = [];
   const pageSize = exportPageSizeMeta[settings.pageSize];
   const dpi = getEffectiveExportDpi(settings);
@@ -127,5 +136,36 @@ export function runExportPreflight(project: ProjectState, settings: ExportSettin
     });
   });
 
-  return issues;
+  // Binding geometry: a bound copy needs an even page count (otherwise the
+  // inside back cover stays blank) and enough spine-side margin for the glue
+  // or stitching to swallow no content.
+  const isPrintOutput = settings.format === 'pdf' || settings.format === 'jpg';
+  if (isPrintOutput && project.pages.length % 2 === 1) {
+    issues.push({
+      code: 'odd-page-count',
+      severity: 'warning',
+      pageId: '',
+      pageIndex: -1,
+      pageTitle: 'Whole folio',
+      message: `This folio has ${project.pages.length} pages. Bound output needs an even count, or the inside back page stays blank.`,
+    });
+  }
+
+  const innerMarginMm = binding?.innerMarginMm ?? null;
+  if (isPrintOutput && innerMarginMm !== null && innerMarginMm < BINDING_SAFE_MARGIN_MM) {
+    issues.push({
+      code: 'tight-gutter',
+      severity: 'warning',
+      pageId: '',
+      pageIndex: -1,
+      pageTitle: 'Whole folio',
+      message: `The inner page margin is ${innerMarginMm.toFixed(1)} mm. Binding needs at least ${BINDING_SAFE_MARGIN_MM} mm so no content is lost in the gutter.`,
+    });
+  }
+
+  // Folio-level geometry decides whether the whole output binds correctly, so
+  // it must not be pushed past the per-frame warnings the list truncates at.
+  const folioLevel = issues.filter((issue) => !issue.pageId);
+  const perPage = issues.filter((issue) => Boolean(issue.pageId));
+  return [...folioLevel, ...perPage];
 }

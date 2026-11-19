@@ -135,6 +135,129 @@ export function getExportCapturePixelRatio(settings: ExportSettings) {
   return Math.max(1, getEffectiveExportDpi(settings) / 96);
 }
 
+/**
+ * Physical raster size a page must have for the requested page size and
+ * quality: `mm -> inch -> px`. The PDF embeds the raster full-bleed on the
+ * sheet, so this number *is* the delivered DPI.
+ */
+export function getExportTargetPixelSize(settings: ExportSettings) {
+  const preset = exportPageSizeMeta[settings.pageSize];
+  const dpi = getEffectiveExportDpi(settings);
+  return {
+    width: Math.round((preset.widthMm / 25.4) * dpi),
+    height: Math.round((preset.heightMm / 25.4) * dpi),
+    dpi,
+  };
+}
+
+/** Minimum inner margin a bound copy needs so no content falls into the gutter. */
+export const BINDING_SAFE_MARGIN_MM = 10;
+
+/**
+ * Measures the live page's inner (spine-side) margin in millimetres from the
+ * rendered preview. CSS px map to physical mm at the document's 96px/in
+ * reference density, and the page box itself is laid out in `mm`, so the
+ * conversion is exact rather than an estimate.
+ */
+export function measureExportInnerMarginMm(): number | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+  const page = document.querySelector('.magazine-page');
+  if (!(page instanceof HTMLElement)) {
+    return null;
+  }
+  const style = getComputedStyle(page);
+  const left = Number.parseFloat(style.paddingLeft);
+  const right = Number.parseFloat(style.paddingRight);
+  if (!Number.isFinite(left) || !Number.isFinite(right) || left <= 0 || right <= 0) {
+    return null;
+  }
+  return (Math.min(left, right) * 25.4) / 96;
+}
+
+/** Reads width/height straight out of a JPEG header (no pixel decode). */
+export function readJpegSize(bytes: Uint8Array): { width: number; height: number } | null {
+  if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) {
+    return null;
+  }
+  let offset = 2;
+  while (offset + 9 < bytes.length) {
+    if (bytes[offset] !== 0xff) {
+      offset += 1;
+      continue;
+    }
+    const marker = bytes[offset + 1];
+    if (marker === 0xff || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) {
+      offset += 2;
+      continue;
+    }
+    const length = (bytes[offset + 2] << 8) | bytes[offset + 3];
+    const isSof =
+      marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc;
+    if (isSof) {
+      return {
+        height: (bytes[offset + 5] << 8) | bytes[offset + 6],
+        width: (bytes[offset + 7] << 8) | bytes[offset + 8],
+      };
+    }
+    if (length < 2) {
+      return null;
+    }
+    offset += 2 + length;
+  }
+  return null;
+}
+
+function decodeBase64ToBytes(payload: string) {
+  const binary = atob(payload);
+  const bytes = new Uint8Array(binary.length);
+  for (let offset = 0; offset < binary.length; offset += 1) {
+    bytes[offset] = binary.charCodeAt(offset);
+  }
+  return bytes;
+}
+
+/**
+ * Guarantees the captured raster is exactly the configured pixel size. Browsers
+ * clamp oversized canvases and the mm->px conversion rounds, so without this a
+ * "300 dpi" export can silently ship at a different density (or a slightly
+ * different aspect ratio, which the PDF would then stretch).
+ */
+async function normalizeExportRaster(dataUrl: string, settings: ExportSettings) {
+  const target = getExportTargetPixelSize(settings);
+  let bytes: Uint8Array;
+  try {
+    bytes = decodeBase64ToBytes(extractBase64Payload(dataUrl));
+  } catch {
+    return dataUrl;
+  }
+  const size = readJpegSize(bytes);
+  if (!size) {
+    return dataUrl;
+  }
+  const drift = Math.max(
+    Math.abs(size.width - target.width) / target.width,
+    Math.abs(size.height - target.height) / target.height,
+  );
+  if (drift <= 0.01) {
+    // Sub-1% drift is pixel rounding and costs more to fix than to keep.
+    return dataUrl;
+  }
+  const image = await dataUrlToImage(dataUrl);
+  const canvas = document.createElement('canvas');
+  canvas.width = target.width;
+  canvas.height = target.height;
+  const context = canvas.getContext('2d');
+  if (!context) {
+    return dataUrl;
+  }
+  context.fillStyle = '#f7f2ea';
+  context.fillRect(0, 0, target.width, target.height);
+  context.drawImage(image, 0, 0, target.width, target.height);
+  return canvas.toDataURL('image/jpeg', exportQualityMeta[settings.quality].jpegQuality);
+}
+
 export function getExportOptimizationOptions(settings: ExportSettings) {
   const quality = exportQualityMeta[settings.quality];
   const pageSize = exportPageSizeMeta[settings.pageSize];
@@ -289,7 +412,7 @@ export async function capturePageNodeAsJpeg(node: HTMLElement, settings: ExportS
   const bounds = node.getBoundingClientRect();
   const width = Math.max(1, Math.round(bounds.width || node.scrollWidth || node.clientWidth));
   const height = Math.max(1, Math.round(bounds.height || node.scrollHeight || node.clientHeight));
-  return await toJpeg(node, {
+  const captured = await toJpeg(node, {
     quality: exportQualityMeta[settings.quality].jpegQuality,
     pixelRatio,
     width,
@@ -300,6 +423,7 @@ export async function capturePageNodeAsJpeg(node: HTMLElement, settings: ExportS
     backgroundColor: '#f7f2ea',
     skipAutoScale: true,
   });
+  return await normalizeExportRaster(captured, settings);
 }
 
 export async function createCombinedJpeg(dataUrls: string[], settings: ExportSettings) {

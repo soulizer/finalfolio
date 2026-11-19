@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { measureExportInnerMarginMm } from '../../editor/export';
 import { runExportPreflight } from '../../editor/preflight';
 import { readStoredExportSettings, writeStoredExportSettings } from '../../editor/storage';
 import type { ExportPreflightIssue, ExportSettings, ProjectState } from '../../editor/types';
@@ -65,7 +66,9 @@ export function useEditorExportState({ defaultExportSettings, printPreparing, pr
   }, [exportSettings]);
 
   useEffect(() => {
-    setExportPreflightIssues(runExportPreflight(project, exportSettings));
+    setExportPreflightIssues(
+      runExportPreflight(project, exportSettings, { innerMarginMm: measureExportInnerMarginMm() }),
+    );
   }, [exportSettings, project]);
 
   function updateExportSettings(updater: ExportSettings | ((current: ExportSettings) => ExportSettings)) {

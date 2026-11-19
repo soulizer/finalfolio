@@ -49,6 +49,10 @@ function preflightMessage(issue: ExportPreflightIssue, t: (key: string) => strin
         '%s',
         issue.slot ?? '',
       );
+    case 'odd-page-count':
+      return t('This folio has an odd number of pages. Bound output needs an even count, or the inside back page stays blank.');
+    case 'tight-gutter':
+      return t('The inner page margin is too small for binding. Content close to the spine can be lost in the gutter.');
     default:
       return issue.message;
   }
@@ -199,7 +203,7 @@ export function EditorExportCenter({
                   className="editor-warning-item"
                   onClick={() => onSelectPreflightIssue(issue)}
                 >
-                  <strong>{issue.pageTitle}</strong>
+                  <strong>{issue.pageId ? issue.pageTitle : t('Whole folio')}</strong>
                   <span>{preflightMessage(issue, t)}</span>
                 </button>
               ))}

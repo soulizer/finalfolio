@@ -72,6 +72,9 @@ test('upload, save, reopen, share, and export the editor flow', async ({ page })
   await page.goto(editorUrl);
   await page.getByRole('button', { name: 'Export', exact: true }).click();
   await page.getByRole('button', { name: /A3/ }).click();
+  // Pin Standard quality so the DPI assertion below has an exact target.
+  await page.getByRole('button', { name: /180 dpi/ }).click();
+  const folioPageCount = await page.locator('.page-chip').count();
 
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: /^Export PDF$/ }).click();
@@ -85,10 +88,31 @@ test('upload, save, reopen, share, and export the editor flow', async ({ page })
 
   // The exported PDF must contain one page per folio page and keep A4 geometry.
   const pdfDocument = await PDFDocument.load(pdfBytes);
-  expect(pdfDocument.getPageCount()).toBeGreaterThan(0);
+  expect(pdfDocument.getPageCount()).toBe(folioPageCount);
   const pdfPageSize = pdfDocument.getPage(0).getSize();
-  expect(pdfPageSize.width).toBeGreaterThan(500);
-  expect(pdfPageSize.height).toBeGreaterThan(700);
+
+  // Sheet geometry: A3 in PostScript points, keeping the A-series ratio.
+  const a3WidthPt = (297 / 25.4) * 72;
+  const a3HeightPt = (420 / 25.4) * 72;
+  expect(Math.abs(pdfPageSize.width - a3WidthPt)).toBeLessThan(1);
+  expect(Math.abs(pdfPageSize.height - a3HeightPt)).toBeLessThan(1);
+  expect(pdfPageSize.width / pdfPageSize.height).toBeCloseTo(297 / 420, 3);
+
+  // Density: the embedded raster must carry the configured 180 dpi on both
+  // axes instead of whatever the capture canvas happened to produce.
+  const pdfText = pdfBytes.toString('latin1');
+  const rasterWidths = [...pdfText.matchAll(/\/Width\s+(\d+)/g)].map((entry) => Number(entry[1]));
+  const rasterHeights = [...pdfText.matchAll(/\/Height\s+(\d+)/g)].map((entry) => Number(entry[1]));
+  expect(rasterWidths.length).toBe(pdfDocument.getPageCount());
+  expect(rasterHeights.length).toBe(pdfDocument.getPageCount());
+  const horizontalDpi = rasterWidths[0] / (pdfPageSize.width / 72);
+  const verticalDpi = rasterHeights[0] / (pdfPageSize.height / 72);
+  expect(horizontalDpi).toBeGreaterThan(176);
+  expect(horizontalDpi).toBeLessThan(184);
+  expect(Math.abs(horizontalDpi - verticalDpi)).toBeLessThan(2);
+  console.log(
+    `[evidence] pdf pages=${pdfDocument.getPageCount()} sheet=${pdfPageSize.width.toFixed(2)}x${pdfPageSize.height.toFixed(2)}pt raster=${rasterWidths[0]}x${rasterHeights[0]}px dpi=${horizontalDpi.toFixed(1)}/${verticalDpi.toFixed(1)}`,
+  );
 
   // The print path stays available as a secondary action and must still use the
   // same page renderer as the editor preview.

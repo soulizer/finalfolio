@@ -179,7 +179,13 @@ export interface ExportSettings {
 }
 
 export interface ExportPreflightIssue {
-  code: 'missing-image' | 'uncovered-frame' | 'low-resolution' | 'empty-page';
+  code:
+    | 'missing-image'
+    | 'uncovered-frame'
+    | 'low-resolution'
+    | 'empty-page'
+    | 'odd-page-count'
+    | 'tight-gutter';
   severity: 'warning';
   pageId: string;
   pageIndex: number;
