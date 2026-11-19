@@ -2,7 +2,7 @@
 
 - 日期：2026-11-19
 - 分支：`fix/comprehensive-review`（同步推送至 `main`）
-- 最终提交：`371a847`（而后 `bba7216` 仅文档与证据）
+- 最终代码提交：`371a847`；其后仅文档/证据提交（`bba7216`、`2e1ec52`、`545623f`）
 - 线上：<https://finalfolio.com/editor>，构建产物 `assets/index-CBprp_6Q.js`
 - 结论：P0 全部关闭；`tsc --noEmit`、`vite build`、`validate:mvp`、33 个 Playwright 用例全部通过；GitHub Actions 在 `main` 与 `fix/comprehensive-review` 两个分支均为绿色。
 
