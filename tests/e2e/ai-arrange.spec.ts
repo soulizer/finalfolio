@@ -269,3 +269,26 @@ test('admin can adjust per-account AI usage counts', async ({ page }) => {
   await inputs.nth(1).fill(dailyBefore);
   await row.getByRole('button', { name: 'Save usage' }).click();
 });
+
+test('a blank page title saved in an old draft is healed before saving', async ({ page }) => {
+  await signIn(page, '/editor');
+  await page.locator('.editor-panel').first().waitFor({ state: 'visible' });
+  await page.waitForTimeout(600);
+
+  await page.evaluate(() => {
+    const raw = window.localStorage.getItem('finalfolio-project-draft-v2');
+    if (!raw) return;
+    const draft = JSON.parse(raw);
+    if (Array.isArray(draft.pages) && draft.pages.length) {
+      draft.pages[0].title = '';
+      window.localStorage.setItem('finalfolio-project-draft-v2', JSON.stringify(draft));
+    }
+  });
+
+  await page.reload();
+  await page.locator('.editor-panel').first().waitFor({ state: 'visible' });
+  const pageTitleField = page.locator('.editor-panel__section--text textarea').first();
+  await expect(pageTitleField).not.toHaveValue('');
+  await page.getByRole('button', { name: 'Save folio' }).click();
+  await expect(page).toHaveURL(/\/editor\/[a-z0-9_-]+$/, { timeout: 20_000 });
+});

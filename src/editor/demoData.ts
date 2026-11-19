@@ -991,7 +991,12 @@ function normalizePageData(page: unknown, index: number): PageData {
     template,
     theme: normalizePageTheme(nextPage.theme),
     kicker: trimToLimit(typeof nextPage.kicker === 'string' ? nextPage.kicker : starter.kicker, PAGE_KICKER_LIMIT),
-    title: trimToLimit(typeof nextPage.title === 'string' ? nextPage.title : starter.title, PAGE_TITLE_LIMIT),
+    // A blank title is never valid: the server rejects it on save. Heal old
+    // drafts and imported plans with the localized starter title instead.
+    title: trimToLimit(
+      typeof nextPage.title === 'string' && nextPage.title.trim() ? nextPage.title : starter.title,
+      PAGE_TITLE_LIMIT,
+    ),
     deck: trimToLimit(typeof nextPage.deck === 'string' ? nextPage.deck : starter.deck, PAGE_DECK_LIMIT),
     body: trimToLimit(typeof nextPage.body === 'string' ? nextPage.body : starter.body, PAGE_BODY_LIMIT),
     caption: trimToLimit(typeof nextPage.caption === 'string' ? nextPage.caption : starter.caption, PAGE_CAPTION_LIMIT),

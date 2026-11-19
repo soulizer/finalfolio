@@ -253,7 +253,7 @@
 | 首页滚动揭示依赖 IntersectionObserver，失败时内容永久透明 | 无兜底、无 reduced-motion/打印处理 | 增加 1.2 s 兜底揭示、无 Observer 时直接显示、reduced-motion 与打印强制可见 |
 | 排版卡片名称被截成"Editori… Split" | 同时声明 `nowrap` 与 `normal`，且行数截断写法无效 | 改为两行 `line-clamp` + 词边界换行 |
 | 死代码与重复规则 | `.editor-project-bar*`、`.asset-tile__delete/__action`、重复 `.admin-ai-limits` 等 | 已在前一轮清理；本轮继续删除 `.magazine-custom__label` 与无用 transform 过渡 |
-| AI 方案保存提示 "Page title is required"（方案明明有标题） | 模型返回空标题；我们补齐奇数页/未用照片时生成的页也没有标题 | 按模板补本地化标题（封面→"未命名作品集"、主图页→"让一张图撑满整页"等）；奇数页与补图页统一走 `createEmptyPlanPage`；应用前再兜底；新增"保存成功"用例 |
+| AI 方案保存提示 "Page title is required"（方案明明有标题） | 模型返回空标题；我们补齐奇数页/未用照片时生成的页也没有标题 | 按模板补本地化标题（封面→"未命名作品集"、主图页→"让一张图撑满整页"等）；奇数页与补图页统一走 `createEmptyPlanPage`；应用前再兜底；项目加载时把空标题补回模板标题（旧草稿自动修复）；新增"AI 方案保存成功"与"空标题草稿修复"两个用例 |
 | 图注紧贴图片，像排版错误 | `.magazine-folio/.grid/.diptych/.panorama` 的网格没有行间距，图注与图框 0mm；mosaic 同样 | 统一 `gap: var(--page-rail-gap)`（4mm）；全模板实测图注间距 ≥4mm、页面溢出 0 |
 
 ## R3. 设计令牌与复用组件清单
@@ -287,7 +287,7 @@
 - 新增的 `EditorSubsection` 与测量式排版副本均为纯前端同步逻辑，无额外请求。
 - 自定义文本使用容器查询单位，避免按视口缩放导致编辑器与导出一致性问题。
 - 首页揭示兜底不增加轮询：一次性定时器 + 观察器，路由切换时清理。
-- 全量回归：41 个 Playwright 用例（新增 7 个一致性用例）1.7 分钟通过。
+- 全量回归：43 个 Playwright 用例（新增 7 个一致性用例 + AI 标题 2 个用例）1.8 分钟通过。
 
 ## R6. 参考与差距对照（本轮新增）
 
@@ -307,7 +307,7 @@
 
 ## R8. 本轮验证与部署
 
-- `tsc --noEmit`、`vite build`、`validate:mvp`、41/41 Playwright 全部通过。
+- `tsc --noEmit`、`vite build`、`validate:mvp`、43/43 Playwright 全部通过。
 - 新增 `tests/e2e/consistency.spec.ts`（7 个用例）覆盖上述 1、3、4、5、6、7、8 号问题与状态行重复。
 - 分享一致性升级为硬断言：编辑页与公开阅读页的首屏必须拥有相同的页面 class（模板 + 纸色）和相同的页面文本（仅剔除编辑器专用的图框提示）。
 - 提交与 CI 状态见仓库；部署后需复核 `https://finalfolio.com/api/site-content` 返回新文案。
