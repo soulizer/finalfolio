@@ -238,6 +238,31 @@ test('typing directly on the page commits copy without a popover', async ({ page
   await expect(titleField).toHaveValue(marker);
 });
 
+test('replacing the page layout keeps its copy and assigned photo', async ({ page }) => {
+  await signIn(page, '/editor');
+
+  const heading = page.locator('.magazine-sheet--editor h2 .magazine-editable').first();
+  await heading.click();
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.type('Keep this copy');
+  await page.keyboard.press('Escape');
+
+  await page.locator('.asset-slot__upload').first().click();
+  await page.locator('input[type="file"][hidden]').setInputFiles({
+    name: 'keep-photo.png',
+    mimeType: 'image/png',
+    buffer: fs.readFileSync(path.resolve('public/icon-192.png')),
+  });
+  await expect(page.locator('.asset-frame[data-has-asset="true"]').first()).toBeVisible();
+
+  const essay = page.locator('.layout-grid').first().locator('.layout-card').nth(1);
+  await essay.locator('.layout-card__pick').click();
+  await page.locator('.layout-selection-actions').getByRole('button', { name: 'Replace this page' }).click();
+
+  await expect(page.locator('.magazine-sheet--editor h2')).toContainText('Keep this copy');
+  await expect(page.locator('.asset-frame[data-has-asset="true"]').first()).toBeVisible();
+});
+
 test('every built-in layout commits in-place copy without a popover', async ({ page }) => {
   test.setTimeout(180_000);
   await signIn(page, '/editor');
