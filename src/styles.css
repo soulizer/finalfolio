@@ -9614,41 +9614,82 @@ html[lang='zh-CN'] body {
   font-size: 0.76rem;
 }
 
-.ai-plan-card__themes {
+/* Page-by-page mini previews built from the user's own photos. Every tile is
+   a true A4 ratio and reuses the page theme variables for its paper colour. */
+.ai-plan-card__pages {
   display: flex;
-  gap: 4px;
+  gap: 5px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
 }
 
-.ai-theme-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 1px solid rgba(17, 17, 17, 0.12);
+.ai-plan-mini {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 1px;
+  width: 36px;
+  height: 51px;
+  padding: 2px;
+  border: 1px solid rgba(17, 17, 17, 0.16);
+  border-radius: 2px;
+  background: var(--page-paper, #ffffff);
+  box-shadow: 0 1px 2px rgba(17, 17, 17, 0.1);
 }
 
-.ai-theme-dot--warm-beige { background: #faf6ee; }
-.ai-theme-dot--butter-cream { background: #fbf6e8; }
-.ai-theme-dot--pale-blue { background: #edf4fb; }
-.ai-theme-dot--sea-glass { background: #eef7f3; }
-.ai-theme-dot--pure-white { background: #ffffff; }
-.ai-theme-dot--light-gray { background: #f1f2f4; }
-.ai-theme-dot--sandstone { background: #f2e8da; }
-.ai-theme-dot--sage-mist { background: #e8f0e9; }
-.ai-theme-dot--dusty-rose { background: #f6e8e8; }
-.ai-theme-dot--pearl-blush { background: #fbf0f1; }
-
-.ai-plan-card__sequence {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+.ai-plan-mini__slot {
+  min-width: 0;
+  min-height: 0;
+  border-radius: 1px;
+  background-color: rgba(17, 17, 17, 0.06);
+  background-position: center;
+  background-size: cover;
 }
 
-.ai-plan-card__sequence span {
-  padding: 1px 5px;
-  border-radius: 3px;
-  background: rgba(17, 17, 17, 0.05);
-  color: var(--muted);
-  font-size: 0.68rem;
+/* A page the AI filled with copy only: fine rules stand in for text. */
+.ai-plan-mini__slot--text {
+  background-color: transparent;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(17, 17, 17, 0.16) 0 1px,
+    transparent 1px 4px
+  );
+}
+
+.ai-plan-mini--cover,
+.ai-plan-mini--essay,
+.ai-plan-mini--folio {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+}
+
+.ai-plan-mini--diptych {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr;
+}
+
+.ai-plan-mini--panorama {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.ai-plan-mini--grid {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.ai-plan-mini--triptych {
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: 1fr;
+}
+
+.ai-plan-mini--mosaic {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.ai-plan-mini--mosaic > .ai-plan-mini__slot:first-child {
+  grid-row: 1 / span 2;
 }
 
 @media (max-width: 900px) {

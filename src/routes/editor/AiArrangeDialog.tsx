@@ -11,6 +11,7 @@ import type { Asset } from '../../editor/types';
 import {
   aiTemplateLabel,
   normalizeAiPlanBundle,
+  planPageCapacity,
   type AiPlan,
   type AiPlanBundle,
 } from '../../editor/aiPlans';
@@ -812,7 +813,7 @@ export function AiArrangeDialog({
               <div className="ai-plan-grid">
                 {bundle.plans.map((plan) => {
                   const isSelected = plan.id === selectedPlan?.id;
-                  const themeColors = Array.from(new Set(plan.pages.map((page) => page.theme))).slice(0, 4);
+                  const sequence = plan.pages.map((page) => t(aiTemplateLabel(page.template))).join(', ');
                   return (
                     <button
                       key={plan.id}
@@ -821,21 +822,43 @@ export function AiArrangeDialog({
                       aria-pressed={isSelected}
                       onClick={() => setSelectedPlanId(plan.id)}
                     >
+                      <span
+                        className="ai-plan-card__pages"
+                        role="img"
+                        aria-label={t('Page sequence: %s').replace('%s', sequence)}
+                      >
+                        {plan.pages.map((page, pageIndex) => {
+                          const pagePhotos = page.assetIndexes.map((index) => photos[index]).filter(Boolean);
+                          const textOnly = pagePhotos.length === 0;
+                          return (
+                            <span
+                              key={`${plan.id}-page-${pageIndex}`}
+                              className={`ai-plan-mini ai-plan-mini--${page.template} magazine-page--theme-${page.theme}`}
+                            >
+                              {Array.from({ length: planPageCapacity(page.template) }).map((_, slotIndex) => {
+                                const photo = pagePhotos[slotIndex];
+                                const className = photo
+                                  ? 'ai-plan-mini__slot'
+                                  : textOnly
+                                    ? 'ai-plan-mini__slot ai-plan-mini__slot--text'
+                                    : 'ai-plan-mini__slot';
+                                return (
+                                  <span
+                                    key={slotIndex}
+                                    className={className}
+                                    style={photo ? { backgroundImage: `url(${photo.previewUrl})` } : undefined}
+                                  />
+                                );
+                              })}
+                            </span>
+                          );
+                        })}
+                      </span>
                       <span className="ai-plan-card__eyebrow">{plan.name}</span>
                       <strong>{plan.style || plan.summary}</strong>
                       <span className="ai-plan-card__summary">{plan.summary}</span>
                       <span className="ai-plan-card__stats">
                         {t('%s pages · %s photos').replace('%s', String(plan.pageCount)).replace('%s', String(plan.photoCount))}
-                      </span>
-                      <span className="ai-plan-card__themes" aria-hidden="true">
-                        {themeColors.map((theme) => (
-                          <span key={theme} className={`ai-theme-dot ai-theme-dot--${theme}`} />
-                        ))}
-                      </span>
-                      <span className="ai-plan-card__sequence">
-                        {plan.pages.map((page, index) => (
-                          <span key={`${plan.id}-${index}`}>{t(aiTemplateLabel(page.template))}</span>
-                        ))}
                       </span>
                     </button>
                   );

@@ -547,6 +547,7 @@ const zh: Record<string, string> = {
   'Total remaining: %s': '总剩余：%s 次',
   'Total limit: unlimited': '总额度：不限',
   'Three plans, same photos': '同一组照片，三种方案',
+  'Page sequence: %s': '页面顺序：%s',
   'AI plans': 'AI 方案',
   'Choose one plan': '选择一个方案',
   'The AI is streaming its answer and usually takes 1–3 minutes. The interface pool switches and retries on its own; please keep this window open.': 'AI 正在流式生成，通常需要 1–3 分钟；接口池会自动切换与重试，请保持窗口打开。',

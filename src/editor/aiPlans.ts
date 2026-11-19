@@ -71,8 +71,13 @@ export type AiPlanBundle = {
   providerName?: string;
 };
 
+/** How many photo frames a built-in template has. */
+export function planPageCapacity(template: TemplateId) {
+  return getPageSlotOrder({ template, customTemplate: null }).length;
+}
+
 function pageCapacity(page: AiPlanPage) {
-  return getPageSlotOrder({ template: page.template, customTemplate: null }).length;
+  return planPageCapacity(page.template);
 }
 
 function createEmptyPlanPage(template: TemplateId, theme: PageThemeId): AiPlanPage {
