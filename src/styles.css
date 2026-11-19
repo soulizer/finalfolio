@@ -588,8 +588,8 @@ a:focus-visible {
 .hero-proof__grid {
   position: relative;
   overflow: hidden;
-  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 26px, #000 calc(100% - 26px), transparent 100%);
-  mask-image: linear-gradient(90deg, transparent 0, #000 26px, #000 calc(100% - 26px), transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 52px, #000 calc(100% - 18px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 52px, #000 calc(100% - 18px), transparent 100%);
 }
 
 
@@ -6945,11 +6945,6 @@ button.asset-frame {
   .hero-proof__grid {
     margin-inline: -4px;
     padding-inline: 4px;
-  }
-
-  .hero-proof__grid::before,
-  .hero-proof__grid::after {
-    width: 18px;
   }
 
   .hero-proof__track {

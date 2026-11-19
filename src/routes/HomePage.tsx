@@ -479,8 +479,9 @@ export function HomePage() {
               </div>
             </div>
             <div className="hero-proof__footer">
+              {/* The subtitle already says the preview runs on the editor's
+                  renderer; a second badge repeating it only added noise. */}
               <span>{t(homepagePreview.subtitle)}</span>
-              <strong>{t('Same page renderer as the editor preview')}</strong>
             </div>
           </div>
         </section>
