@@ -238,6 +238,43 @@ test('typing directly on the page commits copy without a popover', async ({ page
   await expect(titleField).toHaveValue(marker);
 });
 
+test('every built-in layout commits in-place copy without a popover', async ({ page }) => {
+  test.setTimeout(180_000);
+  await signIn(page, '/editor');
+
+  const moreLayouts = page.getByRole('button', { name: /More layouts/ });
+  if (await moreLayouts.isVisible().catch(() => false)) {
+    await moreLayouts.click();
+  }
+  const cards = page.locator('.layout-grid .layout-card');
+  const names = await cards.locator('.layout-card__name').allInnerTexts();
+  expect(names.length).toBeGreaterThanOrEqual(6);
+
+  for (const [index, name] of names.entries()) {
+    const card = cards.nth(index);
+    await card.locator('.layout-card__pick').click();
+    const replace = page.locator('.layout-selection-actions').getByRole('button', { name: 'Replace this page' });
+    if (await replace.isEnabled()) {
+      await replace.click();
+    }
+
+    const editable = page.locator('.magazine-sheet--editor .magazine-editable:visible').first();
+    await expect(editable).toBeVisible();
+    await editable.click();
+    await page.keyboard.press('ControlOrMeta+a');
+    const marker = `Inline ${name} ${index}`;
+    await page.keyboard.type(marker);
+    await page.keyboard.press('Escape');
+
+    await expect(page.locator('.text-edit-popover')).toHaveCount(0);
+    // Some templates render the copy in caps, so match the committed text
+    // case-insensitively while still proving the typed value was persisted.
+    await expect(page.locator('.magazine-sheet--editor .magazine-editable:visible').first()).toContainText(
+      new RegExp(marker, 'i'),
+    );
+  }
+});
+
 test('language toggle switches the editor and homepage to Chinese', async ({ page }) => {
   await signIn(page, '/');
   await page.getByRole('button', { name: '切换到中文' }).click();
