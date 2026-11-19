@@ -46,6 +46,29 @@ test('editor leads with photos and the new layout picker', async ({ page }) => {
   await expect(popover).toHaveCount(0);
 });
 
+test('a failed URL import keeps the URL so it can be retried', async ({ page }) => {
+  await signIn(page, '/editor');
+  await page.route('**/api/uploads/from-url', (route) =>
+    route.fulfill({
+      status: 502,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: 'Unable to fetch this image.' }),
+    }),
+  );
+
+  await page.getByRole('button', { name: 'Add from URL' }).click();
+  const form = page.locator('.import-url-form');
+  const field = form.getByLabel('Add from URL');
+  await field.fill('https://example.com/missing.jpg');
+  await form.getByRole('button', { name: /Import/ }).click();
+
+  // The failure is reported, but the row stays open with the URL intact so
+  // the same import can be retried without re-pasting it.
+  await expect(page.locator('.panel-note--status')).toContainText('Unable to fetch this image.');
+  await expect(form).toBeVisible();
+  await expect(field).toHaveValue('https://example.com/missing.jpg');
+});
+
 test('saved layouts share the layout grid and fold behind More layouts', async ({ page }) => {
   await signIn(page, '/editor');
 

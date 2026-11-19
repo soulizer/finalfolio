@@ -810,7 +810,14 @@ export function EditorPage() {
     async (rawUrl: string) => {
       const url = rawUrl.trim();
       if (!url || importUrlBusy) {
-        return;
+        return false;
+      }
+
+      // URL imports land in the folio exactly like uploads, so they obey the
+      // same photo ceiling instead of quietly exceeding it.
+      if (project.assets.length >= PROJECT_ASSET_LIMIT) {
+        setMessage(t('This folio already holds the maximum of %s photos.').replace('%s', String(PROJECT_ASSET_LIMIT)));
+        return false;
       }
 
       setImportUrlBusy(true);
@@ -821,13 +828,15 @@ export function EditorPage() {
           assets: [asset, ...current.assets],
         }));
         setMessage(t('Added %s from the URL.').replace('%s', asset.name));
+        return true;
       } catch (error) {
         setMessage(error instanceof Error ? t(error.message) : t('Unable to import from this URL.'));
+        return false;
       } finally {
         setImportUrlBusy(false);
       }
     },
-    [importUrlBusy, setMessage, t, updateProject],
+    [importUrlBusy, project.assets.length, setMessage, t, updateProject],
   );
 
   const handleRequestUpload = useCallback((slot: string) => {
@@ -904,15 +913,17 @@ export function EditorPage() {
       if (files.length > remaining) {
         setMessage(
           remaining > 0
-            ? `This folio can hold ${PROJECT_ASSET_LIMIT} photos. Add ${remaining} more or remove unused photos first.`
-            : `This folio already holds the maximum of ${PROJECT_ASSET_LIMIT} photos.`,
+            ? t('This folio can hold %s photos. Add %s more or remove unused photos first.')
+                .replace('%s', String(PROJECT_ASSET_LIMIT))
+                .replace('%s', String(remaining))
+            : t('This folio already holds the maximum of %s photos.').replace('%s', String(PROJECT_ASSET_LIMIT)),
         );
         return;
       }
 
       void handleUploadFiles(files);
     },
-    [handleUploadFiles, project.assets.length, setMessage],
+    [handleUploadFiles, project.assets.length, setMessage, t],
   );
 
   const aiPhotoCapacity = Math.max(0, PROJECT_ASSET_LIMIT - project.assets.length);
@@ -938,6 +949,9 @@ export function EditorPage() {
 
   const handleImportUrlForAi = useCallback(
     async (url: string) => {
+      if (project.assets.length >= PROJECT_ASSET_LIMIT) {
+        throw new Error(t('This folio is full. Remove unused photos before using AI arrangement.'));
+      }
       const asset = await importAssetFromUrl(url);
       updateProject((current) => ({
         ...current,
@@ -946,7 +960,7 @@ export function EditorPage() {
       setMessage(t('Added %s from the URL.').replace('%s', asset.name));
       return asset;
     },
-    [setMessage, t, updateProject],
+    [project.assets.length, setMessage, t, updateProject],
   );
 
   const handleApplyAiPlan = useCallback(
@@ -1115,7 +1129,12 @@ export function EditorPage() {
         : uploadState.phase === 'uploading'
           ? `${session ? t('Uploading') : t('Adding')} images %s%...`.replace('%s', String(uploadProgressPercent))
           : showSaveState
-            ? fallbackStatus
+            ? // Keep the unsaved/read-only hint, but never swallow the action
+              // result: a failed URL import in a new draft used to disappear
+              // behind "Draft only" with no visible error at all.
+              message && message !== fallbackStatus
+              ? `${message} · ${fallbackStatus}`
+              : fallbackStatus
             : message ?? fallbackStatus;
   const sequenceLabel =
     project.pages.length === 1 ? t('1 page') : t('%s pages').replace('%s', String(project.pages.length));

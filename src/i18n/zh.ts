@@ -610,7 +610,10 @@ const zh: Record<string, string> = {
   'Back to photos': '返回选择照片',
   'Arrange with AI': '使用 AI 一键排列',
   'Lay out with AI': '使用 AI 排版',
-  'Choose photos and let AI build a complete layout.': '选择照片，让 AI 直接生成完整排版。',
+  'Choose photos and let AI build a complete layout.': '指定素材后由 AI 完成整体排版。',
+  'This folio can hold %s photos. Add %s more or remove unused photos first.':
+    '这本作品集最多容纳 %s 张照片，还可以添加 %s 张，或先移除未使用的照片。',
+  'This folio already holds the maximum of %s photos.': '这本作品集已达到 %s 张照片的上限。',
   'Apply this plan': '应用这个方案',
   'Add interface': '添加接口',
   'Edit interface': '编辑接口',

@@ -10734,6 +10734,13 @@ html[lang='zh-CN'] body {
   min-height: var(--control-height-sm);
 }
 
+/* Quiet explanation of what the AI entry does, kept under the button so the
+   project area reads without a tooltip. */
+.editor-project-action__hint {
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
 .photo-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

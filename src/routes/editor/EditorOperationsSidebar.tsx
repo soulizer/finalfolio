@@ -297,10 +297,12 @@ export function EditorOperationsSidebar({
           type="button"
           className="button button--primary button--small editor-project-action editor-project-action--ai"
           onClick={onOpenAiArrange}
-          title={t('Choose photos and let AI build a complete layout.')}
         >
           {t('Lay out with AI')}
         </button>
+        <p className="panel-note editor-project-action__hint">
+          {t('Choose photos and let AI build a complete layout.')}
+        </p>
 
         <div className="editor-button-grid editor-button-grid--two" role="group" aria-label={t('Project tools')}>
           <button

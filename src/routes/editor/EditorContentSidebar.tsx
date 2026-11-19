@@ -44,7 +44,7 @@ type EditorContentSidebarProps = {
   handleRetryAssetMirror: (asset: Asset) => void | Promise<void>;
   handleUploadFiles: (files: File[]) => void | Promise<void>;
   importUrlBusy: boolean;
-  onImportFromUrl: (url: string) => void | Promise<void>;
+  onImportFromUrl: (url: string) => boolean | void | Promise<boolean | void>;
   handleZoomInputChange: (event: ChangeEvent<HTMLInputElement>) => void;
   libraryAssets: Asset[];
   nudgeSelectedCrop: (axis: 'x' | 'y', deltaPixels: number) => void;
@@ -190,10 +190,17 @@ export function EditorContentSidebar({
               if (!value || importUrlBusy) {
                 return;
               }
-              void Promise.resolve(onImportFromUrl(value)).finally(() => {
-                setImportUrlValue('');
-                setImportUrlOpen(false);
-              });
+              // A failed import keeps the field open with the URL intact so
+              // the user can retry instead of re-pasting it.
+              void Promise.resolve(onImportFromUrl(value))
+                .catch(() => false)
+                .then((added) => {
+                  if (added === false) {
+                    return;
+                  }
+                  setImportUrlValue('');
+                  setImportUrlOpen(false);
+                });
             }}
           >
             <input
