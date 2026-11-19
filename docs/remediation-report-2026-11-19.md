@@ -306,4 +306,5 @@
 
 - `tsc --noEmit`、`vite build`、`validate:mvp`、41/41 Playwright 全部通过。
 - 新增 `tests/e2e/consistency.spec.ts`（7 个用例）覆盖上述 1、3、4、5、6、7、8 号问题与状态行重复。
+- 分享一致性升级为硬断言：编辑页与公开阅读页的首屏必须拥有相同的页面 class（模板 + 纸色）和相同的页面文本（仅剔除编辑器专用的图框提示）。
 - 提交与 CI 状态见仓库；部署后需复核 `https://finalfolio.com/api/site-content` 返回新文案。

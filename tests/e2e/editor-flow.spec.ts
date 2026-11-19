@@ -60,10 +60,29 @@ test('upload, save, reopen, share, and export the editor flow', async ({ page })
   const publicShareUrl = await page.getByLabel('Share link').inputValue();
   expect(publicShareUrl).toContain('/project/');
 
+  const editorPageClasses = await page.locator('.magazine-sheet--editor .magazine-page').first().getAttribute('class');
+  // Editor-only hints (the frame label chips) are chrome, not page copy.
+  const editorPageCopy = await page
+    .locator('.magazine-sheet--editor .magazine-page')
+    .first()
+    .evaluate((element) => {
+      const clone = element.cloneNode(true) as HTMLElement;
+      clone.querySelectorAll('.asset-frame__hint').forEach((node) => node.remove());
+      return (clone.textContent ?? '').replace(/\s+/g, ' ').trim();
+    });
+
   const viewerErrors: string[] = [];
   page.on('pageerror', (error) => viewerErrors.push(error.message));
   await page.goto(publicShareUrl);
   await expect(page.getByText(title).first()).toBeVisible();
+  // The public reader must render the same page model: identical template,
+  // theme and visible copy, not an approximation.
+  await expect(page.locator('.magazine-page').first()).toHaveAttribute('class', editorPageClasses ?? '');
+  const readerPageCopy = await page
+    .locator('.magazine-page')
+    .first()
+    .evaluate((element) => (element.textContent ?? '').replace(/\s+/g, ' ').trim());
+  expect(readerPageCopy).toBe(editorPageCopy);
   // The public reader renders its pages inside a detached React root; this
   // guards against provider/context regressions that used to blank the book.
   await expect(page.locator('.magazine-page').first()).toBeVisible();
