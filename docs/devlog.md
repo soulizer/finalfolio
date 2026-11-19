@@ -1765,3 +1765,46 @@
 - Kept the delete-confirmation popover material for the AI dialog.
 - Replaced the central icon-only treatment with a text-first rule in
   `docs/design-system.md`.
+
+## 2026-11-18 Storage, fonts, gallery and export centre
+
+- Uploads go straight to object storage with a presigned PUT, real per-file
+  progress, throughput, failure state and retry, with the proxied multipart
+  upload kept as a fallback (`docs/uploads.md`).
+- Per-role font system (`ProjectFonts`: title, deck, caption, body), real
+  subset WOFF2 CJK faces and a single 默认 entry.
+- Gallery gained batch selection, select-all and a URL import that runs in
+  parallel with uploads; delete lives in the thumbnail corner and cascades to
+  the library asset.
+- Page strip truncates titles, actions are icon-only, the colour picker is
+  portaled, and the drag-drop insertion gap is visible.
+- Export centre rebuilt in Chinese with the skeuomorphic dialog shell; export
+  geometry is validated rather than restyled (see 2026-11-19).
+- AI arrangement runs as an async job (`POST /api/ai/plans` → 202 job id,
+  client polls) so Cloudflare's 524 window cannot kill a request.
+
+## 2026-11-19 AI streaming, exact export geometry, one control scale
+
+- AI 90s failures were our own cap: a non-streaming request wrapped in
+  `Math.min(config.requestTimeoutMs, 90_000)`. Generation now streams (SSE and
+  buffered JSON both parsed) with a single 90s first-content budget, a 60s
+  inter-token idle budget and a pooled total budget of
+  `min(requestTimeout, 280s)`; hedging at `min(100s, total/2)`, immediate
+  failover on error, one self-correction round and a 180s default.
+  `docs/ai-arrangement.md` documents the lifecycle.
+- AI plan cards show the real page strip: 36×51 A4 tiles, three per row, every
+  photo slot visible, paper colour from the page vars.
+- Export derives the raster from mm → inch → dpi and re-encodes captures that
+  drift more than 1%, so "180 dpi" is true on both axes. Binding preflight
+  reports odd page counts and inner margins below 10mm as folio-level warnings,
+  sorted ahead of per-frame issues, in both languages.
+- One control scale (24 / 36 / 40) with dense surfaces re-scoping
+  `--control-height`; one `--field-border` token; the UA-default input height
+  leak fixed with a zero-specificity `:where()` floor; dead
+  `.editor-project-bar*` and gallery action CSS removed.
+- The AI entry in the project area carries a visible, localized hint; URL
+  imports obey the 64-photo ceiling, keep the URL on failure and surface the
+  result in the status line even for unsaved drafts.
+- In-place canvas editing is now covered by an e2e test for every built-in
+  layout; mobile/tablet/desktop sweeps in light and dark scheme show no
+  horizontal overflow.

@@ -6,17 +6,35 @@ adding new CSS.
 
 ## 1. Control heights
 
-| Tier | Height | Use |
-| --- | --- | --- |
-| Micro icon | **24px** | Page-chip actions, gallery thumbnail corners, panel collapse chevrons |
-| Dense editor / admin | **36px** | `button--small`, toolbar rows, dialog footers, inline geometry fields |
-| Standard | **40px** | Default buttons, panel text inputs, selects |
-| Public site | **44px** | Marketing and auth calls to action |
+| Tier | Token | Height | Use |
+| --- | --- | --- | --- |
+| Micro icon | `--control-height-xs` | **24px** | Page-chip actions, gallery thumbnail corners, panel collapse chevrons, colour swatches |
+| Dense editor / admin | `--control-height-sm` | **36px** | `button--small`, sidebar fields, toolbar rows, dialog footers, inline geometry fields |
+| Standard | `--control-height` | **40px** | Default buttons, standalone form fields, captcha, panel inputs |
+| Public site | `--control-height-sm` + coarse pointer | **44px** | Marketing and auth calls to action on touch (`@media (pointer: coarse)`) |
 
 Every control in one row uses the same tier. Inputs never exceed the button
 height beside them: a 36px footer button pairs with a 36px name field, and a
-40px panel input pairs with 40px buttons. `--control-height` and
-`--control-height-sm` are the only sources for these values.
+40px panel input pairs with 40px buttons.
+
+The tiers are declared once. A dense surface re-scopes the token instead of
+re-declaring heights per field:
+
+```css
+.editor-sidebar,
+.admin-config-table__cell,
+.layout-editor-geometry,
+.admin-ai-usage__fields,
+.admin-ai-usage__search,
+.import-url-form {
+  --control-height: var(--control-height-sm);
+}
+```
+
+A zero-specificity `:where(input[type=…], select)` rule gives every single-line
+field the shared default height, including inputs written without an explicit
+`type` attribute (they otherwise fall back to the ~19px UA default). Contexts
+only override the token, never `min-height`, so one rule stays authoritative.
 
 Panel headers are one 24px row: the label, `.panel-tag`, `.editor-collapsible-meta`
 and the collapse chevron all measure 24px inside a 32px toolbar. Never give the
@@ -25,7 +43,9 @@ centres match.
 
 ## 2. Spacing
 
-Use the existing 6 / 8 / 10 / 12 / 16 spacing steps.
+Use the 4px scale: `--space-1` 4, `--space-2` 8, `--space-3` 12, `--space-4` 16,
+`--space-5` 20, `--space-6` 24. 6px and 10px remain acceptable for legacy
+optical tweaks but new rules should land on the scale.
 
 - Toolbar gap: **6–8px** between icon buttons.
 - Mixed button rows: **16px** gap so the optical gap remains around 10px after
@@ -125,6 +145,10 @@ admin console, account console) is collapsible:
 - All site chrome uses the UI sans-serif stack.
 - The display face is reserved for the rendered folio page only.
 - Paper, ink, muted, and border colours come from the existing CSS variables.
+- Every field outline uses `--field-border` / `--field-border-color`
+  (`1px solid rgba(17, 17, 17, 0.16)`). Do not paste the rgba literal into a
+  rule: it drifts, and a token that references itself silently invalidates the
+  whole `var()` chain.
 - Do not introduce new one-off greys when an existing token is close.
 
 ## 8. Verification
@@ -134,5 +158,7 @@ Before shipping a UI change:
 1. Run `npm run typecheck`, `npm run build`, `npm run validate:mvp`, and
    `npx playwright test`.
 2. Check 360 / 390 / 768 / 1024 widths for horizontal overflow.
-3. Confirm newly added controls use 24px or 36px, not a new height.
+3. Confirm newly added controls resolve to 24 / 36 / 40px, not a new height.
+   `tests/e2e/editor-ux.spec.ts` pins the sidebar tiers, chevron tier and the
+   single field outline; `validate:mvp` rejects new hardcoded field borders.
 4. Confirm no hover rule contains `translateY`.
