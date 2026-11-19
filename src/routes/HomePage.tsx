@@ -502,7 +502,7 @@ export function HomePage() {
 
         <section className="product-brief" data-reveal>
           <div className="product-brief__intro">
-            <p className="eyebrow">{t('Product path')}</p>
+            <p className="eyebrow">{t('Product overview')}</p>
             <h2>{t('Upload, compose, save and share in one place.')}</h2>
             <p>{t('FinalFolio is built around paced editorial output: crop, copy, page relationships and the public link all describe the same folio.')}</p>
           </div>
