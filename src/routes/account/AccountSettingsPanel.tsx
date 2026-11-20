@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import type { UserSession } from '../../editor/api';
 import { AccountInlineField } from './AccountFormFields';
 import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
+import { UnalbumBindingSection } from './UnalbumBindingSection';
 
 type AccountSettingsPanelProps = {
   confirmPassword: string;
@@ -118,6 +119,8 @@ export function AccountSettingsPanel({
           </div>
         </form>
       </section>
+
+      <UnalbumBindingSection />
     </div>
   );
 }

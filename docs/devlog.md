@@ -1808,3 +1808,27 @@
 - In-place canvas editing is now covered by an e2e test for every built-in
   layout; mobile/tablet/desktop sweeps in light and dark scheme show no
   horizontal overflow.
+
+### 2026-11-20 — Selection, AI cost, UnAlbum bridge
+
+- The gallery lost its "批量选择/完成" mode. Selection is now a property of the
+  photo grid: hover/focus shows a pick badge (always visible on touch), Shift
+  extends a range, Ctrl/Cmd toggles one tile, and a plain click still assigns
+  the photo to the active frame. The bar with count / 全选 / 清除 / trash only
+  exists while something is picked, and the picked set is pruned against the
+  whole library, not the search filter.
+- The AI arrangement grid got the same additive selection model plus a
+  rubber-band marquee (`src/ui/MarqueeGrid.tsx`). Native image dragging was
+  cancelling the gesture with `pointercancel`; the grid now prevents it, and a
+  completed drag suppresses the trailing click so no tile toggles by accident.
+- AI planning now reuses upstream analysis: photos with tags/description are
+  sent as text and skip thumbnail decoding entirely. The prompt marks them as
+  pre-analysed, and the dialog shows an "已分析" badge plus a hint that no images
+  will be re-uploaded.
+- UnAlbum integration: OAuth 2.1 + PKCE binding and "通过 UnAlbum 登录",
+  account-page connect/disconnect, a picker used by both the gallery and the AI
+  dialog, and server-side import that stores the upstream analysis with the
+  asset. The feature is dark until `FINALFOLIO_UNALBUM_*` is configured.
+  `docs/unalbum-integration-brief.md` is the contract and prompt for UnAlbum.
+- Two new e2e specs (multi-select, UnAlbum mocked flows) plus the analysis fast
+  path keep the suite at 48 green.

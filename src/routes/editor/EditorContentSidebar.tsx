@@ -46,6 +46,8 @@ type EditorContentSidebarProps = {
   handleUploadFiles: (files: File[]) => void | Promise<void>;
   importUrlBusy: boolean;
   onImportFromUrl: (url: string) => boolean | void | Promise<boolean | void>;
+  onOpenUnalbum: () => void;
+  unalbumAvailable: boolean;
   handleZoomInputChange: (event: ChangeEvent<HTMLInputElement>) => void;
   libraryAssets: Asset[];
   nudgeSelectedCrop: (axis: 'x' | 'y', deltaPixels: number) => void;
@@ -93,6 +95,8 @@ export function EditorContentSidebar({
   handleUploadFiles,
   importUrlBusy,
   onImportFromUrl,
+  onOpenUnalbum,
+  unalbumAvailable,
   handleZoomInputChange,
   libraryAssets,
   nudgeSelectedCrop,
@@ -224,6 +228,11 @@ export function EditorContentSidebar({
           >
             {t('Add from URL')}
           </button>
+          {unalbumAvailable ? (
+            <button type="button" className="button button--ghost button--small" onClick={onOpenUnalbum}>
+              {t('Add from UnAlbum')}
+            </button>
+          ) : null}
           {unusedAssetCount > 0 ? (
             <button
               type="button"

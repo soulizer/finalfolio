@@ -11,8 +11,10 @@ import {
   registerUser,
   requestPasswordReset,
   resendVerificationEmail,
+  startUnalbumLogin,
   verifyEmailToken,
 } from '../editor/api';
+import { useUnalbumStatus } from '../editor/useUnalbumStatus';
 import { getUserIdentitySummary, getUserPrimaryIdentity } from '../editor/identity';
 import { LoadingStack } from '../components/LoadingStack';
 import { SiteLegalFooter } from '../components/SiteLegalFooter';
@@ -50,7 +52,41 @@ export function AuthPage() {
   const [captchaAnswer, setCaptchaAnswer] = useState('');
   const [captchaBusy, setCaptchaBusy] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [unalbumBusy, setUnalbumBusy] = useState(false);
+  const unalbumStatus = useUnalbumStatus();
   const { user: session, ready: sessionReady, setSessionUser } = useSession();
+
+  useEffect(() => {
+    const unalbumOutcome = searchParams.get('unalbum');
+    if (unalbumOutcome !== 'error') {
+      return;
+    }
+    const reason = searchParams.get('reason');
+    setMessage(
+      reason === 'no-email'
+        ? t('UnAlbum did not share an email address, so FinalFolio could not create the account.')
+        : reason === 'disabled'
+          ? t('This account is disabled.')
+          : t('UnAlbum sign-in did not finish. Please try again.'),
+    );
+    // Only react to the callback landing, not to every keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams.get('unalbum'), searchParams.get('reason')]);
+
+  async function handleUnalbumLogin() {
+    if (unalbumBusy) {
+      return;
+    }
+    setUnalbumBusy(true);
+    setMessage(null);
+    try {
+      const { authorizeUrl } = await startUnalbumLogin(nextPath ?? '/editor');
+      window.location.assign(authorizeUrl);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : t('Unable to start UnAlbum sign-in.'));
+      setUnalbumBusy(false);
+    }
+  }
 
   function openRoute(path: string) {
     navigate(path);
@@ -532,6 +568,22 @@ export function AuthPage() {
             </div>
           </form>
         )}
+        {!session && !verifyToken && unalbumStatus?.configured ? (
+          <div className="auth-unalbum">
+            <span className="auth-unalbum__divider">{t('or')}</span>
+            <button
+              type="button"
+              className="button button--ghost auth-unalbum__button"
+              disabled={busy || unalbumBusy}
+              onClick={() => void handleUnalbumLogin()}
+            >
+              {unalbumBusy ? t('Opening UnAlbum…') : t('Sign in with UnAlbum')}
+            </button>
+            <p className="field-note">
+              {t('Authorise FinalFolio on UnAlbum. Your UnAlbum photos and AI tags can then be imported directly.')}
+            </p>
+          </div>
+        ) : null}
         {message ? <p>{message}</p> : null}
         {!session && mode === 'register' ? (
           <p className="panel-note">

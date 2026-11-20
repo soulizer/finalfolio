@@ -8,6 +8,7 @@ import {
 import { getAssetSource } from '../../editor/assetResources';
 import { confirmAction } from '../../ui/confirm';
 import { MarqueeGrid } from '../../ui/MarqueeGrid';
+import { UnAlbumPicker } from '../../ui/UnAlbumPicker';
 import type { Asset, AssetAnalysis } from '../../editor/types';
 import {
   aiTemplateLabel,
@@ -42,6 +43,7 @@ type AiArrangeDialogProps = {
   uploadTotal: number;
   uploadProgressPercent: number;
   availableAssets: Asset[];
+  unalbumAvailable?: boolean;
 };
 
 type Phase = 'select' | 'generating' | 'results' | 'applying';
@@ -358,6 +360,7 @@ export function AiArrangeDialog({
   uploadTotal,
   uploadProgressPercent,
   availableAssets,
+  unalbumAvailable = false,
 }: AiArrangeDialogProps) {
   const t = useT();
   const [buildId] = useState(readBuildId);
@@ -379,6 +382,7 @@ export function AiArrangeDialog({
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [sourcePanel, setSourcePanel] = useState<'none' | 'upload' | 'url'>('none');
+  const [unalbumOpen, setUnalbumOpen] = useState(false);
   const [importUrlValue, setImportUrlValue] = useState('');
   const [importBusy, setImportBusy] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
@@ -1102,6 +1106,15 @@ export function AiArrangeDialog({
                 ) : null}
 
                 <div className="ai-source-buttons">
+                  {unalbumAvailable ? (
+                    <button
+                      type="button"
+                      className="button button--ghost button--small"
+                      onClick={() => setUnalbumOpen(true)}
+                    >
+                      {t('Use photos from UnAlbum')}
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     className={`button button--ghost button--small ${sourcePanel === 'upload' ? 'is-active' : ''}`.trim()}
@@ -1303,6 +1316,16 @@ export function AiArrangeDialog({
           </>
         )}
       </div>
+      {unalbumOpen ? (
+        <UnAlbumPicker
+          open
+          title={t('Use photos from UnAlbum')}
+          onClose={() => setUnalbumOpen(false)}
+          onImported={(assets) => {
+            void addAssetPhotos(assets);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

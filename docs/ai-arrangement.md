@@ -101,9 +101,28 @@ photo set, and text is trimmed by the existing page limits.
   `corrections`) feed provider ordering, so a slow or failing relay sinks to the
   back of the pool automatically.
 
+## Reusing upstream analysis (faster, cheaper)
+
+Photos that already carry AI tags and a description — for example photos
+imported from UnAlbum — are not re-analysed. The client sends
+`analysis: { description, tags }` and leaves `dataUrl` empty; the server skips
+the image payload for those photos and states in the prompt that they are
+pre-analysed and must be trusted. Mixed selections work: analysed photos travel
+as text, the rest keep their 320 px JPEG thumbnails.
+
+Measured effect on the request: one analysed photo saves roughly 20–40 KB of
+base64 payload and one vision tile of provider-side prefill. Selection is also
+faster because `readAssetPhoto` uses the stored width/height and never decodes
+or re-encodes an image for an analysed asset. Wall-clock generation time is
+still dominated by output tokens (three full plans) plus provider latency, so
+this is a cost/latency improvement rather than an order-of-magnitude change.
+
 ## Privacy and failure behaviour
 
 - Only small JPEG thumbnails (320 px long edge) are sent to the AI provider.
+- Photos with existing analysis send text only (description + tags).
+- Imported analysis is bounded on the server (800-char description, 24 tags) so
+  a hostile or bloated upstream field cannot inflate the prompt.
 - Provider errors are aggregated; API keys and full provider responses are never
   returned to the client.
 - The endpoint is authenticated and rate-limited per user.
@@ -113,6 +132,8 @@ photo set, and text is trimmed by the existing page limits.
 
 ## Verification
 
+- `tests/e2e/multi-select.spec.ts` covers Shift/Ctrl/rubber-band selection and
+  that a drag never leaves a stray click behind.
 - `tests/e2e/ai-arrange.spec.ts` covers guest gating, prompt read-only/edit,
   three-plan selection, apply, and the admin provider save flow.
 - `npm run validate:mvp` checks the server store, routes and UI wiring.

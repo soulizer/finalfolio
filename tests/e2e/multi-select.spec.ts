@@ -55,6 +55,14 @@ async function uploadPhotos(page: import('@playwright/test').Page, count: number
 test('gallery selection works without a mode toggle', async ({ page }) => {
   await signIn(page, '/editor');
   await uploadPhotos(page, 7, 'pick');
+
+  // Non-ASCII filenames survive multipart decoding; this used to render as
+  // mojibake because the header was read as latin1.
+  const input = page.locator('.editor-panel--photos input[type="file"]');
+  await expect(input).toBeEnabled();
+  await input.setInputFiles({ name: '晨雾中的山谷.png', mimeType: 'image/png', buffer: photoBuffer() });
+  await expect(page.locator('.asset-tile').filter({ hasText: '晨雾中的山谷' })).toHaveCount(1);
+
   const removed = 6;
   const ownCount = 7;
 

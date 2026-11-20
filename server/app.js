@@ -703,6 +703,21 @@ export function serializeProjectRecord(record) {
   };
 }
 
+/**
+ * Browsers send multipart filenames as raw UTF-8 bytes, but Busboy/multer
+ * decodes that header as latin1. Left alone, a photo called 晨雾.jpg is stored
+ * as mojibake. Recover the UTF-8 reading when it round-trips cleanly, and keep
+ * the original string otherwise (a genuinely latin1 name).
+ */
+export function decodeMultipartFilename(value) {
+  const name = typeof value === 'string' ? value : '';
+  if (!name || /[^\u0000-\u00ff]/.test(name)) {
+    return name;
+  }
+  const decoded = Buffer.from(name, 'latin1').toString('utf8');
+  return decoded.includes('\uFFFD') ? name : decoded;
+}
+
 export function createUploadFilename(originalName = '', { idFactory = createId } = {}) {
   const extension = path.extname(originalName).toLowerCase().replace(/[^.a-z0-9]/g, '');
   const safeExtension = extension.length > 1 ? extension : '.png';
@@ -1500,7 +1515,7 @@ export function createProjectStore({
 
     return {
       id: `upload-${idFactory(9)}`,
-      name: path.basename(file.originalname, path.extname(file.originalname)) || 'Untitled upload',
+      name: path.basename(decodeMultipartFilename(file.originalname), path.extname(decodeMultipartFilename(file.originalname))) || 'Untitled upload',
       src: `/uploads/${file.filename}`,
       note: '',
       mimeType: typeof file.mimetype === 'string' ? file.mimetype : undefined,

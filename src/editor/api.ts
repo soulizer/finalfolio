@@ -398,6 +398,86 @@ export function fetchAccountUploads(search = '') {
   return readJson<{ uploads: AccountUploadListItem[] }>(`/api/account/uploads?search=${encodeURIComponent(search)}`);
 }
 
+export interface UnalbumAccount {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string;
+  boundAt: string | null;
+}
+
+export interface UnalbumStatus {
+  configured: boolean;
+  bound: boolean;
+  account: UnalbumAccount | null;
+}
+
+export interface UnalbumPhotoVariant {
+  url: string;
+  width?: number;
+  height?: number;
+  bytes?: number;
+  mimeType?: string;
+}
+
+export interface UnalbumPhoto {
+  id: string;
+  filename: string;
+  name: string;
+  width: number | null;
+  height: number | null;
+  bytes: number | null;
+  createdAt: string | null;
+  analysis: AssetAnalysis | null;
+  variants: {
+    original?: UnalbumPhotoVariant | null;
+    preview?: UnalbumPhotoVariant | null;
+    thumb?: UnalbumPhotoVariant | null;
+  };
+}
+
+export function fetchUnalbumStatus() {
+  return readJson<UnalbumStatus>('/api/unalbum/status');
+}
+
+export function startUnalbumAuthorize() {
+  return readJson<{ authorizeUrl: string }>('/api/unalbum/authorize', { method: 'POST' });
+}
+
+export function startUnalbumLogin(next: string) {
+  return readJson<{ authorizeUrl: string }>('/api/unalbum/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ next }),
+  });
+}
+
+export function unbindUnalbum() {
+  return readJson<{ ok: boolean }>('/api/unalbum/unbind', { method: 'POST' });
+}
+
+export function fetchUnalbumPhotos({ cursor = '', query = '' }: { cursor?: string; query?: string } = {}) {
+  const params = new URLSearchParams();
+  if (cursor) {
+    params.set('cursor', cursor);
+  }
+  if (query) {
+    params.set('q', query);
+  }
+  const suffix = params.toString();
+  return readJson<{ photos: UnalbumPhoto[]; nextCursor: string | null; account: UnalbumAccount }>(
+    `/api/unalbum/photos${suffix ? `?${suffix}` : ''}`,
+  );
+}
+
+export function importUnalbumPhotos(ids: string[]) {
+  return readJson<{ assets: Asset[] }>('/api/unalbum/import', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids }),
+  });
+}
+
 export function fetchOwnedTemplates(search = '') {
   return readJson<{ templates: UserTemplateRecord[] }>(`/api/account/templates?search=${encodeURIComponent(search)}`);
 }

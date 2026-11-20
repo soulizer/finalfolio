@@ -57,6 +57,8 @@ import { EditorExportCenter } from './editor/EditorExportCenter';
 import { EditorOperationsSidebar } from './editor/EditorOperationsSidebar';
 import { EditorLoadingState, EditorLockedState, EditorUnavailableState } from './editor/EditorShellStates';
 import { AiArrangeDialog, type AiPhoto } from './editor/AiArrangeDialog';
+import { UnAlbumPicker } from '../ui/UnAlbumPicker';
+import { useUnalbumStatus } from '../editor/useUnalbumStatus';
 import { LayoutEditorDialog } from './editor/LayoutEditorDialog';
 import { createEditorExportActions } from './editor/exportFlow';
 import { createEditorProjectShellActions } from './editor/projectActions';
@@ -284,6 +286,9 @@ export function EditorPage() {
   const [shareCopyState, setShareCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
   const [loadError, setLoadError] = useState<string | null>(null);
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
+  const [unalbumPickerOpen, setUnalbumPickerOpen] = useState(false);
+  const unalbumStatus = useUnalbumStatus(session?.id);
+  const unalbumAvailable = unalbumStatus?.configured === true;
   const [layoutEditor, setLayoutEditor] = useState<{
     mode: 'new' | 'edit';
     layoutId: string | null;
@@ -1000,6 +1005,29 @@ export function EditorPage() {
       }));
       setMessage(t('Added %s from the URL.').replace('%s', asset.name));
       return asset;
+    },
+    [project.assets.length, setMessage, t, updateProject],
+  );
+
+  const handleUnalbumImported = useCallback(
+    (assets: Asset[]) => {
+      const remaining = Math.max(PROJECT_ASSET_LIMIT - project.assets.length, 0);
+      const accepted = assets.slice(0, remaining);
+      if (accepted.length) {
+        updateProject((current) => {
+          const existing = new Set(current.assets.map((asset) => asset.id));
+          return { ...current, assets: [...accepted.filter((asset) => !existing.has(asset.id)), ...current.assets] };
+        });
+        setMessage(
+          t(countLabel(accepted.length, 'Added 1 photo from UnAlbum.', 'Added %s photos from UnAlbum.')).replace(
+            '%s',
+            String(accepted.length),
+          ),
+        );
+      }
+      if (!accepted.length || accepted.length < assets.length) {
+        setMessage(t('This folio already holds the maximum of %s photos.').replace('%s', String(PROJECT_ASSET_LIMIT)));
+      }
     },
     [project.assets.length, setMessage, t, updateProject],
   );
@@ -1868,6 +1896,8 @@ export function EditorPage() {
           handleUploadFiles={handleUploadFilesWithLimit}
           importUrlBusy={importUrlBusy}
           onImportFromUrl={handleImportFromUrl}
+          onOpenUnalbum={() => setUnalbumPickerOpen(true)}
+          unalbumAvailable={unalbumAvailable}
           handleZoomInputChange={handleZoomInputChange}
           libraryAssets={libraryAssets}
           nudgeSelectedCrop={nudgeSelectedCrop}
@@ -2083,6 +2113,16 @@ export function EditorPage() {
           uploadTotal={uploadState.totalFiles}
           uploadProgressPercent={uploadProgressPercent}
           availableAssets={libraryAssets}
+          unalbumAvailable={unalbumAvailable}
+        />
+      ) : null}
+
+      {unalbumPickerOpen ? (
+        <UnAlbumPicker
+          open
+          title={t('Add from UnAlbum')}
+          onClose={() => setUnalbumPickerOpen(false)}
+          onImported={handleUnalbumImported}
         />
       ) : null}
 

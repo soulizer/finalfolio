@@ -1913,6 +1913,61 @@ const zh: Record<string, string> = {
   'Delete %s photos from every folio and the library?': '从所有作品集和媒体库中删除 %s 张照片？',
   'Deleted %s photos.': '已删除 %s 张照片。',
   'Unable to delete these photos.': '无法删除这些照片。',
+
+  // UnAlbum bridge
+  'Add from UnAlbum': '从 UnAlbum 添加',
+  'Use photos from UnAlbum': '使用 UnAlbum 作品',
+  'Sign in with UnAlbum': '通过 UnAlbum 登录',
+  'Opening UnAlbum…': '正在打开 UnAlbum…',
+  'or': '或',
+  'Authorise FinalFolio on UnAlbum. Your UnAlbum photos and AI tags can then be imported directly.':
+    '在 UnAlbum 上授权 FinalFolio，之后就能直接导入你的照片和 AI 标签。',
+  'UnAlbum did not share an email address, so FinalFolio could not create the account.':
+    'UnAlbum 没有返回邮箱地址，FinalFolio 无法据此创建账户。',
+  'UnAlbum sign-in did not finish. Please try again.': 'UnAlbum 登录没有完成，请重试。',
+  'Unable to start UnAlbum sign-in.': '无法发起 UnAlbum 登录。',
+  'Unable to reach UnAlbum.': '无法连接 UnAlbum。',
+  'Unable to load your UnAlbum photos.': '无法读取你的 UnAlbum 照片。',
+  'Unable to import these photos from UnAlbum.': '无法从 UnAlbum 导入这些照片。',
+  'Signed in as @%s': '已登录 @%s',
+  'Checking your UnAlbum connection…': '正在检查 UnAlbum 连接…',
+  'UnAlbum is not available right now.': 'UnAlbum 暂不可用。',
+  'This server has not been configured for UnAlbum yet.': '这台服务器还没有配置 UnAlbum。',
+  'Connect UnAlbum first.': '请先连接 UnAlbum。',
+  'Link your UnAlbum account on the account page, then come back to pick photos.':
+    '先到账户页连接 UnAlbum，再回来挑选照片。',
+  'Go to account settings': '前往账户设置',
+  'Search your UnAlbum photos': '搜索 UnAlbum 照片',
+  'Search by name': '按名称搜索',
+  'Search': '搜索',
+  'No photos found': '没有找到照片',
+  'Add photos to UnAlbum first, or try another search.': '先在 UnAlbum 上传照片，或换个关键词。',
+  'Load more': '加载更多',
+  'Click to select, Shift-click for a range, or drag a box across photos.':
+    '点击可选中；按住 Shift 点击可选择一段范围；也可以按住拖动框选。',
+  'Loading photos…': '正在加载照片…',
+  'Add 1 photo': '添加 1 张照片',
+  'Add %s photos': '添加 %s 张照片',
+  'Added 1 photo from UnAlbum.': '已从 UnAlbum 添加 1 张照片。',
+  'Added %s photos from UnAlbum.': '已从 UnAlbum 添加 %s 张照片。',
+  'UnAlbum account': 'UnAlbum 账号',
+  'Connected': '已连接',
+  'Not connected': '未连接',
+  'Connect UnAlbum': '连接 UnAlbum',
+  'Disconnect': '解除绑定',
+  'Disconnecting…': '正在解除绑定…',
+  'Disconnect UnAlbum?': '解除 UnAlbum 绑定？',
+  'Photos already imported stay in FinalFolio. You can reconnect at any time.':
+    '已经导入的照片会保留在 FinalFolio 中，之后随时可以重新连接。',
+  'UnAlbum is disconnected.': '已解除 UnAlbum 绑定。',
+  'Unable to disconnect UnAlbum.': '无法解除 UnAlbum 绑定。',
+  'Unable to start the UnAlbum connection.': '无法发起 UnAlbum 连接。',
+  'UnAlbum is connected. Its photos and AI tags can now be imported.':
+    'UnAlbum 已连接，现在可以导入照片和 AI 标签了。',
+  'Connecting UnAlbum did not finish. Please try again.': 'UnAlbum 连接没有完成，请重试。',
+  'Link your UnAlbum account to import your photos, together with the AI tags and descriptions UnAlbum already generated. FinalFolio reuses those tags instead of analysing the photos again.':
+    '连接 UnAlbum 后，可以直接导入照片，以及 UnAlbum 已经生成的 AI 标签与描述。FinalFolio 会复用这些标签，不再重新分析照片。',
+
 };
 
 
