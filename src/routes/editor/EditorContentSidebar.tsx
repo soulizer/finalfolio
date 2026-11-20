@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { countLabel, useT } from '../../i18n';
 import type { ChangeEvent } from 'react';
 import {
@@ -123,9 +123,63 @@ export function EditorContentSidebar({
   const t = useT();
   const [importUrlValue, setImportUrlValue] = useState('');
   const [assetSearch, setAssetSearch] = useState('');
-  const [batchMode, setBatchMode] = useState(false);
-  const [batchSelected, setBatchSelected] = useState<Set<string>>(new Set());
+  // Photos picked for a bulk action (currently: delete). There is no mode to
+  // enter: the checkbox on a tile, Shift for a range and Ctrl/Cmd for a single
+  // tile are always available, so the normal click still assigns the photo.
+  const [pickedIds, setPickedIds] = useState<Set<string>>(new Set());
+  const pickAnchorRef = useRef<string | null>(null);
   const [importUrlOpen, setImportUrlOpen] = useState(false);
+  const visibleAssets = useMemo(() => {
+    const query = assetSearch.trim().toLowerCase();
+    if (!query) {
+      return libraryAssets;
+    }
+    return libraryAssets.filter((asset) => asset.name.toLowerCase().includes(query));
+  }, [assetSearch, libraryAssets]);
+  const libraryAssetIds = useMemo(() => new Set(libraryAssets.map((asset) => asset.id)), [libraryAssets]);
+
+  // Deleted or replaced assets must not stay picked, otherwise the count in the
+  // action bar drifts from what a click would actually delete.
+  useEffect(() => {
+    setPickedIds((current) => {
+      if (!current.size) {
+        return current;
+      }
+      const next = new Set(Array.from(current).filter((id) => libraryAssetIds.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [libraryAssetIds]);
+
+  function togglePick(assetId: string) {
+    setPickedIds((current) => {
+      const next = new Set(current);
+      if (next.has(assetId)) {
+        next.delete(assetId);
+      } else {
+        next.add(assetId);
+      }
+      return next;
+    });
+    pickAnchorRef.current = assetId;
+  }
+
+  function extendPickTo(assetId: string) {
+    const anchorId = pickAnchorRef.current;
+    const anchorIndex = anchorId ? visibleAssets.findIndex((asset) => asset.id === anchorId) : -1;
+    const targetIndex = visibleAssets.findIndex((asset) => asset.id === assetId);
+    if (anchorIndex < 0 || targetIndex < 0) {
+      togglePick(assetId);
+      return;
+    }
+    const [from, to] = anchorIndex <= targetIndex ? [anchorIndex, targetIndex] : [targetIndex, anchorIndex];
+    const rangeIds = visibleAssets.slice(from, to + 1).map((asset) => asset.id);
+    setPickedIds((current) => {
+      const next = new Set(current);
+      rangeIds.forEach((id) => next.add(id));
+      return next;
+    });
+  }
+
   const uploadTrackWidth = `${
     uploadBusy ? uploadProgressPercent : Math.round((uploadState.completedFiles / Math.max(uploadState.totalFiles, 1)) * 100)
   }%`;
@@ -266,87 +320,66 @@ export function EditorContentSidebar({
             />
           </label>
         ) : null}
-        {libraryAssets.length ? (
-          <div className="asset-batch-bar">
+        {libraryAssets.length && pickedIds.size ? (
+          <div className="asset-batch-bar" role="status" aria-live="polite">
+            <span className="panel-tag">
+              {t('%s selected').replace('%s', String(pickedIds.size))}
+            </span>
+            <button
+              type="button"
+              className="button button--ghost button--small"
+              onClick={() => setPickedIds(new Set(visibleAssets.map((asset) => asset.id)))}
+            >
+              {t('Select all')}
+            </button>
             <button
               type="button"
               className="button button--ghost button--small"
               onClick={() => {
-                setBatchMode((current) => {
-                  if (current) {
-                    setBatchSelected(new Set());
-                  }
-                  return !current;
+                setPickedIds(new Set());
+                pickAnchorRef.current = null;
+              }}
+            >
+              {t('Clear')}
+            </button>
+            <button
+              type="button"
+              className="button button--danger-ghost button--small asset-batch-bar__delete"
+              disabled={assetMutationBusy}
+              aria-label={t('Delete selected photos')}
+              title={t('Delete selected photos')}
+              onClick={() => {
+                const selectedAssets = libraryAssets.filter((asset) => pickedIds.has(asset.id));
+                void Promise.resolve(onDeleteAssets(selectedAssets)).then(() => {
+                  setPickedIds(new Set());
+                  pickAnchorRef.current = null;
                 });
               }}
             >
-              {batchMode ? t('Done') : t('Select')}
+              <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2.5 4.5h11M6 4.5V3.2h4v1.3M4 4.5l.6 8.2h6.8l.6-8.2M6.6 7v3.4M9.4 7v3.4" />
+              </svg>
             </button>
-            {batchMode ? (
-              <>
-                <button
-                  type="button"
-                  className="button button--ghost button--small"
-                  onClick={() =>
-                    setBatchSelected(
-                      new Set(
-                        (assetSearch.trim()
-                          ? libraryAssets.filter((asset) =>
-                              asset.name.toLowerCase().includes(assetSearch.trim().toLowerCase()),
-                            )
-                          : libraryAssets
-                        ).map((asset) => asset.id),
-                      ),
-                    )
-                  }
-                >
-                  {t('Select all')}
-                </button>
-                <span className="panel-tag">
-                  {t('%s selected').replace('%s', String(batchSelected.size))}
-                </span>
-                <button
-                  type="button"
-                  className="button button--danger-ghost button--small asset-batch-bar__delete"
-                  disabled={!batchSelected.size || assetMutationBusy}
-                  aria-label={t('Delete selected photos')}
-                  title={t('Delete selected photos')}
-                  onClick={() => {
-                    const selectedAssets = libraryAssets.filter((asset) => batchSelected.has(asset.id));
-                    void Promise.resolve(onDeleteAssets(selectedAssets)).then(() => {
-                      setBatchSelected(new Set());
-                    });
-                  }}
-                >
-                  <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M2.5 4.5h11M6 4.5V3.2h4v1.3M4 4.5l.6 8.2h6.8l.6-8.2M6.6 7v3.4M9.4 7v3.4" />
-                  </svg>
-                </button>
-              </>
-            ) : null}
           </div>
         ) : null}
         <div className="asset-rail asset-rail--gallery">
           {libraryAssets.length ? (
-            (assetSearch.trim()
-              ? libraryAssets.filter((asset) => asset.name.toLowerCase().includes(assetSearch.trim().toLowerCase()))
-              : libraryAssets
-            ).map((asset) => {
+            visibleAssets.map((asset) => {
               const placements = assetUsageCounts[asset.id] ?? 0;
               const isSelected = selectedAssetId === asset.id;
+              const isPicked = pickedIds.has(asset.id);
               const isInCurrentProject = projectAssetIds.has(asset.id);
               const deliveryLabel = getAssetDeliveryLabel(asset.delivery);
               const deliveryTone = getAssetDeliveryTone(asset.delivery);
               const deliveryTooltip = getAssetDeliveryTooltip(asset.delivery);
               const deleteLabel = assetDeleteBusy && assetDeleteTargetId === asset.id ? t('Removing…') : t('Delete');
               const retryLabel = assetRetryTargetId === asset.id ? t('Retrying…') : t('Retry mirror');
+              const pickLabel = isPicked ? t('Remove from the selection') : t('Select for bulk actions');
 
               return (
                 <article
                   key={asset.id}
-                  className={`asset-tile ${isSelected ? 'is-selected' : ''} ${
-                    batchSelected.has(asset.id) ? 'is-batch-selected' : ''
-                  }`.trim()}
+                  className={`asset-tile ${isSelected ? 'is-selected' : ''} ${isPicked ? 'is-picked' : ''}`.trim()}
                 >
                   <button
                     type="button"
@@ -354,17 +387,16 @@ export function EditorContentSidebar({
                     title={asset.name}
                     draggable
                     onDragStart={(event) => event.dataTransfer.setData(t('text/finalfolio-asset'), asset.id)}
-                    onClick={() => {
-                      if (batchMode) {
-                        setBatchSelected((current) => {
-                          const next = new Set(current);
-                          if (next.has(asset.id)) {
-                            next.delete(asset.id);
-                          } else {
-                            next.add(asset.id);
-                          }
-                          return next;
-                        });
+                    onClick={(event) => {
+                      // Shift selects the range from the last pick, Ctrl/Cmd
+                      // toggles this tile; a plain click still assigns the
+                      // photo to the selected frame.
+                      if (event.shiftKey) {
+                        extendPickTo(asset.id);
+                        return;
+                      }
+                      if (event.ctrlKey || event.metaKey) {
+                        togglePick(asset.id);
                         return;
                       }
                       if (selectedSlot && !assetMutationBusy) {
@@ -373,15 +405,15 @@ export function EditorContentSidebar({
                     }}
                   >
                     <img alt={asset.name} src={getAssetSource(asset, 'thumb')} loading="lazy" decoding="async" />
-                    <div className="asset-tile__copy">
-                      <div className="asset-tile__title-row">
+                    <span className="asset-tile__copy">
+                      <span className="asset-tile__title-row">
                         <strong>{asset.name}</strong>
                         <span
                           className={`delivery-indicator delivery-indicator--${deliveryTone}`}
                           title={deliveryTooltip}
                           aria-label={deliveryLabel}
                         />
-                      </div>
+                      </span>
                       <span>
                         {placements
                           ? countLabel(placements, '1 use', '%s uses')
@@ -389,14 +421,21 @@ export function EditorContentSidebar({
                             ? t('Unused in this folio')
                             : t('Saved in account')}
                       </span>
-                    </div>
-                  </button>
-                  {batchSelected.has(asset.id) ? (
-                    <span className="asset-tile__batch-check" aria-hidden="true">
-                      ✓
                     </span>
-                  ) : null}
-                  {asset.delivery?.canRetry && !batchMode ? (
+                  </button>
+                  <button
+                    type="button"
+                    className={`asset-tile__pick ${isPicked ? 'is-on' : ''}`.trim()}
+                    aria-pressed={isPicked}
+                    aria-label={pickLabel}
+                    title={pickLabel}
+                    onClick={() => togglePick(asset.id)}
+                  >
+                    <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      {isPicked ? <path d="m3.5 8.4 3 3 6-6.6" /> : null}
+                    </svg>
+                  </button>
+                  {asset.delivery?.canRetry ? (
                     <button
                       type="button"
                       className="asset-tile__retry-icon"
@@ -418,7 +457,6 @@ export function EditorContentSidebar({
                       </svg>
                     </button>
                   ) : null}
-                  {!batchMode ? (
                   <button
                     type="button"
                     className="asset-tile__delete-icon"
@@ -439,7 +477,6 @@ export function EditorContentSidebar({
                       <path d="M2.5 4.5h11M6 4.5V3.2h4v1.3M4 4.5l.6 8.2h6.8l.6-8.2M6.6 7v3.4M9.4 7v3.4" />
                     </svg>
                   </button>
-                  ) : null}
                 </article>
               );
             })

@@ -46,6 +46,14 @@ export interface AssetVariants {
   thumb?: AssetVariant | null;
 }
 
+export interface AssetAnalysis {
+  description: string;
+  tags: string[];
+  /** Where the analysis came from, for example `unalbum`. */
+  source?: string;
+  analyzedAt?: string;
+}
+
 export interface Asset {
   id: string;
   name: string;
@@ -59,6 +67,8 @@ export interface Asset {
   variants?: AssetVariants;
   delivery?: AssetDelivery;
   lastUsedAt?: string | null;
+  /** Tags and description produced by an upstream AI; reused instead of re-reading pixels. */
+  analysis?: AssetAnalysis;
 }
 
 export interface CropSettings {

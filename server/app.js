@@ -17,7 +17,9 @@ import { createOpsStore } from './ops.js';
 import { createSecurityStore } from './security.js';
 import { createSiteStore } from './site.js';
 import { createUserTemplateStore } from './userTemplates.js';
+import { sanitizeAssetAnalysis } from './lib/assetAnalysis.js';
 import { createAssetVariantService, getUploadFilenameFromPath } from './uploadVariants.js';
+import { createUnalbumStore } from './unalbum.js';
 import { createBadRequest, createForbidden } from './lib/httpErrors.js';
 
 export { createBadRequest };
@@ -461,6 +463,7 @@ function sanitizeAsset(asset) {
     src: validateLocalAssetPath(asset.src),
     note: sanitizeText(asset.note, 'Asset note', defaultTextLimits.assetNote, { trim: true }),
     builtIn: asset.builtIn === true,
+    ...(sanitizeAssetAnalysis(asset.analysis) ? { analysis: sanitizeAssetAnalysis(asset.analysis) } : {}),
     ...(normalizeAssetScalar(asset.bytes) !== undefined ? { bytes: normalizeAssetScalar(asset.bytes) } : {}),
     ...(typeof asset.mimeType === 'string' && asset.mimeType.trim() ? { mimeType: asset.mimeType.trim() } : {}),
     ...(sanitizeAssetVariants(asset.variants) ? { variants: sanitizeAssetVariants(asset.variants) } : {}),
@@ -947,6 +950,117 @@ async function downloadImageFromUrl(rawUrl, { maxBytes, uploadsDir, idFactory })
       mimetype: matched.mime,
     },
     bytes: totalBytes,
+  };
+}
+
+/**
+ * Downloads one image from UnAlbum's API/CDN. Unlike generic URL import this
+ * allows an Authorization header (the API hands out token-protected variants)
+ * but *only* to UnAlbum's own origin, and it never forwards the token to a
+ * storage origin. Everything else reuses the same size and magic-byte checks
+ * as a normal upload.
+ */
+async function downloadUnalbumImage(rawUrl, { accessToken, authOrigin, allowedOrigins, maxBytes, uploadsDir, suggestedName, idFactory }) {
+  let currentUrl;
+  try {
+    currentUrl = new URL(String(rawUrl ?? '').trim());
+  } catch {
+    throw createBadRequest('UnAlbum returned an invalid image URL.');
+  }
+
+  if (currentUrl.protocol !== 'http:' && currentUrl.protocol !== 'https:') {
+    throw createBadRequest('UnAlbum returned an unsupported image URL.');
+  }
+  if (currentUrl.username || currentUrl.password) {
+    throw createBadRequest('UnAlbum returned an unsupported image URL.');
+  }
+
+  let response = null;
+  for (let hop = 0; hop < 4; hop += 1) {
+    if (!allowedOrigins.has(currentUrl.origin)) {
+      throw createBadRequest('UnAlbum returned an image URL outside its storage origins.');
+    }
+    const headers = {
+      accept: 'image/jpeg,image/png,image/webp,image/gif,image/avif,image/*;q=0.8',
+    };
+    if (accessToken && authOrigin && currentUrl.origin === authOrigin) {
+      headers.authorization = `Bearer ${accessToken}`;
+    }
+    response = await fetch(currentUrl, {
+      method: 'GET',
+      redirect: 'manual',
+      headers,
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get('location');
+      await response.arrayBuffer().catch(() => null);
+      if (!location) {
+        throw createBadRequest('This UnAlbum photo could not be downloaded.');
+      }
+      currentUrl = new URL(location, currentUrl);
+      continue;
+    }
+    break;
+  }
+
+  if (!response || !response.ok) {
+    throw createBadRequest('This UnAlbum photo could not be downloaded.');
+  }
+
+  const declaredLength = Number(response.headers.get('content-length') ?? '0');
+  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
+    throw createBadRequest('This UnAlbum photo is too large to import.');
+  }
+
+  const chunks = [];
+  let totalBytes = 0;
+  const reader = response.body.getReader();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    totalBytes += value.byteLength;
+    if (totalBytes > maxBytes) {
+      await reader.cancel().catch(() => null);
+      throw createBadRequest('This UnAlbum photo is too large to import.');
+    }
+    chunks.push(Buffer.from(value));
+  }
+
+  const buffer = Buffer.concat(chunks);
+  if (!totalBytes) {
+    throw createBadRequest('This UnAlbum photo returned an empty response.');
+  }
+
+  const matched = imageMagicMatchers.find((matcher) => matcher.test(buffer));
+  if (!matched || !allowedUploadTypes.has(matched.mime)) {
+    throw createBadRequest('This UnAlbum file is not a readable JPG, PNG, WebP, GIF, or AVIF image.');
+  }
+
+  const extensionByMime = {
+    'image/jpeg': '.jpg',
+    'image/png': '.png',
+    'image/webp': '.webp',
+    'image/gif': '.gif',
+    'image/avif': '.avif',
+  };
+  const safeName = String(suggestedName ?? '').replace(/[^a-zA-Z0-9._-]/g, '').slice(0, 60);
+  const extension = extensionByMime[matched.mime];
+  const sourceName = safeName ? safeName.replace(/\.[a-z0-9]+$/i, '') : 'unalbum-photo';
+  const filename = createUploadFilename(`${sourceName}${extension}`, { idFactory });
+  const targetPath = path.join(uploadsDir, filename);
+  await fs.writeFile(targetPath, buffer, { mode: 0o600 });
+
+  return {
+    file: {
+      path: targetPath,
+      filename,
+      originalname: `${sourceName}${extension}`,
+      mimetype: matched.mime,
+      size: totalBytes,
+    },
   };
 }
 
@@ -1453,6 +1567,7 @@ export function createApp({
   const opsStore = createOpsStore({ dataRoot });
   const siteStore = createSiteStore({ dataRoot });
   const aiStore = createAiStore({ dataRoot });
+  const unalbumStore = createUnalbumStore({ dataRoot });
   const accountPreferencesStore = createAccountPreferencesStore({
     dataRoot,
     allowedPageThemes,
@@ -2702,6 +2817,7 @@ export function createApp({
             width: hydrated.width ?? null,
             height: hydrated.height ?? null,
             note: record.note,
+            analysis: hydrated.analysis ?? record.analysis ?? null,
             createdAt: record.createdAt,
             updatedAt: record.updatedAt,
             lastUsedAt: record.lastUsedAt ?? null,
@@ -2754,6 +2870,313 @@ export function createApp({
         },
       });
       response.json({ preferences });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // ---------------------------------------------------------------------
+  // UnAlbum bridge. FinalFolio never sees an UnAlbum password: the account is
+  // linked with OAuth 2.1 + PKCE, and photo bytes are proxied by this server
+  // so the browser never needs an UnAlbum token. Everything stays dark until
+  // FINALFOLIO_UNALBUM_BASE_URL and FINALFOLIO_UNALBUM_CLIENT_ID are set.
+  // ---------------------------------------------------------------------
+  function unalbumOrigins() {
+    const config = unalbumStore.config();
+    const allowedOrigins = new Set();
+    let authOrigin = '';
+    try {
+      authOrigin = new URL(config.baseUrl).origin;
+      allowedOrigins.add(authOrigin);
+    } catch {
+      // Configuration is validated by `configured`; an empty base leaves no origins.
+    }
+    config.storageOrigins.forEach((origin) => {
+      try {
+        allowedOrigins.add(new URL(origin).origin);
+      } catch {
+        // Ignore malformed extra origins instead of failing every import.
+      }
+    });
+    return { allowedOrigins, authOrigin };
+  }
+
+  function unalbumAccountSummary(binding) {
+    return {
+      id: binding.account.id,
+      username: binding.account.username ?? '',
+      displayName: binding.account.displayName ?? '',
+      avatarUrl: binding.account.avatarUrl ?? '',
+      boundAt: binding.boundAt ?? null,
+    };
+  }
+
+  app.get('/api/unalbum/status', async (request, response, next) => {
+    try {
+      const config = unalbumStore.config();
+      const user = request.auth?.user ?? null;
+      const binding = user && config.configured ? await unalbumStore.readBinding(user.id) : null;
+      response.json({
+        configured: config.configured,
+        bound: Boolean(binding),
+        account: binding ? unalbumAccountSummary(binding) : null,
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/unalbum/authorize', async (request, response, next) => {
+    try {
+      const user = requireAuthenticated(request);
+      const { authorizeUrl } = await unalbumStore.startAuthorization({
+        intent: 'bind',
+        userId: user.id,
+        publicOrigin: resolvePublicOrigin(request),
+      });
+      response.json({ authorizeUrl });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/unalbum/login', async (request, response, next) => {
+    try {
+      const nextPath = typeof request.body?.next === 'string' ? request.body.next : '';
+      const safeNext = nextPath.startsWith('/') && !nextPath.startsWith('//') ? nextPath.slice(0, 300) : '/editor';
+      const { authorizeUrl } = await unalbumStore.startAuthorization({
+        intent: 'login',
+        publicOrigin: resolvePublicOrigin(request),
+        returnTo: safeNext,
+      });
+      response.json({ authorizeUrl });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get('/api/unalbum/callback', async (request, response) => {
+    const origin = resolvePublicOrigin(request);
+    const fail = (reason) => {
+      response.redirect(302, `${origin}/account?unalbum=error&reason=${encodeURIComponent(reason)}`);
+    };
+    try {
+      const state = typeof request.query.state === 'string' ? request.query.state : '';
+      const record = await unalbumStore.consumeState(state);
+      if (!record) {
+        response.redirect(302, `${origin}/auth?unalbum=error&reason=state`);
+        return;
+      }
+      const code = typeof request.query.code === 'string' ? request.query.code : '';
+      if (!code) {
+        response.redirect(302, `${origin}/account?unalbum=error&reason=denied`);
+        return;
+      }
+
+      const tokens = await unalbumStore.exchangeCode({
+        code,
+        verifier: record.verifier,
+        redirectUri: record.redirectUri,
+      });
+      const profileResult = await unalbumStore.fetchProfile({
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        expiresAt: tokens.expiresAt,
+      });
+      const binding = {
+        account: profileResult.profile,
+        accessToken: profileResult.binding.accessToken,
+        refreshToken: profileResult.binding.refreshToken,
+        scope: tokens.scope,
+        expiresAt: profileResult.binding.expiresAt,
+      };
+
+      if (record.intent === 'login') {
+        const email = profileResult.profile.email;
+        if (!email) {
+          response.redirect(302, `${origin}/auth?unalbum=error&reason=no-email`);
+          return;
+        }
+
+        let user = await authStore.findUserByEmail(email);
+        if (!user) {
+          // OAuth accounts get a random local password they never need to know;
+          // sign-in keeps working through UnAlbum.
+          const randomPassword = crypto.randomBytes(24).toString('base64url');
+          try {
+            user = await authStore.createUser(
+              { email, password: randomPassword, username: profileResult.profile.username },
+              { role: 'user', markEmailVerified: true },
+            );
+          } catch {
+            user = await authStore.createUser({ email, password: randomPassword }, { role: 'user', markEmailVerified: true });
+          }
+        }
+        if (user.status !== 'active') {
+          response.redirect(302, `${origin}/auth?unalbum=error&reason=disabled`);
+          return;
+        }
+
+        await unalbumStore.writeBinding(user.id, binding);
+        const session = await authStore.createSession(user.id);
+        response.setHeader('Set-Cookie', serializeSessionCookie(session.id));
+        await opsStore.recordEvent({
+          type: 'auth',
+          status: 'ok',
+          userId: user.id,
+          detail: { action: 'unalbum-login' },
+        });
+        const target = record.returnTo && record.returnTo.startsWith('/') ? record.returnTo : '/editor';
+        response.redirect(302, `${origin}${target}`);
+        return;
+      }
+
+      if (!record.userId) {
+        fail('session');
+        return;
+      }
+      await unalbumStore.writeBinding(record.userId, binding);
+      await opsStore.recordEvent({
+        type: 'unalbum',
+        status: 'ok',
+        userId: record.userId,
+        detail: { action: 'bind' },
+      });
+      response.redirect(302, `${origin}/account?unalbum=connected`);
+    } catch (error) {
+      // OAuth callbacks are browser navigations; a JSON error page would strand
+      // the user, so report through the account page instead.
+      console.error('UnAlbum callback failed.', error);
+      fail('failed');
+    }
+  });
+
+  app.post('/api/unalbum/unbind', async (request, response, next) => {
+    try {
+      const user = requireAuthenticated(request);
+      await unalbumStore.deleteBinding(user.id);
+      await opsStore.recordEvent({
+        type: 'unalbum',
+        status: 'ok',
+        userId: user.id,
+        detail: { action: 'unbind' },
+      });
+      response.json({ ok: true });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get('/api/unalbum/photos', async (request, response, next) => {
+    try {
+      const user = requireAuthenticated(request);
+      const binding = await unalbumStore.readBinding(user.id);
+      if (!binding) {
+        response.status(409).json({ error: 'Connect your UnAlbum account first.', code: 'unalbum_not_bound' });
+        return;
+      }
+      const result = await unalbumStore.listPhotos(binding, {
+        cursor: typeof request.query.cursor === 'string' ? request.query.cursor.slice(0, 500) : '',
+        query: typeof request.query.q === 'string' ? request.query.q.slice(0, 120) : '',
+        limit: request.query.limit,
+      });
+      if (result.binding !== binding) {
+        await unalbumStore.writeBinding(user.id, result.binding);
+      }
+      response.json({
+        photos: result.photos,
+        nextCursor: result.nextCursor,
+        account: unalbumAccountSummary(result.binding),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/unalbum/import', async (request, response, next) => {
+    try {
+      const user = requireAuthenticated(request);
+      const ids = Array.isArray(request.body?.ids)
+        ? request.body.ids.filter((id) => typeof id === 'string').slice(0, 30)
+        : [];
+      if (!ids.length) {
+        throw createBadRequest('Choose at least one UnAlbum photo.');
+      }
+      let binding = await unalbumStore.readBinding(user.id);
+      if (!binding) {
+        response.status(409).json({ error: 'Connect your UnAlbum account first.', code: 'unalbum_not_bound' });
+        return;
+      }
+
+      const { allowedOrigins, authOrigin } = unalbumOrigins();
+      const createdAssets = [];
+      for (const id of ids) {
+        const { photo, binding: nextBinding } = await unalbumStore.getPhoto(binding, id);
+        binding = nextBinding;
+
+        const variants = [photo.variants?.original, photo.variants?.preview, photo.variants?.thumb].filter(
+          (variant) => variant && typeof variant.url === 'string' && variant.url,
+        );
+        if (!variants.length) {
+          throw createBadRequest('This UnAlbum photo has no downloadable file.');
+        }
+
+        let downloaded = null;
+        let lastError = null;
+        for (const variant of variants) {
+          try {
+            downloaded = await downloadUnalbumImage(variant.url, {
+              accessToken: binding.accessToken,
+              authOrigin,
+              allowedOrigins,
+              maxBytes: maxUploadSizeBytes,
+              uploadsDir: store.uploadsDir,
+              suggestedName: photo.filename || photo.name,
+              idFactory: createId,
+            });
+            break;
+          } catch (error) {
+            lastError = error;
+          }
+        }
+        if (!downloaded) {
+          throw lastError ?? createBadRequest('This UnAlbum photo could not be downloaded.');
+        }
+
+        await assertReadableImageFile(downloaded.file);
+        const baseAsset = store.createStoredUpload(downloaded.file, {
+          width: photo.width ?? undefined,
+          height: photo.height ?? undefined,
+        });
+        let asset = await store.hydrateStoredUploadAsset(baseAsset, { ensureVariants: true });
+        const analysis = sanitizeAssetAnalysis(photo.analysis);
+        if (analysis) {
+          asset = { ...asset, analysis: { ...analysis, source: 'unalbum' } };
+        }
+        const displayName = (photo.name || photo.filename || '').trim();
+        if (displayName) {
+          asset = { ...asset, name: displayName.slice(0, defaultTextLimits.assetName) };
+        }
+
+        await assetStore.createAssetRecord(asset, { ownerUserId: user.id });
+        createdAssets.push(asset);
+
+        const artifacts = await store.getUploadArtifacts(downloaded.file.filename, {
+          originalWidth: asset.width,
+          originalHeight: asset.height,
+        });
+        queueObjectStorageUploadSync(user.id, [{ filename: downloaded.file.filename, artifacts }]);
+      }
+
+      await unalbumStore.writeBinding(user.id, binding);
+      store.invalidateStoreCaches();
+      await opsStore.recordEvent({
+        type: 'unalbum',
+        status: 'ok',
+        userId: user.id,
+        detail: { action: 'import', count: createdAssets.length },
+      });
+      response.status(201).json({ assets: createdAssets });
     } catch (error) {
       next(error);
     }

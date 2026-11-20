@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { createBadRequest } from './lib/httpErrors.js';
+import { sanitizeAssetAnalysis } from './lib/assetAnalysis.js';
 
 const AI_CONFIG_VERSION = 1;
 const MAX_PROVIDERS = 20;
@@ -142,6 +143,22 @@ function sanitizeText(value, fieldName, maxLength, { allowEmpty = false } = {}) 
   }
 
   return nextValue;
+}
+
+const IMAGE_ANALYSIS_DESCRIPTION_LIMIT = 800;
+const IMAGE_ANALYSIS_TAGS_LIMIT = 24;
+
+/**
+ * Existing AI analysis (from UnAlbum, or a previous import) is trusted input
+ * for the planner prompt, so it is normalised and bounded before it reaches
+ * the provider: no markup, no unbounded tags, no empty shell objects.
+ */
+function sanitizeImageAnalysis(value) {
+  return sanitizeAssetAnalysis(value, {
+    descriptionLimit: IMAGE_ANALYSIS_DESCRIPTION_LIMIT,
+    tagsLimit: IMAGE_ANALYSIS_TAGS_LIMIT,
+    tagLength: 40,
+  });
 }
 
 function sanitizeLimit(value, fallback, max) {
@@ -816,8 +833,12 @@ function recoverChatContent(raw) {
 
     let totalChars = 0;
     const normalizedImages = images.map((image, index) => {
-      const dataUrl = typeof image?.dataUrl === 'string' ? image.dataUrl : '';
-      if (!/^data:image\/(?:jpeg|jpg|png|webp);base64,/i.test(dataUrl)) {
+      // Photos that already carry AI analysis (for example an UnAlbum import)
+      // are described in text instead of being re-uploaded as pixels: the
+      // request gets smaller, faster and cheaper without losing information.
+      const analysis = sanitizeImageAnalysis(image?.analysis);
+      const dataUrl = analysis ? '' : typeof image?.dataUrl === 'string' ? image.dataUrl : '';
+      if (!analysis && !/^data:image\/(?:jpeg|jpg|png|webp);base64,/i.test(dataUrl)) {
         throw createBadRequest('Every AI image must be a JPEG, PNG, or WebP thumbnail.');
       }
       if (dataUrl.length > MAX_THUMBNAIL_CHARS) {
@@ -830,6 +851,7 @@ function recoverChatContent(raw) {
         width: Number.isFinite(image?.width) ? Math.round(image.width) : null,
         height: Number.isFinite(image?.height) ? Math.round(image.height) : null,
         dataUrl,
+        analysis,
       };
     });
     if (totalChars > MAX_TOTAL_THUMBNAIL_CHARS) {
@@ -838,18 +860,33 @@ function recoverChatContent(raw) {
 
     const userPrompt = sanitizeText(prompt || config.prompt, 'AI prompt', 12000);
     const imageList = normalizedImages
-      .map((image) => `${image.index}. ${image.name}${image.width && image.height ? ` (${image.width}×${image.height})` : ''}`)
+      .map((image) => {
+        const dimensions = image.width && image.height ? ` (${image.width}×${image.height})` : '';
+        if (!image.analysis) {
+          return `${image.index}. ${image.name}${dimensions} — 附缩略图`;
+        }
+        const parts = [`${image.index}. ${image.name}${dimensions} — 已有分析`];
+        if (image.analysis.description) {
+          parts.push(`描述：${image.analysis.description}`);
+        }
+        if (image.analysis.tags.length) {
+          parts.push(`标签：${image.analysis.tags.join('、')}`);
+        }
+        return parts.join('；');
+      })
       .join('\n');
+    const attachedImages = normalizedImages.filter((image) => image.dataUrl);
+    const analyzedCount = normalizedImages.length - attachedImages.length;
+    const listIntro = analyzedCount
+      ? `请根据以下 ${normalizedImages.length} 张照片设计画册。其中 ${attachedImages.length} 张附有缩略图，${analyzedCount} 张只有既有的图片分析文字（已由原相册完成分析，直接采信，不要重新分析）。`
+      : `请分析以下 ${normalizedImages.length} 张照片并按要求返回 JSON。`;
     const messages = [
       { role: 'system', content: `${userPrompt}\n\n${AI_LAYOUT_GUIDE}` },
       {
         role: 'user',
         content: [
-          {
-            type: 'text',
-            text: `请分析以下 ${normalizedImages.length} 张照片并按要求返回 JSON。\n\n图片清单：\n${imageList}`,
-          },
-          ...normalizedImages.map((image) => ({
+          { type: 'text', text: `${listIntro}\n\n图片清单：\n${imageList}` },
+          ...attachedImages.map((image) => ({
             type: 'image_url',
             image_url: { url: image.dataUrl },
           })),

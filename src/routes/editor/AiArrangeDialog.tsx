@@ -7,7 +7,8 @@ import {
 } from '../../editor/api';
 import { getAssetSource } from '../../editor/assetResources';
 import { confirmAction } from '../../ui/confirm';
-import type { Asset } from '../../editor/types';
+import { MarqueeGrid } from '../../ui/MarqueeGrid';
+import type { Asset, AssetAnalysis } from '../../editor/types';
 import {
   aiTemplateLabel,
   normalizeAiPlanBundle,
@@ -27,6 +28,8 @@ export type AiPhoto = {
   width: number;
   height: number;
   thumbnail: string;
+  /** Existing AI tags/description; when set the request omits the pixels. */
+  analysis?: AssetAnalysis;
 };
 
 type AiArrangeDialogProps = {
@@ -129,8 +132,32 @@ async function readPhoto(file: File): Promise<AiPhoto> {
   }
 }
 
+function hasUsableAnalysis(analysis: AssetAnalysis | undefined): analysis is AssetAnalysis {
+  return Boolean(analysis && (analysis.description?.trim() || analysis.tags?.length));
+}
+
 async function readAssetPhoto(asset: Asset): Promise<AiPhoto> {
   const previewUrl = getAssetSource(asset, 'thumb') || getAssetSource(asset, 'preview') || asset.src;
+  const analysis = hasUsableAnalysis(asset.analysis) ? asset.analysis : undefined;
+
+  // An analysed photo (for example an UnAlbum import) already has tags and a
+  // description. Planning only needs those words and the dimensions, so skip
+  // decoding and re-encoding the image entirely.
+  if (analysis && asset.width && asset.height) {
+    return {
+      id: `asset:${asset.id}`,
+      kind: 'asset',
+      asset,
+      assetId: asset.id,
+      name: asset.name,
+      previewUrl,
+      width: asset.width,
+      height: asset.height,
+      thumbnail: '',
+      analysis,
+    };
+  }
+
   let image: HTMLImageElement;
   try {
     image = await loadImageElement(previewUrl, true);
@@ -147,6 +174,7 @@ async function readAssetPhoto(asset: Asset): Promise<AiPhoto> {
       name: asset.name,
       previewUrl,
       ...thumbnail,
+      ...(analysis ? { analysis } : {}),
     };
   } catch {
     throw new Error('Unable to read this image thumbnail. Upload the file instead.');
@@ -357,6 +385,7 @@ export function AiArrangeDialog({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const readingAssetRef = useRef<string | null>(null);
+  const anchorAssetIdRef = useRef<string | null>(null);
   const photosRef = useRef<AiPhoto[]>([]);
 
   photosRef.current = photos;
@@ -384,6 +413,7 @@ export function AiArrangeDialog({
     return Array.from(merged.values());
   }, [availableAssets, uploadedAssets]);
   const localPhotos = useMemo(() => photos.filter((photo) => photo.kind === 'local'), [photos]);
+  const analyzedSelectedCount = useMemo(() => photos.filter((photo) => photo.analysis).length, [photos]);
   const uploadTotalCount = Math.max(uploadBatchTotal, uploadTotal, 1);
   const uploadDoneCount = Math.min(uploadCompleted, uploadTotalCount);
 
@@ -525,6 +555,7 @@ export function AiArrangeDialog({
               file: undefined,
               name: asset.name,
               previewUrl: getAssetSource(asset, 'thumb') || getAssetSource(asset, 'preview') || asset.src,
+              ...(hasUsableAnalysis(asset.analysis) ? { analysis: asset.analysis } : {}),
             };
           }),
         );
@@ -547,28 +578,101 @@ export function AiArrangeDialog({
     });
   }
 
+  async function addAssetPhotos(candidates: Asset[]) {
+    if (!candidates.length) {
+      return 0;
+    }
+
+    // Track the ceiling locally: a marquee or a Shift range adds many photos in
+    // one event, long before the next render refreshes `photos`.
+    const present = new Set(
+      photosRef.current.map((photo) => photo.assetId).filter((assetId): assetId is string => Boolean(assetId)),
+    );
+    let count = photosRef.current.length;
+    let added = 0;
+
+    for (const asset of candidates) {
+      if (present.has(asset.id)) {
+        continue;
+      }
+      if (count >= maxPhotos) {
+        setError(t('You can select up to %s photos.').replace('%s', String(maxPhotos)));
+        break;
+      }
+
+      present.add(asset.id);
+      count += 1;
+      if (readingAssetRef.current === asset.id) {
+        continue;
+      }
+
+      readingAssetRef.current = asset.id;
+      try {
+        const photo = await readAssetPhoto(asset);
+        setPhotos((current) =>
+          current.some((entry) => entry.assetId === asset.id) ? current : [...current, photo],
+        );
+        added += 1;
+      } catch (readError) {
+        present.delete(asset.id);
+        count -= 1;
+        setError(readError instanceof Error ? t(readError.message) : t('Unable to read one of the selected photos.'));
+      } finally {
+        readingAssetRef.current = null;
+      }
+    }
+
+    return added;
+  }
+
   async function addAssetPhoto(asset: Asset) {
-    if (photos.length >= maxPhotos) {
-      setError(t('You can select up to %s photos.').replace('%s', String(maxPhotos)));
-      return;
-    }
-    if (photos.some((photo) => photo.assetId === asset.id)) {
-      return;
-    }
+    await addAssetPhotos([asset]);
+  }
 
-    if (readingAssetRef.current === asset.id) {
+  function removeAssetFromPhotos(assetId: string) {
+    removePhoto(`asset:${assetId}`);
+  }
+
+  /**
+   * Shift-click adds every photo between the last plain click and this one.
+   * It never removes: the working set may already hold photos the user picked
+   * on purpose, and a range gesture must not silently drop them.
+   */
+  function addAssetRange(asset: Asset) {
+    const anchorId = anchorAssetIdRef.current;
+    const anchorIndex = anchorId ? allAssets.findIndex((entry) => entry.id === anchorId) : -1;
+    const targetIndex = allAssets.findIndex((entry) => entry.id === asset.id);
+    if (anchorIndex < 0 || targetIndex < 0) {
+      anchorAssetIdRef.current = asset.id;
+      void addAssetPhotos([asset]);
       return;
     }
+    const [from, to] = anchorIndex <= targetIndex ? [anchorIndex, targetIndex] : [targetIndex, anchorIndex];
+    void addAssetPhotos(allAssets.slice(from, to + 1));
+  }
 
-    readingAssetRef.current = asset.id;
-    setError(null);
-    try {
-      const photo = await readAssetPhoto(asset);
-      setPhotos((current) => [...current, photo]);
-    } catch (readError) {
-      setError(readError instanceof Error ? t(readError.message) : t('Unable to read one of the selected photos.'));
-    } finally {
-      readingAssetRef.current = null;
+  function handleAssetTileClick(asset: Asset, event: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }) {
+    if (event.shiftKey) {
+      addAssetRange(asset);
+      return;
+    }
+    anchorAssetIdRef.current = asset.id;
+    if (selectedAssetIds.has(asset.id)) {
+      removeAssetFromPhotos(asset.id);
+      return;
+    }
+    void addAssetPhotos([asset]);
+  }
+
+  function handleMarqueeSelect(ids: string[]) {
+    if (!ids.length) {
+      return;
+    }
+    const candidates = ids
+      .map((id) => allAssets.find((asset) => asset.id === id))
+      .filter((asset): asset is Asset => asset !== undefined && !selectedAssetIds.has(asset.id));
+    if (candidates.length) {
+      void addAssetPhotos(candidates);
     }
   }
 
@@ -599,9 +703,7 @@ export function AiArrangeDialog({
     const candidates = allAssets
       .filter((asset) => !selectedAssetIds.has(asset.id))
       .slice(0, remaining);
-    for (const asset of candidates) {
-      await addAssetPhoto(asset);
-    }
+    await addAssetPhotos(candidates);
   }
 
   function clearAllPhotos() {
@@ -656,7 +758,11 @@ export function AiArrangeDialog({
               name: photo.name,
               width: photo.width,
               height: photo.height,
-              dataUrl: photo.thumbnail,
+              // Photos that already have upstream analysis travel as text only.
+              dataUrl: photo.analysis ? '' : photo.thumbnail,
+              ...(photo.analysis
+                ? { analysis: { description: photo.analysis.description, tags: photo.analysis.tags } }
+                : {}),
             })),
             prompt: composedPrompt,
           },
@@ -939,7 +1045,7 @@ export function AiArrangeDialog({
                 </div>
 
                 {allAssets.length || localPhotos.length ? (
-                  <div className="ai-library-grid">
+                  <MarqueeGrid className="ai-library-grid" onMarquee={handleMarqueeSelect}>
                     {allAssets.map((asset) => {
                       const selected = selectedAssetIds.has(asset.id);
                       const disabled = !selected && photos.length >= maxPhotos;
@@ -947,19 +1053,17 @@ export function AiArrangeDialog({
                         <button
                           key={asset.id}
                           type="button"
+                          data-marquee-id={asset.id}
                           className={`ai-library-item ${selected ? 'is-selected' : ''}`.trim()}
                           aria-pressed={selected}
                           disabled={disabled}
-                          onClick={() => {
-                            if (selected) {
-                              removePhoto(`asset:${asset.id}`);
-                            } else {
-                              void addAssetPhoto(asset);
-                            }
-                          }}
+                          onClick={(event) => handleAssetTileClick(asset, event)}
                         >
                           <img src={getAssetSource(asset, 'thumb')} alt={asset.name} />
                           <span className="ai-library-item__name">{asset.name}</span>
+                          {hasUsableAnalysis(asset.analysis) ? (
+                            <span className="ai-library-item__tag">{t('Analyzed')}</span>
+                          ) : null}
                           {selected ? <span className="ai-library-item__check" aria-hidden="true">✓</span> : null}
                         </button>
                       );
@@ -980,13 +1084,22 @@ export function AiArrangeDialog({
                         <span className="ai-library-item__check" aria-hidden="true">✓</span>
                       </button>
                     ))}
-                  </div>
+                  </MarqueeGrid>
                 ) : (
                   <div className="ai-library-empty">
                     <strong>{t('No photos yet')}</strong>
                     <p className="panel-note">{t('Upload from this device or import a URL to add the first photos.')}</p>
                   </div>
                 )}
+                <p className="panel-note ai-selection-hint">
+                  {t('Drag across the photos to select a group, Shift-click to select a range, Ctrl/Cmd-click to add or remove one photo.')}
+                </p>
+                {analyzedSelectedCount ? (
+                  <p className="panel-note ai-analysis-hint">
+                    {t('%s selected photos already have AI tags, so their text is reused and no images are re-uploaded.')
+                      .replace('%s', String(analyzedSelectedCount))}
+                  </p>
+                ) : null}
 
                 <div className="ai-source-buttons">
                   <button

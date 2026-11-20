@@ -1829,28 +1829,72 @@ a:focus-visible {
   height: 14px;
 }
 
-.asset-tile.is-batch-selected {
+.asset-tile.is-picked {
   border-color: #111111;
   box-shadow:
     inset 0 0 0 1px #ffffff,
     inset 0 0 0 2px #111111;
 }
 
-.asset-tile__batch-check {
+/* Pick control for bulk actions. It follows the tile icon geometry (24px pill,
+   13px inset) and only appears on hover, on keyboard focus, or while the tile is
+   picked, so the gallery does not look like a selection mode. */
+.asset-tile__pick {
   position: absolute;
   top: 13px;
   left: 13px;
   z-index: 2;
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 2px solid #ffffff;
+  width: var(--control-height-xs);
+  min-width: var(--control-height-xs);
+  height: var(--control-height-xs);
+  padding: 0;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(17, 17, 17, 0.14);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(242, 237, 229, 0.82)),
+    rgba(255, 255, 255, 0.94);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.94),
+    0 10px 18px rgba(17, 17, 17, 0.08);
+  color: rgba(17, 17, 17, 0.72);
+  cursor: pointer;
+  visibility: hidden;
+  transition:
+    visibility 0s linear 140ms,
+    border-color 140ms ease,
+    background 140ms ease,
+    color 140ms ease;
+}
+
+.asset-tile:hover .asset-tile__pick,
+.asset-tile:focus-within .asset-tile__pick,
+.asset-tile.is-picked .asset-tile__pick {
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.asset-tile__pick svg {
+  width: 13px;
+  height: 13px;
+}
+
+.asset-tile__pick.is-on {
+  border-color: #111111;
   background: #111111;
   color: #ffffff;
-  font-size: 0.7rem;
-  box-shadow: 0 2px 6px rgba(17, 17, 17, 0.24);
+}
+
+.asset-tile__pick:not(:disabled):hover {
+  border-color: rgba(17, 17, 17, 0.26);
+}
+
+/* Touch devices have no hover, so the pick control stays visible there. */
+@media (hover: none) {
+  .asset-tile__pick {
+    visibility: visible;
+  }
 }
 
 .asset-rail--gallery {
@@ -10209,6 +10253,26 @@ html[lang='zh-CN'] body {
   overflow-y: auto;
 }
 
+/* Rubber-band selection shared by every photo grid (AI arrangement, UnAlbum). */
+.marquee-grid {
+  position: relative;
+}
+
+.marquee-grid.is-marqueeing {
+  cursor: crosshair;
+  user-select: none;
+}
+
+.marquee-rect {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  border: 1px dashed #111111;
+  border-radius: var(--radius-xs);
+  background: rgba(17, 17, 17, 0.08);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.6);
+}
+
 .ai-library-item {
   position: relative;
   display: block;
@@ -10273,6 +10337,24 @@ html[lang='zh-CN'] body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Marks a photo whose AI tags already exist upstream, so the planner can skip
+   the image upload. */
+.ai-library-item__tag {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1;
+  padding: 2px 6px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: rgba(17, 17, 17, 0.62);
+  color: #fff;
+  font-size: 0.62rem;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(6px);
 }
 
 .ai-library-item__check {
@@ -10510,6 +10592,19 @@ html[lang='zh-CN'] body {
   min-height: 320px;
 }
 
+.ai-selection-hint {
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.ai-analysis-hint {
+  margin: -4px 0 0;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: rgba(17, 17, 17, 0.62);
+}
+
 .ai-source-buttons {
   display: flex;
   flex-wrap: wrap;
@@ -10664,7 +10759,8 @@ html[lang='zh-CN'] body {
 }
 
 .asset-tile__retry-icon {
-  left: 14px;
+  /* Sits beside the delete icon: the pick control owns the top-left corner. */
+  right: calc(13px + var(--control-height-xs) + 4px);
 }
 
 .asset-tile__delete-icon:disabled,

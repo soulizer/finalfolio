@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { createBadRequest } from './lib/httpErrors.js';
+import { sanitizeAssetAnalysis } from './lib/assetAnalysis.js';
 
 const DEFAULT_ASSET_CACHE_TTL_MS = 5_000;
 
@@ -80,6 +81,7 @@ function sanitizeAssetRecord(record) {
             thumb: record.variants.thumb === null ? null : sanitizeAssetVariantResource(record.variants.thumb),
           }
         : null,
+    analysis: sanitizeAssetAnalysis(record.analysis),
     ownerUserId: typeof record.ownerUserId === 'string' ? record.ownerUserId : null,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
@@ -132,6 +134,7 @@ export function createAssetStore({
       bytes: typeof asset.bytes === 'number' ? asset.bytes : null,
       mimeType: typeof asset.mimeType === 'string' ? asset.mimeType : null,
       variants: asset.variants ?? null,
+      analysis: sanitizeAssetAnalysis(asset.analysis),
       ownerUserId,
       createdAt: timestamp,
       updatedAt: timestamp,

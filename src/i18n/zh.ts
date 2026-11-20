@@ -1900,8 +1900,13 @@ const zh: Record<string, string> = {
   'Switch style and regenerate?': '更换风格并重新生成？',
   'The current plans will be replaced. Pages already applied to your folio stay as they are until you apply a new plan.': '当前方案会被替换。已应用到作品集的页面在你应用新方案前保持不变。',
   'Body font': '正文字体',
-  'Select': '批量选择',
-  'Done': '完成',
+  'Select for bulk actions': '勾选这张照片，用于批量操作',
+  'Remove from the selection': '取消勾选这张照片',
+  'Analyzed': '已分析',
+  '%s selected photos already have AI tags, so their text is reused and no images are re-uploaded.':
+    '已选的 %s 张照片已有 AI 标签，会直接复用文字描述，不再重复上传图片。',
+  'Drag across the photos to select a group, Shift-click to select a range, Ctrl/Cmd-click to add or remove one photo.':
+    '在照片上按住拖动可框选一批；按住 Shift 点击可选中两者之间的范围；按住 Ctrl（⌘）点击可单选或取消单选。',
   '%s selected': '已选 %s 张',
   'Delete selected photos': '删除所选照片',
   'Delete photos': '删除照片',

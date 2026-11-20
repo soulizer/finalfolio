@@ -220,6 +220,7 @@ export function createAssetFromOwnedUpload(upload: AccountUploadListItem): Asset
     },
     delivery: upload.delivery,
     lastUsedAt: upload.lastUsedAt ?? null,
+    ...(upload.analysis ? { analysis: upload.analysis } : {}),
   };
 }
 

@@ -2,6 +2,7 @@ import {
   AccountActivityItem,
   AccountPreferences,
   Asset,
+  AssetAnalysis,
   AssetDelivery,
   AssetVariant,
   ExportSettings,
@@ -263,6 +264,7 @@ export interface AccountUploadListItem {
   width: number | null;
   height: number | null;
   note: string;
+  analysis?: AssetAnalysis | null;
   createdAt: string;
   updatedAt: string;
   lastUsedAt: string | null;
@@ -888,7 +890,9 @@ export async function generateAiPlans(
       name: string;
       width: number | null;
       height: number | null;
+      /** Empty when `analysis` is supplied — the server then skips the pixels. */
       dataUrl: string;
+      analysis?: { description: string; tags: string[] };
     }>;
     prompt?: string;
   },
