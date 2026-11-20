@@ -186,6 +186,26 @@ export function createUnalbumStore({ dataRoot, now = () => new Date().toISOStrin
    * user that started a *binding* flow so the callback never trusts a cookie
    * alone.
    */
+  // Unused states are only cleaned when they are consumed, so a burst of
+  // abandoned flows could accumulate files. Sweep opportunistically once the
+  // directory grows; the check is cheap and bounded.
+  async function sweepExpiredStates() {
+    const entries = await fs.readdir(stateDir).catch(() => []);
+    if (entries.length < 64) {
+      return;
+    }
+    const cutoff = Date.now() - STATE_TTL_MS;
+    await Promise.all(
+      entries.slice(0, 200).map(async (entry) => {
+        const filename = path.join(stateDir, entry);
+        const stats = await fs.stat(filename).catch(() => null);
+        if (stats && stats.mtimeMs < cutoff) {
+          await fs.rm(filename, { force: true }).catch(() => null);
+        }
+      }),
+    );
+  }
+
   async function startAuthorization({ intent, userId = null, publicOrigin, returnTo = '' }) {
     const config = readUnalbumConfig();
     if (!config.configured) {
@@ -198,6 +218,7 @@ export function createUnalbumStore({ dataRoot, now = () => new Date().toISOStrin
     const redirectUri = buildRedirectUri(publicOrigin);
 
     await ensureDirectories();
+    await sweepExpiredStates();
     await writeJson(statePath(state), {
       intent,
       userId,

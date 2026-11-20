@@ -17,8 +17,10 @@ We have read-only S3 credentials for the `unalbum` bucket
 - Other prefixes: `avatars/`, `backgrounds/`, `watermarks/`,
   `watermark-assets/`, `watermark-staging/`, `watermark-system/`,
   `contest-entries/`, `tmp-font-measure/`.
-- There are **no JSON sidecars** in the bucket. AI descriptions/tags therefore
-  live in UnAlbum's database, not in object storage.
+- There are **no JSON sidecars** in the bucket, and `GetObjectTagging` returns
+  an empty tag set on sampled originals and thumbnails (the read/tagging IAM
+  permission does not expose AI metadata). AI descriptions/tags therefore live
+  in UnAlbum's database, not in object storage.
 - `https://storage.unalbum.com/<key>` serves the objects publicly (we fetched
   both the original and the thumbnail with HTTP 200).
 

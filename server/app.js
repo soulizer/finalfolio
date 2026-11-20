@@ -119,6 +119,18 @@ const EXPORT_EVENT_IP_RATE_LIMIT = {
   windowMs: 10 * 60 * 1000,
   message: 'Too many export events. Try again later.',
 };
+const UNALBUM_START_IP_RATE_LIMIT = {
+  scope: 'unalbum-start-ip',
+  limit: 20,
+  windowMs: 10 * 60 * 1000,
+  message: 'Too many UnAlbum sign-in attempts. Try again later.',
+};
+const UNALBUM_USER_RATE_LIMIT = {
+  scope: 'unalbum-user',
+  limit: 90,
+  windowMs: 10 * 60 * 1000,
+  message: 'Too many UnAlbum requests. Try again later.',
+};
 const AI_PLAN_RATE_LIMIT = {
   scope: 'ai-plan-user',
   limit: 12,
@@ -2944,6 +2956,10 @@ export function createApp({
   app.post('/api/unalbum/authorize', async (request, response, next) => {
     try {
       const user = requireAuthenticated(request);
+      await securityStore.consumeRateLimit({
+        ...UNALBUM_START_IP_RATE_LIMIT,
+        key: resolveClientIp(request),
+      });
       const { authorizeUrl } = await unalbumStore.startAuthorization({
         intent: 'bind',
         userId: user.id,
@@ -2957,6 +2973,10 @@ export function createApp({
 
   app.post('/api/unalbum/login', async (request, response, next) => {
     try {
+      await securityStore.consumeRateLimit({
+        ...UNALBUM_START_IP_RATE_LIMIT,
+        key: resolveClientIp(request),
+      });
       const nextPath = typeof request.body?.next === 'string' ? request.body.next : '';
       const safeNext = nextPath.startsWith('/') && !nextPath.startsWith('//') ? nextPath.slice(0, 300) : '/editor';
       const { authorizeUrl } = await unalbumStore.startAuthorization({
@@ -3085,6 +3105,7 @@ export function createApp({
   app.get('/api/unalbum/photos', async (request, response, next) => {
     try {
       const user = requireAuthenticated(request);
+      await securityStore.consumeRateLimit({ ...UNALBUM_USER_RATE_LIMIT, key: `photos:${user.id}` });
       const binding = await unalbumStore.readBinding(user.id);
       if (!binding) {
         response.status(409).json({ error: 'Connect your UnAlbum account first.', code: 'unalbum_not_bound' });
@@ -3111,6 +3132,7 @@ export function createApp({
   app.post('/api/unalbum/import', async (request, response, next) => {
     try {
       const user = requireAuthenticated(request);
+      await securityStore.consumeRateLimit({ ...UNALBUM_USER_RATE_LIMIT, key: `import:${user.id}` });
       const ids = Array.isArray(request.body?.ids)
         ? request.body.ids.filter((id) => typeof id === 'string').slice(0, 30)
         : [];

@@ -38,6 +38,7 @@ export function UnAlbumPicker({ open, title, onClose, onImported }: UnAlbumPicke
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pickedIds, setPickedIds] = useState<Set<string>>(new Set());
   const anchorRef = useRef<string | null>(null);
@@ -154,15 +155,34 @@ export function UnAlbumPicker({ open, title, onClose, onImported }: UnAlbumPicke
     }
     setBusy(true);
     setError(null);
-    try {
-      const { assets } = await importUnalbumPhotos(Array.from(pickedIds));
-      await onImported(assets);
-      onClose();
-    } catch (importError) {
-      setError(rawMessage(importError, t('Unable to import these photos from UnAlbum.')));
-    } finally {
-      setBusy(false);
+    const ids = Array.from(pickedIds);
+    const importedAssets: Asset[] = [];
+    // One photo per request: a single request that downloads thirty originals
+    // would outlive proxy timeouts, and the server caps one request anyway.
+    for (let index = 0; index < ids.length; index += 1) {
+      setProgress({ done: index, total: ids.length });
+      try {
+        const { assets } = await importUnalbumPhotos([ids[index]]);
+        importedAssets.push(...assets);
+        setPickedIds((current) => {
+          const next = new Set(current);
+          next.delete(ids[index]);
+          return next;
+        });
+      } catch (importError) {
+        if (importedAssets.length) {
+          await onImported(importedAssets);
+        }
+        setError(rawMessage(importError, t('Unable to import these photos from UnAlbum.')));
+        setBusy(false);
+        setProgress(null);
+        return;
+      }
     }
+    setBusy(false);
+    setProgress(null);
+    await onImported(importedAssets);
+    onClose();
   };
 
   const searchPhotos = async () => {
@@ -314,7 +334,11 @@ export function UnAlbumPicker({ open, title, onClose, onImported }: UnAlbumPicke
                   onClick={() => void handleImport()}
                 >
                   {busy
-                    ? t('Importing…')
+                    ? progress
+                      ? t('Importing %s of %s…')
+                          .replace('%s', String(progress.done + 1))
+                          .replace('%s', String(progress.total))
+                      : t('Importing…')
                     : countLabel(pickedIds.size, 'Add 1 photo', 'Add %s photos')}
                 </button>
               </div>

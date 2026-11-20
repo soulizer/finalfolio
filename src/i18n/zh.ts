@@ -1947,6 +1947,7 @@ const zh: Record<string, string> = {
     '点击可选中；按住 Shift 点击可选择一段范围；也可以按住拖动框选。',
   'Loading photos…': '正在加载照片…',
   'Add 1 photo': '添加 1 张照片',
+  'Importing %s of %s…': '正在导入 %s / %s…',
   'Add %s photos': '添加 %s 张照片',
   'Added 1 photo from UnAlbum.': '已从 UnAlbum 添加 1 张照片。',
   'Added %s photos from UnAlbum.': '已从 UnAlbum 添加 %s 张照片。',
