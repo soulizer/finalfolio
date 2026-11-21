@@ -61,8 +61,19 @@ export function useUnalbumPhotos(enabled: boolean) {
       const requestId = requestRef.current + 1;
       requestRef.current = requestId;
       setLoading(true);
+      const fetchPage = () => fetchUnalbumPhotos({ cursor });
       try {
-        const page = await fetchUnalbumPhotos({ cursor });
+        let page;
+        try {
+          page = await fetchPage();
+        } catch {
+          // One automatic retry: the first cold request to UnAlbum can time out.
+          if (cursor) {
+            throw new Error('retry-skipped');
+          }
+          await new Promise((resolve) => setTimeout(resolve, 1200));
+          page = await fetchPage();
+        }
         if (requestRef.current !== requestId) {
           return;
         }

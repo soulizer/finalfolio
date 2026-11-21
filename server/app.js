@@ -1608,6 +1608,7 @@ export function createApp({
   // without one UnAlbum API call per thumbnail.
   const unalbumThumbCache = new Map();
   const unalbumPhotoCache = new Map();
+  const unalbumPageCache = new Map();
   const UNALBUM_THUMB_TTL_MS = 10 * 60 * 1000;
   const rememberUnalbumThumbs = (userId, photos) => {
     const expiresAt = Date.now() + UNALBUM_THUMB_TTL_MS;
@@ -3231,16 +3232,39 @@ export function createApp({
     try {
       const user = requireAuthenticated(request);
       await securityStore.consumeRateLimit({ ...UNALBUM_USER_RATE_LIMIT, key: `photos:${user.id}` });
-      const result = await unalbumStore.listPhotosForUser(user.id, {
-        cursor: typeof request.query.cursor === 'string' ? request.query.cursor.slice(0, 500) : '',
-        query: typeof request.query.q === 'string' ? request.query.q.slice(0, 120) : '',
-        limit: request.query.limit,
+      const cursor = typeof request.query.cursor === 'string' ? request.query.cursor.slice(0, 500) : '';
+      const query = typeof request.query.q === 'string' ? request.query.q.slice(0, 120) : '';
+      const cacheKey = `${user.id}:${cursor}:${query}`;
+      let result;
+      try {
+        result = await unalbumStore.listPhotosForUser(user.id, {
+          cursor,
+          query,
+          limit: request.query.limit,
+        });
+      } catch (error) {
+        // UnAlbum's API can be slow from some networks; after one successful
+        // load, keep showing that page instead of blanking the gallery.
+        const cached = unalbumPageCache.get(cacheKey);
+        if (cached && cached.expiresAt > Date.now()) {
+          rememberUnalbumThumbs(user.id, cached.photos);
+          response.json({ photos: cached.photos, nextCursor: cached.nextCursor, account: cached.account, stale: true });
+          return;
+        }
+        throw error;
+      }
+      const account = unalbumAccountSummary(result.binding);
+      unalbumPageCache.set(cacheKey, {
+        photos: result.photos,
+        nextCursor: result.nextCursor,
+        account,
+        expiresAt: Date.now() + 10 * 60 * 1000,
       });
       rememberUnalbumThumbs(user.id, result.photos);
       response.json({
         photos: result.photos,
         nextCursor: result.nextCursor,
-        account: unalbumAccountSummary(result.binding),
+        account,
       });
     } catch (error) {
       next(error);
