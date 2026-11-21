@@ -19,6 +19,7 @@ import type { Asset, CropSettings, PageData } from '../../editor/types';
 import type { UnalbumPhoto } from '../../editor/api';
 import type { UploadState } from './uploadState';
 import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
+import { PhotoThumb } from '../../ui/PhotoThumb';
 import { EditorSubsection } from '../../ui/EditorSubsection';
 
 type AssetPlacement = {
@@ -444,7 +445,7 @@ export function EditorContentSidebar({
                       }
                     }}
                   >
-                    <img alt={asset.name} src={getAssetSource(asset, 'thumb')} loading="lazy" decoding="async" />
+                    <PhotoThumb className="asset-tile__thumb" alt={asset.name} src={getAssetSource(asset, 'thumb')} />
                     <span className="asset-tile__copy">
                       <span className="asset-tile__title-row">
                         <strong>{asset.name}</strong>
@@ -533,7 +534,7 @@ export function EditorContentSidebar({
                   disabled={importing}
                   onClick={() => void handleImportUnalbumPhoto(photo)}
                 >
-                  <img alt={asset.name} src={getAssetSource(asset, 'thumb')} loading="lazy" decoding="async" />
+                  <PhotoThumb className="asset-tile__thumb" alt={asset.name} src={getAssetSource(asset, 'thumb')} />
                   <span className="asset-tile__copy">
                     <span className="asset-tile__title-row">
                       <strong>{asset.name}</strong>

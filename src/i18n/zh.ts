@@ -43,6 +43,7 @@ const zh: Record<string, string> = {
   Redo: '重做',
   Loading: '加载中',
   'Loading…': '加载中…',
+  'Image unavailable': '图片无法显示',
   Refresh: '刷新',
   Show: '展开',
   Hide: '收起',

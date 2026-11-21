@@ -461,7 +461,10 @@ export function unbindUnalbum() {
   return readJson<{ ok: boolean }>('/api/unalbum/unbind', { method: 'POST' });
 }
 
-export function fetchUnalbumPhotos({ cursor = '', query = '' }: { cursor?: string; query?: string } = {}) {
+export function fetchUnalbumPhotos(
+  { cursor = '', query = '' }: { cursor?: string; query?: string } = {},
+  signal: AbortSignal = AbortSignal.timeout(30_000),
+) {
   const params = new URLSearchParams();
   if (cursor) {
     params.set('cursor', cursor);
@@ -472,14 +475,16 @@ export function fetchUnalbumPhotos({ cursor = '', query = '' }: { cursor?: strin
   const suffix = params.toString();
   return readJson<{ photos: UnalbumPhoto[]; nextCursor: string | null; account: UnalbumAccount }>(
     `/api/unalbum/photos${suffix ? `?${suffix}` : ''}`,
+    { signal },
   );
 }
 
-export function importUnalbumPhotos(ids: string[]) {
+export function importUnalbumPhotos(ids: string[], signal: AbortSignal = AbortSignal.timeout(180_000)) {
   return readJson<{ assets: Asset[] }>('/api/unalbum/import', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ids }),
+    signal,
   });
 }
 

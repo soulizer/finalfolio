@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
+import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createApp, createProjectStore, createSharePath } from '../server/app.js';
@@ -2389,6 +2390,132 @@ try {
         ['FINALFOLIO_UNALBUM_CLIENT_ID', previousEnv.clientId],
         ['FINALFOLIO_UNALBUM_CLIENT_SECRET', previousEnv.clientSecret],
         ['FINALFOLIO_UNALBUM_SCOPES', previousEnv.scopes],
+      ]) {
+        if (value === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = value;
+        }
+      }
+    }
+  });
+
+  await runCheck('UnAlbum import stores the photo, keeps analysis, dedupes and serves previews', async () => {
+    const previousEnv = {
+      baseUrl: process.env.FINALFOLIO_UNALBUM_BASE_URL,
+      clientId: process.env.FINALFOLIO_UNALBUM_CLIENT_ID,
+      clientSecret: process.env.FINALFOLIO_UNALBUM_CLIENT_SECRET,
+      storage: process.env.FINALFOLIO_UNALBUM_STORAGE_ORIGINS,
+    };
+    const image = await fs.readFile(path.join(rootDir, 'public/icon-192.png'));
+    const fakePhoto = (id, name) => ({
+      id,
+      filename: `${id}.jpg`,
+      name,
+      width: 1600,
+      height: 1067,
+      analysis: { status: 'ready', description: '晨雾中的山谷', tags: ['山谷', '晨雾'] },
+      variants: {
+        original: { url: `http://127.0.0.1:${fakePort}/file.png`, bytes: image.length, mimeType: 'image/png' },
+        preview: { url: `http://127.0.0.1:${fakePort}/file-preview.png` },
+        thumb: { url: `http://127.0.0.1:${fakePort}/file-thumb.png` },
+      },
+    });
+    let singlePhotoFails = false;
+    const fake = http.createServer((request, response) => {
+      const url = new URL(request.url ?? '/', 'http://127.0.0.1');
+      const json = (status, payload) => {
+        response.writeHead(status, { 'content-type': 'application/json' });
+        response.end(JSON.stringify(payload));
+      };
+      if (url.pathname === '/api/v1/me/photos') {
+        return json(200, { photos: [fakePhoto('p1', '山谷照片'), fakePhoto('p2', '海面照片')], nextCursor: null });
+      }
+      if (url.pathname.startsWith('/api/v1/me/photos/')) {
+        if (singlePhotoFails) {
+          return json(500, { error: { code: 'unavailable' } });
+        }
+        const id = url.pathname.split('/').pop();
+        return json(200, { photo: fakePhoto(id, id === 'p2' ? '海面照片' : '山谷照片') });
+      }
+      if (url.pathname.startsWith('/file')) {
+        response.writeHead(200, { 'content-type': 'image/png', 'content-length': image.length });
+        response.end(image);
+        return;
+      }
+      json(404, { error: { code: 'not_found' } });
+    });
+    await new Promise((resolve) => fake.listen(0, '127.0.0.1', resolve));
+    const fakePort = fake.address().port;
+
+    process.env.FINALFOLIO_UNALBUM_BASE_URL = `http://127.0.0.1:${fakePort}`;
+    process.env.FINALFOLIO_UNALBUM_CLIENT_ID = 'finalfolio';
+    delete process.env.FINALFOLIO_UNALBUM_CLIENT_SECRET;
+    delete process.env.FINALFOLIO_UNALBUM_STORAGE_ORIGINS;
+
+    const importRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'finalfolio-unalbum-import-'));
+    const apiApp = createApp({ dataRoot: importRoot, distDir: path.join(rootDir, 'dist'), port: 0 });
+    const server = await apiApp.start();
+    try {
+      const baseUrl = `http://127.0.0.1:${server.address().port}`;
+      const user = await apiApp.authStore.createUser(
+        { email: 'ua-import@example.com', password: 'Password123!' },
+        { acceptCurrentTerms: true, termsAcceptedLanguage: 'en' },
+      );
+      const verification = await apiApp.authStore.issueVerificationToken(user.id);
+      await apiApp.authStore.verifyUserWithToken(verification.id);
+      const session = await apiApp.authStore.createSession(user.id);
+      const cookie = `finalfolio_session=${session.id}`;
+      await apiApp.unalbumStore.writeBinding(user.id, {
+        account: { id: '42', username: 'lumen', displayName: '', avatarUrl: '' },
+        accessToken: 'token-1',
+        refreshToken: 'refresh-1',
+        expiresAt: new Date(Date.now() + 3600_000).toISOString(),
+      });
+
+      const importOnce = async (ids = ['p1']) => {
+        const response = await fetch(`${baseUrl}/api/unalbum/import`, {
+          method: 'POST',
+          headers: { cookie, 'content-type': 'application/json' },
+          body: JSON.stringify({ ids }),
+        });
+        assert.equal(response.status, 201);
+        return response.json();
+      };
+
+      const first = await importOnce();
+      const asset = first.assets[0];
+      assert.ok(asset);
+      assert.equal(asset.unalbumId, 'p1');
+      assert.deepEqual(asset.analysis.tags, ['山谷', '晨雾']);
+      assert.match(asset.src, /^\/uploads\//);
+
+      // Clicking the same remote tile twice must return the same local asset.
+      const second = await importOnce();
+      assert.equal(second.assets[0].id, asset.id);
+
+      // A gallery list primes the metadata cache; importing from it must work
+      // even when UnAlbum's single-photo endpoint is unavailable.
+      const listResponse = await fetch(`${baseUrl}/api/unalbum/photos`, { headers: { cookie } });
+      assert.equal(listResponse.status, 200);
+      singlePhotoFails = true;
+      const cachedImport = await importOnce(['p2']);
+      assert.equal(cachedImport.assets[0].unalbumId, 'p2');
+      assert.deepEqual(cachedImport.assets[0].analysis.tags, ['山谷', '晨雾']);
+
+      const thumb = await fetch(`${baseUrl}/api/unalbum/thumb/p1`, { headers: { cookie } });
+      assert.equal(thumb.status, 200);
+      assert.match(thumb.headers.get('content-type') ?? '', /^image\//);
+      assert.equal((await thumb.arrayBuffer()).byteLength, image.length);
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+      await new Promise((resolve) => fake.close(resolve));
+      await fs.rm(importRoot, { recursive: true, force: true });
+      for (const [key, value] of [
+        ['FINALFOLIO_UNALBUM_BASE_URL', previousEnv.baseUrl],
+        ['FINALFOLIO_UNALBUM_CLIENT_ID', previousEnv.clientId],
+        ['FINALFOLIO_UNALBUM_CLIENT_SECRET', previousEnv.clientSecret],
+        ['FINALFOLIO_UNALBUM_STORAGE_ORIGINS', previousEnv.storage],
       ]) {
         if (value === undefined) {
           delete process.env[key];

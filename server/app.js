@@ -1607,20 +1607,30 @@ export function createApp({
   // Listing a page already carries the variant URLs, so previews can be served
   // without one UnAlbum API call per thumbnail.
   const unalbumThumbCache = new Map();
+  const unalbumPhotoCache = new Map();
   const UNALBUM_THUMB_TTL_MS = 10 * 60 * 1000;
   const rememberUnalbumThumbs = (userId, photos) => {
     const expiresAt = Date.now() + UNALBUM_THUMB_TTL_MS;
     photos.forEach((photo) => {
       const url = photo.variants?.thumb?.url || photo.variants?.preview?.url || photo.variants?.original?.url;
-      if (photo.id && url) {
+      if (!photo.id) {
+        return;
+      }
+      if (url) {
         unalbumThumbCache.set(`${userId}:${photo.id}`, { url, expiresAt });
       }
+      unalbumPhotoCache.set(`${userId}:${photo.id}`, { photo, expiresAt });
     });
     if (unalbumThumbCache.size > 3000) {
       const now = Date.now();
       for (const [key, value] of unalbumThumbCache) {
         if (value.expiresAt < now) {
           unalbumThumbCache.delete(key);
+        }
+      }
+      for (const [key, value] of unalbumPhotoCache) {
+        if (value.expiresAt < now) {
+          unalbumPhotoCache.delete(key);
         }
       }
     }
@@ -3268,8 +3278,24 @@ export function createApp({
           continue;
         }
 
-        const { photo } = await unalbumStore.getPhotoForUser(user.id, id);
-        rememberUnalbumThumbs(user.id, [photo]);
+        // The gallery just listed this photo, so its metadata (including tags)
+        // is already in memory. Importing then costs one CDN download instead
+        // of another round-trip to UnAlbum's flaky API.
+        const cached = unalbumPhotoCache.get(`${user.id}:${id}`);
+        const cachedPhoto = cached && cached.expiresAt > Date.now() ? cached.photo : null;
+        let photo;
+        let photoBinding;
+        if (cachedPhoto) {
+          photo = cachedPhoto;
+          photoBinding = await unalbumStore.readBinding(user.id);
+          if (!photoBinding) {
+            response.status(409).json({ error: 'Connect your UnAlbum account first.', code: 'unalbum_not_bound' });
+            return;
+          }
+        } else {
+          ({ photo, binding: photoBinding } = await unalbumStore.getPhotoForUser(user.id, id));
+          rememberUnalbumThumbs(user.id, [photo]);
+        }
 
         // UnAlbum keeps the original even when it exceeds our upload ceiling and
         // derives a 2048px WebP preview for those photos. Prefer whichever copy
@@ -3290,7 +3316,7 @@ export function createApp({
         for (const variant of variants) {
           try {
             downloaded = await downloadUnalbumImage(variant.url, {
-              accessToken: binding.accessToken,
+              accessToken: photoBinding.accessToken,
               authOrigin,
               allowedOrigins,
               maxBytes: maxUploadSizeBytes,
@@ -5274,5 +5300,6 @@ export function createApp({
     securityStore,
     objectStorageStore,
     siteStore,
+    unalbumStore,
   };
 }

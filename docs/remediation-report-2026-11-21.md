@@ -55,7 +55,20 @@ Imported assets carry `unalbumId`. The gallery hides photos that are already in
 the library, and the import route returns the existing asset instead of a copy,
 so double clicks and re-imports cannot duplicate a photo.
 
-## 6. Verification
+## 6. Follow-up fixes from the first live use
+
+- **UnAlbum import returned 500.** The route had been refactored to fetch the
+  photo through the user-scoped wrapper but still referenced the removed
+  `binding` variable, so every click ended at "导入中" with no result. It now
+  uses the binding returned by that call. `validate:mvp` starts a fake UnAlbum
+  server and asserts a real import, the stored analysis, idempotent re-import
+  and the preview proxy.
+- **Gallery hover turned the tile border white.** Hover now only darkens the
+  border; the lifting shadow is gone.
+- **Empty white thumbnails.** Gallery and AI tiles use a shared `PhotoThumb`
+  with a "加载中…" placeholder and an "图片无法显示" error state.
+
+## 7. Verification
 
 - `tsc --noEmit`, `vite build`, `npm run validate:mvp` pass (validation now
   covers PKCE, state, refresh rotation, connect-timeout retry, and relative
@@ -66,7 +79,7 @@ so double clicks and re-imports cannot duplicate a photo.
 - Production: `/api/unalbum/status` reports configured; login entry generates an
   authorize URL that UnAlbum accepts.
 
-## 7. Residual
+## 8. Residual
 
 - The inline grid shows the first UnAlbum page; “加载更多” pulls the next one.
   There is no search across the remote collection yet.

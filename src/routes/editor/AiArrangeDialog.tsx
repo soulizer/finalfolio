@@ -8,6 +8,7 @@ import {
 import { getAssetSource } from '../../editor/assetResources';
 import { confirmAction } from '../../ui/confirm';
 import type { UnalbumPhoto } from '../../editor/api';
+import { PhotoThumb } from '../../ui/PhotoThumb';
 import { MarqueeGrid } from '../../ui/MarqueeGrid';
 import type { Asset, AssetAnalysis } from '../../editor/types';
 import {
@@ -1071,7 +1072,7 @@ export function AiArrangeDialog({
                           disabled={disabled}
                           onClick={(event) => handleAssetTileClick(asset, event)}
                         >
-                          <img src={getAssetSource(asset, 'thumb')} alt={asset.name} />
+                          <PhotoThumb fill src={getAssetSource(asset, 'thumb')} alt={asset.name} />
                           <span className="ai-library-item__name">{asset.name}</span>
                           {hasUsableAnalysis(asset.analysis) ? (
                             <span className="ai-library-item__tag">{t('Analyzed')}</span>
@@ -1088,7 +1089,7 @@ export function AiArrangeDialog({
                         aria-pressed="true"
                         onClick={() => removePhoto(photo.id)}
                       >
-                        <img src={photo.previewUrl} alt={photo.name} />
+                        <PhotoThumb fill src={photo.previewUrl} alt={photo.name} />
                         <span className="ai-library-item__name">{photo.name}</span>
                         {uploadingFiles ? (
                           <span className="ai-library-item__status">{t('Uploading…')}</span>
@@ -1114,6 +1115,8 @@ export function AiArrangeDialog({
                               const imported = await onImportUnalbumPhoto(photo);
                               if (imported) {
                                 void addAssetPhotos([imported]);
+                              } else {
+                                setError(t('Unable to import this photo from UnAlbum.'));
                               }
                             } finally {
                               setImportingUnalbumIds((current) => {
@@ -1124,7 +1127,7 @@ export function AiArrangeDialog({
                             }
                           }}
                         >
-                          <img src={getAssetSource(asset, 'thumb')} alt={asset.name} />
+                          <PhotoThumb fill src={getAssetSource(asset, 'thumb')} alt={asset.name} />
                           <span className="ai-library-item__name">{asset.name}</span>
                           {importing ? <span className="ai-library-item__status">{t('Importing…')}</span> : null}
                         </button>

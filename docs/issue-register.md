@@ -160,3 +160,6 @@
 | T4 | UnAlbum 缩略图全部加载失败 | 浏览器直连 CDN 受防盗链/相对地址影响 | 已修复：服务端 `/api/unalbum/thumb/:id` 代理 + 变体 URL 绝对化（相对路径按 API 源解析）+ 服务端缩略图缓存；CDN 白名单只是兜底 |
 | T5 | 首次登录 UnAlbum 回调失败，被送回登录页 | 冷连接 10 秒超时，20 秒 token 预算被打断 | 已修复：token/API 连接失败与超时自动重试（3 次 × 25 秒），并按阶段给出原因（state/denied/network/no-email/disabled） |
 | T6 | 重复点击同一张 UnAlbum 照片会生成两份 | 导入没有来源标识 | 已修复：资产记录写入 `unalbumId`，图库按它去重，服务端导入也先查重 |
+| T7 | 图库磁贴悬停时边框变白，照片像被裁掉 | hover 规则用了白色边框 + 浮起阴影 | 已修复：悬停只把边框加深到 30% 墨色，不浮起、不变白 |
+| T8 | 图片未加载时显示纯白块，像是坏了 | 没有加载/失败状态 | 已修复：共用 `PhotoThumb`，加载中显示“加载中…”，失败显示“图片无法显示”；证据 `docs/evidence/2026-11-21-gallery-loading.png` |
+| T9 | 点击 UnAlbum 图片只显示“导入中”，随后没有反应，实际无法使用 | 导入路由还引用了已删除的 `binding` 变量，接口 500 | 已修复：使用 `getPhotoForUser` 返回的 binding；`validate:mvp` 新增真实导入 + 去重 + 缩略图代理用例 |

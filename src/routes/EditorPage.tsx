@@ -1040,10 +1040,14 @@ export function EditorPage() {
           return asset;
         })
         .catch((error) => {
+          const timedOut =
+            error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError');
           setMessage(
-            error instanceof Error
-              ? t(error.message)
-              : t('Unable to import this photo from UnAlbum.'),
+            timedOut
+              ? t('UnAlbum did not answer in time. Please try again.')
+              : error instanceof Error
+                ? t(error.message)
+                : t('Unable to import this photo from UnAlbum.'),
           );
           return null;
         })
