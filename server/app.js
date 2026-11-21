@@ -2992,20 +2992,27 @@ export function createApp({
 
   app.get('/api/unalbum/callback', async (request, response) => {
     const origin = resolvePublicOrigin(request);
+    // A failed login belongs on the auth page (there is no signed-in account
+    // page to show); a failed binding belongs on the account panel that owns
+    // the UnAlbum card.
+    let record = null;
     const fail = (reason) => {
-      // Land on the panel that owns the UnAlbum card so the outcome is visible.
-      response.redirect(302, `${origin}/account?section=settings&unalbum=error&reason=${encodeURIComponent(reason)}`);
+      const target =
+        record?.intent === 'bind'
+          ? `/account?section=settings&unalbum=error&reason=${encodeURIComponent(reason)}`
+          : `/auth?unalbum=error&reason=${encodeURIComponent(reason)}`;
+      response.redirect(302, `${origin}${target}`);
     };
     try {
       const state = typeof request.query.state === 'string' ? request.query.state : '';
-      const record = await unalbumStore.consumeState(state);
+      record = await unalbumStore.consumeState(state);
       if (!record) {
         response.redirect(302, `${origin}/auth?unalbum=error&reason=state`);
         return;
       }
       const code = typeof request.query.code === 'string' ? request.query.code : '';
       if (!code) {
-        response.redirect(302, `${origin}/account?section=settings&unalbum=error&reason=denied`);
+        fail('denied');
         return;
       }
 
@@ -3081,9 +3088,19 @@ export function createApp({
       response.redirect(302, `${origin}/account?section=settings&unalbum=connected`);
     } catch (error) {
       // OAuth callbacks are browser navigations; a JSON error page would strand
-      // the user, so report through the account page instead.
-      console.error('UnAlbum callback failed.', error);
-      fail('failed');
+      // the user, so report through the app instead. Keep the stage in the
+      // reason so the page can explain what happened.
+      const cause = error?.cause?.code || error?.name || 'error';
+      console.error('UnAlbum callback failed.', {
+        message: error instanceof Error ? error.message : String(error),
+        cause,
+        code: error?.code ?? null,
+      });
+      const isNetwork =
+        (error instanceof TypeError && error?.cause) ||
+        error?.name === 'TimeoutError' ||
+        error?.name === 'AbortError';
+      fail(isNetwork ? 'network' : error?.code === 'unalbum_reconnect' ? 'reconnect' : 'failed');
     }
   });
 

@@ -52,7 +52,16 @@ export function UnalbumBindingSection() {
         .then(setStatus)
         .catch(() => null);
     } else if (outcome === 'error') {
-      setMessage(t('Connecting UnAlbum did not finish. Please try again.'));
+      const reason = searchParams.get('reason');
+      setMessage(
+        reason === 'denied'
+          ? t('You cancelled the UnAlbum authorization.')
+          : reason === 'network'
+            ? t('UnAlbum did not answer in time. Please try again.')
+            : reason === 'reconnect'
+              ? t('The UnAlbum authorization expired. Reconnect the account on the account page.')
+              : t('Connecting UnAlbum did not finish. Please try again.'),
+      );
     }
     const next = new URLSearchParams(searchParams);
     next.delete('unalbum');

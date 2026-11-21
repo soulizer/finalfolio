@@ -1852,3 +1852,10 @@
   refresh rotation and the reconnect path with a stub UnAlbum server.
 - Deployment: `FINALFOLIO_UNALBUM_*` added to the compose env surface and the
   production env file; the feature is live at https://finalfolio.com.
+- First live sign-in surfaced a network quirk: from the production container a
+  *cold* TLS connection to unalbum.com can hit undici's 10 s connect timeout
+  (the next connection answers in ~2.5 s, pooled requests in ~110 ms), so the
+  20 s token exchange aborted and the callback bounced back to /auth as an
+  error. Token/API calls now retry connection and timeout failures with a 25 s
+  per-attempt budget, and the callback reports the failing stage (`state`,
+  `denied`, `network`, `no-email`, `disabled`) instead of a generic failure.

@@ -1931,6 +1931,9 @@ const zh: Record<string, string> = {
   'UnAlbum did not share an email address, so FinalFolio could not create the account.':
     'UnAlbum 没有返回邮箱地址，FinalFolio 无法据此创建账户。',
   'UnAlbum sign-in did not finish. Please try again.': 'UnAlbum 登录没有完成，请重试。',
+  'The UnAlbum sign-in link expired. Please start again.': 'UnAlbum 登录链接已过期，请重新开始。',
+  'You cancelled the UnAlbum authorization.': '你取消了 UnAlbum 授权。',
+  'UnAlbum did not answer in time. Please try again.': 'UnAlbum 响应超时，请重试。',
   'Unable to start UnAlbum sign-in.': '无法发起 UnAlbum 登录。',
   'Unable to reach UnAlbum.': '无法连接 UnAlbum。',
   'Unable to load your UnAlbum photos.': '无法读取你的 UnAlbum 照片。',

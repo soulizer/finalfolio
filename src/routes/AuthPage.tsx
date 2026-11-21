@@ -67,7 +67,13 @@ export function AuthPage() {
         ? t('UnAlbum did not share an email address, so FinalFolio could not create the account.')
         : reason === 'disabled'
           ? t('This account is disabled.')
-          : t('UnAlbum sign-in did not finish. Please try again.'),
+          : reason === 'state'
+            ? t('The UnAlbum sign-in link expired. Please start again.')
+            : reason === 'denied'
+              ? t('You cancelled the UnAlbum authorization.')
+              : reason === 'network'
+                ? t('UnAlbum did not answer in time. Please try again.')
+                : t('UnAlbum sign-in did not finish. Please try again.'),
     );
     // Only react to the callback landing, not to every keystroke.
     // eslint-disable-next-line react-hooks/exhaustive-deps

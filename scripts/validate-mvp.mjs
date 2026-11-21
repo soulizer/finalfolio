@@ -2277,11 +2277,20 @@ try {
           status,
           headers: { 'content-type': 'application/json', ...headers },
         });
+      let failNextConnect = true;
       const fakeFetch = async (input, init = {}) => {
         const url = typeof input === 'string' ? input : String(input);
         const headers = init.headers ?? {};
         requests.push({ url, method: init.method ?? 'GET', body: init.body ? String(init.body) : '', headers });
         if (url.endsWith('/oauth/token')) {
+          if (failNextConnect) {
+            // Simulate the slow cold connection seen against unalbum.com: no
+            // request reaches the server, so one retry must succeed.
+            failNextConnect = false;
+            const error = new TypeError('fetch failed');
+            error.cause = { code: 'UND_ERR_CONNECT_TIMEOUT' };
+            throw error;
+          }
           return jsonResponse(200, {
             access_token: 'access-2',
             refresh_token: 'refresh-2',
@@ -2343,7 +2352,7 @@ try {
       assert.equal(binding.accessToken, 'access-2');
       assert.equal(binding.refreshToken, 'refresh-2');
       const tokenRequests = requests.filter((request) => request.url.endsWith('/oauth/token'));
-      assert.equal(tokenRequests.length, 1);
+      assert.equal(tokenRequests.length, 2);
       assert.match(tokenRequests[0].body, /grant_type=refresh_token/);
       assert.match(tokenRequests[0].body, /refresh_token=refresh-1/);
       assert.match(tokenRequests[0].body, /client_id=finalfolio/);

@@ -4,6 +4,26 @@ import path from 'node:path';
 
 const STATE_TTL_MS = 10 * 60 * 1000;
 const TOKEN_REFRESH_MARGIN_MS = 90 * 1000;
+// unalbum.com can be slow to accept a *cold* TCP/TLS connection from some
+// networks (10 s connect timeout, then a pooled socket answers in ~100 ms).
+// Retrying only connection-level failures is safe — no request was sent — and
+// turns a failed sign-in into a slow but successful one.
+const RETRYABLE_CONNECT_CODES = new Set([
+  'UND_ERR_CONNECT_TIMEOUT',
+  'UND_ERR_SOCKET',
+  'ECONNRESET',
+  'ECONNREFUSED',
+  'EHOSTUNREACH',
+  'ENETUNREACH',
+  'EAI_AGAIN',
+  'ENOTFOUND',
+]);
+const TOKEN_REQUEST_TIMEOUT_MS = 25_000;
+const API_REQUEST_TIMEOUT_MS = 25_000;
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 const DEFAULT_SCOPES = 'profile email photos.read';
 const MAX_PHOTO_PAGE = 60;
 
@@ -266,6 +286,30 @@ export function createUnalbumStore({ dataRoot, now = () => new Date().toISOStrin
     return record;
   }
 
+  async function fetchWithRetry(url, init, { attempts = 3 } = {}) {
+    let lastError = null;
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      try {
+        return await fetchImpl(url, init);
+      } catch (error) {
+        lastError = error;
+        const causeCode = error?.cause?.code;
+        // A stalled cold TLS handshake surfaces as a timeout rather than a
+        // connect error. Retrying is safe for the calls made here (GETs and a
+        // code exchange that was never delivered), and it is what turns the
+        // slow first connection into a successful sign-in.
+        const canRetry =
+          RETRYABLE_CONNECT_CODES.has(causeCode) || error?.name === 'TimeoutError' || error?.name === 'AbortError';
+        if (!canRetry || attempt === attempts) {
+          throw error;
+        }
+        console.warn(`UnAlbum request retry ${attempt}/${attempts} (${causeCode || error?.name || 'network'}).`);
+        await sleep(400 * attempt);
+      }
+    }
+    throw lastError;
+  }
+
   async function requestToken(params) {
     const config = readUnalbumConfig();
     const body = new URLSearchParams(params);
@@ -275,14 +319,14 @@ export function createUnalbumStore({ dataRoot, now = () => new Date().toISOStrin
     } else {
       body.set('client_id', config.clientId);
     }
-    const response = await fetchImpl(`${config.baseUrl}/oauth/token`, {
+    const response = await fetchWithRetry(`${config.baseUrl}/oauth/token`, {
       method: 'POST',
       headers: {
         'content-type': 'application/x-www-form-urlencoded',
         accept: 'application/json',
       },
       body,
-      signal: AbortSignal.timeout(20_000),
+      signal: AbortSignal.timeout(TOKEN_REQUEST_TIMEOUT_MS),
     });
     if (!response.ok) {
       const detail = await response.text().catch(() => '');
@@ -349,10 +393,10 @@ export function createUnalbumStore({ dataRoot, now = () => new Date().toISOStrin
     }
 
     const send = async (token) => {
-      const response = await fetchImpl(url.toString(), {
+      const response = await fetchWithRetry(url.toString(), {
         method,
         headers: { authorization: `Bearer ${token}`, accept: 'application/json' },
-        signal: AbortSignal.timeout(25_000),
+        signal: AbortSignal.timeout(API_REQUEST_TIMEOUT_MS),
       });
       return response;
     };
