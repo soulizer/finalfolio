@@ -9,7 +9,7 @@ const account = {
   boundAt: '2026-11-20T08:00:00.000Z',
 };
 
-const unalbumPhoto = (index: number, analyzed: boolean) => ({
+const unalbumPhoto = (index: number, analysis: 'ready' | 'pending' | null) => ({
   id: `ua-${index}`,
   filename: `ua-${index}.jpg`,
   name: `山间-${index}`,
@@ -17,14 +17,18 @@ const unalbumPhoto = (index: number, analyzed: boolean) => ({
   height: 1067,
   bytes: 240000,
   createdAt: '2026-11-19T10:00:00.000Z',
-  analysis: analyzed
-    ? {
-        description: '晨雾中的山谷，远处有一排松树。',
-        tags: ['山谷', '晨雾', '松树'],
-        source: 'unalbum',
-        analyzedAt: '2026-11-19T10:05:00.000Z',
-      }
-    : null,
+  analysis:
+    analysis === 'ready'
+      ? {
+          status: 'ready',
+          description: '晨雾中的山谷，远处有一排松树。',
+          tags: ['山谷', '晨雾', '松树'],
+          source: 'unalbum',
+          analyzedAt: '2026-11-19T10:05:00.000Z',
+        }
+      : analysis === 'pending'
+        ? { status: 'pending', description: '', tags: [] }
+        : null,
   variants: {
     original: { url: '/icon-192.png', width: 1600, height: 1067, mimeType: 'image/png' },
     preview: { url: '/icon-192.png' },
@@ -63,7 +67,7 @@ test('gallery imports photos from a connected UnAlbum account', async ({ page })
   );
   await page.route('**/api/unalbum/photos**', (route) =>
     route.fulfill({
-      json: { photos: [unalbumPhoto(0, true), unalbumPhoto(1, false)], nextCursor: null, account },
+      json: { photos: [unalbumPhoto(0, 'ready'), unalbumPhoto(1, 'pending')], nextCursor: null, account },
     }),
   );
   await page.route('**/api/unalbum/import', async (route) => {
@@ -80,8 +84,11 @@ test('gallery imports photos from a connected UnAlbum account', async ({ page })
   await expect(dialog).toContainText('Signed in as @lumen');
   const tiles = dialog.locator('.unalbum-tile');
   await expect(tiles).toHaveCount(2);
-  // Upstream analysis is surfaced so it is clear no re-analysis will happen.
+  // Upstream analysis is surfaced so it is clear no re-analysis will happen,
+  // and photos still being analysed are labelled instead of pretending to be
+  // ready.
   await expect(tiles.nth(0).locator('.unalbum-tile__tag')).toHaveText('Analyzed');
+  await expect(tiles.nth(1).locator('.unalbum-tile__tag')).toHaveText('Analyzing');
 
   await tiles.nth(0).click();
   await expect(dialog.getByRole('button', { name: 'Add 1 photo' })).toBeEnabled();

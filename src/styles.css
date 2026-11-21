@@ -10725,6 +10725,10 @@ html[lang='zh-CN'] body {
   backdrop-filter: blur(6px);
 }
 
+.unalbum-tile__tag--pending {
+  background: rgba(122, 90, 24, 0.72);
+}
+
 .unalbum-tile__check {
   position: absolute;
   top: 8px;

@@ -1832,3 +1832,23 @@
   `docs/unalbum-integration-brief.md` is the contract and prompt for UnAlbum.
 - Two new e2e specs (multi-select, UnAlbum mocked flows) plus the analysis fast
   path keep the suite at 48 green.
+
+### 2026-11-21 — UnAlbum contract confirmed and switched on
+
+- UnAlbum's OAuth endpoints are live and accept `client_id=finalfolio` with the
+  exact production redirect URI; `/oauth/authorize` returns to `/signin` for
+  signed-out users, `/oauth/token` answers `invalid_grant`, and `/api/v1/me*`
+  answers 401 without a bearer token.
+- The bridge now matches the confirmed contract: public PKCE client (no
+  secret), refresh tokens are rotated and persisted immediately after each API
+  call (a revoked refresh token deletes the local binding and asks the user to
+  reconnect), 429 responses honour `Retry-After`, variants prefer
+  `storage.unalbum.com` originals only when `original.bytes` fits the 25 MB
+  ceiling and fall back to the 2048px preview.
+- Pending analysis is visible in the picker ("分析中") with a refresh action;
+  once UnAlbum finishes, the same list call returns the tags and the AI planner
+  reuses them as text.
+- `npm run validate:mvp` now covers PKCE link construction, single-use state,
+  refresh rotation and the reconnect path with a stub UnAlbum server.
+- Deployment: `FINALFOLIO_UNALBUM_*` added to the compose env surface and the
+  production env file; the feature is live at https://finalfolio.com.

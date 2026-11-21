@@ -420,6 +420,10 @@ export interface UnalbumPhotoVariant {
   mimeType?: string;
 }
 
+export interface UnalbumPhotoAnalysis extends AssetAnalysis {
+  status?: 'pending' | 'ready' | 'failed';
+}
+
 export interface UnalbumPhoto {
   id: string;
   filename: string;
@@ -428,7 +432,7 @@ export interface UnalbumPhoto {
   height: number | null;
   bytes: number | null;
   createdAt: string | null;
-  analysis: AssetAnalysis | null;
+  analysis: UnalbumPhotoAnalysis | null;
   variants: {
     original?: UnalbumPhotoVariant | null;
     preview?: UnalbumPhotoVariant | null;

@@ -1903,6 +1903,12 @@ const zh: Record<string, string> = {
   'Select for bulk actions': '勾选这张照片，用于批量操作',
   'Remove from the selection': '取消勾选这张照片',
   'Analyzed': '已分析',
+  'Analyzing': '分析中',
+  'The UnAlbum authorization expired. Reconnect the account on the account page.':
+    '与 UnAlbum 的授权已失效，请到账户页重新连接。',
+  'UnAlbum is rate limiting requests right now. Try again in a minute.': 'UnAlbum 当前请求过多，请稍后再试。',
+  'Some photos are still being analysed by UnAlbum. Refresh later to reuse their tags.':
+    '部分照片仍在 UnAlbum 分析中，稍后刷新即可复用它们的标签。',
   '%s selected photos already have AI tags, so their text is reused and no images are re-uploaded.':
     '已选的 %s 张照片已有 AI 标签，会直接复用文字描述，不再重复上传图片。',
   'Drag across the photos to select a group, Shift-click to select a range, Ctrl/Cmd-click to add or remove one photo.':

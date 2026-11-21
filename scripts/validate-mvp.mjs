@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createApp, createProjectStore, createSharePath } from '../server/app.js';
+import { createUnalbumStore } from '../server/unalbum.js';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'finalfolio-mvp-validate-'));
@@ -2255,6 +2256,135 @@ try {
     assert.match(readme, /uploads:manage/);
     assert.match(manageUploads, /Dry run only\./);
     assert.match(distIndex, /FinalFolio/);
+  });
+
+  await runCheck('UnAlbum OAuth uses PKCE and persists rotated refresh tokens', async () => {
+    const previousEnv = {
+      baseUrl: process.env.FINALFOLIO_UNALBUM_BASE_URL,
+      clientId: process.env.FINALFOLIO_UNALBUM_CLIENT_ID,
+      clientSecret: process.env.FINALFOLIO_UNALBUM_CLIENT_SECRET,
+      scopes: process.env.FINALFOLIO_UNALBUM_SCOPES,
+    };
+    process.env.FINALFOLIO_UNALBUM_BASE_URL = 'https://unalbum.com';
+    process.env.FINALFOLIO_UNALBUM_CLIENT_ID = 'finalfolio';
+    delete process.env.FINALFOLIO_UNALBUM_CLIENT_SECRET;
+    process.env.FINALFOLIO_UNALBUM_SCOPES = 'profile email photos.read';
+
+    try {
+      const requests = [];
+      const jsonResponse = (status, payload, headers = {}) =>
+        new Response(JSON.stringify(payload), {
+          status,
+          headers: { 'content-type': 'application/json', ...headers },
+        });
+      const fakeFetch = async (input, init = {}) => {
+        const url = typeof input === 'string' ? input : String(input);
+        const headers = init.headers ?? {};
+        requests.push({ url, method: init.method ?? 'GET', body: init.body ? String(init.body) : '', headers });
+        if (url.endsWith('/oauth/token')) {
+          return jsonResponse(200, {
+            access_token: 'access-2',
+            refresh_token: 'refresh-2',
+            token_type: 'Bearer',
+            expires_in: 3600,
+            scope: 'profile email photos.read',
+          });
+        }
+        if (url.includes('/api/v1/me/photos')) {
+          if (headers.authorization === 'Bearer access-old') {
+            return jsonResponse(401, { error: { code: 'unauthorized', message: 'expired' } });
+          }
+          return jsonResponse(200, {
+            photos: [
+              {
+                id: 'photo-1',
+                filename: 'a.jpg',
+                name: 'A',
+                analysis: { status: 'ready', description: '山谷', tags: ['山'] },
+              },
+            ],
+            nextCursor: null,
+          });
+        }
+        throw new Error(`Unexpected UnAlbum request: ${url}`);
+      };
+
+      const store = createUnalbumStore({ dataRoot: path.join(tempDir, 'unalbum-check'), fetchImpl: fakeFetch });
+      const { authorizeUrl, state } = await store.startAuthorization({
+        intent: 'bind',
+        userId: 'user-unalbum',
+        publicOrigin: 'https://finalfolio.com',
+      });
+      const authorize = new URL(authorizeUrl);
+      assert.equal(`${authorize.origin}${authorize.pathname}`, 'https://unalbum.com/oauth/authorize');
+      assert.equal(authorize.searchParams.get('client_id'), 'finalfolio');
+      assert.equal(authorize.searchParams.get('redirect_uri'), 'https://finalfolio.com/api/unalbum/callback');
+      assert.equal(authorize.searchParams.get('response_type'), 'code');
+      assert.equal(authorize.searchParams.get('code_challenge_method'), 'S256');
+      assert.equal(authorize.searchParams.get('scope'), 'profile email photos.read');
+      assert.equal(authorize.searchParams.get('state'), state);
+      assert.ok((authorize.searchParams.get('code_challenge') ?? '').length >= 43);
+
+      // State is single-use and expires from disk.
+      assert.ok(await store.consumeState(state));
+      assert.equal(await store.consumeState(state), null);
+
+      await store.writeBinding('user-unalbum', {
+        account: { id: '42', username: 'lumen', displayName: '', avatarUrl: '' },
+        accessToken: 'access-old',
+        refreshToken: 'refresh-1',
+        expiresAt: new Date(Date.now() + 10_000).toISOString(),
+      });
+      const page = await store.listPhotosForUser('user-unalbum', {});
+      assert.equal(page.photos[0].id, 'photo-1');
+      assert.equal(page.photos[0].analysis.description, '山谷');
+
+      const binding = await store.readBinding('user-unalbum');
+      assert.equal(binding.accessToken, 'access-2');
+      assert.equal(binding.refreshToken, 'refresh-2');
+      const tokenRequests = requests.filter((request) => request.url.endsWith('/oauth/token'));
+      assert.equal(tokenRequests.length, 1);
+      assert.match(tokenRequests[0].body, /grant_type=refresh_token/);
+      assert.match(tokenRequests[0].body, /refresh_token=refresh-1/);
+      assert.match(tokenRequests[0].body, /client_id=finalfolio/);
+      assert.doesNotMatch(tokenRequests[0].body, /client_secret/);
+
+      // A dead refresh token deletes the binding instead of looping forever.
+      const deadStore = createUnalbumStore({
+        dataRoot: path.join(tempDir, 'unalbum-dead'),
+        fetchImpl: async (input) => {
+          const url = typeof input === 'string' ? input : String(input);
+          if (url.endsWith('/oauth/token')) {
+            return jsonResponse(400, { error: { code: 'invalid_grant', message: 'revoked' } });
+          }
+          return jsonResponse(401, { error: { code: 'unauthorized', message: 'expired' } });
+        },
+      });
+      await deadStore.writeBinding('user-dead', {
+        account: { id: '7', username: 'gone', displayName: '', avatarUrl: '' },
+        accessToken: 'access-old',
+        refreshToken: 'refresh-revoked',
+        expiresAt: new Date(Date.now() + 10_000).toISOString(),
+      });
+      await assert.rejects(
+        () => deadStore.listPhotosForUser('user-dead', {}),
+        (error) => error.code === 'unalbum_reconnect',
+      );
+      assert.equal(await deadStore.readBinding('user-dead'), null);
+    } finally {
+      for (const [key, value] of [
+        ['FINALFOLIO_UNALBUM_BASE_URL', previousEnv.baseUrl],
+        ['FINALFOLIO_UNALBUM_CLIENT_ID', previousEnv.clientId],
+        ['FINALFOLIO_UNALBUM_CLIENT_SECRET', previousEnv.clientSecret],
+        ['FINALFOLIO_UNALBUM_SCOPES', previousEnv.scopes],
+      ]) {
+        if (value === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = value;
+        }
+      }
+    }
   });
 
   console.log('validate:mvp passed');

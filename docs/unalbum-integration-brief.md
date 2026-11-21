@@ -1,8 +1,11 @@
 # UnAlbum × FinalFolio integration brief
 
-Status: FinalFolio side is implemented and shipped behind configuration. UnAlbum
-needs to expose the small API described here; everything below is what to hand
-to UnAlbum's engineering/AI.
+Status: **both sides implemented.** FinalFolio is code-complete and UnAlbum's
+endpoints are live (verified 2026-11-21: `/oauth/authorize` accepts
+`client_id=finalfolio`, redirects to `/signin` when signed out, `/oauth/token`
+answers `invalid_grant`, `/api/v1/me` and `/api/v1/me/photos` answer 401 without
+a token). This document is the confirmed contract plus the operational notes
+that shaped the implementation.
 
 ## 1. What we verified about UnAlbum today
 
@@ -73,7 +76,10 @@ the planner is not charged for re-analysing the same pixels.
 
 ### 3.1 OAuth 2.1 (authorization code + PKCE)
 
-- `GET /oauth/authorize`
+- Client: `client_id=finalfolio`, **public client** (no `client_secret`),
+  PKCE S256 required.
+- `GET /oauth/authorize` at `https://unalbum.com/oauth/authorize`; a signed-out
+  user is redirected to `/signin` and returned to the authorize URL afterwards.
   - Query: `response_type=code`, `client_id`, `redirect_uri`, `scope`,
     `state`, `code_challenge`, `code_challenge_method=S256`.
   - Requires the user to be signed in to UnAlbum; show a consent screen that
@@ -82,7 +88,8 @@ the planner is not charged for re-analysing the same pixels.
     `?error=access_denied&state=<state>`.
   - `redirect_uri` must match a pre-registered value **exactly**.
 
-- `POST /oauth/token` (`application/x-www-form-urlencoded`)
+- `POST /oauth/token` (`application/x-www-form-urlencoded`); FinalFolio sends
+  `client_id=finalfolio` and no secret.
   - `grant_type=authorization_code`: `code`, `redirect_uri`, `code_verifier`,
     `client_id`, optional `client_secret`.
   - `grant_type=refresh_token`: `refresh_token`, `client_id`, optional
@@ -97,14 +104,20 @@ the planner is not charged for re-analysing the same pixels.
       "scope": "profile email photos.read"
     }
     ```
-  - Rotate `refresh_token` on every refresh and invalidate the old one.
+  - Rotate `refresh_token` on every refresh and invalidate the old one. (Live
+    behaviour: the old refresh token is invalid immediately, so FinalFolio
+    persists the rotated token after every API call, not just at the end of a
+    batch. A revoked token deletes the local binding and asks the user to
+    reconnect.)
   - Errors use HTTP 400 with `{ "error": "invalid_grant" }` (OAuth error codes).
 
 - `POST /oauth/revoke` (recommended): accepts `token` (access or refresh) and
   returns 200 so FinalFolio can revoke when a user disconnects.
 
-- Scopes: `profile`, `email`, `photos.read` (minimum). A user may grant fewer —
-  FinalFolio re-checks what came back.
+- Scopes: `profile`, `email`, `photos.read` (minimum), requested verbatim. A
+  user may grant fewer — FinalFolio re-checks what came back. `email` is only
+  returned when the `email` scope is granted; it is required for "通过 UnAlbum
+  登录".
 
 ### 3.2 Profile
 
@@ -180,13 +193,16 @@ the planner is not charged for re-analysing the same pixels.
   Recommended statuses: `pending`, `ready`, `failed`.
 - `tags` is an array of short strings; `description` is one paragraph (≤ 800
   characters). Extra fields are ignored, so `model`/`confidence` are welcome.
-- `variants.thumb.url` must be loadable by a browser `<img>` (public or
-  time-limited signed URL, ≥ 1 hour). It is used only for previews.
-- `variants.original.url` / `preview.url` are fetched **server-side** by
-  FinalFolio with the bearer token when the host is the API origin, or without
-  the token for `storage.unalbum.com` (allow-listed). Either public or signed
-  URLs are fine. Keep originals ≤ 20 MB.
-- A single-photo endpoint is required for import:
+- `variants.thumb` is a 600 px WebP and must be loadable by a browser `<img>`
+  (public or time-limited signed URL). It is used only for previews.
+- `variants.preview` is a 2048 px WebP (≈1–2 MB) derived automatically when the
+  original is over 20 MB or extremely large. Import prefers the original when
+  `variants.original.bytes` fits FinalFolio's 25 MB upload ceiling and falls
+  back to `preview` otherwise, then to `thumb`.
+- `variants.original.url` / `preview.url` are **public `storage.unalbum.com`
+  CDN URLs** and are fetched server-side **without** a bearer token. The bearer
+  token is only ever sent to the UnAlbum JSON API origin.
+- A single-photo endpoint is required for import (live):
   `GET /api/v1/me/photos/{id}` → `{ "photo": { …same shape… } }`.
   FinalFolio calls it right before downloading, so tags that had been pending
   can be picked up at import time.
@@ -197,22 +213,19 @@ the planner is not charged for re-analysing the same pixels.
 - 401 for a missing/expired token (include `WWW-Authenticate: Bearer`), 403 for
   insufficient scope, 404 for an unknown/foreign photo id, 429 with
   `Retry-After` when throttled.
-- Suggested limits: 60 requests/minute per token for `/me/photos`, 10 imports
-  per minute is enough for FinalFolio (it imports at most 30 photos per call).
+- Live limit: 120 requests/minute per token. FinalFolio respects
+  `Retry-After` on 429 and surfaces a friendly "try again shortly" message.
 - CORS is **not** needed for the API: all calls are server-to-server. Previews
   are loaded as plain images.
 
 ## 4. What FinalFolio needs from UnAlbum to switch the feature on
 
-1. A client registration:
-   - Client name: `FinalFolio`
-   - Type: public client using PKCE (a secret is optional)
+1. A client registration, already in place:
+   - Client id: `finalfolio`
+   - Type: public client using PKCE (no secret)
    - Redirect URI: `https://finalfolio.com/api/unalbum/callback`
-     (plus a staging/dev URI if you want a test environment)
    - Scopes: `profile email photos.read`
-   - Issued `client_id` (and `client_secret` if it is a confidential client).
-2. The three API surfaces above (`/oauth/authorize`, `/oauth/token`,
-   `/api/v1/me`, `/api/v1/me/photos`, `/api/v1/me/photos/{id}`).
+2. The API surfaces above (all confirmed live).
 3. Confirmation of the AI analysis storage model (table/columns) and whether an
    existing internal endpoint already returns `description` + `tags` per photo;
    reusing it is cheaper than building a new one.
@@ -250,31 +263,27 @@ Success criteria:
 
 ## 6. Copy-paste prompt for UnAlbum's AI
 
-> 你负责 UnAlbum 服务端。请为 FinalFolio（https://finalfolio.com）实现一个最小但完整的第三方接入，使 FinalFolio 用户可以授权后读取自己在 UnAlbum 的照片，以及这些照片已有的 AI 描述与标签，并把这些照片导入 FinalFolio。只做服务端，不要改管理后台界面。
+> 你负责 UnAlbum 服务端。FinalFolio（https://finalfolio.com）已经完成第三方接入，请对照下面这份契约核对/补齐 UnAlbum 侧实现。只做服务端，不要改管理后台界面。
 >
-> 背景事实（已核实）：照片原图存于 S3 桶 `unalbum` 的 `photos/<userId>/<storageName>`，缩略图位于扁平前缀 `thumbnails/<storageName 去掉扩展名>.webp`，两者都能通过 `https://storage.unalbum.com/<key>` 公开访问；桶里没有 AI 元数据的 JSON 文件，因此 AI 标签/描述必须由你从数据库读出并通过 API 暴露。图片上传后 AI 分析是异步的，API 必须在分析完成前后都可用。
+> 背景事实（已核实）：照片原图存于 S3 桶 `unalbum` 的 `photos/<userId>/<storageName>`，600px 缩略图位于扁平前缀 `thumbnails/<storageName 去掉扩展名>.webp`，两者都能通过 `https://storage.unalbum.com/<key>` 公开访问；桶里没有 AI 元数据的 JSON 文件，对象标签为空，因此 AI 标签/描述必须由数据库读出并通过 API 暴露。图片上传后 AI 分析是异步的，API 必须在分析完成前后都可用。
 >
 > 需要新增/开放以下接口（HTTPS、JSON、仅允许访问当前登录用户自己的数据）：
 >
-> 1. OAuth 2.1 授权码 + PKCE(S256)：`GET /oauth/authorize`（参数 response_type、client_id、redirect_uri、scope、state、code_challenge、code_challenge_method），`POST /oauth/token`（authorization_code 与 refresh_token 两种 grant，表单编码），建议再加 `POST /oauth/revoke`。scope 至少 `profile email photos.read`。redirect_uri 必须与注册值精确匹配；state 必须原样回传；refresh token 每次刷新轮换。token 响应：`{access_token, token_type:"Bearer", expires_in, refresh_token, scope}`。
+> 1. OAuth 2.1 授权码 + PKCE(S256)：`GET /oauth/authorize`（参数 response_type、client_id、redirect_uri、scope、state、code_challenge、code_challenge_method），`POST /oauth/token`（authorization_code 与 refresh_token 两种 grant，表单编码），建议再加 `POST /oauth/revoke`。client_id 为 `finalfolio`，公共客户端，无 secret。scope 至少 `profile email photos.read`（email 仅在该 scope 下返回）。redirect_uri 必须严格等于 `https://finalfolio.com/api/unalbum/callback`；state 必须校验并原样回传；refresh token 每次刷新轮换且旧 token 立即失效。token 响应：`{access_token, token_type:"Bearer", expires_in, refresh_token, scope}`。
 > 2. `GET /api/v1/me` → `{user:{id, username, displayName, email, avatarUrl}}`。email 用于 FinalFolio 的"通过 UnAlbum 登录"，请确保返回。
-> 3. `GET /api/v1/me/photos?limit=60&cursor=&q=` → `{photos:[...], nextCursor}`，只返回当前用户照片，limit 默认 30、最大 100，cursor 不透明。每张照片字段：`id, filename, name, width, height, bytes, createdAt, storage:{key}, analysis:{status:"pending"|"ready"|"failed", description, tags:[], source, analyzedAt}, variants:{original:{url,width,height,bytes,mimeType}, preview:{...}, thumb:{url,...}}`。analysis 在未完成时可以是 `{status:"pending"}` 或 null；完成后必须能通过再次调用列表拿到（用户无需重新上传）。`variants.thumb.url` 必须能被浏览器 `<img>` 直接加载（公开或至少 1 小时有效的签名 URL）；original/preview 供服务端带 Bearer 下载，也可以是 storage.unalbum.com 的公开地址，单张不超过 20 MB。
+> 3. `GET /api/v1/me/photos?limit=60&cursor=&q=` → `{photos:[...], nextCursor}`，只返回当前用户照片，limit 默认 30、最大 100，cursor 不透明，每个 token 每分钟 120 次（429 带 Retry-After）。每张照片字段：`id, filename, name, width, height, bytes, createdAt, storage:{key}, analysis:{status:"pending"|"ready"|"failed", description, tags:[], source, analyzedAt}, variants:{original:{url,width,height,bytes,mimeType}, preview:{...}, thumb:{url,...}}`。analysis 在未完成时可以是 `{status:"pending"}` 或 null；完成后必须能通过再次调用列表拿到（用户无需重新上传）。`variants.thumb` 是 600px WebP，可被浏览器 `<img>` 直接加载；`variants.preview` 对超过 20MB 或超大尺寸的原图自动提供 2048px WebP（约 1–2MB）；original/preview 是 `storage.unalbum.com` 的公开 CDN 地址，服务端下载不带 Bearer，Bearer 只用于 JSON API。
 > 4. `GET /api/v1/me/photos/{id}` → `{photo:{...同一结构...}}`，用于导入前最后一次读取（顺便拿到刚生成的标签）。
 >
 > 错误统一为 `{"error":{"code","message"}}`；401 带 `WWW-Authenticate: Bearer`，403 表示 scope 不足，404 表示照片不存在或不属于该用户，429 时带 `Retry-After`。API 是服务端到服务端调用，不需要 CORS；但缩略图是浏览器直连，请保证可访问。
 >
-> 另外请为 FinalFolio 注册一个客户端：名称 `FinalFolio`，公共客户端 + PKCE，回调地址 `https://finalfolio.com/api/unalbum/callback`，scope 为 `profile email photos.read`，并把 client_id（如为机密客户端还有 client_secret）发回。
+> FinalFolio 的客户端已经注册（client_id `finalfolio`，公共客户端 + PKCE，回调 `https://finalfolio.com/api/unalbum/callback`，scope `profile email photos.read`），无需重复注册；只需确保它与上面的 redirect_uri、scope 校验一致。
 >
 > 请先检查现有代码里是否已经存有 AI 的 description/tags（哪张表、哪些列、是否有 analyzed_at），尽量复用现有查询，不要重复跑模型。实现完成后用 curl 验证：带 token 能读到 /me、照片列表、单张照片且 analysis 字段正确；不带 token 返回 401；用一个其他用户的照片 id 返回 404。
 
-## 7. Open questions to send back
+## 7. Open questions
 
 - Existing table/column names for AI `description`, `tags`, `analyzed_at`?
 - Is analysis run for every upload, or only when a photo page is opened?
-- Preferred page size / cursor format, and whether ordering is stable across
-  new uploads (FinalFolio treats the list as newest-first but does not depend on
-  it).
-- Do preview variants (medium size) already exist? If not, thumbnails are
-  enough for the picker and originals for import.
-- Client registration: public PKCE client or confidential client with secret?
-- Staging redirect URI to test before production.
+- Is the list ordering stable across new uploads? (FinalFolio does not depend on
+  it, but the picker shows it as-is.)
+- Is there a staging redirect URI to exercise the flow before production?

@@ -3106,19 +3106,11 @@ export function createApp({
     try {
       const user = requireAuthenticated(request);
       await securityStore.consumeRateLimit({ ...UNALBUM_USER_RATE_LIMIT, key: `photos:${user.id}` });
-      const binding = await unalbumStore.readBinding(user.id);
-      if (!binding) {
-        response.status(409).json({ error: 'Connect your UnAlbum account first.', code: 'unalbum_not_bound' });
-        return;
-      }
-      const result = await unalbumStore.listPhotos(binding, {
+      const result = await unalbumStore.listPhotosForUser(user.id, {
         cursor: typeof request.query.cursor === 'string' ? request.query.cursor.slice(0, 500) : '',
         query: typeof request.query.q === 'string' ? request.query.q.slice(0, 120) : '',
         limit: request.query.limit,
       });
-      if (result.binding !== binding) {
-        await unalbumStore.writeBinding(user.id, result.binding);
-      }
       response.json({
         photos: result.photos,
         nextCursor: result.nextCursor,
@@ -3139,8 +3131,7 @@ export function createApp({
       if (!ids.length) {
         throw createBadRequest('Choose at least one UnAlbum photo.');
       }
-      let binding = await unalbumStore.readBinding(user.id);
-      if (!binding) {
+      if (!(await unalbumStore.readBinding(user.id))) {
         response.status(409).json({ error: 'Connect your UnAlbum account first.', code: 'unalbum_not_bound' });
         return;
       }
@@ -3148,10 +3139,16 @@ export function createApp({
       const { allowedOrigins, authOrigin } = unalbumOrigins();
       const createdAssets = [];
       for (const id of ids) {
-        const { photo, binding: nextBinding } = await unalbumStore.getPhoto(binding, id);
-        binding = nextBinding;
+        const { photo } = await unalbumStore.getPhotoForUser(user.id, id);
 
-        const variants = [photo.variants?.original, photo.variants?.preview, photo.variants?.thumb].filter(
+        // UnAlbum keeps the original even when it exceeds our upload ceiling and
+        // derives a 2048px WebP preview for those photos. Prefer whichever copy
+        // actually fits instead of failing on a 30 MB original.
+        const original = photo.variants?.original;
+        const preview = photo.variants?.preview;
+        const thumb = photo.variants?.thumb;
+        const originalFits = !original?.bytes || original.bytes <= maxUploadSizeBytes;
+        const variants = (originalFits ? [original, preview, thumb] : [preview, original, thumb]).filter(
           (variant) => variant && typeof variant.url === 'string' && variant.url,
         );
         if (!variants.length) {
@@ -3205,7 +3202,6 @@ export function createApp({
         queueObjectStorageUploadSync(user.id, [{ filename: downloaded.file.filename, artifacts }]);
       }
 
-      await unalbumStore.writeBinding(user.id, binding);
       store.invalidateStoreCaches();
       await opsStore.recordEvent({
         type: 'unalbum',

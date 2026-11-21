@@ -48,10 +48,17 @@ export function readUnalbumConfig() {
     .map((scope) => scope.trim())
     .filter(Boolean);
   const redirectUri = readEnv('FINALFOLIO_UNALBUM_REDIRECT_URI');
-  const storageOrigins = (readEnv('FINALFOLIO_UNALBUM_STORAGE_ORIGINS') || '')
-    .split(/[\s,]+/)
-    .map((origin) => origin.trim())
-    .filter(Boolean);
+  // UnAlbum serves photo bytes from this public CDN; the token is only for the
+  // JSON API, so this origin must be allowed even though it is not the API host.
+  const storageOrigins = Array.from(
+    new Set([
+      'https://storage.unalbum.com',
+      ...(readEnv('FINALFOLIO_UNALBUM_STORAGE_ORIGINS') || '')
+        .split(/[\s,]+/)
+        .map((origin) => origin.trim())
+        .filter(Boolean),
+    ]),
+  );
 
   let normalizedBase = '';
   try {
@@ -279,6 +286,18 @@ export function createUnalbumStore({ dataRoot, now = () => new Date().toISOStrin
     });
     if (!response.ok) {
       const detail = await response.text().catch(() => '');
+      let code = '';
+      try {
+        code = String(JSON.parse(detail)?.error?.code ?? JSON.parse(detail)?.error ?? '');
+      } catch {
+        code = '';
+      }
+      if (params.grant_type === 'refresh_token' && (response.status === 400 || response.status === 401)) {
+        const expired = new Error('The UnAlbum authorization expired. Reconnect your account.');
+        expired.statusCode = 401;
+        expired.code = 'unalbum_reconnect';
+        throw expired;
+      }
       throw new Error(`UnAlbum token exchange failed (${response.status}).${detail ? ` ${detail.slice(0, 200)}` : ''}`);
     }
     return normalizeTokenPayload(await response.json());
@@ -343,13 +362,61 @@ export function createUnalbumStore({ dataRoot, now = () => new Date().toISOStrin
       current = await refreshAccessToken(current);
       response = await send(current.accessToken);
     }
+    if (response.status === 429) {
+      const retryAfter = Number(response.headers.get('retry-after') ?? '');
+      const error = new Error('UnAlbum is rate limiting requests. Try again shortly.');
+      error.statusCode = 429;
+      error.code = 'unalbum_rate_limited';
+      if (Number.isFinite(retryAfter) && retryAfter > 0) {
+        error.retryAfterSeconds = retryAfter;
+      }
+      throw error;
+    }
     if (!response.ok) {
       const detail = await response.text().catch(() => '');
       const error = new Error(`UnAlbum request failed (${response.status}).${detail ? ` ${detail.slice(0, 200)}` : ''}`);
       error.statusCode = response.status === 401 ? 401 : 502;
+      if (response.status === 401) {
+        error.code = 'unalbum_reconnect';
+      }
       throw error;
     }
     return { payload: await response.json(), binding: current };
+  }
+
+  /**
+   * Runs a request against the stored binding and persists a rotated refresh
+   * token immediately. UnAlbum invalidates the old refresh token on every use,
+   * so a lost rotation would strand the account until it reconnects.
+   */
+  async function withUserBinding(userId, run) {
+    const binding = await readBinding(userId);
+    if (!binding) {
+      const error = new Error('Connect your UnAlbum account first.');
+      error.statusCode = 409;
+      error.code = 'unalbum_not_bound';
+      throw error;
+    }
+    try {
+      const result = await run(binding);
+      if (result.binding !== binding) {
+        await writeBinding(userId, result.binding);
+      }
+      return result;
+    } catch (error) {
+      if (error?.code === 'unalbum_reconnect') {
+        await deleteBinding(userId);
+      }
+      throw error;
+    }
+  }
+
+  function listPhotosForUser(userId, options) {
+    return withUserBinding(userId, (binding) => listPhotos(binding, options));
+  }
+
+  function getPhotoForUser(userId, photoId) {
+    return withUserBinding(userId, (binding) => getPhoto(binding, photoId));
   }
 
   async function fetchProfile(binding) {
@@ -410,5 +477,7 @@ export function createUnalbumStore({ dataRoot, now = () => new Date().toISOStrin
     fetchProfile,
     listPhotos,
     getPhoto,
+    listPhotosForUser,
+    getPhotoForUser,
   };
 }

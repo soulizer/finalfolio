@@ -25,6 +25,20 @@ function rawMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+function friendlyError(error: unknown, t: (key: string) => string, fallback: string) {
+  const code = (error as { code?: string } | null)?.code;
+  if (code === 'unalbum_reconnect') {
+    return t('The UnAlbum authorization expired. Reconnect the account on the account page.');
+  }
+  if (code === 'unalbum_rate_limited') {
+    return t('UnAlbum is rate limiting requests right now. Try again in a minute.');
+  }
+  if (code === 'unalbum_not_bound') {
+    return t('Connect UnAlbum first.');
+  }
+  return rawMessage(error, fallback);
+}
+
 /**
  * Imports photos from a linked UnAlbum account. Import happens on the server
  * (which holds the OAuth token and copies the bytes), so the browser only ever
@@ -62,7 +76,7 @@ export function UnAlbumPicker({ open, title, onClose, onImported }: UnAlbumPicke
       .catch((statusError) => {
         if (!cancelled) {
           setStatus({ configured: false, bound: false, account: null });
-          setError(rawMessage(statusError, t('Unable to reach UnAlbum.')));
+          setError(friendlyError(statusError, t, t('Unable to reach UnAlbum.')));
         }
       });
     return () => {
@@ -80,7 +94,7 @@ export function UnAlbumPicker({ open, title, onClose, onImported }: UnAlbumPicke
       setPhotos((current) => (cursor ? [...current, ...page.photos] : page.photos));
       setNextCursor(page.nextCursor);
     } catch (loadError) {
-      setError(rawMessage(loadError, t('Unable to load your UnAlbum photos.')));
+      setError(friendlyError(loadError, t, t('Unable to load your UnAlbum photos.')));
     } finally {
       setLoading(false);
     }
@@ -95,6 +109,10 @@ export function UnAlbumPicker({ open, title, onClose, onImported }: UnAlbumPicke
   }, [open, status?.bound]);
 
   const pickedPhotos = useMemo(() => photos.filter((photo) => pickedIds.has(photo.id)), [photos, pickedIds]);
+  const hasPendingAnalysis = useMemo(
+    () => photos.some((photo) => photo.analysis?.status === 'pending' && !photo.analysis.description && !photo.analysis.tags?.length),
+    [photos],
+  );
 
   if (!open) {
     return null;
@@ -173,7 +191,7 @@ export function UnAlbumPicker({ open, title, onClose, onImported }: UnAlbumPicke
         if (importedAssets.length) {
           await onImported(importedAssets);
         }
-        setError(rawMessage(importError, t('Unable to import these photos from UnAlbum.')));
+        setError(friendlyError(importError, t, t('Unable to import these photos from UnAlbum.')));
         setBusy(false);
         setProgress(null);
         return;
@@ -256,6 +274,14 @@ export function UnAlbumPicker({ open, title, onClose, onImported }: UnAlbumPicke
                 <button type="submit" className="button button--ghost button--small" disabled={loading}>
                   {t('Search')}
                 </button>
+                <button
+                  type="button"
+                  className="button button--ghost button--small"
+                  disabled={loading}
+                  onClick={() => void searchPhotos()}
+                >
+                  {loading ? t('Refreshing…') : t('Refresh')}
+                </button>
               </form>
 
               {error ? (
@@ -270,6 +296,8 @@ export function UnAlbumPicker({ open, title, onClose, onImported }: UnAlbumPicke
                     const picked = pickedIds.has(photo.id);
                     const thumb = photo.variants.thumb?.url || photo.variants.preview?.url || '';
                     const description = photo.analysis?.description ?? '';
+                    const analyzed = Boolean(photo.analysis && (photo.analysis.description || photo.analysis.tags?.length));
+                    const pending = !analyzed && photo.analysis?.status === 'pending';
                     return (
                       <button
                         key={photo.id}
@@ -282,8 +310,10 @@ export function UnAlbumPicker({ open, title, onClose, onImported }: UnAlbumPicke
                       >
                         {thumb ? <img src={thumb} alt={photo.name || photo.filename} loading="lazy" /> : null}
                         <span className="unalbum-tile__name">{photo.name || photo.filename}</span>
-                        {photo.analysis && (photo.analysis.tags.length || photo.analysis.description) ? (
+                        {analyzed ? (
                           <span className="unalbum-tile__tag">{t('Analyzed')}</span>
+                        ) : pending ? (
+                          <span className="unalbum-tile__tag unalbum-tile__tag--pending">{t('Analyzing')}</span>
                         ) : null}
                         {picked ? (
                           <span className="unalbum-tile__check" aria-hidden="true">
@@ -317,6 +347,11 @@ export function UnAlbumPicker({ open, title, onClose, onImported }: UnAlbumPicke
               <p className="panel-note ai-selection-hint">
                 {t('Click to select, Shift-click for a range, or drag a box across photos.')}
               </p>
+              {hasPendingAnalysis ? (
+                <p className="panel-note">
+                  {t('Some photos are still being analysed by UnAlbum. Refresh later to reuse their tags.')}
+                </p>
+              ) : null}
             </div>
 
             <footer className="ai-dialog__footer">
