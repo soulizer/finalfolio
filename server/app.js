@@ -2993,7 +2993,8 @@ export function createApp({
   app.get('/api/unalbum/callback', async (request, response) => {
     const origin = resolvePublicOrigin(request);
     const fail = (reason) => {
-      response.redirect(302, `${origin}/account?unalbum=error&reason=${encodeURIComponent(reason)}`);
+      // Land on the panel that owns the UnAlbum card so the outcome is visible.
+      response.redirect(302, `${origin}/account?section=settings&unalbum=error&reason=${encodeURIComponent(reason)}`);
     };
     try {
       const state = typeof request.query.state === 'string' ? request.query.state : '';
@@ -3004,7 +3005,7 @@ export function createApp({
       }
       const code = typeof request.query.code === 'string' ? request.query.code : '';
       if (!code) {
-        response.redirect(302, `${origin}/account?unalbum=error&reason=denied`);
+        response.redirect(302, `${origin}/account?section=settings&unalbum=error&reason=denied`);
         return;
       }
 
@@ -3077,7 +3078,7 @@ export function createApp({
         userId: record.userId,
         detail: { action: 'bind' },
       });
-      response.redirect(302, `${origin}/account?unalbum=connected`);
+      response.redirect(302, `${origin}/account?section=settings&unalbum=connected`);
     } catch (error) {
       // OAuth callbacks are browser navigations; a JSON error page would strand
       // the user, so report through the account page instead.
