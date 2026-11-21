@@ -110,7 +110,20 @@ English Terms. Both legal pages now use the same `getActiveLocale()` as the UI;
 a zh-CN browser with no stored preference gets 服务条款/隐私政策, and a manual
 language choice still wins. New e2e covers both pages with `locale: zh-CN`.
 
-## 11. Residual
+## 11. Public reader showed a permanent loading veil
+
+The shared page renders `MagazinePreview` inside a detached React root, takes
+`innerHTML`, then unmounts the root and hands the static markup to turn.js.
+The new image-loading placeholder is React state; at serialization time the
+image had not loaded, so “加载中…” was baked into the markup and no `onLoad`
+could ever remove it, hiding every photo.
+
+The placeholder (and the pending badge) now render only for interactive editor
+frames. Static reader/print markup contains no transient overlay, and an e2e
+assertion checks the public page has no `.asset-frame__state` while the frame
+image has `naturalWidth > 0`.
+
+## 12. Residual
 
 - The inline grid shows the first UnAlbum page; “加载更多” pulls the next one.
   There is no search across the remote collection yet.

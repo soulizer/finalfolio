@@ -1860,6 +1860,9 @@
   cached preview immediately with a “正在放入…” badge, the copy happens in the
   background and replaces it silently, and export waits for the copy. Pending
   previews are client-only, so they can never be saved or shared.
+- The public reader serializes pages to static HTML; transient React overlays
+  must never be part of that markup. The image loading veil is now editor-only,
+  fixing shared pages that showed “加载中…” forever.
 - Legal pages follow the UI language instead of only the stored locale: a
   zh-CN browser that never toggled the language now sees 服务条款/隐私政策 on a
   first UnAlbum sign-in (previously English).

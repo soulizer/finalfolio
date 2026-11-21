@@ -86,6 +86,12 @@ test('upload, save, reopen, share, and export the editor flow', async ({ page })
   // The public reader renders its pages inside a detached React root; this
   // guards against provider/context regressions that used to blank the book.
   await expect(page.locator('.magazine-page').first()).toBeVisible();
+  // Transient editor UI (loading labels) must not be serialized into the
+  // static reader markup, where no load handler can ever remove it.
+  await expect(page.locator('.asset-frame__state')).toHaveCount(0);
+  const readerImage = page.locator('.magazine-page .asset-frame img').first();
+  await expect(readerImage).toBeVisible();
+  await expect.poll(() => readerImage.evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
   expect(viewerErrors).toEqual([]);
 
   await page.goto(editorUrl);

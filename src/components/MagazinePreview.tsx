@@ -458,7 +458,7 @@ function AssetFrame({
           <span className="asset-frame__placeholder">{t('Drop a photo here')}</span>
         ) : null}
       </div>
-      {asset && imageState !== 'ready' ? (
+      {interactive && asset && imageState !== 'ready' ? (
         // The label lives in a data attribute and is drawn through CSS content
         // so the reader/export text comparison never sees transient UI copy.
         <span
@@ -469,7 +469,7 @@ function AssetFrame({
         />
       ) : null}
       {interactive ? <span className="asset-frame__hint">{slotHint}</span> : null}
-      {asset?.pending ? <span className="asset-frame__pending">{t('Placing…')}</span> : null}
+      {interactive && asset?.pending ? <span className="asset-frame__pending">{t('Placing…')}</span> : null}
     </>
   );
 
