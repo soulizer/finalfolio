@@ -1860,6 +1860,11 @@
   cached preview immediately with a “正在放入…” badge, the copy happens in the
   background and replaces it silently, and export waits for the copy. Pending
   previews are client-only, so they can never be saved or shared.
+- Public reader drag is fixed at the vendor level (document offset, missing
+  event data, missing fold point); a new e2e covers release, movement and click.
+  The loading shell is a neutral indicator instead of a smaller fake spread.
+- Account/admin delete actions are all trash-icon buttons now, and 53 server
+  error messages gained Chinese translations.
 - The public reader serializes pages to static HTML; transient React overlays
   must never be part of that markup. The image loading veil is now editor-only,
   fixing shared pages that showed “加载中…” forever.

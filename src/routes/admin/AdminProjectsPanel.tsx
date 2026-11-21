@@ -1,4 +1,5 @@
 import { countLabel, useT } from '../../i18n';
+import { DeleteIconButton } from '../../ui/DeleteIconButton';
 import type { CSSProperties } from 'react';
 import { MagazinePreview } from '../../components/MagazinePreview';
 import type { AdminProjectDetail, AdminProjectListItem } from '../../editor/api';
@@ -110,15 +111,13 @@ export function AdminProjectsPanel({
                           onClick={(event) => event.stopPropagation()}
                         >
                           {t('Edit')}</a>
-                        <button
-                          type="button"
-                          className="button button--danger button--small"
+                        <DeleteIconButton
+                          label={t('Delete')}
                           onClick={(event) => {
                             event.stopPropagation();
                             void handleDeleteProject(project.id);
                           }}
-                        >
-                          {t('Delete')}</button>
+                        />
                       </div>
                     </div>
                   </article>

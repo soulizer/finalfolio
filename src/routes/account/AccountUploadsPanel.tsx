@@ -1,4 +1,5 @@
 import { countLabel, useT } from '../../i18n';
+import { DeleteIconButton } from '../../ui/DeleteIconButton';
 import {
   getAssetDeliveryLabel,
   getAssetDeliveryTooltip,
@@ -113,19 +114,16 @@ export function AccountUploadsPanel({
                           {uploadBusyId === upload.assetId ? t('Retrying…') : t('Retry mirror')}
                         </button>
                       ) : null}
-                      <button
-                        type="button"
-                        className="button button--danger button--small"
-                        disabled={uploadBusyId === upload.assetId || upload.referencedProjectCount > 0}
+                      <DeleteIconButton
+                        label={uploadBusyId === upload.assetId ? t('Deleting…') : t('Delete')}
                         title={
                           upload.referencedProjectCount > 0
                             ? t('This image is used by a project. Remove it from the project first.')
                             : undefined
                         }
+                        disabled={uploadBusyId === upload.assetId || upload.referencedProjectCount > 0}
                         onClick={() => void handleDeleteUpload(upload)}
-                      >
-                        {uploadBusyId === upload.assetId ? t('Deleting…') : t('Delete')}
-                      </button>
+                      />
                     </div>
                   </div>
                 </article>

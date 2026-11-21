@@ -1,4 +1,5 @@
 import { countLabel, useT } from '../../i18n';
+import { DeleteIconButton } from '../../ui/DeleteIconButton';
 import type { CSSProperties } from 'react';
 import { MagazinePreview } from '../../components/MagazinePreview';
 import { getTemplateLabel } from '../../editor/demoData';
@@ -184,14 +185,15 @@ export function AccountProjectsPanel({
                                 {projectBusyId === project.id && projectBusyAction === 'share' ? t('Sharing…') : t('Share')}
                               </button>
                             )}
-                            <button
-                              type="button"
-                              className="button button--danger button--small"
+                            <DeleteIconButton
+                              label={
+                                projectBusyId === project.id && projectBusyAction === 'delete'
+                                  ? t('Deleting…')
+                                  : t('Delete')
+                              }
                               disabled={projectBusyId === project.id}
                               onClick={() => void handleDeleteProject(project.id)}
-                            >
-                              {projectBusyId === project.id && projectBusyAction === 'delete' ? t('Deleting…') : t('Delete')}
-                            </button>
+                            />
                           </>
                         )}
                       </div>

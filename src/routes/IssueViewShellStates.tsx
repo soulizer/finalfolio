@@ -3,18 +3,17 @@ import type { CSSProperties, RefObject } from 'react';
 import { Link } from 'react-router-dom';
 
 type IssueViewLoadingStateProps = {
-  mobileSinglePageActive: boolean;
   shellClassName: string;
   shellRef: RefObject<HTMLDivElement | null>;
   sidebarTopOffset: number;
 };
 
 export function IssueViewLoadingState({
-  mobileSinglePageActive,
   shellClassName,
   shellRef,
   sidebarTopOffset,
 }: IssueViewLoadingStateProps) {
+  const t = useT();
   return (
     <div ref={shellRef} className={shellClassName}>
       <main
@@ -28,12 +27,13 @@ export function IssueViewLoadingState({
         }
       >
         <section className="issue-view-reader">
-          <div className="issue-viewer__viewport issue-viewer__viewport--placeholder" aria-hidden="true">
-            <div className="issue-viewer__placeholder">
-              <div className="issue-viewer__placeholder-book">
-                <div className="issue-viewer__placeholder-page" />
-                {!mobileSinglePageActive ? <div className="issue-viewer__placeholder-page" /> : null}
-              </div>
+          <div className="issue-viewer__viewport issue-viewer__viewport--placeholder">
+            <div className="issue-viewer__placeholder" role="status" aria-live="polite">
+              {/* A neutral indicator, not a fake spread: any fixed-size book
+                  skeleton was smaller than the real page and flashed a wrong
+                  layout before the folio loaded. */}
+              <span className="issue-viewer__placeholder-spinner" aria-hidden="true" />
+              <p className="issue-viewer__placeholder-note">{t('Loading the folio…')}</p>
             </div>
           </div>
         </section>

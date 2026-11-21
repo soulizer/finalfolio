@@ -6,7 +6,7 @@ import $ from 'jquery';
 export const turn$ = $ as any;
 
 let turnJsLoadPromise: Promise<void> | null = null;
-const TURN_JS_VENDOR_VERSION = '20260331b';
+const TURN_JS_VENDOR_VERSION = '20261121e';
 
 function hasEnhancedTurnJsRuntime() {
   return Boolean((turn$ as any).fn?.turn && (turn$ as any).turnVerion === '5');

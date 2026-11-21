@@ -119,7 +119,6 @@ export function IssueViewPage() {
 
     return (
       <IssueViewLoadingState
-        mobileSinglePageActive={mobileSinglePageActive}
         shellClassName={shellClassName}
         shellRef={shellRef}
         sidebarTopOffset={sidebarTopOffset}

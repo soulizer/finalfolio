@@ -1,3 +1,4 @@
+import { DeleteIconButton } from '../../ui/DeleteIconButton';
 import { useT } from '../../i18n';
 import type { UserSession } from '../../editor/api';
 import { getUserPrimaryIdentity, getUserSecondaryIdentity } from '../../editor/identity';
@@ -162,15 +163,16 @@ export function AdminUsersPanel({
                             ? t('Disable')
                             : t('Activate')}
                     </button>
-                    <button
-                      type="button"
-                      className="button button--danger button--small"
-                      disabled={userActionBusy || user.id === currentUserId}
+                    <DeleteIconButton
+                      label={
+                        userActionBusy && userActionTargetId === user.id && userActionKind === 'delete'
+                          ? t('Deleting…')
+                          : t('Delete')
+                      }
                       title={user.id === currentUserId ? t('You cannot delete the signed-in account.') : undefined}
+                      disabled={userActionBusy || user.id === currentUserId}
                       onClick={() => void handleDeleteUser(user)}
-                    >
-                      {userActionBusy && userActionTargetId === user.id && userActionKind === 'delete' ? t('Deleting…') : t('Delete')}
-                    </button>
+                    />
                   </div>
                 </div>
               </article>

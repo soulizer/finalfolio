@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { DeleteIconButton } from '../../ui/DeleteIconButton';
 import { translate, useT } from '../../i18n';
 import {
   testAdminAiProvider,
@@ -479,14 +480,11 @@ export function AdminAiPanel({
                       >
                         {aiTestBusyId === busyId ? t('Testing…') : t('Test connection')}
                       </button>
-                      <button
-                        type="button"
-                        className="button button--danger-ghost button--small"
+                      <DeleteIconButton
+                        label={t('Remove')}
                         disabled={aiBusy}
                         onClick={() => void handleRemoveProvider(index)}
-                      >
-                        {t('Remove')}
-                      </button>
+                      />
                     </div>
                   </div>
                 </article>

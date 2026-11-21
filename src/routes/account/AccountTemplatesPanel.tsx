@@ -1,4 +1,5 @@
 import { countLabel, useT } from '../../i18n';
+import { DeleteIconButton } from '../../ui/DeleteIconButton';
 import { TemplateIssuePreview } from '../../components/TemplateIssuePreview';
 import { countImageSlots } from '../../editor/demoData';
 import type { UserTemplateRecord } from '../../editor/types';
@@ -143,14 +144,11 @@ export function AccountTemplatesPanel({
                         >
                           {templateBusyId === template.id ? t('Working…') : t('Duplicate')}
                         </button>
-                        <button
-                          type="button"
-                          className="button button--danger button--small"
+                        <DeleteIconButton
+                          label={templateBusyId === template.id ? t('Deleting…') : t('Delete')}
                           disabled={templateBusyId === template.id}
                           onClick={() => void handleDeleteTemplate(template)}
-                        >
-                          {templateBusyId === template.id ? t('Deleting…') : t('Delete')}
-                        </button>
+                        />
                       </>
                     )}
                   </div>

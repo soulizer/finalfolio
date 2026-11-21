@@ -123,7 +123,27 @@ frames. Static reader/print markup contains no transient overlay, and an e2e
 assertion checks the public page has no `.asset-frame__state` while the frame
 image has `naturalWidth > 0`.
 
-## 12. Residual
+## 12. Reader drag, loading placeholder and a global detail pass
+
+- **Stuck drag:** the vendored turn.js called `offset()` on `document` in its
+  global mouseup handler and indexed `data('events')[type]` on elements without
+  bound events; either threw before the drag state was cleared, so the leaf kept
+  following the pointer. A third throw came from `hideFoldedPage` when a release
+  had no `dpoint`. All three are guarded in `public/vendor/turnjs5.js`
+  (version `20261121e`); the reader e2e drags, releases, moves and clicks, and
+  asserts positions stay put with no page errors (8 consecutive passes).
+- **Fake placeholder:** the loading shell drew a fixed 680 px two-page skeleton
+  that was smaller than the real book. It is now a neutral spinner plus
+  “正在加载作品…”, so no wrong-size spread flashes before load.
+- **Delete affordance:** every account/admin row now uses the shared
+  `DeleteIconButton` (trash icon, aria-label/title), matching the house rule.
+- **Error language:** 53 server error strings surfaced in the UI now have
+  Chinese translations (UnAlbum, uploads, conflicts, permissions).
+- Global sweep: every public/editor/account/admin section in zh + en at desktop
+  and mobile reported zero horizontal overflow, zero broken images, zero
+  unnamed controls, and zero console/page errors.
+
+## 13. Residual
 
 - The inline grid shows the first UnAlbum page; “加载更多” pulls the next one.
   There is no search across the remote collection yet.

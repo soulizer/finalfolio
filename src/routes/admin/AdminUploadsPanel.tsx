@@ -1,4 +1,5 @@
 import { countLabel, useT } from '../../i18n';
+import { DeleteIconButton } from '../../ui/DeleteIconButton';
 import {
   getAssetDeliveryLabel,
   getAssetDeliveryTooltip,
