@@ -421,7 +421,7 @@ export function createUnalbumStore({ dataRoot, now = () => new Date().toISOStrin
 
   async function fetchProfile(binding) {
     const { payload, binding: current } = await apiRequest(binding, '/api/v1/me');
-    return { profile: sanitizeProfile(payload?.user ?? payload), binding: current };
+    return { profile: sanitizeProfile(payload?.user ?? payload?.data ?? payload), binding: current };
   }
 
   function normalizePhoto(photo) {
@@ -445,7 +445,7 @@ export function createUnalbumStore({ dataRoot, now = () => new Date().toISOStrin
       throw Object.assign(new Error('Unknown UnAlbum photo.'), { statusCode: 400 });
     }
     const { payload, binding: current } = await apiRequest(binding, `/api/v1/me/photos/${encodeURIComponent(idPart)}`);
-    const photo = normalizePhoto(payload?.photo ?? payload);
+    const photo = normalizePhoto(payload?.photo ?? payload?.data ?? payload);
     if (!photo.id) {
       throw Object.assign(new Error('Unknown UnAlbum photo.'), { statusCode: 404 });
     }
@@ -457,11 +457,20 @@ export function createUnalbumStore({ dataRoot, now = () => new Date().toISOStrin
     const { payload, binding: current } = await apiRequest(binding, '/api/v1/me/photos', {
       searchParams: { limit: boundedLimit, cursor, q: query },
     });
-    const photos = Array.isArray(payload?.photos) ? payload.photos : [];
+    const photos = Array.isArray(payload?.photos)
+      ? payload.photos
+      : Array.isArray(payload?.items)
+        ? payload.items
+        : Array.isArray(payload?.data)
+          ? payload.data
+          : [];
     return {
       binding: current,
       photos: photos.map(normalizePhoto).filter((photo) => photo.id),
-      nextCursor: typeof payload?.nextCursor === 'string' && payload.nextCursor ? payload.nextCursor : null,
+      nextCursor:
+        (typeof payload?.nextCursor === 'string' && payload.nextCursor) ||
+        (typeof payload?.next_cursor === 'string' && payload.next_cursor) ||
+        null,
     };
   }
 
