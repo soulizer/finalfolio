@@ -92,7 +92,16 @@ The AI dialog still copies on click (there is no frame to preview), but the
 metadata cache makes it a single CDN download and failures are surfaced in the
 dialog.
 
-## 9. Residual
+## 9. Micro pill alignment
+
+The “已分析” badge used padding plus a 1.3 line-height. CJK glyphs sit slightly
+above the middle of that line box, so the bottom border looked thicker. Micro
+pills now use a fixed 18px height, flex centring, line-height 1, and a 1px
+optical top offset; measured at 3× the top/bottom gaps are 3.53px / 3.47px
+(3.03 / 3.97 before). The same recipe is applied to the AI tile status pill and
+the frame's “正在放入…” badge.
+
+## 10. Residual
 
 - The inline grid shows the first UnAlbum page; “加载更多” pulls the next one.
   There is no search across the remote collection yet.
