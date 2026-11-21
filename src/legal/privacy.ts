@@ -26,6 +26,7 @@ export type PrivacyDocument = {
   contactEmail: string;
 };
 
+import { getActiveLocale } from '../i18n';
 import { SITE_CONTACT_EMAIL } from './contact';
 
 export const CURRENT_PRIVACY_VERSION = '2026-04-01';
@@ -257,13 +258,5 @@ export function getPrivacyDocument(language?: string | null) {
 }
 
 function getPageLanguage() {
-  if (typeof window === 'undefined') {
-    return 'en';
-  }
-
-  try {
-    return window.localStorage.getItem('finalfolio-locale') === 'zh' ? 'zh-CN' : 'en';
-  } catch {
-    return 'en';
-  }
+  return getActiveLocale() === 'zh' ? 'zh-CN' : 'en';
 }

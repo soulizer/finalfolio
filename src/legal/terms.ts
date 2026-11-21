@@ -1,3 +1,5 @@
+import { getActiveLocale } from '../i18n';
+
 export type TermsLanguage = 'en' | 'zh-CN';
 
 type TermsBlock =
@@ -456,16 +458,13 @@ export function getTermsDocument(language: string | null | undefined) {
   return TERMS_BY_LANGUAGE[normalizeTermsLanguage(language)];
 }
 
-export function getPageLanguage() {
-  if (typeof window === 'undefined') {
-    return 'en';
-  }
-
-  try {
-    return window.localStorage.getItem('finalfolio-locale') === 'zh' ? 'zh-CN' : 'en';
-  } catch {
-    return 'en';
-  }
+/**
+ * The legal page must follow the UI language, including a Chinese browser that
+ * never wrote the locale to storage (the provider auto-detects it). Reading
+ * localStorage alone made first-time UnAlbum sign-ins land on English terms.
+ */
+export function getPageLanguage(): TermsLanguage {
+  return getActiveLocale() === 'zh' ? 'zh-CN' : 'en';
 }
 
 export function buildTermsPath(nextPath?: string | null) {

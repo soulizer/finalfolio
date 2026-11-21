@@ -101,7 +101,16 @@ optical top offset; measured at 3× the top/bottom gaps are 3.53px / 3.47px
 (3.03 / 3.97 before). The same recipe is applied to the AI tile status pill and
 the frame's “正在放入…” badge.
 
-## 10. Residual
+## 10. Legal language on first UnAlbum sign-in
+
+Terms and privacy pages resolved their language from
+`localStorage['finalfolio-locale']` only. The UI, however, auto-detects a Chinese
+browser even before that value exists, so a first UnAlbum sign-in showed the
+English Terms. Both legal pages now use the same `getActiveLocale()` as the UI;
+a zh-CN browser with no stored preference gets 服务条款/隐私政策, and a manual
+language choice still wins. New e2e covers both pages with `locale: zh-CN`.
+
+## 11. Residual
 
 - The inline grid shows the first UnAlbum page; “加载更多” pulls the next one.
   There is no search across the remote collection yet.
