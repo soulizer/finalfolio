@@ -163,6 +163,7 @@ function AssetFrame({
   const isSelected = selectedSlot === slot;
   const canAdjustCrop = Boolean(interactive && asset && isSelected && onUpdateCrop);
   const [isDragging, setIsDragging] = useState(false);
+  const [imageState, setImageState] = useState<'loading' | 'ready' | 'error'>('loading');
   const frameClassName = `asset-frame ${className ?? ''} ${isSelected ? 'is-selected' : ''} ${canAdjustCrop ? 'is-draggable' : ''} ${isDragging ? 'is-dragging' : ''}`.trim();
   const slotHint = hintLabel ?? slot;
   const frameRef = useRef<HTMLButtonElement | HTMLDivElement | null>(null);
@@ -185,6 +186,22 @@ function AssetFrame({
   );
   const interactiveImageStyle = useMemo(() => createInteractiveFrameStyle(imageGeometry, crop), [crop, imageGeometry]);
   const hasAsset = Boolean(asset);
+  useEffect(() => {
+    setImageState('loading');
+    const image = imageRef.current;
+    if (!image) {
+      return undefined;
+    }
+    const check = () => {
+      if (!image.complete) {
+        return;
+      }
+      setImageState(image.naturalWidth > 0 ? 'ready' : 'error');
+    };
+    check();
+    const timer = window.setTimeout(check, 1200);
+    return () => window.clearTimeout(timer);
+  }, [assetSource, asset?.id]);
   const frameReady = frameSize.width > 0 && frameSize.height > 0;
   const geometryReady = !hasAsset || Boolean(imageGeometry);
   const dragMetrics = useMemo(() => {
@@ -428,18 +445,31 @@ function AssetFrame({
             draggable={false}
             decoding={imageDecoding ?? (assetVariant === 'original' ? 'sync' : 'async')}
             onDragStart={(event) => event.preventDefault()}
-            onLoad={(event) =>
+            onLoad={(event) => {
+              setImageState('ready');
               setNaturalSize({
                 width: event.currentTarget.naturalWidth,
                 height: event.currentTarget.naturalHeight,
-              })
-            }
+              });
+            }}
+            onError={() => setImageState('error')}
           />
         ) : interactive ? (
           <span className="asset-frame__placeholder">{t('Drop a photo here')}</span>
         ) : null}
       </div>
+      {asset && imageState !== 'ready' ? (
+        // The label lives in a data attribute and is drawn through CSS content
+        // so the reader/export text comparison never sees transient UI copy.
+        <span
+          className={`asset-frame__state ${imageState === 'error' ? 'is-error' : ''}`.trim()}
+          role="status"
+          aria-label={imageState === 'error' ? t('Image unavailable') : t('Loading…')}
+          data-label={imageState === 'error' ? t('Image unavailable') : t('Loading…')}
+        />
+      ) : null}
       {interactive ? <span className="asset-frame__hint">{slotHint}</span> : null}
+      {asset?.pending ? <span className="asset-frame__pending">{t('Placing…')}</span> : null}
     </>
   );
 

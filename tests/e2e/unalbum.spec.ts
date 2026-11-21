@@ -70,6 +70,7 @@ async function mockUnalbumPage(page: import('@playwright/test').Page) {
     const body = route.request().postDataJSON() as { ids: string[] };
     const id = body.ids[0];
     const name = id === 'ua-0' ? '山间-0' : '山间-1';
+    await new Promise((resolve) => setTimeout(resolve, 700));
     await route.fulfill({ json: { assets: [importedAsset(id, name)] } });
   });
 }
@@ -102,6 +103,24 @@ test('published UnAlbum photos appear directly in the gallery and import on clic
     page.locator('.asset-tile').filter({ hasNot: page.locator('.asset-tile--remote') }).filter({ hasText: '山间-0' }),
   ).toHaveCount(1);
   await expect(remote).toHaveCount(1);
+});
+
+test('an UnAlbum photo fills the selected frame while it copies', async ({ page }) => {
+  await mockUnalbumPage(page);
+  await signIn(page, '/editor');
+  const remote = page.locator('.asset-tile--remote');
+  await expect(remote).toHaveCount(2);
+
+  // Select a frame, then click the UnAlbum photo: the preview must appear
+  // immediately, with the real asset swapped in when the copy finishes.
+  await page.locator('.asset-frame').first().click();
+  await remote.first().locator('.asset-tile__main').click();
+
+  await expect(page.locator('.asset-frame__pending')).toBeVisible();
+  const frame = page.locator('.asset-frame').first();
+  await expect(frame.locator('img')).toHaveAttribute('src', /\/api\/unalbum\/thumb\/ua-0/);
+  await expect(page.locator('.asset-frame__pending')).toHaveCount(0, { timeout: 20_000 });
+  await expect(frame.locator('img')).toHaveAttribute('src', '/icon-192.png');
 });
 
 test('AI arrangement lists UnAlbum photos inline and imports on selection', async ({ page }) => {

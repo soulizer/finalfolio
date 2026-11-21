@@ -52,6 +52,7 @@ import { buildTermsPath } from '../legal/terms';
 import { useSession } from '../session';
 import { useDelayedVisibility } from '../useDelayedVisibility';
 import { createEditorAssetActions } from './editor/assetActions';
+import { assignAssetToProject } from './editor/assetOperations';
 import { EditorContentSidebar } from './editor/EditorContentSidebar';
 import { EditorExportCenter } from './editor/EditorExportCenter';
 import { EditorOperationsSidebar } from './editor/EditorOperationsSidebar';
@@ -289,6 +290,10 @@ export function EditorPage() {
   const unalbumStatus = useUnalbumStatus(session?.id);
   const unalbumPhotos = useUnalbumPhotos(unalbumStatus?.configured === true && unalbumStatus?.bound === true);
   const unalbumImportPromisesRef = useRef(new Map<string, Promise<Asset | null>>());
+  const pendingUnalbumSlotsRef = useRef(new Map<string, string>());
+  const [pendingUnalbumPlacements, setPendingUnalbumPlacements] = useState<
+    Array<{ photoId: string; pageId: string; slot: string; asset: Asset }>
+  >([]);
   const [layoutEditor, setLayoutEditor] = useState<{
     mode: 'new' | 'edit';
     layoutId: string | null;
@@ -1060,6 +1065,103 @@ export function EditorPage() {
     },
     [project.assets.length, setMessage, t, updateProject],
   );
+
+  /**
+   * Places an UnAlbum photo into the selected frame immediately using its
+   * cached preview, while the real copy is written in the background. The folio
+   * itself only changes when the copy exists, so a pending preview can never be
+   * saved, shared, or exported.
+   */
+  const useUnalbumPhotoInFolio = useCallback(
+    async (photo: UnalbumPhoto): Promise<Asset | null> => {
+      const pageId = selectedPage?.id ?? null;
+      const slot = selectedSlot;
+      if (!pageId || !slot) {
+        return importUnalbumPhoto(photo);
+      }
+
+      const slotKey = `${pageId}:${slot}`;
+      pendingUnalbumSlotsRef.current.set(slotKey, photo.id);
+      const remoteAsset = unalbumPhotoToAsset(photo);
+      const previewSrc = remoteAsset.variants?.thumb?.src || remoteAsset.src;
+      const previewAsset = {
+        ...remoteAsset,
+        id: `unalbum-pending:${photo.id}`,
+        pending: true,
+        src: previewSrc,
+        variants: {
+          original: { src: previewSrc },
+          preview: { src: previewSrc },
+          thumb: { src: previewSrc },
+        },
+      };
+      setPendingUnalbumPlacements((current) => [
+        ...current.filter((entry) => `${entry.pageId}:${entry.slot}` !== slotKey),
+        { photoId: photo.id, pageId, slot, asset: previewAsset },
+      ]);
+
+      const asset = await importUnalbumPhoto(photo);
+      // A newer click on the same frame wins; do not overwrite it with a slower
+      // earlier import.
+      if (pendingUnalbumSlotsRef.current.get(slotKey) !== photo.id) {
+        return asset;
+      }
+      pendingUnalbumSlotsRef.current.delete(slotKey);
+      setPendingUnalbumPlacements((current) => current.filter((entry) => `${entry.pageId}:${entry.slot}` !== slotKey));
+
+      if (asset) {
+        updateProject(
+          (current) =>
+            assignAssetToProject({
+              project: current,
+              selectedPageId: pageId,
+              assetsById,
+              libraryAssetsById,
+              slot,
+              assetId: asset.id,
+              sourceAsset: asset,
+            }) ?? current,
+        );
+      }
+      return asset;
+    },
+    [
+      assetsById,
+      importUnalbumPhoto,
+      libraryAssetsById,
+      selectedPage?.id,
+      selectedSlot,
+      updateProject,
+    ],
+  );
+
+  const pendingPlacementsForPage = useMemo(
+    () =>
+      selectedPage
+        ? pendingUnalbumPlacements.filter((placement) => placement.pageId === selectedPage.id)
+        : [],
+    [pendingUnalbumPlacements, selectedPage],
+  );
+  const previewAssetsById = useMemo(() => {
+    if (!pendingPlacementsForPage.length) {
+      return assetsById;
+    }
+    const merged = { ...assetsById };
+    pendingPlacementsForPage.forEach((placement) => {
+      merged[placement.asset.id] = placement.asset;
+    });
+    return merged;
+  }, [assetsById, pendingPlacementsForPage]);
+  const previewSelectedPage = useMemo(() => {
+    if (!selectedPage || !pendingPlacementsForPage.length) {
+      return selectedPage;
+    }
+    const slots = { ...selectedPage.slots };
+    pendingPlacementsForPage.forEach((placement) => {
+      slots[placement.slot] = placement.asset.id;
+    });
+    return { ...selectedPage, slots };
+  }, [pendingPlacementsForPage, selectedPage]);
 
   const remoteUnalbumPhotos = useMemo(() => {
     const imported = new Set(
@@ -1898,10 +2000,10 @@ export function EditorPage() {
             <div className="magazine-sheet magazine-sheet--editor" style={previewStyle}>
               <MagazinePreview
                 issue={project.issue}
-                page={selectedPage}
+                page={previewSelectedPage ?? selectedPage}
                 onTextEditCommit={handleTextEditCommit}
                 onRequestUpload={handleRequestUpload}
-                assets={assetsById}
+                assets={previewAssetsById}
                 frameRadius={project.frameRadius}
                 pageNumber={selectedPageIndex + 1}
                 selectedSlot={selectedSlot}
@@ -1938,7 +2040,7 @@ export function EditorPage() {
           unalbumLoading={unalbumPhotos.loading}
           unalbumHasMore={Boolean(unalbumPhotos.nextCursor)}
           onLoadMoreUnalbum={unalbumPhotos.loadMore}
-          onImportUnalbumPhoto={importUnalbumPhoto}
+          onUseUnalbumPhoto={useUnalbumPhotoInFolio}
           handleZoomInputChange={handleZoomInputChange}
           libraryAssets={libraryAssets}
           nudgeSelectedCrop={nudgeSelectedCrop}
@@ -2047,7 +2149,13 @@ export function EditorPage() {
               setExportCenterOpen(false);
             }
           }}
-          onRunExport={() => void handleRunExport()}
+          onRunExport={() => {
+            if (pendingUnalbumPlacements.length) {
+              setMessage(t('Wait until the UnAlbum photo finishes copying before exporting.'));
+              return;
+            }
+            void handleRunExport();
+          }}
           onRunPrint={() => void handlePrint()}
           onSelectPreflightIssue={(issue) => {
             setExportCenterOpen(false);

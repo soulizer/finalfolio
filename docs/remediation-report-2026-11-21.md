@@ -79,7 +79,20 @@ so double clicks and re-imports cannot duplicate a photo.
 - Production: `/api/unalbum/status` reports configured; login entry generates an
   authorize URL that UnAlbum accepts.
 
-## 8. Residual
+## 8. Instant placement (option A)
+
+Clicking an UnAlbum photo now fills the selected frame immediately with the
+cached preview and a small “正在放入…” badge; the real copy is written in the
+background and swapped in without another user action. The preview is a
+client-only asset (never part of the project), so it cannot be saved, shared or
+exported; export is blocked with a clear message until the copy finishes. If the
+copy fails, the frame reverts to its previous state and the error is shown.
+
+The AI dialog still copies on click (there is no frame to preview), but the
+metadata cache makes it a single CDN download and failures are surfaced in the
+dialog.
+
+## 9. Residual
 
 - The inline grid shows the first UnAlbum page; “加载更多” pulls the next one.
   There is no search across the remote collection yet.

@@ -19,6 +19,7 @@ export function assignAssetToProject({
   libraryAssetsById,
   slot,
   assetId,
+  sourceAsset: sourceAssetOverride = null,
 }: {
   project: ProjectState;
   selectedPageId: string;
@@ -26,9 +27,10 @@ export function assignAssetToProject({
   libraryAssetsById: Record<string, Asset>;
   slot: string;
   assetId: string;
+  sourceAsset?: Asset | null;
 }) {
   const usedAt = new Date().toISOString();
-  const sourceAsset = libraryAssetsById[assetId] ?? assetsById[assetId];
+  const sourceAsset = libraryAssetsById[assetId] ?? assetsById[assetId] ?? sourceAssetOverride;
   if (!selectedPageId || !sourceAsset) {
     return null;
   }

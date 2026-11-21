@@ -71,6 +71,8 @@ export interface Asset {
   analysis?: AssetAnalysis;
   /** UnAlbum photo id, set when the asset came through the UnAlbum bridge. */
   unalbumId?: string;
+  /** Client-only: a preview shown while the real copy is being written. */
+  pending?: boolean;
 
 }
 

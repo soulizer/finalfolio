@@ -1856,6 +1856,10 @@
   dialog and its button are gone, a click imports and places the photo, and the
   AI dialog lists the same photos inline. Selected tiles use a thin outline
   plus a check instead of the old black multi-ring frame.
+- UnAlbum photos can be placed optimistically: the selected frame shows the
+  cached preview immediately with a “正在放入…” badge, the copy happens in the
+  background and replaces it silently, and export waits for the copy. Pending
+  previews are client-only, so they can never be saved or shared.
 - Previews are served by `/api/unalbum/thumb/:id` (normalized absolute URLs,
   ten-minute metadata cache, allow-listed origins, 12 MB cap), so they no
   longer depend on the CDN's referrer allowlist. Imports carry `unalbumId`, are

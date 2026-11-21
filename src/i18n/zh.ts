@@ -1959,6 +1959,9 @@ const zh: Record<string, string> = {
   'Loading photos…': '正在加载照片…',
   'Add 1 photo': '添加 1 张照片',
   'From UnAlbum': '来自 UnAlbum',
+  'Placing…': '正在放入…',
+  'Wait until the UnAlbum photo finishes copying before exporting.':
+    '正在复制 UnAlbum 照片，完成后再导出。',
   'Load more UnAlbum photos': '加载更多 UnAlbum 照片',
   'Unable to import this photo from UnAlbum.': '无法从 UnAlbum 导入这张照片。',
   'Importing %s of %s…': '正在导入 %s / %s…',

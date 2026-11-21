@@ -52,7 +52,7 @@ type EditorContentSidebarProps = {
   unalbumLoading: boolean;
   unalbumHasMore: boolean;
   onLoadMoreUnalbum: () => void | Promise<void>;
-  onImportUnalbumPhoto: (photo: UnalbumPhoto) => Promise<Asset | null>;
+  onUseUnalbumPhoto: (photo: UnalbumPhoto) => Promise<Asset | null>;
   handleZoomInputChange: (event: ChangeEvent<HTMLInputElement>) => void;
   libraryAssets: Asset[];
   nudgeSelectedCrop: (axis: 'x' | 'y', deltaPixels: number) => void;
@@ -104,7 +104,7 @@ export function EditorContentSidebar({
   unalbumLoading,
   unalbumHasMore,
   onLoadMoreUnalbum,
-  onImportUnalbumPhoto,
+  onUseUnalbumPhoto,
   handleZoomInputChange,
   libraryAssets,
   nudgeSelectedCrop,
@@ -156,7 +156,7 @@ export function EditorContentSidebar({
     }
     setImportingUnalbumIds((current) => new Set(current).add(photo.id));
     try {
-      const asset = await onImportUnalbumPhoto(photo);
+      const asset = await onUseUnalbumPhoto(photo);
       if (asset && selectedSlot) {
         assignAsset(selectedSlot, asset.id);
       }
@@ -524,7 +524,7 @@ export function EditorContentSidebar({
           ) : null}
           {remoteAssets.map(({ photo, asset }) => {
             const importing = importingUnalbumIds.has(photo.id);
-            const status = importing ? t('Importing…') : t('From UnAlbum');
+            const status = importing ? t('Placing…') : t('From UnAlbum');
             return (
               <article key={asset.id} className="asset-tile asset-tile--remote">
                 <button

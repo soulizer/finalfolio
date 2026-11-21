@@ -10606,6 +10606,41 @@ html[lang='zh-CN'] body {
 }
 
 
+.asset-frame__state {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  background: rgba(244, 239, 231, 0.6);
+  color: rgba(17, 17, 17, 0.45);
+  font-size: 0.72rem;
+  pointer-events: none;
+}
+
+.asset-frame__state::after {
+  content: attr(data-label);
+}
+
+.asset-frame__state.is-error {
+  color: rgba(122, 48, 36, 0.75);
+}
+
+.asset-frame__pending {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  z-index: 3;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: rgba(17, 17, 17, 0.62);
+  color: #fff;
+  font-size: 0.62rem;
+  line-height: 1.4;
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+
 /* Photo loading/error placeholder shared by the gallery and the AI grid. */
 .photo-thumb {
   position: relative;
