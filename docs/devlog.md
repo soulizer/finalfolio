@@ -1852,6 +1852,14 @@
   refresh rotation and the reconnect path with a stub UnAlbum server.
 - Deployment: `FINALFOLIO_UNALBUM_*` added to the compose env surface and the
   production env file; the feature is live at https://finalfolio.com.
+- UnAlbum photos now live in the media library itself: the separate picker
+  dialog and its button are gone, a click imports and places the photo, and the
+  AI dialog lists the same photos inline. Selected tiles use a thin outline
+  plus a check instead of the old black multi-ring frame.
+- Previews are served by `/api/unalbum/thumb/:id` (normalized absolute URLs,
+  ten-minute metadata cache, allow-listed origins, 12 MB cap), so they no
+  longer depend on the CDN's referrer allowlist. Imports carry `unalbumId`, are
+  hidden once present, and the server returns the existing asset on retry.
 - First live sign-in surfaced a network quirk: from the production container a
   *cold* TLS connection to unalbum.com can hit undici's 10 s connect timeout
   (the next connection answers in ~2.5 s, pooled requests in ~110 ms), so the

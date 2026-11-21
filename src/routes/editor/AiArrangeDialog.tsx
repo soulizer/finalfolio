@@ -7,8 +7,8 @@ import {
 } from '../../editor/api';
 import { getAssetSource } from '../../editor/assetResources';
 import { confirmAction } from '../../ui/confirm';
+import type { UnalbumPhoto } from '../../editor/api';
 import { MarqueeGrid } from '../../ui/MarqueeGrid';
-import { UnAlbumPicker } from '../../ui/UnAlbumPicker';
 import type { Asset, AssetAnalysis } from '../../editor/types';
 import {
   aiTemplateLabel,
@@ -43,7 +43,11 @@ type AiArrangeDialogProps = {
   uploadTotal: number;
   uploadProgressPercent: number;
   availableAssets: Asset[];
-  unalbumAvailable?: boolean;
+  unalbumPhotos: Array<{ photo: UnalbumPhoto; asset: Asset }>;
+  unalbumLoading: boolean;
+  unalbumHasMore: boolean;
+  onLoadMoreUnalbum: () => void | Promise<void>;
+  onImportUnalbumPhoto: (photo: UnalbumPhoto) => Promise<Asset | null>;
 };
 
 type Phase = 'select' | 'generating' | 'results' | 'applying';
@@ -360,7 +364,11 @@ export function AiArrangeDialog({
   uploadTotal,
   uploadProgressPercent,
   availableAssets,
-  unalbumAvailable = false,
+  unalbumPhotos,
+  unalbumLoading,
+  unalbumHasMore,
+  onLoadMoreUnalbum,
+  onImportUnalbumPhoto,
 }: AiArrangeDialogProps) {
   const t = useT();
   const [buildId] = useState(readBuildId);
@@ -382,7 +390,7 @@ export function AiArrangeDialog({
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [sourcePanel, setSourcePanel] = useState<'none' | 'upload' | 'url'>('none');
-  const [unalbumOpen, setUnalbumOpen] = useState(false);
+  const [importingUnalbumIds, setImportingUnalbumIds] = useState<Set<string>>(new Set());
   const [importUrlValue, setImportUrlValue] = useState('');
   const [importBusy, setImportBusy] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
@@ -1048,7 +1056,7 @@ export function AiArrangeDialog({
                   </div>
                 </div>
 
-                {allAssets.length || localPhotos.length ? (
+                {allAssets.length || localPhotos.length || unalbumPhotos.length ? (
                   <MarqueeGrid className="ai-library-grid" onMarquee={handleMarqueeSelect}>
                     {allAssets.map((asset) => {
                       const selected = selectedAssetIds.has(asset.id);
@@ -1088,6 +1096,40 @@ export function AiArrangeDialog({
                         <span className="ai-library-item__check" aria-hidden="true">✓</span>
                       </button>
                     ))}
+                    {unalbumPhotos.map(({ photo, asset }) => {
+                      const importing = importingUnalbumIds.has(photo.id);
+                      return (
+                        <button
+                          key={asset.id}
+                          type="button"
+                          className="ai-library-item ai-library-item--remote"
+                          title={photo.analysis?.description || asset.name}
+                          disabled={importing}
+                          onClick={async () => {
+                            if (importing) {
+                              return;
+                            }
+                            setImportingUnalbumIds((current) => new Set(current).add(photo.id));
+                            try {
+                              const imported = await onImportUnalbumPhoto(photo);
+                              if (imported) {
+                                void addAssetPhotos([imported]);
+                              }
+                            } finally {
+                              setImportingUnalbumIds((current) => {
+                                const next = new Set(current);
+                                next.delete(photo.id);
+                                return next;
+                              });
+                            }
+                          }}
+                        >
+                          <img src={getAssetSource(asset, 'thumb')} alt={asset.name} />
+                          <span className="ai-library-item__name">{asset.name}</span>
+                          {importing ? <span className="ai-library-item__status">{t('Importing…')}</span> : null}
+                        </button>
+                      );
+                    })}
                   </MarqueeGrid>
                 ) : (
                   <div className="ai-library-empty">
@@ -1095,6 +1137,16 @@ export function AiArrangeDialog({
                     <p className="panel-note">{t('Upload from this device or import a URL to add the first photos.')}</p>
                   </div>
                 )}
+                {unalbumHasMore ? (
+                  <button
+                    type="button"
+                    className="button button--ghost button--small ai-library-more"
+                    disabled={unalbumLoading}
+                    onClick={() => void onLoadMoreUnalbum()}
+                  >
+                    {unalbumLoading ? t('Loading…') : t('Load more UnAlbum photos')}
+                  </button>
+                ) : null}
                 <p className="panel-note ai-selection-hint">
                   {t('Drag across the photos to select a group, Shift-click to select a range, Ctrl/Cmd-click to add or remove one photo.')}
                 </p>
@@ -1106,15 +1158,6 @@ export function AiArrangeDialog({
                 ) : null}
 
                 <div className="ai-source-buttons">
-                  {unalbumAvailable ? (
-                    <button
-                      type="button"
-                      className="button button--ghost button--small"
-                      onClick={() => setUnalbumOpen(true)}
-                    >
-                      {t('Use photos from UnAlbum')}
-                    </button>
-                  ) : null}
                   <button
                     type="button"
                     className={`button button--ghost button--small ${sourcePanel === 'upload' ? 'is-active' : ''}`.trim()}
@@ -1316,16 +1359,6 @@ export function AiArrangeDialog({
           </>
         )}
       </div>
-      {unalbumOpen ? (
-        <UnAlbumPicker
-          open
-          title={t('Use photos from UnAlbum')}
-          onClose={() => setUnalbumOpen(false)}
-          onImported={(assets) => {
-            void addAssetPhotos(assets);
-          }}
-        />
-      ) : null}
     </div>
   );
 }

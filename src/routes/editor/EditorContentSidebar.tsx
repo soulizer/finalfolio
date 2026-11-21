@@ -16,6 +16,7 @@ import {
   PAGE_TITLE_LIMIT,
 } from '../../editor/limits';
 import type { Asset, CropSettings, PageData } from '../../editor/types';
+import type { UnalbumPhoto } from '../../editor/api';
 import type { UploadState } from './uploadState';
 import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
 import { EditorSubsection } from '../../ui/EditorSubsection';
@@ -46,8 +47,11 @@ type EditorContentSidebarProps = {
   handleUploadFiles: (files: File[]) => void | Promise<void>;
   importUrlBusy: boolean;
   onImportFromUrl: (url: string) => boolean | void | Promise<boolean | void>;
-  onOpenUnalbum: () => void;
-  unalbumAvailable: boolean;
+  unalbumPhotos: Array<{ photo: UnalbumPhoto; asset: Asset }>;
+  unalbumLoading: boolean;
+  unalbumHasMore: boolean;
+  onLoadMoreUnalbum: () => void | Promise<void>;
+  onImportUnalbumPhoto: (photo: UnalbumPhoto) => Promise<Asset | null>;
   handleZoomInputChange: (event: ChangeEvent<HTMLInputElement>) => void;
   libraryAssets: Asset[];
   nudgeSelectedCrop: (axis: 'x' | 'y', deltaPixels: number) => void;
@@ -95,8 +99,11 @@ export function EditorContentSidebar({
   handleUploadFiles,
   importUrlBusy,
   onImportFromUrl,
-  onOpenUnalbum,
-  unalbumAvailable,
+  unalbumPhotos,
+  unalbumLoading,
+  unalbumHasMore,
+  onLoadMoreUnalbum,
+  onImportUnalbumPhoto,
   handleZoomInputChange,
   libraryAssets,
   nudgeSelectedCrop,
@@ -131,8 +138,36 @@ export function EditorContentSidebar({
   // enter: the checkbox on a tile, Shift for a range and Ctrl/Cmd for a single
   // tile are always available, so the normal click still assigns the photo.
   const [pickedIds, setPickedIds] = useState<Set<string>>(new Set());
+  const [importingUnalbumIds, setImportingUnalbumIds] = useState<Set<string>>(new Set());
   const pickAnchorRef = useRef<string | null>(null);
   const [importUrlOpen, setImportUrlOpen] = useState(false);
+  const remoteAssets = useMemo(() => {
+    const query = assetSearch.trim().toLowerCase();
+    if (!query) {
+      return unalbumPhotos;
+    }
+    return unalbumPhotos.filter(({ asset }) => asset.name.toLowerCase().includes(query));
+  }, [assetSearch, unalbumPhotos]);
+
+  const handleImportUnalbumPhoto = async (photo: UnalbumPhoto) => {
+    if (importingUnalbumIds.has(photo.id) || assetMutationBusy) {
+      return;
+    }
+    setImportingUnalbumIds((current) => new Set(current).add(photo.id));
+    try {
+      const asset = await onImportUnalbumPhoto(photo);
+      if (asset && selectedSlot) {
+        assignAsset(selectedSlot, asset.id);
+      }
+    } finally {
+      setImportingUnalbumIds((current) => {
+        const next = new Set(current);
+        next.delete(photo.id);
+        return next;
+      });
+    }
+  };
+
   const visibleAssets = useMemo(() => {
     const query = assetSearch.trim().toLowerCase();
     if (!query) {
@@ -228,11 +263,7 @@ export function EditorContentSidebar({
           >
             {t('Add from URL')}
           </button>
-          {unalbumAvailable ? (
-            <button type="button" className="button button--ghost button--small" onClick={onOpenUnalbum}>
-              {t('Add from UnAlbum')}
-            </button>
-          ) : null}
+
           {unusedAssetCount > 0 ? (
             <button
               type="button"
@@ -372,7 +403,7 @@ export function EditorContentSidebar({
           </div>
         ) : null}
         <div className="asset-rail asset-rail--gallery">
-          {libraryAssets.length ? (
+          {libraryAssets.length || remoteAssets.length ? (
             visibleAssets.map((asset) => {
               const placements = assetUsageCounts[asset.id] ?? 0;
               const isSelected = selectedAssetId === asset.id;
@@ -489,7 +520,31 @@ export function EditorContentSidebar({
                 </article>
               );
             })
-          ) : (
+          ) : null}
+          {remoteAssets.map(({ photo, asset }) => {
+            const importing = importingUnalbumIds.has(photo.id);
+            const status = importing ? t('Importing…') : t('From UnAlbum');
+            return (
+              <article key={asset.id} className="asset-tile asset-tile--remote">
+                <button
+                  type="button"
+                  className="asset-tile__main"
+                  title={photo.analysis?.description || asset.name}
+                  disabled={importing}
+                  onClick={() => void handleImportUnalbumPhoto(photo)}
+                >
+                  <img alt={asset.name} src={getAssetSource(asset, 'thumb')} loading="lazy" decoding="async" />
+                  <span className="asset-tile__copy">
+                    <span className="asset-tile__title-row">
+                      <strong>{asset.name}</strong>
+                    </span>
+                    <span>{status}</span>
+                  </span>
+                </button>
+              </article>
+            );
+          })}
+          {remoteAssets.length === 0 && !libraryAssets.length ? (
             <div className="asset-rail__empty">
               <svg
                 viewBox="0 0 24 24"
@@ -507,8 +562,18 @@ export function EditorContentSidebar({
               <strong>{t('No photos yet.')}</strong>
               <span>{t('Use the upload button above, or drag photos straight onto the page.')}</span>
             </div>
-          )}
+          ) : null}
         </div>
+        {unalbumHasMore ? (
+          <button
+            type="button"
+            className="button button--ghost button--small asset-rail__more"
+            disabled={unalbumLoading}
+            onClick={() => void onLoadMoreUnalbum()}
+          >
+            {unalbumLoading ? t('Loading…') : t('Load more UnAlbum photos')}
+          </button>
+        ) : null}
       </section>
       <section className="editor-panel editor-panel--content-work">
         <div className="editor-panel__toolbar">

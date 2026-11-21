@@ -2310,6 +2310,8 @@ try {
                 filename: 'a.jpg',
                 name: 'A',
                 analysis: { status: 'ready', description: '山谷', tags: ['山'] },
+                // Relative variant URLs must resolve against the API origin.
+                variants: { thumb: { url: '/files/photo-1.webp' } },
               },
             ],
             nextCursor: null,
@@ -2347,6 +2349,7 @@ try {
       const page = await store.listPhotosForUser('user-unalbum', {});
       assert.equal(page.photos[0].id, 'photo-1');
       assert.equal(page.photos[0].analysis.description, '山谷');
+      assert.equal(page.photos[0].variants.thumb.url, 'https://unalbum.com/files/photo-1.webp');
 
       const binding = await store.readBinding('user-unalbum');
       assert.equal(binding.accessToken, 'access-2');

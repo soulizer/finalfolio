@@ -69,6 +69,9 @@ export interface Asset {
   lastUsedAt?: string | null;
   /** Tags and description produced by an upstream AI; reused instead of re-reading pixels. */
   analysis?: AssetAnalysis;
+  /** UnAlbum photo id, set when the asset came through the UnAlbum bridge. */
+  unalbumId?: string;
+
 }
 
 export interface CropSettings {

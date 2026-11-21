@@ -66,11 +66,14 @@ Already implemented on the FinalFolio side: OAuth 2.1 authorization-code flow
 with PKCE S256, single-use `state` (10 min TTL, hashed on disk), token refresh
 with a 90 s margin, per-user binding records under `data/unalbum/bindings/`,
 account creation from UnAlbum email (random local password, email marked
-verified, normal Terms-of-Service gate still applies), photo picker in the
-gallery ("从 UnAlbum 添加"), the same picker in the AI arrangement dialog
-("使用 UnAlbum 作品", placed before local upload / URL import), account-page
-binding with disconnect, and server-side import that keeps Upstream AI tags so
-the planner is not charged for re-analysing the same pixels.
+verified, normal Terms-of-Service gate still applies), published UnAlbum
+photos shown directly in the media grid (one click imports and places the
+photo), the same photos listed inline in the AI arrangement dialog, account-page
+binding with disconnect, a server-side preview proxy
+(`/api/unalbum/thumb/:photoId`) so CDN referrer rules cannot blank the grid, and
+server-side import that keeps upstream AI tags so the planner is not charged for
+re-analysing the same pixels. Imported assets carry `unalbumId`, which makes
+re-imports idempotent.
 
 ## 3. What UnAlbum must add
 

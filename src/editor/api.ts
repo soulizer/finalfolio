@@ -265,6 +265,7 @@ export interface AccountUploadListItem {
   height: number | null;
   note: string;
   analysis?: AssetAnalysis | null;
+  unalbumId?: string | null;
   createdAt: string;
   updatedAt: string;
   lastUsedAt: string | null;

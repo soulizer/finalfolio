@@ -125,6 +125,12 @@ const UNALBUM_START_IP_RATE_LIMIT = {
   windowMs: 10 * 60 * 1000,
   message: 'Too many UnAlbum sign-in attempts. Try again later.',
 };
+const UNALBUM_THUMB_RATE_LIMIT = {
+  scope: 'unalbum-thumb-user',
+  limit: 600,
+  windowMs: 10 * 60 * 1000,
+  message: 'Too many UnAlbum preview requests. Try again later.',
+};
 const UNALBUM_USER_RATE_LIMIT = {
   scope: 'unalbum-user',
   limit: 90,
@@ -475,6 +481,9 @@ function sanitizeAsset(asset) {
     src: validateLocalAssetPath(asset.src),
     note: sanitizeText(asset.note, 'Asset note', defaultTextLimits.assetNote, { trim: true }),
     builtIn: asset.builtIn === true,
+    ...(typeof asset.unalbumId === 'string' && asset.unalbumId.trim()
+      ? { unalbumId: asset.unalbumId.trim().slice(0, 120) }
+      : {}),
     ...(sanitizeAssetAnalysis(asset.analysis) ? { analysis: sanitizeAssetAnalysis(asset.analysis) } : {}),
     ...(normalizeAssetScalar(asset.bytes) !== undefined ? { bytes: normalizeAssetScalar(asset.bytes) } : {}),
     ...(typeof asset.mimeType === 'string' && asset.mimeType.trim() ? { mimeType: asset.mimeType.trim() } : {}),
@@ -1595,6 +1604,27 @@ export function createApp({
   const siteStore = createSiteStore({ dataRoot });
   const aiStore = createAiStore({ dataRoot });
   const unalbumStore = createUnalbumStore({ dataRoot });
+  // Listing a page already carries the variant URLs, so previews can be served
+  // without one UnAlbum API call per thumbnail.
+  const unalbumThumbCache = new Map();
+  const UNALBUM_THUMB_TTL_MS = 10 * 60 * 1000;
+  const rememberUnalbumThumbs = (userId, photos) => {
+    const expiresAt = Date.now() + UNALBUM_THUMB_TTL_MS;
+    photos.forEach((photo) => {
+      const url = photo.variants?.thumb?.url || photo.variants?.preview?.url || photo.variants?.original?.url;
+      if (photo.id && url) {
+        unalbumThumbCache.set(`${userId}:${photo.id}`, { url, expiresAt });
+      }
+    });
+    if (unalbumThumbCache.size > 3000) {
+      const now = Date.now();
+      for (const [key, value] of unalbumThumbCache) {
+        if (value.expiresAt < now) {
+          unalbumThumbCache.delete(key);
+        }
+      }
+    }
+  };
   const accountPreferencesStore = createAccountPreferencesStore({
     dataRoot,
     allowedPageThemes,
@@ -2845,6 +2875,7 @@ export function createApp({
             height: hydrated.height ?? null,
             note: record.note,
             analysis: hydrated.analysis ?? record.analysis ?? null,
+            unalbumId: record.unalbumId ?? null,
             createdAt: record.createdAt,
             updatedAt: record.updatedAt,
             lastUsedAt: record.lastUsedAt ?? null,
@@ -3120,6 +3151,72 @@ export function createApp({
     }
   });
 
+  /**
+   * Streams a preview from UnAlbum through FinalFolio. Browser-direct loading
+   * depends on the CDN's hotlink allowlist, and a relative or protected URL
+   * would silently break every tile; this endpoint uses the same normalized
+   * URL as the import path and is cached by the server.
+   */
+  app.get('/api/unalbum/thumb/:photoId', async (request, response, next) => {
+    try {
+      const user = requireAuthenticated(request);
+      await securityStore.consumeRateLimit({ ...UNALBUM_THUMB_RATE_LIMIT, key: user.id });
+      const photoId = String(request.params.photoId ?? '').slice(0, 120);
+      if (!photoId) {
+        throw createBadRequest('Unknown UnAlbum photo.');
+      }
+
+      let binding = null;
+      let entry = unalbumThumbCache.get(`${user.id}:${photoId}`);
+      if (!entry || entry.expiresAt < Date.now()) {
+        const result = await unalbumStore.getPhotoForUser(user.id, photoId);
+        binding = result.binding;
+        rememberUnalbumThumbs(user.id, [result.photo]);
+        entry = unalbumThumbCache.get(`${user.id}:${photoId}`);
+      }
+      if (!entry) {
+        throw createNotFound('This UnAlbum photo has no preview.');
+      }
+
+      const { allowedOrigins, authOrigin } = unalbumOrigins();
+      const sourceUrl = new URL(entry.url);
+      if (!allowedOrigins.has(sourceUrl.origin)) {
+        throw createBadRequest('UnAlbum returned an image URL outside its storage origins.');
+      }
+      const headers = { accept: 'image/jpeg,image/png,image/webp,image/*;q=0.8' };
+      if (authOrigin && sourceUrl.origin === authOrigin) {
+        binding = binding ?? (await unalbumStore.readBinding(user.id));
+        if (!binding) {
+          throw createNotFound('Connect your UnAlbum account first.');
+        }
+        headers.authorization = `Bearer ${binding.accessToken}`;
+      }
+
+      const upstream = await fetch(sourceUrl, {
+        headers,
+        redirect: 'follow',
+        signal: AbortSignal.timeout(20_000),
+      });
+      if (!upstream.ok) {
+        throw createNotFound('This UnAlbum preview could not be loaded.');
+      }
+      const contentType = String(upstream.headers.get('content-type') ?? '');
+      if (!/^image\//i.test(contentType)) {
+        throw createBadRequest('UnAlbum returned a non-image preview.');
+      }
+      const buffer = Buffer.from(await upstream.arrayBuffer());
+      if (!buffer.length || buffer.length > 12 * 1024 * 1024) {
+        throw createBadRequest('This UnAlbum preview is too large.');
+      }
+
+      response.setHeader('Content-Type', contentType);
+      response.setHeader('Cache-Control', 'private, max-age=600');
+      response.send(buffer);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.get('/api/unalbum/photos', async (request, response, next) => {
     try {
       const user = requireAuthenticated(request);
@@ -3129,6 +3226,7 @@ export function createApp({
         query: typeof request.query.q === 'string' ? request.query.q.slice(0, 120) : '',
         limit: request.query.limit,
       });
+      rememberUnalbumThumbs(user.id, result.photos);
       response.json({
         photos: result.photos,
         nextCursor: result.nextCursor,
@@ -3156,8 +3254,22 @@ export function createApp({
 
       const { allowedOrigins, authOrigin } = unalbumOrigins();
       const createdAssets = [];
+      const existingRecords = await assetStore.listAssetRecords({ includeDeleted: false });
+      const importedByUnalbumId = new Map(
+        existingRecords
+          .filter((record) => record.ownerUserId === user.id && typeof record.unalbumId === 'string' && record.unalbumId)
+          .map((record) => [record.unalbumId, record]),
+      );
       for (const id of ids) {
+        // Clicking a photo twice must not create two copies.
+        const alreadyImported = importedByUnalbumId.get(id);
+        if (alreadyImported) {
+          createdAssets.push(await store.hydrateStoredUploadAsset(alreadyImported));
+          continue;
+        }
+
         const { photo } = await unalbumStore.getPhotoForUser(user.id, id);
+        rememberUnalbumThumbs(user.id, [photo]);
 
         // UnAlbum keeps the original even when it exceeds our upload ceiling and
         // derives a 2048px WebP preview for those photos. Prefer whichever copy
@@ -3201,6 +3313,7 @@ export function createApp({
           height: photo.height ?? undefined,
         });
         let asset = await store.hydrateStoredUploadAsset(baseAsset, { ensureVariants: true });
+        asset = { ...asset, unalbumId: photo.id };
         const analysis = sanitizeAssetAnalysis(photo.analysis);
         if (analysis) {
           asset = { ...asset, analysis: { ...analysis, source: 'unalbum' } };

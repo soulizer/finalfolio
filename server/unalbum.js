@@ -468,6 +468,30 @@ export function createUnalbumStore({ dataRoot, now = () => new Date().toISOStrin
     return { profile: sanitizeProfile(payload?.user ?? payload?.data ?? payload), binding: current };
   }
 
+  function normalizeVariantUrl(value) {
+    if (typeof value !== 'string' || !value.trim()) {
+      return '';
+    }
+    try {
+      // UnAlbum may hand back relative paths; resolve them against the API
+      // origin so the browser and the import path see the same absolute URL.
+      return new URL(value.trim(), readUnalbumConfig().baseUrl).toString();
+    } catch {
+      return '';
+    }
+  }
+
+  function normalizeVariant(variant) {
+    if (!variant || typeof variant !== 'object') {
+      return null;
+    }
+    const url = normalizeVariantUrl(variant.url);
+    return {
+      ...variant,
+      ...(url ? { url } : {}),
+    };
+  }
+
   function normalizePhoto(photo) {
     return {
       id: photo?.id === undefined || photo?.id === null ? '' : String(photo.id).slice(0, 120),
@@ -478,7 +502,14 @@ export function createUnalbumStore({ dataRoot, now = () => new Date().toISOStrin
       bytes: Number.isFinite(photo?.bytes) ? Math.round(photo.bytes) : null,
       createdAt: typeof photo?.createdAt === 'string' ? photo.createdAt : null,
       analysis: photo?.analysis && typeof photo.analysis === 'object' ? photo.analysis : null,
-      variants: photo?.variants && typeof photo.variants === 'object' ? photo.variants : {},
+      variants:
+        photo?.variants && typeof photo.variants === 'object'
+          ? {
+              original: normalizeVariant(photo.variants.original),
+              preview: normalizeVariant(photo.variants.preview),
+              thumb: normalizeVariant(photo.variants.thumb),
+            }
+          : {},
     };
   }
 

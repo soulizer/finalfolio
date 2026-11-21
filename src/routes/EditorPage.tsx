@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { MagazinePreview } from '../components/MagazinePreview';
 import { TemplateIssuePreview } from '../components/TemplateIssuePreview';
 import { LayoutThumbnail } from '../components/LayoutThumbnail';
-import { AccountUploadListItem, importAssetFromUrl } from '../editor/api';
+import { AccountUploadListItem, importAssetFromUrl, importUnalbumPhotos, type UnalbumPhoto } from '../editor/api';
 import { getConfirmationMessage } from '../editor/confirmations';
 import { formatDateTime } from '../editor/dateFormat';
 import { getAssetSource } from '../editor/assetResources';
@@ -57,8 +57,8 @@ import { EditorExportCenter } from './editor/EditorExportCenter';
 import { EditorOperationsSidebar } from './editor/EditorOperationsSidebar';
 import { EditorLoadingState, EditorLockedState, EditorUnavailableState } from './editor/EditorShellStates';
 import { AiArrangeDialog, type AiPhoto } from './editor/AiArrangeDialog';
-import { UnAlbumPicker } from '../ui/UnAlbumPicker';
 import { useUnalbumStatus } from '../editor/useUnalbumStatus';
+import { unalbumPhotoToAsset, useUnalbumPhotos } from '../editor/useUnalbumPhotos';
 import { LayoutEditorDialog } from './editor/LayoutEditorDialog';
 import { createEditorExportActions } from './editor/exportFlow';
 import { createEditorProjectShellActions } from './editor/projectActions';
@@ -286,9 +286,9 @@ export function EditorPage() {
   const [shareCopyState, setShareCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
   const [loadError, setLoadError] = useState<string | null>(null);
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
-  const [unalbumPickerOpen, setUnalbumPickerOpen] = useState(false);
   const unalbumStatus = useUnalbumStatus(session?.id);
-  const unalbumAvailable = unalbumStatus?.configured === true;
+  const unalbumPhotos = useUnalbumPhotos(unalbumStatus?.configured === true && unalbumStatus?.bound === true);
+  const unalbumImportPromisesRef = useRef(new Map<string, Promise<Asset | null>>());
   const [layoutEditor, setLayoutEditor] = useState<{
     mode: 'new' | 'edit';
     layoutId: string | null;
@@ -1009,28 +1009,62 @@ export function EditorPage() {
     [project.assets.length, setMessage, t, updateProject],
   );
 
-  const handleUnalbumImported = useCallback(
-    (assets: Asset[]) => {
-      const remaining = Math.max(PROJECT_ASSET_LIMIT - project.assets.length, 0);
-      const accepted = assets.slice(0, remaining);
-      if (accepted.length) {
-        updateProject((current) => {
-          const existing = new Set(current.assets.map((asset) => asset.id));
-          return { ...current, assets: [...accepted.filter((asset) => !existing.has(asset.id)), ...current.assets] };
-        });
-        setMessage(
-          t(countLabel(accepted.length, 'Added 1 photo from UnAlbum.', 'Added %s photos from UnAlbum.')).replace(
-            '%s',
-            String(accepted.length),
-          ),
-        );
+  /**
+   * UnAlbum photos shown in the grids are still remote. The first use copies
+   * the file server-side (with its upstream AI tags) and returns the local
+   * asset, so selecting one is a single click for the user. Concurrent clicks
+   * share one request.
+   */
+  const importUnalbumPhoto = useCallback(
+    async (photo: UnalbumPhoto): Promise<Asset | null> => {
+      const inflight = unalbumImportPromisesRef.current.get(photo.id);
+      if (inflight) {
+        return inflight;
       }
-      if (!accepted.length || accepted.length < assets.length) {
+      if (project.assets.length >= PROJECT_ASSET_LIMIT) {
         setMessage(t('This folio already holds the maximum of %s photos.').replace('%s', String(PROJECT_ASSET_LIMIT)));
+        return null;
       }
+
+      const task = importUnalbumPhotos([photo.id])
+        .then(({ assets }) => {
+          const asset = assets[0] ?? null;
+          if (!asset) {
+            return null;
+          }
+          updateProject((current) => ({
+            ...current,
+            assets: [asset, ...current.assets.filter((entry) => entry.id !== asset.id)],
+          }));
+          setMessage(t('Added 1 photo from UnAlbum.'));
+          return asset;
+        })
+        .catch((error) => {
+          setMessage(
+            error instanceof Error
+              ? t(error.message)
+              : t('Unable to import this photo from UnAlbum.'),
+          );
+          return null;
+        })
+        .finally(() => {
+          unalbumImportPromisesRef.current.delete(photo.id);
+        });
+
+      unalbumImportPromisesRef.current.set(photo.id, task);
+      return task;
     },
     [project.assets.length, setMessage, t, updateProject],
   );
+
+  const remoteUnalbumPhotos = useMemo(() => {
+    const imported = new Set(
+      libraryAssets.map((asset) => asset.unalbumId).filter((id): id is string => Boolean(id)),
+    );
+    return unalbumPhotos.photos
+      .filter((photo) => !imported.has(photo.id))
+      .map((photo) => ({ photo, asset: unalbumPhotoToAsset(photo) }));
+  }, [libraryAssets, unalbumPhotos.photos]);
 
   const handleApplyAiPlan = useCallback(
     async (bundle: AiPlanBundle, plan: AiPlan, photos: AiPhoto[]) => {
@@ -1896,8 +1930,11 @@ export function EditorPage() {
           handleUploadFiles={handleUploadFilesWithLimit}
           importUrlBusy={importUrlBusy}
           onImportFromUrl={handleImportFromUrl}
-          onOpenUnalbum={() => setUnalbumPickerOpen(true)}
-          unalbumAvailable={unalbumAvailable}
+          unalbumPhotos={remoteUnalbumPhotos}
+          unalbumLoading={unalbumPhotos.loading}
+          unalbumHasMore={Boolean(unalbumPhotos.nextCursor)}
+          onLoadMoreUnalbum={unalbumPhotos.loadMore}
+          onImportUnalbumPhoto={importUnalbumPhoto}
           handleZoomInputChange={handleZoomInputChange}
           libraryAssets={libraryAssets}
           nudgeSelectedCrop={nudgeSelectedCrop}
@@ -2113,18 +2150,14 @@ export function EditorPage() {
           uploadTotal={uploadState.totalFiles}
           uploadProgressPercent={uploadProgressPercent}
           availableAssets={libraryAssets}
-          unalbumAvailable={unalbumAvailable}
+          unalbumPhotos={remoteUnalbumPhotos}
+          unalbumLoading={unalbumPhotos.loading}
+          unalbumHasMore={Boolean(unalbumPhotos.nextCursor)}
+          onLoadMoreUnalbum={unalbumPhotos.loadMore}
+          onImportUnalbumPhoto={importUnalbumPhoto}
         />
       ) : null}
 
-      {unalbumPickerOpen ? (
-        <UnAlbumPicker
-          open
-          title={t('Add from UnAlbum')}
-          onClose={() => setUnalbumPickerOpen(false)}
-          onImported={handleUnalbumImported}
-        />
-      ) : null}
 
       {layoutEditor ? (
         <LayoutEditorDialog

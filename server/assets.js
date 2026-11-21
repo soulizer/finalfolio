@@ -82,6 +82,7 @@ function sanitizeAssetRecord(record) {
           }
         : null,
     analysis: sanitizeAssetAnalysis(record.analysis),
+    unalbumId: typeof record.unalbumId === 'string' && record.unalbumId.trim() ? record.unalbumId.trim().slice(0, 120) : null,
     ownerUserId: typeof record.ownerUserId === 'string' ? record.ownerUserId : null,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
@@ -135,6 +136,7 @@ export function createAssetStore({
       mimeType: typeof asset.mimeType === 'string' ? asset.mimeType : null,
       variants: asset.variants ?? null,
       analysis: sanitizeAssetAnalysis(asset.analysis),
+      unalbumId: typeof asset.unalbumId === 'string' && asset.unalbumId.trim() ? asset.unalbumId.trim().slice(0, 120) : null,
       ownerUserId,
       createdAt: timestamp,
       updatedAt: timestamp,
