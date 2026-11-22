@@ -111,6 +111,8 @@ type DeskFrame = {
   right: number;
   classes: string;
   gradients: number;
+  leafShadows: number;
+  leafFilters: string[];
 };
 
 type ShadowSnapshot = {
@@ -157,6 +159,7 @@ async function startDeskRecording(page: Page) {
         const style = getComputedStyle(gradient);
         return style.display !== 'none' && style.visibility === 'visible' && Number(style.opacity) > 0 && gradient.getBoundingClientRect().width > 1;
       }).length;
+      const leaves = Array.from(book.querySelectorAll<HTMLElement>('.page-wrapper.is-leaf-lifting'));
       (scope.__deskFrames as unknown[]).push({
         t: Math.round(performance.now() - started),
         lifted: book.hasAttribute('data-lifted'),
@@ -167,6 +170,8 @@ async function startDeskRecording(page: Page) {
         right: Number.parseFloat(getComputedStyle(book, '::after').opacity),
         classes: (book.className.match(/shadow-(left|right)/g) ?? []).join('+') || 'none',
         gradients,
+        leafShadows: leaves.length,
+        leafFilters: leaves.map((leaf) => getComputedStyle(leaf).filter),
       });
       requestAnimationFrame(tick);
     };
@@ -197,6 +202,20 @@ function expectDeskRuleHolds(frames: DeskFrame[]) {
   }
   for (const frame of frames) {
     expect(frame.gradients, `frame ${frame.t}ms: painted spine gradient`).toBe(0);
+  }
+
+  // The correct shadows must survive: the lifted sheet keeps its own drop
+  // shadow, and no resting page carries one.
+  const leafFrames = lifted.filter((frame) => frame.leafShadows > 0);
+  expect(leafFrames.length, 'a lifted sheet keeps a shadow').toBeGreaterThan(0);
+  for (const frame of leafFrames) {
+    expect(frame.leafFilters.length, `frame ${frame.t}ms: leaf filter`).toBeGreaterThan(0);
+    for (const filter of frame.leafFilters) {
+      expect(filter, `frame ${frame.t}ms: leaf drop-shadow`).toContain('drop-shadow');
+    }
+  }
+  for (const frame of frames.filter((candidate) => !isLiftedFrame(candidate))) {
+    expect(frame.leafShadows, `frame ${frame.t}ms: leaf shadow at rest`).toBe(0);
   }
 }
 

@@ -5071,6 +5071,15 @@ button.asset-frame {
   pointer-events: none;
 }
 
+/* A lifted sheet keeps its own shadow. It is a filter on the rotated page
+   wrapper, so it follows the page through the air and is removed when the page
+   is flat again. The desk shadow is separate and stays off while lifting. */
+.issue-viewer__turnjs .page-wrapper.is-leaf-lifting {
+  filter:
+    drop-shadow(0 16px 24px rgba(17, 17, 17, 0.17))
+    drop-shadow(0 3px 7px rgba(17, 17, 17, 0.09));
+}
+
 /* Turn.js paints fold gradients on the moving and revealed pages even when the
    `gradients` option is off, and only in the direction it was flipping. The
    spine shading must be the same in both directions, so none of them paint. */

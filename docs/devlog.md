@@ -1919,7 +1919,10 @@
   returns only after React has committed the page turn.js is on.
 - Turn.js gradients are disabled and their layers hidden, so the spine has the same
   (no) shading in both directions.
-- Removed the moving-page drop-shadow, since it also falls on the background.
+- The moving sheet keeps its own shadow: the per-frame pass marks page wrappers
+  whose `.inner-page` is actually rotated (both faces of the sheet) and filters
+  them. It travels with the paper and is removed when the sheet is flat. Removing
+  this along with the static shadow was an over-correction.
 - Earlier attempts used a React-driven mode and a turn-event flag. Both could show
   a stale shadow when a re-layout cancelled a turn; the commit gate closes that.
 

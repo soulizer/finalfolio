@@ -85,6 +85,24 @@ function isTurnJsLifted(turnInstance: TurnJsInstance) {
   return (data.pageMv?.length ?? 0) > 0 || Boolean(data.status) || Boolean(data.peel);
 }
 
+// Marks the sheets that are actually rotated away from the flat plane. Their
+// drop shadow travels with the paper, so a turn keeps depth without leaving a
+// shadow on the desk. Resting pages never get the filter.
+function syncLiftedLeafShadows(book: HTMLElement) {
+  book.querySelectorAll<HTMLElement>('.page-wrapper').forEach((wrapper) => {
+    const innerPage = wrapper.querySelector<HTMLElement>('.inner-page');
+    const transform = innerPage ? window.getComputedStyle(innerPage).transform : 'none';
+    const moving = transform !== '' && transform !== 'none';
+    wrapper.classList.toggle('is-leaf-lifting', moving);
+  });
+}
+
+function clearLiftedLeafShadows(book: HTMLElement) {
+  book.querySelectorAll('.page-wrapper.is-leaf-lifting').forEach((wrapper) => {
+    wrapper.classList.remove('is-leaf-lifting');
+  });
+}
+
 function clearIdlePeelAffordance(turnInstance: TurnJsInstance) {
   if (!turnInstance?.turn) {
     return;
@@ -318,6 +336,11 @@ export function useIssueTurnJsRuntime({
           (uncommitted && uncommittedFrames <= UNCOMMITTED_PAGE_TIMEOUT_FRAMES);
         if (book.hasAttribute('data-lifted') !== lifted) {
           book.toggleAttribute('data-lifted', lifted);
+        }
+        if (lifted) {
+          syncLiftedLeafShadows(book);
+        } else {
+          clearLiftedLeafShadows(book);
         }
       }
 

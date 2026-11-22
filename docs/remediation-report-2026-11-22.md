@@ -39,23 +39,26 @@ spine has either the same shading in both turn directions or none at all.
   page) → left. After release they fade in over 90ms.
 - **Spine.** Turn.js's `gradients` option is off and its gradient layers are hidden
   in CSS. No spine shading is painted in either direction, at rest or in flight.
-- **No moving-page shadow.** A drop-shadow on the moving page would still fall on
-  the background, so it is not used.
+- **The moving sheet keeps its own shadow.** A per-frame pass marks the page
+  wrappers whose `.inner-page` is actually rotated (the front and back faces of
+  the sheet in the air). Those wrappers get a drop-shadow filter; it travels with
+  the paper and is removed when the sheet is flat again. This is the correct
+  shadow that must survive a turn, and it exists in both directions.
 - **Mobile.** Turns lift the desk like desktop. The horizontal auto-slide does not
   lift any page; the shadow stays under the page that is now centred.
 
 **Measured (1200ms turns, every animation frame):**
 
-| Transition | Frames lifted | Desk visible while lifted | Painted spine gradients |
-| --- | --- | --- | --- |
-| Cover → spread | 73 | 0 | 0 |
-| Spread → spread (forward) | 73 | 0 | 0 |
-| Spread → cover (closing) | 70 | 0 | 0 |
-| Spread → last page | 73 | 0 | 0 |
-| Last page → spread (backward) | 71 | 0 | 0 |
-| Drag, cancelled | 64 | 0 | 0 |
-| Drag, backward to cover | 102 | 0 | 0 |
-| Drag, forward to spread | 100 | 0 | 0 |
+| Transition | Frames lifted | Desk visible while lifted | Painted spine gradients | Sheet shadow present |
+| --- | --- | --- | --- | --- |
+| Cover → spread | 73 | 0 | 0 | yes (`p1`/`p2`) |
+| Spread → spread (forward) | 73 | 0 | 0 | yes (`p3`/`p4`) |
+| Spread → cover (closing) | 70 | 0 | 0 | yes (`p1`/`p2`) |
+| Spread → last page | 73 | 0 | 0 | yes (`p5`/`p6`) |
+| Last page → spread (backward) | 71 | 0 | 0 | yes (`p3`/`p4`) |
+| Drag, cancelled | 64 | 0 | 0 | yes |
+| Drag, backward to cover | 102 | 0 | 0 | yes |
+| Drag, forward to spread | 100 | 0 | 0 | yes |
 
 After each landing: cover `right=1, left=0`; spread `both=1`; last page `left=1,
 right=0`.
@@ -64,11 +67,11 @@ right=0`.
 
 | State | Evidence |
 | --- | --- |
-| Cover opening, desk off while lifting | `2026-11-22-reader-opening.png` |
-| Forward turn mid-flight, no desk, no spine band | `2026-11-22-reader-turning.png` |
-| Backward turn mid-flight, same spine as forward | `2026-11-22-reader-backturn.png` |
-| Closing, no desk under the lifted page | `2026-11-22-reader-closing.png` |
-| Last page in the air, no desk | `2026-11-22-reader-last-turn.png` |
+| Cover opening: desk off, sheet shadow stays | `2026-11-22-reader-opening.png` |
+| Forward turn: no desk, sheet shadow travels | `2026-11-22-reader-turning.png` |
+| Backward turn: same sheet shadow as forward | `2026-11-22-reader-backturn.png` |
+| Closing: no desk, sheet shadow leaves with it | `2026-11-22-reader-closing.png` |
+| Last page: no desk, sheet shadow stays | `2026-11-22-reader-last-turn.png` |
 | Resting spread, desk back after landing | `2026-11-22-reader-spread.png` |
 | Last page (paper left) | `2026-11-22-reader-last.png` |
 | Hover peel (folded corner) | `2026-11-22-reader-peel.png` |
@@ -78,8 +81,9 @@ right=0`.
 
 **Regression guard:** `tests/e2e/reader-turn.spec.ts` records every animation frame
 of each transition. It asserts that no frame with a lifted page has desk opacity
-above zero, that no frame paints a turn.js gradient, and that the first resting
-frame already shows the landed state. It also covers rest states, a cancelled
+above zero, that no frame paints a turn.js gradient, that a lifted frame keeps a
+drop-shadow on the rotated sheet while resting pages have none, and that the
+first resting frame already shows the landed state. It also covers rest states, a cancelled
 drag, and the mobile slide-versus-turn distinction.
 
 ### Known limitation found while validating the opening

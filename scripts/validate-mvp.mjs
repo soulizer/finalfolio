@@ -1852,6 +1852,9 @@ try {
     assert.match(useIssueTurnJsRuntime, /function isTurnJsLifted/);
     assert.match(useIssueTurnJsRuntime, /toggleAttribute\('data-lifted', lifted\)/);
     assert.doesNotMatch(issueViewPageTurnJs, /turnShadowView|onTurnTargetChange/);
+    assert.match(styles, /\.page-wrapper\.is-leaf-lifting \{/);
+    assert.match(styles, /drop-shadow\(0 16px 24px rgba\(17, 17, 17, 0\.17\)\)/);
+    assert.match(useIssueTurnJsRuntime, /syncLiftedLeafShadows/);
     assert.match(editorProjectLifecycle, /export function buildDraftProjectHydration/);
     assert.match(editorProjectLifecycle, /export function normalizeEditorProjectRecord/);
     assert.match(editorProjectPersistence, /export function applyServerProjectRecordState/);
