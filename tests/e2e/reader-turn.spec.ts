@@ -274,7 +274,7 @@ test('closing a spread removes the left shadow as soon as the page lifts', async
   // The left page is already off the table; its body shadow must go with it.
   const inFlight = await shadowSnapshot(page);
   expect(inFlight?.className).not.toContain('issue-viewer__turnjs--shadow-left');
-  expect(inFlight!.left.opacity).toBeLessThan(0.3);
+  expect(inFlight!.left.opacity).toBeCloseTo(0, 2);
   expect(inFlight!.className).toContain('issue-viewer__turnjs--shadow-right');
   // The gutter stays, because the leaf is still hinged at the spine.
   expect(inFlight!.hingeOpacity).toBeGreaterThan(0.9);

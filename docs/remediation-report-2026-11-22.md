@@ -40,9 +40,10 @@ paper block, not to the viewport:
   the `spread` mode, so both forward and backward turns have the same center
   shading, a closing page keeps the hinge while it is in the air, and a cover or
   last page with an empty half has no crease over the empty paper.
-- Transitions are short (120ms) and only start after the class changes, so a
-  shadow cannot appear before its page has landed or linger while the page is
-  already off the table.
+- Appearing is a 90ms fade after the class changes; disappearing is immediate
+  in the same frame as the class change. A shadow therefore cannot appear before
+  its page has landed or linger for even a frame while the page is already off
+  the table.
 - Folding/peeling needs no extra layer: turn.js already paints the fold
   gradients. The body shadow never rotates with a leaf, so it cannot smear
   across a folded corner.

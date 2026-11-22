@@ -5035,7 +5035,6 @@ button.asset-frame {
   pointer-events: none;
   border-radius: 1px;
   opacity: 0;
-  transition: opacity 120ms ease-out;
   box-shadow:
     0 1px 2px rgba(17, 17, 17, 0.14),
     0 6px 14px rgba(17, 17, 17, 0.1),
@@ -5056,6 +5055,19 @@ button.asset-frame {
 .issue-viewer__turnjs.issue-viewer__turnjs--ready.issue-viewer__turnjs--shadow-left::before,
 .issue-viewer__turnjs.issue-viewer__turnjs--ready.issue-viewer__turnjs--shadow-right::after {
   opacity: 1;
+  animation: issue-viewer-shadow-in 90ms ease-out;
+}
+
+/* A shadow may fade in after its page lands, but it must never linger once the
+   page lifts: removing the class drops it in the same frame as the turn starts. */
+@keyframes issue-viewer-shadow-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 /* The gutter is part of the book, not of a single leaf. A spread always has a
@@ -5071,7 +5083,6 @@ button.asset-frame {
   pointer-events: none;
   opacity: 0;
   transform: translateX(-50%);
-  transition: opacity 120ms ease-out;
   background: linear-gradient(
     90deg,
     transparent 0%,
@@ -5087,6 +5098,7 @@ button.asset-frame {
 
 .issue-viewer__turnjs.issue-viewer__turnjs--ready.issue-viewer__turnjs--book-spread .issue-turnjs__hinge {
   opacity: 1;
+  animation: issue-viewer-shadow-in 90ms ease-out;
 }
 
 .issue-viewer__turnjs .even .gradient,
