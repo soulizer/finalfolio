@@ -1642,6 +1642,9 @@ try {
     assert.match(issueTurnJsBook, /export const IssueTurnJsBook/);
     assert.match(issueTurnJsBook, /export type TurnJsBookHandle/);
     assert.match(issueTurnJsBook, /useIssueTurnJsRuntime/);
+    assert.match(issueTurnJsBook, /issue-viewer__turnjs--book-/);
+    assert.match(issueTurnJsBook, /pageSideMode/);
+    assert.match(issueTurnJsBook, /turning/);
     assert.match(useIssueTurnJsRuntime, /await Promise\.all\(\[/);
     assert.match(useIssueTurnJsRuntime, /import\('\.\.\/turnjs'\)/);
     assert.match(useIssueTurnJsRuntime, /import\('\.\/issueViewTurnJsMarkup'\)/);
@@ -1694,7 +1697,9 @@ try {
     assert.match(issueViewShellStates, /export function IssueViewLoadingState/);
     assert.match(issueViewShellStates, /export function IssueViewUnavailableState/);
     assert.match(issueViewShellStates, /issue-view-layout--loading/);
-    assert.match(issueViewShellStates, /issue-viewer__placeholder-page/);
+    assert.match(issueViewShellStates, /issue-viewer__placeholder-spinner/);
+    assert.match(issueViewShellStates, /Loading the folio/);
+    assert.doesNotMatch(issueViewShellStates, /issue-viewer__placeholder-page/);
     assert.match(issueViewShellStates, /Shared folio not available\./);
     assert.match(issueViewTurnJsMarkup, /export function renderTurnJsPageMarkup/);
     assert.match(issueViewTurnJsMarkup, /createRoot/);
@@ -1834,8 +1839,12 @@ try {
     assert.match(styles, /\.loading-field \{\s+display: flex;\s+align-items: center;\s+min-height: 0;/);
     assert.match(
       styles,
-      /\.issue-viewer__placeholder-page \{\s+min-height: clamp\(280px, 48vh, 520px\);\s+border-radius: var\(--radius-lg\);/,
+      /\.issue-viewer__placeholder-spinner \{\s+width: 22px;\s+height: 22px;/,
     );
+    assert.match(styles, /\.issue-viewer__turnjs::before \{/);
+    assert.match(styles, /\.issue-viewer__turnjs--turning::before \{/);
+    assert.match(styles, /\.issue-viewer__turnjs--book-single-right::before \{/);
+    assert.match(styles, /\.issue-viewer__turnjs--book-single-left::before \{/);
     assert.match(editorProjectLifecycle, /export function buildDraftProjectHydration/);
     assert.match(editorProjectLifecycle, /export function normalizeEditorProjectRecord/);
     assert.match(editorProjectPersistence, /export function applyServerProjectRecordState/);

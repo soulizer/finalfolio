@@ -1,6 +1,6 @@
 import { CSSProperties, ForwardedRef, forwardRef } from 'react';
 import type { Asset, ProjectFonts } from '../editor/types';
-import type { RenderedViewerPage, TurnJsDisplayMode, VisibleTurnView } from './issueViewReaderState';
+import type { RenderedViewerPage, TurnJsDisplayMode, ViewerPositionMode, VisibleTurnView } from './issueViewReaderState';
 import { useIssueTurnJsRuntime, type TurnJsBookHandle as IssueTurnJsBookHandle } from './useIssueTurnJsRuntime';
 
 export type TurnJsBookHandle = IssueTurnJsBookHandle;
@@ -17,6 +17,8 @@ type TurnJsBookProps = {
   pageHeight: number;
   pageScale: number;
   displayMode: TurnJsDisplayMode;
+  pageSideMode: ViewerPositionMode;
+  turning: boolean;
   initialPage: number;
   onViewChange: (view: VisibleTurnView, page: number) => void;
   onTurningChange: (turning: boolean) => void;
@@ -35,6 +37,8 @@ export const IssueTurnJsBook = forwardRef(function IssueTurnJsBook(
     pageHeight,
     pageScale,
     displayMode,
+    pageSideMode,
+    turning,
     initialPage,
     onViewChange,
     onTurningChange,
@@ -61,7 +65,7 @@ export const IssueTurnJsBook = forwardRef(function IssueTurnJsBook(
   return (
     <div
       ref={bookRef}
-      className="issue-viewer__turnjs"
+      className={`issue-viewer__turnjs issue-viewer__turnjs--book-${pageSideMode} ${turning ? 'issue-viewer__turnjs--turning' : ''}`.trim()}
       style={{
         '--issue-turnjs-scale': pageScale,
         width: `${Math.round(pageWidth * spreadPageCount)}px`,

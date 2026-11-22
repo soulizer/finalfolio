@@ -101,6 +101,9 @@ Panel and dialog actions use **text labels** so their meaning stays explicit.
   the chip or cover the photo.
 - Only decorative illustrations inside layout previews may use SVG. They are not
   controls and must not be interactive.
+- **Every destructive action is a trash icon** with `aria-label` and `title`,
+  including account/admin row actions; it always goes through the shared
+  delete-confirmation dialog. Text buttons named "Delete" are not allowed.
 
 ## 4. Buttons and icon buttons
 
@@ -159,6 +162,24 @@ A selected card or photo must be readable without hunting for a tiny check:
   tile, and never dim the photo.
 - The selection must not change the tile's size, so horizontal and vertical
   grid gaps stay identical.
+
+### 6d. Reader book surface
+
+The shared reader (turn.js) represents paper on a table, so its depth must
+follow the paper, not the viewport:
+
+- A **non-rotating contact shadow** sits behind the current paper block: two
+  soft layers plus a 1px edge. It is a pseudo-element of the book, never a child
+  that turn.js could mistake for a page.
+- **Spread:** the shadow spans both halves. **Cover:** only the right half.
+  **Last page:** only the left half. Never shadow the empty half of a spread.
+- **During a turn or drag:** the shadow spans the full spread until the turn
+  lands, because the book block is still under the moving leaf. The leaf's own
+  fold shading comes from turn.js; the body shadow never rotates with it.
+- The shadow fades in only after turn.js reports its pages ready, so it never
+  appears around an empty box.
+- Do not add page-level `box-shadow`/`drop-shadow`: turn.js clips and transforms
+  page wrappers, and per-leaf shadows double the fold gradients.
 
 ## 6b. Panel collapse and sub-sections
 

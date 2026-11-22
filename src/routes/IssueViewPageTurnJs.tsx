@@ -183,6 +183,8 @@ export function IssueViewPage() {
                     pageHeight={pageHeight}
                     pageScale={pageScale}
                     displayMode={viewerDisplayMode}
+                    pageSideMode={currentView.mode}
+                    turning={isTurning}
                     initialPage={initialBookPage}
                     onTurningChange={setIsTurning}
                     onViewChange={handleBookViewChange}

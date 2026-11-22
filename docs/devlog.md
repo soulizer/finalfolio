@@ -1882,3 +1882,14 @@
   error. Token/API calls now retry connection and timeout failures with a 25 s
   per-attempt budget, and the callback reports the failing stage (`state`,
   `denied`, `network`, `no-email`, `disabled`) instead of a generic failure.
+
+### 2026-11-22 — The reader gets real paper depth
+
+- The shared reader had a full shadow stylesheet that no code ever activated,
+  and turn.js's own shadow was forced hidden. The book now draws a non-rotating
+  contact shadow and 1px paper edge behind the actual paper footprint: full
+  spread, right half for the cover, left half for the last page, full width only
+  while a turn is in flight. Fold shading still comes from turn.js, so a peeled
+  corner never drags a rectangular shadow with it.
+- Verified at rest, mid-turn, after turn, hover peel, dragged fold, mobile and
+  fullscreen; a new e2e asserts the three rest geometries.

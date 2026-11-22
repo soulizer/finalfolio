@@ -124,3 +124,55 @@ test('the loading state is a neutral indicator, not a fake spread', async ({ pag
   await expect(page.locator('.issue-viewer__placeholder-book')).toHaveCount(0);
   await expect(page.locator('.issue-viewer__turnjs--ready')).toBeVisible({ timeout: 20_000 });
 });
+
+
+test('the book shadow follows the visible paper in every rest state', async ({ page }) => {
+  await signIn(page, '/editor');
+  const sharePath = await createShare(page);
+  await page.goto(sharePath);
+  await expect(page.locator('.issue-viewer__turnjs--ready')).toBeVisible({ timeout: 20_000 });
+
+  const shadow = () =>
+    page.evaluate(() => {
+      const book = document.querySelector('.issue-viewer__turnjs');
+      if (!book) return null;
+      const rect = book.getBoundingClientRect();
+      const style = window.getComputedStyle(book, '::before');
+      return {
+        className: book.className,
+        left: Number.parseFloat(style.left),
+        width: Number.parseFloat(style.width),
+        opacity: Number.parseFloat(style.opacity),
+        bookWidth: rect.width,
+      };
+    });
+
+  // Cover: paper only on the right half.
+  await expect.poll(async () => (await shadow())?.opacity ?? 0).toBe(1);
+  const cover = await shadow();
+  expect(cover?.className).toContain('issue-viewer__turnjs--book-single-right');
+  expect(cover!.width).toBeCloseTo(cover!.bookWidth / 2, 0);
+  expect(cover!.left).toBeCloseTo(cover!.bookWidth / 2, 0);
+
+  // Spread: both halves.
+  await page.waitForTimeout(1000);
+  const next = page.locator('.issue-view-sidebar button').filter({ hasText: /Next|下一页/ }).first();
+  await next.click();
+  await page.waitForTimeout(1000);
+  const spread = await shadow();
+  expect(spread?.className).toContain('issue-viewer__turnjs--book-spread');
+  expect(spread!.left).toBeCloseTo(0, 0);
+  expect(spread!.width).toBeCloseTo(spread!.bookWidth, 0);
+
+  // Last page: paper only on the left half.
+  for (let step = 0; step < 3; step += 1) {
+    const control = page.locator('.issue-view-sidebar button').filter({ hasText: /Next|下一页/ }).first();
+    if (!(await control.isEnabled().catch(() => false))) break;
+    await control.click();
+    await page.waitForTimeout(800);
+  }
+  const last = await shadow();
+  expect(last?.className).toContain('issue-viewer__turnjs--book-single-left');
+  expect(last!.left).toBeCloseTo(0, 0);
+  expect(last!.width).toBeCloseTo(last!.bookWidth / 2, 0);
+});
