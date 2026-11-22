@@ -21,9 +21,11 @@ paper block, not to the viewport:
   - `single-right` (cover) → right half only;
   - `single-left` (last page) → left half only.
   The empty half of a cover/last-page spread never receives a shadow.
-- While a turn is running (`isTurning` from turn.js `turning`/`turned`), the
-  layer spans the full spread because the book block is still underneath the
-  moving leaf; after the turn lands it contracts to the landed footprint.
+- The layer is split into left/right halves. Each half fades with the paper on
+  that side over the same 500ms as the leaf: opening the cover fades the left
+  shadow in as page 2 is revealed; closing fades the left shadow out as the page
+  lifts, so it never lingers under an empty half. The destination view comes
+  from turn.js's `turning` event.
 - Folding/peeling needs no extra layer: turn.js already paints the fold
   gradients. The body shadow never rotates with a leaf, so it cannot smear
   across a folded corner.
@@ -37,7 +39,7 @@ paper block, not to the viewport:
 | --- | --- |
 | Cover (paper right) | `2026-11-22-reader-cover.png` |
 | Open spread (paper both halves) | `2026-11-22-reader-spread.png` |
-| Mid-turn (shadow full width) | `2026-11-22-reader-turning.png` |
+| Mid-turn (halves fade with their paper) | `2026-11-22-reader-turning.png` |
 | Turn finished / next spread | `2026-11-22-reader-spread.png` |
 | Last page (paper left) | `2026-11-22-reader-last.png` |
 | Hover peel (folded corner) | `2026-11-22-reader-peel.png` |
@@ -52,6 +54,22 @@ layer is visible only once turn.js is ready.
 
 **No page-level shadows** were added: turn.js clips and 3D-transforms page
 wrappers, and per-leaf shadows would double its fold gradients.
+
+### Known limitation found while validating the opening
+
+Turn.js paints a single DOM face per sheet. During a cover opening it shows the
+destination page (2) on the back of the curl **and** keeps the cover's front
+(page 1) flat on the left. That is why page 2 seems to appear on the left before
+the book is fully open, and why the cover front can be visible next to it.
+
+Trying to synthesize the missing back face with CSS (`scaleX(-1)`, hidden
+backface, delayed page content) produced worse artefacts (blank or skewed
+pages), so those experiments were reverted. A correct fix needs a real
+double-sided leaf model: pair each odd front with its even back, render a
+separate back face (`rotateY(180deg)`, hidden front), and let turn.js flip the
+pair instead of treating every page as a single face. That changes the reader's
+page pairing and must be a scoped change with its own state tests. It is not a
+shadow or CSS-detail fix.
 
 ## Verification
 

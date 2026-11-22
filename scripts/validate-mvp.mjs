@@ -1645,6 +1645,8 @@ try {
     assert.match(issueTurnJsBook, /issue-viewer__turnjs--book-/);
     assert.match(issueTurnJsBook, /pageSideMode/);
     assert.match(issueTurnJsBook, /turning/);
+    assert.match(issueTurnJsBook, /shadowLeft/);
+    assert.match(issueTurnJsBook, /shadowRight/);
     assert.match(useIssueTurnJsRuntime, /await Promise\.all\(\[/);
     assert.match(useIssueTurnJsRuntime, /import\('\.\.\/turnjs'\)/);
     assert.match(useIssueTurnJsRuntime, /import\('\.\/issueViewTurnJsMarkup'\)/);
@@ -1841,10 +1843,9 @@ try {
       styles,
       /\.issue-viewer__placeholder-spinner \{\s+width: 22px;\s+height: 22px;/,
     );
-    assert.match(styles, /\.issue-viewer__turnjs::before \{/);
-    assert.match(styles, /\.issue-viewer__turnjs--turning::before \{/);
-    assert.match(styles, /\.issue-viewer__turnjs--book-single-right::before \{/);
-    assert.match(styles, /\.issue-viewer__turnjs--book-single-left::before \{/);
+    assert.match(styles, /\.issue-viewer__turnjs::before,\s+\.issue-viewer__turnjs::after \{/);
+    assert.match(styles, /\.issue-viewer__turnjs--shadow-left::before/);
+    assert.match(styles, /\.issue-viewer__turnjs--shadow-right::after/);
     assert.match(editorProjectLifecycle, /export function buildDraftProjectHydration/);
     assert.match(editorProjectLifecycle, /export function normalizeEditorProjectRecord/);
     assert.match(editorProjectPersistence, /export function applyServerProjectRecordState/);

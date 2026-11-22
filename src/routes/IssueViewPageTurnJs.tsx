@@ -11,12 +11,13 @@ import { useIssueViewPresentation } from './useIssueViewPresentation';
 import { useIssueViewShareState } from './useIssueViewShareState';
 import { IssueViewLoadingState, IssueViewUnavailableState } from './IssueViewShellStates';
 import { useSession } from '../session';
-import { clamp } from './issueViewReaderState';
+import { clamp, type VisibleTurnView } from './issueViewReaderState';
 
 export function IssueViewPage() {
   const { shareId = '' } = useParams();
   const { user: session, ready: sessionReady } = useSession();
   const [isTurning, setIsTurning] = useState(false);
+  const [turnShadowView, setTurnShadowView] = useState<VisibleTurnView | null>(null);
   const bookRef = useRef<TurnJsBookHandle | null>(null);
   const navigationBridge = useIssueViewNavigationBridge({
     onBeforeLoad: () => {
@@ -99,6 +100,16 @@ export function IssueViewPage() {
     pages,
     shareId,
   });
+  // Before the book reports its first view, the reader always opens at the
+  // cover; treating [0,0] as a spread would flash a left shadow for 500ms.
+  const viewKnown = currentViewPages[0] > 0 || currentViewPages[1] > 0;
+  const restMode = viewKnown ? currentView.mode : 'single-right';
+  const shadowHalves = turnShadowView
+    ? { left: turnShadowView[0] > 0, right: turnShadowView[1] > 0 }
+    : {
+        left: restMode !== 'single-right',
+        right: restMode !== 'single-left',
+      };
   const initialBookPage = clamp(
     stableTurnPageRef.current || currentTurnPage,
     1,
@@ -185,6 +196,9 @@ export function IssueViewPage() {
                     displayMode={viewerDisplayMode}
                     pageSideMode={currentView.mode}
                     turning={isTurning}
+                    shadowLeft={shadowHalves.left}
+                    shadowRight={shadowHalves.right}
+                    onTurnTargetChange={setTurnShadowView}
                     initialPage={initialBookPage}
                     onTurningChange={setIsTurning}
                     onViewChange={handleBookViewChange}

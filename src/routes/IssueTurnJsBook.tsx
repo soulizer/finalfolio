@@ -19,6 +19,9 @@ type TurnJsBookProps = {
   displayMode: TurnJsDisplayMode;
   pageSideMode: ViewerPositionMode;
   turning: boolean;
+  shadowLeft: boolean;
+  shadowRight: boolean;
+  onTurnTargetChange: (view: VisibleTurnView | null) => void;
   initialPage: number;
   onViewChange: (view: VisibleTurnView, page: number) => void;
   onTurningChange: (turning: boolean) => void;
@@ -39,13 +42,16 @@ export const IssueTurnJsBook = forwardRef(function IssueTurnJsBook(
     displayMode,
     pageSideMode,
     turning,
+    shadowLeft,
+    shadowRight,
+    onTurnTargetChange,
     initialPage,
     onViewChange,
     onTurningChange,
   }: TurnJsBookProps,
   ref: ForwardedRef<IssueTurnJsBookHandle>,
 ) {
-  const { bookRef, spreadPageCount } = useIssueTurnJsRuntime({
+  const { bookRef, bookReady, spreadPageCount } = useIssueTurnJsRuntime({
     ref,
     issueLabel,
     renderedPages,
@@ -60,12 +66,22 @@ export const IssueTurnJsBook = forwardRef(function IssueTurnJsBook(
     initialPage,
     onViewChange,
     onTurningChange,
+    onTurnTargetChange,
   });
 
   return (
     <div
       ref={bookRef}
-      className={`issue-viewer__turnjs issue-viewer__turnjs--book-${pageSideMode} ${turning ? 'issue-viewer__turnjs--turning' : ''}`.trim()}
+      className={[
+        'issue-viewer__turnjs',
+        `issue-viewer__turnjs--book-${pageSideMode}`,
+        bookReady ? 'issue-viewer__turnjs--ready' : '',
+        turning ? 'issue-viewer__turnjs--turning' : '',
+        shadowLeft ? 'issue-viewer__turnjs--shadow-left' : '',
+        shadowRight ? 'issue-viewer__turnjs--shadow-right' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
       style={{
         '--issue-turnjs-scale': pageScale,
         width: `${Math.round(pageWidth * spreadPageCount)}px`,

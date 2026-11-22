@@ -137,22 +137,32 @@ test('the book shadow follows the visible paper in every rest state', async ({ p
       const book = document.querySelector('.issue-viewer__turnjs');
       if (!book) return null;
       const rect = book.getBoundingClientRect();
-      const style = window.getComputedStyle(book, '::before');
+      const left = window.getComputedStyle(book, '::before');
+      const right = window.getComputedStyle(book, '::after');
       return {
         className: book.className,
-        left: Number.parseFloat(style.left),
-        width: Number.parseFloat(style.width),
-        opacity: Number.parseFloat(style.opacity),
         bookWidth: rect.width,
+        left: {
+          opacity: Number.parseFloat(left.opacity),
+          left: Number.parseFloat(left.left),
+          width: Number.parseFloat(left.width),
+        },
+        right: {
+          opacity: Number.parseFloat(right.opacity),
+          left: Number.parseFloat(right.left),
+          width: Number.parseFloat(right.width),
+        },
       };
     });
 
   // Cover: paper only on the right half.
-  await expect.poll(async () => (await shadow())?.opacity ?? 0).toBe(1);
+  await expect.poll(async () => (await shadow())?.right.opacity ?? 0).toBe(1);
   const cover = await shadow();
-  expect(cover?.className).toContain('issue-viewer__turnjs--book-single-right');
-  expect(cover!.width).toBeCloseTo(cover!.bookWidth / 2, 0);
-  expect(cover!.left).toBeCloseTo(cover!.bookWidth / 2, 0);
+  expect(cover?.className).toContain('issue-viewer__turnjs--shadow-right');
+  expect(cover?.className).not.toContain('issue-viewer__turnjs--shadow-left');
+  expect(cover!.right.width).toBeCloseTo(cover!.bookWidth / 2, 0);
+  expect(cover!.right.left).toBeCloseTo(cover!.bookWidth / 2, 0);
+  expect(cover!.left.opacity).toBeCloseTo(0, 2);
 
   // Spread: both halves.
   await page.waitForTimeout(1000);
@@ -160,9 +170,10 @@ test('the book shadow follows the visible paper in every rest state', async ({ p
   await next.click();
   await page.waitForTimeout(1000);
   const spread = await shadow();
-  expect(spread?.className).toContain('issue-viewer__turnjs--book-spread');
-  expect(spread!.left).toBeCloseTo(0, 0);
-  expect(spread!.width).toBeCloseTo(spread!.bookWidth, 0);
+  expect(spread?.className).toContain('issue-viewer__turnjs--shadow-left');
+  expect(spread?.className).toContain('issue-viewer__turnjs--shadow-right');
+  expect(spread!.left.opacity).toBeCloseTo(1, 2);
+  expect(spread!.right.opacity).toBeCloseTo(1, 2);
 
   // Last page: paper only on the left half.
   for (let step = 0; step < 3; step += 1) {
@@ -172,7 +183,9 @@ test('the book shadow follows the visible paper in every rest state', async ({ p
     await page.waitForTimeout(800);
   }
   const last = await shadow();
-  expect(last?.className).toContain('issue-viewer__turnjs--book-single-left');
-  expect(last!.left).toBeCloseTo(0, 0);
-  expect(last!.width).toBeCloseTo(last!.bookWidth / 2, 0);
+  expect(last?.className).toContain('issue-viewer__turnjs--shadow-left');
+  expect(last?.className).not.toContain('issue-viewer__turnjs--shadow-right');
+  expect(last!.left.width).toBeCloseTo(last!.bookWidth / 2, 0);
+  expect(last!.left.left).toBeCloseTo(0, 0);
+  expect(last!.right.opacity).toBeCloseTo(0, 2);
 });

@@ -1,4 +1,4 @@
-import { ForwardedRef, useEffect, useImperativeHandle, useRef } from 'react';
+import { ForwardedRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import type { Asset, ProjectFonts } from '../editor/types';
 import {
   clamp,
@@ -32,6 +32,7 @@ type UseIssueTurnJsRuntimeOptions = {
   initialPage: number;
   onViewChange: TurnJsPageChangeHandler;
   onTurningChange: (turning: boolean) => void;
+  onTurnTargetChange?: (view: VisibleTurnView | null) => void;
 };
 
 type TurnJsInstance = any;
@@ -56,6 +57,7 @@ type InitializeTurnJsOptions = {
   issueLabel: string;
   onTurningChangeRef: { current: (turning: boolean) => void };
   onViewChangeRef: { current: TurnJsPageChangeHandler };
+  onTurnTargetChangeRef: { current: (view: VisibleTurnView | null) => void };
   pageHeight: number;
   pageWidth: number;
   renderedPages: RenderedViewerPage[];
@@ -150,6 +152,7 @@ async function initializeTurnJs({
   isDisposed,
   issueLabel,
   onTurningChangeRef,
+  onTurnTargetChangeRef,
   onViewChangeRef,
   pageHeight,
   pageWidth,
@@ -203,8 +206,14 @@ async function initializeTurnJs({
     page: clamp(targetPage, 1, renderedPages.length),
     pages: renderedPages.length,
     when: {
-      turning: () => {
+      turning: (_event: unknown, page: number, view: number[]) => {
         setTurnJsAnimatedCentering($book, true);
+        // Turn.js passes the destination view here. The two half-shadows fade
+        // toward it over the same 500ms as the leaf, so a closing page's shadow
+        // leaves with the paper instead of lingering under the empty half.
+        onTurnTargetChangeRef.current(
+          normalizeVisibleTurnView(view, renderedPages.length, page ?? currentPageRef.current),
+        );
         onTurningChangeRef.current(true);
       },
       turned: (_event: unknown, page: number, view: number[]) => {
@@ -212,12 +221,14 @@ async function initializeTurnJs({
         currentPageRef.current = page;
         setTurnJsAnimatedCentering($book, false);
         onTurningChangeRef.current(false);
-        clearIdlePeelAffordance($book);
+        onTurnTargetChangeRef.current(null);
+                clearIdlePeelAffordance($book);
         onViewChangeRef.current(normalizedView, page);
       },
       end: () => {
         setTurnJsAnimatedCentering($book, false);
         onTurningChangeRef.current(false);
+        onTurnTargetChangeRef.current(null);
       },
     },
   });
@@ -240,11 +251,14 @@ export function useIssueTurnJsRuntime({
   initialPage,
   onViewChange,
   onTurningChange,
+  onTurnTargetChange,
 }: UseIssueTurnJsRuntimeOptions) {
   const bookRef = useRef<HTMLDivElement | null>(null);
   const turnInstanceRef = useRef<TurnJsInstance | null>(null);
+  const [bookReady, setBookReady] = useState(false);
   const onViewChangeRef = useRef(onViewChange);
   const onTurningChangeRef = useRef(onTurningChange);
+  const onTurnTargetChangeRef = useRef(onTurnTargetChange ?? (() => undefined));
   const pageWidthRef = useRef(pageWidth);
   const pageHeightRef = useRef(pageHeight);
   const currentPageRef = useRef(clamp(initialPage, 1, Math.max(renderedPages.length, 1)));
@@ -261,6 +275,10 @@ export function useIssueTurnJsRuntime({
   useEffect(() => {
     onTurningChangeRef.current = onTurningChange;
   }, [onTurningChange]);
+
+  useEffect(() => {
+    onTurnTargetChangeRef.current = onTurnTargetChange ?? (() => undefined);
+  }, [onTurnTargetChange]);
 
   const spreadPageCount = displayMode === 'double' ? 2 : 1;
   const canInitializeTurnJs = renderedPages.length > 0 && pageWidth > 0 && pageHeight > 0;
@@ -309,6 +327,7 @@ export function useIssueTurnJsRuntime({
     }
 
     let disposed = false;
+    setBookReady(false);
 
     void initializeTurnJs({
       assetsById,
@@ -318,6 +337,7 @@ export function useIssueTurnJsRuntime({
       isDisposed: () => disposed,
       issueLabel,
       onTurningChangeRef,
+      onTurnTargetChangeRef,
       onViewChangeRef,
       pageHeight: pageHeightRef.current,
       pageWidth: pageWidthRef.current,
@@ -338,6 +358,7 @@ export function useIssueTurnJsRuntime({
       }
 
       turnInstanceRef.current = turnInstance;
+      setBookReady(true);
       syncTurnJsLayout(turnInstance, currentPageRef, {
         currentPage: currentPageRef.current,
         displayMode,
@@ -353,6 +374,7 @@ export function useIssueTurnJsRuntime({
 
     return () => {
       disposed = true;
+      setBookReady(false);
       destroyTurnJsBook(turnHost, turnInstanceRef.current);
       turnInstanceRef.current = null;
     };
@@ -395,6 +417,7 @@ export function useIssueTurnJsRuntime({
 
   return {
     bookRef,
+    bookReady,
     spreadPageCount,
   };
 }

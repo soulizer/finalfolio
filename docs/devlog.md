@@ -1885,6 +1885,12 @@
 
 ### 2026-11-22 — The reader gets real paper depth
 
+- The reader shadow is now two halves that fade with the paper on each side:
+  opening fades the left in, closing fades it out instead of leaving it under an
+  empty half. Turn.js still renders a single face per sheet, so the cover
+  opening shows the destination page on the curl and the cover front flat on the
+  left; fixing that requires a double-sided leaf model and is recorded as the
+  next scoped reader task.
 - The shared reader had a full shadow stylesheet that no code ever activated,
   and turn.js's own shadow was forced hidden. The book now draws a non-rotating
   contact shadow and 1px paper edge behind the actual paper footprint: full
