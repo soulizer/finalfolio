@@ -5070,35 +5070,13 @@ button.asset-frame {
   }
 }
 
-/* The gutter is part of the book, not of a single leaf. A spread always has a
-   soft crease at the spine; it is drawn above the page surfaces because the
-   body shadow layer sits behind them and cannot darken the fold. */
-.issue-turnjs__hinge {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  z-index: 1000;
-  width: 52px;
-  pointer-events: none;
-  opacity: 0;
-  transform: translateX(-50%);
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(17, 17, 17, 0.035) 28%,
-    rgba(17, 17, 17, 0.085) 47%,
-    rgba(17, 17, 17, 0.1) 50%,
-    rgba(17, 17, 17, 0.085) 53%,
-    rgba(17, 17, 17, 0.035) 72%,
-    transparent 100%
-  );
-  mix-blend-mode: multiply;
-}
-
-.issue-viewer__turnjs.issue-viewer__turnjs--ready.issue-viewer__turnjs--book-spread .issue-turnjs__hinge {
-  opacity: 1;
-  animation: issue-viewer-shadow-in 90ms ease-out;
+/* The turning sheet carries its own drop shadow. It is a filter on the page
+   wrapper (outside turn.js's clipped 3D faces), so the shadow follows the paper
+   through the air and disappears with it instead of staying at the spine. */
+.issue-viewer__turnjs .page-wrapper.is-turn-shadow {
+  filter:
+    drop-shadow(0 14px 22px rgba(17, 17, 17, 0.16))
+    drop-shadow(0 3px 7px rgba(17, 17, 17, 0.09));
 }
 
 .issue-viewer__turnjs .even .gradient,

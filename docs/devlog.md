@@ -1891,10 +1891,10 @@
   drops the right half when the back cover becomes empty.
 - The turn target is cleared after `turned` publishes the landed view. Clearing
   it in `end` first flashed the source shadow back in at landing.
-- A book-plane hinge overlay gives both turn directions the same spine crease,
-  including a page closing toward the cover. The mobile auto-slide remains a
-  stage transform; its shadow is still tied to the centered page and is covered
-  by a frame-recording e2e test.
+- The turning sheet now gets a drop shadow on its page wrapper. It moves with
+  the leaf and is removed at `turned`, so a closing or last-page sheet takes its
+  shadow with it; forward and backward turns get the same treatment. The mobile
+  auto-slide remains a stage transform covered by a frame-recording e2e test.
 - Turn.js still renders a single face per sheet, so the cover opening shows the
   destination page on the curl and the cover front flat on the left; fixing that
   requires a double-sided leaf model and is recorded as the next scoped reader

@@ -35,11 +35,13 @@ paper block, not to the viewport:
 - The in-flight state is cleared after `turned` publishes the new view. Clearing
   it first made React render the old spread with no target for one frame, which
   flashed the lifted page's shadow back in exactly at landing.
-- A separate `.issue-turnjs__hinge` overlay draws the spine crease above the page
-  surfaces, because the body layers sit behind the pages. It is shown only in
-  the `spread` mode, so both forward and backward turns have the same center
-  shading, a closing page keeps the hinge while it is in the air, and a cover or
-  last page with an empty half has no crease over the empty paper.
+- The turning sheet carries its own drop shadow on its `.page-wrapper` (outside
+  turn.js's clipped 3D faces). The shadow therefore travels with the page and
+  lands or leaves with it; it is never a stationary band at the spine. The
+  wrapper is marked on `turning` and again on the first flip frame, when
+  turn.js has populated `pageMv` (moving page plus target page), and unmarked at
+  `turned` or a cancelled drag. The same depth cue therefore exists when a right
+  page turns left and when a left page turns right.
 - Appearing is a 90ms fade after the class changes; disappearing is immediate
   in the same frame as the class change. A shadow therefore cannot appear before
   its page has landed or linger for even a frame while the page is already off
@@ -58,8 +60,8 @@ paper block, not to the viewport:
 | Cover (paper right) | `2026-11-22-reader-cover.png` |
 | Open spread (paper both halves) | `2026-11-22-reader-spread.png` |
 | Cover opening, left half still empty | `2026-11-22-reader-opening.png` |
-| Spread turn, matching gutter on both pages | `2026-11-22-reader-turning.png` |
-| Closing, left body shadow already gone | `2026-11-22-reader-closing.png` |
+| Spread turn, shadow travels with the leaf | `2026-11-22-reader-turning.png` |
+| Closing, body shadow gone; leaf keeps its own | `2026-11-22-reader-closing.png` |
 | Turn finished / next spread | `2026-11-22-reader-spread.png` |
 | Last page (paper left) | `2026-11-22-reader-last.png` |
 | Last page in the air, body stays under pages 4–5 | `2026-11-22-reader-last-turn.png` |
@@ -71,12 +73,14 @@ paper block, not to the viewport:
 **Regression guard:** `tests/e2e/reader-turn.spec.ts` asserts the rest-state
 geometry, then records the turn classes and computed opacities frame by frame.
 It verifies that an opening adds no left shadow before landing, a closing removes
-it immediately, a spread keeps both halves and the centered crease in either
-direction, the last page keeps the body under the flat pages until it lands, and
-the mobile auto-slide keeps the shadow on the centered page.
+it immediately and only the flying leaf is filtered, a spread keeps both halves
+and a leaf shadow in either direction, the last page keeps the body under the
+flat pages until it lands and drops the leaf filter with the page, and the mobile
+auto-slide keeps the shadow on the centered page.
 
-**No page-level shadows** were added: turn.js clips and 3D-transforms page
-wrappers, and per-leaf shadows would double its fold gradients.
+The only page-level effect is the drop-shadow filter on the moving wrapper. It
+is not applied to resting pages (so it cannot double the body shadow or the fold
+gradients), and it is removed at the same event that lands the page.
 
 ### Known limitation found while validating the opening
 

@@ -86,6 +86,33 @@ function syncTurnJsViewState(
   onViewChange(normalizeVisibleTurnView(turnInstance.turn('view'), totalPages, currentPage), currentPage);
 }
 
+function clearTurnLeafShadow(turnInstance: TurnJsInstance) {
+  const book = turnInstance?.[0] as HTMLElement | undefined;
+  book?.querySelectorAll('.page-wrapper.is-turn-shadow').forEach((page) => page.classList.remove('is-turn-shadow'));
+}
+
+function markTurnLeafShadow(turnInstance: TurnJsInstance, targetPage: number) {
+  clearTurnLeafShadow(turnInstance);
+  const book = turnInstance?.[0] as HTMLElement | undefined;
+  if (!book) {
+    return;
+  }
+
+  // The moving sheet and the sheet it lands on both take part in the turn.
+  // turn.js keeps the moving page numbers in `pageMv`; the event's target page
+  // is the leaf's destination. A drop shadow on those wrappers travels with the
+  // paper, so it leaves the table with the leaf instead of staying at the spine.
+  const turnData = turnInstance.data?.('t') as { pageMv?: number[]; status?: string } | undefined;
+  if (turnData?.status !== 'turning') {
+    return;
+  }
+  const pages = new Set<number>([targetPage, ...(turnData?.pageMv ?? [])].filter((page) => page > 0));
+  pages.forEach((pageNumber) => {
+    const page = book.querySelector(`.page-wrapper .page.p${pageNumber}`);
+    page?.closest('.page-wrapper')?.classList.add('is-turn-shadow');
+  });
+}
+
 function setTurnJsAnimatedCentering(turnInstance: TurnJsInstance, animated: boolean) {
   const bookElement = turnInstance?.[0] as HTMLElement | undefined;
   if (!bookElement) {
@@ -188,17 +215,6 @@ async function initializeTurnJs({
     sheetWidth,
     sheetHeight,
   });
-  // A spine crease above the pages. Turn.js only paints gradients on the
-  // turning leaf, so a page closing toward the spine had no matching center
-  // shading. The overlay lives in the book plane (it follows auto-centering)
-  // and is ignored by turn.js via `ignore=1`.
-  if (!activeTurnHost.querySelector('.issue-turnjs__hinge')) {
-    activeTurnHost.insertAdjacentHTML(
-      'beforeend',
-      '<div class="issue-turnjs__hinge" ignore="1" aria-hidden="true"></div>',
-    );
-  }
-
   $book.turn({
     width: Math.round(pageWidth * spreadPageCount),
     height: Math.round(pageHeight),
@@ -224,6 +240,11 @@ async function initializeTurnJs({
         onTurnTargetChangeRef.current(
           normalizeVisibleTurnView(view, renderedPages.length, page ?? currentPageRef.current),
         );
+        markTurnLeafShadow($book, page);
+        // `pageMv` is populated by the first flip frame, after this event. Mark
+        // again on the next frame so the moving sheet itself is filtered too,
+        // not only the page it is landing on.
+        window.requestAnimationFrame(() => markTurnLeafShadow($book, page));
         onTurningChangeRef.current(true);
       },
       turned: (_event: unknown, page: number, view: number[]) => {
@@ -236,6 +257,7 @@ async function initializeTurnJs({
         onViewChangeRef.current(normalizedView, page);
         onTurnTargetChangeRef.current(null);
         onTurningChangeRef.current(false);
+        clearTurnLeafShadow($book);
         clearIdlePeelAffordance($book);
       },
       end: (_event: unknown, _page: number, completed: boolean) => {
@@ -245,6 +267,7 @@ async function initializeTurnJs({
         if (!completed) {
           onTurnTargetChangeRef.current(null);
           onTurningChangeRef.current(false);
+          clearTurnLeafShadow($book);
         }
       },
     },

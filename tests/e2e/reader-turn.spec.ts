@@ -133,14 +133,12 @@ async function shadowSnapshot(page: import('@playwright/test').Page) {
     const rect = book.getBoundingClientRect();
     const left = window.getComputedStyle(book, '::before');
     const right = window.getComputedStyle(book, '::after');
-    const hinge = document.querySelector('.issue-turnjs__hinge');
-    const hingeRect = hinge?.getBoundingClientRect();
+    const leafShadows = Array.from(document.querySelectorAll('.issue-viewer__turnjs .page-wrapper.is-turn-shadow'));
     return {
       className: book.className,
       bookWidth: rect.width,
-      bookCenter: rect.x + rect.width / 2,
-      hingeCenter: hingeRect ? hingeRect.x + hingeRect.width / 2 : null,
-      hingeOpacity: hinge ? Number.parseFloat(window.getComputedStyle(hinge).opacity) : 0,
+      leafShadowCount: leafShadows.length,
+      leafShadowFilters: leafShadows.map((leaf) => window.getComputedStyle(leaf).filter),
       left: {
         opacity: Number.parseFloat(left.opacity),
         left: Number.parseFloat(left.left),
@@ -190,7 +188,7 @@ test('the book shadow follows the visible paper in every rest state', async ({ p
   await page.goto(sharePath);
   await expect(page.locator('.issue-viewer__turnjs--ready')).toBeVisible({ timeout: 20_000 });
 
-  // Cover: paper only on the right half, and no crease in the middle of a cover.
+  // Cover: paper only on the right half, and no moving leaf at rest.
   await expect.poll(async () => (await shadowSnapshot(page))?.right.opacity ?? 0).toBe(1);
   const cover = await shadowSnapshot(page);
   expect(cover?.className).toContain('issue-viewer__turnjs--shadow-right');
@@ -198,9 +196,9 @@ test('the book shadow follows the visible paper in every rest state', async ({ p
   expect(cover!.right.width).toBeCloseTo(cover!.bookWidth / 2, 0);
   expect(cover!.right.left).toBeCloseTo(cover!.bookWidth / 2, 0);
   expect(cover!.left.opacity).toBeCloseTo(0, 2);
-  expect(cover!.hingeOpacity).toBeCloseTo(0, 2);
+  expect(cover!.leafShadowCount).toBe(0);
 
-  // Spread: both halves and a crease on the real spine.
+  // Spread: both halves, no leaf filter at rest.
   await page.waitForTimeout(1000);
   const next = page.locator('.issue-view-sidebar button').filter({ hasText: /Next|下一页/ }).first();
   await next.click();
@@ -210,10 +208,9 @@ test('the book shadow follows the visible paper in every rest state', async ({ p
   expect(spread?.className).toContain('issue-viewer__turnjs--shadow-right');
   expect(spread!.left.opacity).toBeCloseTo(1, 2);
   expect(spread!.right.opacity).toBeCloseTo(1, 2);
-  expect(spread!.hingeOpacity).toBeCloseTo(1, 2);
-  expect(spread!.hingeCenter).toBeCloseTo(spread!.bookCenter, 0);
+  expect(spread!.leafShadowCount).toBe(0);
 
-  // Last page: paper only on the left half and no crease over an empty right half.
+  // Last page: paper only on the left half and no leaf filter at rest.
   for (let step = 0; step < 3; step += 1) {
     const control = page.locator('.issue-view-sidebar button').filter({ hasText: /Next|下一页/ }).first();
     if (!(await control.isEnabled().catch(() => false))) break;
@@ -226,7 +223,7 @@ test('the book shadow follows the visible paper in every rest state', async ({ p
   expect(last!.left.width).toBeCloseTo(last!.bookWidth / 2, 0);
   expect(last!.left.left).toBeCloseTo(0, 0);
   expect(last!.right.opacity).toBeCloseTo(0, 2);
-  expect(last!.hingeOpacity).toBeCloseTo(0, 2);
+  expect(last!.leafShadowCount).toBe(0);
 });
 
 test('opening the cover adds the left shadow only after the page lands', async ({ page }) => {
@@ -243,11 +240,11 @@ test('opening the cover adds the left shadow only after the page lands', async (
   await page.waitForTimeout(200);
 
   // The left half is still empty while the cover is in the air. Neither the body
-  // shadow nor the spine crease may appear there before the page lands.
+  // body shadow may appear there before the page lands.
   const inFlight = await shadowSnapshot(page);
   expect(inFlight?.className).not.toContain('issue-viewer__turnjs--shadow-left');
   expect(inFlight!.left.opacity).toBeLessThan(0.02);
-  expect(inFlight!.hingeOpacity).toBeLessThan(0.02);
+  expect(inFlight!.leafShadowCount).toBeGreaterThan(0);
 
   await expect(book).not.toHaveClass(turnClass, { timeout: 3_000 });
   await expect.poll(async () => (await shadowSnapshot(page))?.left.opacity ?? 0).toBeGreaterThan(0.9);
@@ -276,8 +273,9 @@ test('closing a spread removes the left shadow as soon as the page lifts', async
   expect(inFlight?.className).not.toContain('issue-viewer__turnjs--shadow-left');
   expect(inFlight!.left.opacity).toBeCloseTo(0, 2);
   expect(inFlight!.className).toContain('issue-viewer__turnjs--shadow-right');
-  // The gutter stays, because the leaf is still hinged at the spine.
-  expect(inFlight!.hingeOpacity).toBeGreaterThan(0.9);
+  // The shadow that remains is attached to the flying leaf, not to the desk.
+  expect(inFlight!.leafShadowCount).toBeGreaterThan(0);
+  expect(inFlight!.leafShadowFilters.every((filter) => filter.includes('drop-shadow'))).toBe(true);
 
   await expect(book).not.toHaveClass(turnClass, { timeout: 3_000 });
   await page.waitForTimeout(200);
@@ -285,10 +283,10 @@ test('closing a spread removes the left shadow as soon as the page lifts', async
   expect(cover?.className).toContain('issue-viewer__turnjs--shadow-right');
   expect(cover?.className).not.toContain('issue-viewer__turnjs--shadow-left');
   expect(cover!.left.opacity).toBeCloseTo(0, 2);
-  expect(cover!.hingeOpacity).toBeCloseTo(0, 2);
+  expect(cover!.leafShadowCount).toBe(0);
 });
 
-test('a spread keeps both body shadows and the crease while turning either way', async ({ page }) => {
+test('a spread keeps both body shadows and a leaf shadow while turning either way', async ({ page }) => {
   await signIn(page, '/editor');
   const sharePath = await createShare(page);
   await page.goto(sharePath);
@@ -307,7 +305,7 @@ test('a spread keeps both body shadows and the crease while turning either way',
   const forward = await shadowSnapshot(page);
   expect(forward?.className).toContain('issue-viewer__turnjs--shadow-left');
   expect(forward?.className).toContain('issue-viewer__turnjs--shadow-right');
-  expect(forward!.hingeOpacity).toBeGreaterThan(0.9);
+  expect(forward!.leafShadowCount).toBeGreaterThan(0);
 
   await expect(book).not.toHaveClass(turnClass, { timeout: 3_000 });
   await page.waitForTimeout(150);
@@ -318,7 +316,7 @@ test('a spread keeps both body shadows and the crease while turning either way',
   const backward = await shadowSnapshot(page);
   expect(backward?.className).toContain('issue-viewer__turnjs--shadow-left');
   expect(backward?.className).toContain('issue-viewer__turnjs--shadow-right');
-  expect(backward!.hingeOpacity).toBeGreaterThan(0.9);
+  expect(backward!.leafShadowCount).toBeGreaterThan(0);
 });
 
 test('the last page keeps the body under the flat pages until it lands', async ({ page }) => {
@@ -341,20 +339,20 @@ test('the last page keeps the body under the flat pages until it lands', async (
   await page.waitForTimeout(180);
 
   // Pages 4 and 5 are still flat under the flying last sheet, so their body
-  // shadows stay until the sheet lands. The gutter is still hinged.
+  // shadows stay until the sheet lands. The flying sheet carries its own shadow.
   const inFlight = await shadowSnapshot(page);
   expect(inFlight?.className).toContain('issue-viewer__turnjs--shadow-left');
   expect(inFlight?.className).toContain('issue-viewer__turnjs--shadow-right');
   expect(inFlight!.left.opacity).toBeCloseTo(1, 2);
   expect(inFlight!.right.opacity).toBeCloseTo(1, 2);
-  expect(inFlight!.hingeOpacity).toBeGreaterThan(0.9);
+  expect(inFlight!.leafShadowCount).toBeGreaterThan(0);
 
   await expect(book).not.toHaveClass(turnClass, { timeout: 3_000 });
   await expect.poll(async () => (await shadowSnapshot(page))?.right.opacity ?? 1).toBeLessThan(0.02);
   const rested = await shadowSnapshot(page);
   expect(rested?.className).toContain('issue-viewer__turnjs--shadow-left');
   expect(rested?.className).not.toContain('issue-viewer__turnjs--shadow-right');
-  expect(rested!.hingeOpacity).toBeCloseTo(0, 2);
+  expect(rested!.leafShadowCount).toBe(0);
 });
 
 test('mobile slides the centered page and its shadow together', async ({ browser }) => {
@@ -388,6 +386,7 @@ test('mobile slides the centered page and its shadow together', async ({ browser
     opening.some((sample) => turnClass.test(sample.className) && /--shadow-left/.test(sample.className)),
   ).toBe(false);
   await expect(book).toHaveClass(/--shadow-left/, { timeout: 2_000 });
+  await expect(page.locator('.issue-viewer__turnjs .page-wrapper.is-turn-shadow')).toHaveCount(0);
   await page.waitForTimeout(450);
   const page2Offset = await page.evaluate(() => {
     const page2 = document.querySelector('.issue-viewer__turnjs .page.p2')?.getBoundingClientRect();
@@ -411,6 +410,7 @@ test('mobile slides the centered page and its shadow together', async ({ browser
     closing.some((sample) => turnClass.test(sample.className) && /--shadow-right/.test(sample.className)),
   ).toBe(true);
   await expect(book).toHaveClass(/--shadow-right/);
+  await expect(page.locator('.issue-viewer__turnjs .page-wrapper.is-turn-shadow')).toHaveCount(0);
 
   // Cover -> page 2 again, then page 3 uses the horizontal auto-slide only.
   await next.click();
@@ -421,6 +421,7 @@ test('mobile slides the centered page and its shadow together', async ({ browser
   const slide = await readClassRecording(page);
   expect(slide.some((sample) => turnClass.test(sample.className))).toBe(false);
   await expect(book).toHaveClass(/--shadow-right/, { timeout: 2_000 });
+  await expect(page.locator('.issue-viewer__turnjs .page-wrapper.is-turn-shadow')).toHaveCount(0);
   await page.waitForTimeout(450);
   const page3Offset = await page.evaluate(() => {
     const page3 = document.querySelector('.issue-viewer__turnjs .page.p3')?.getBoundingClientRect();
