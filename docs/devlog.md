@@ -1885,15 +1885,20 @@
 
 ### 2026-11-22 — The reader gets real paper depth
 
-- The spread → last-page transition now drops both half-shadows while the final
-  sheet is in the air and fades the left one back in after it lands, so no
-  background shadow sits under a lifted last page.
-- The reader shadow is now two halves that fade with the paper on each side:
-  opening fades the left in, closing fades it out instead of leaving it under an
-  empty half. Turn.js still renders a single face per sheet, so the cover
-  opening shows the destination page on the curl and the cover front flat on the
-  left; fixing that requires a double-sided leaf model and is recorded as the
-  next scoped reader task.
+- Reader shadows now follow the paper that is still lying flat, not the target
+  view: opening waits for page 2 to land before adding the left half, closing
+  drops it at the first frame, spread-to-spread keeps both, and the last page
+  drops the right half when the back cover becomes empty.
+- The turn target is cleared after `turned` publishes the landed view. Clearing
+  it in `end` first flashed the source shadow back in at landing.
+- A book-plane hinge overlay gives both turn directions the same spine crease,
+  including a page closing toward the cover. The mobile auto-slide remains a
+  stage transform; its shadow is still tied to the centered page and is covered
+  by a frame-recording e2e test.
+- Turn.js still renders a single face per sheet, so the cover opening shows the
+  destination page on the curl and the cover front flat on the left; fixing that
+  requires a double-sided leaf model and is recorded as the next scoped reader
+  task.
 - The shared reader had a full shadow stylesheet that no code ever activated,
   and turn.js's own shadow was forced hidden. The book now draws a non-rotating
   contact shadow and 1px paper edge behind the actual paper footprint: full

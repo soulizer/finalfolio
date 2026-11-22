@@ -1846,6 +1846,10 @@ try {
     assert.match(styles, /\.issue-viewer__turnjs::before,\s+\.issue-viewer__turnjs::after \{/);
     assert.match(styles, /\.issue-viewer__turnjs--shadow-left::before/);
     assert.match(styles, /\.issue-viewer__turnjs--shadow-right::after/);
+    assert.match(styles, /\.issue-turnjs__hinge \{/);
+    assert.match(styles, /--book-spread \.issue-turnjs__hinge/);
+    assert.match(issueViewPageTurnJs, /leftPageLifting/);
+    assert.match(issueViewPageTurnJs, /coverageFor\(restMode\)/);
     assert.match(editorProjectLifecycle, /export function buildDraftProjectHydration/);
     assert.match(editorProjectLifecycle, /export function normalizeEditorProjectRecord/);
     assert.match(editorProjectPersistence, /export function applyServerProjectRecordState/);

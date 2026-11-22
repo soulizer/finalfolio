@@ -188,6 +188,16 @@ async function initializeTurnJs({
     sheetWidth,
     sheetHeight,
   });
+  // A spine crease above the pages. Turn.js only paints gradients on the
+  // turning leaf, so a page closing toward the spine had no matching center
+  // shading. The overlay lives in the book plane (it follows auto-centering)
+  // and is ignored by turn.js via `ignore=1`.
+  if (!activeTurnHost.querySelector('.issue-turnjs__hinge')) {
+    activeTurnHost.insertAdjacentHTML(
+      'beforeend',
+      '<div class="issue-turnjs__hinge" ignore="1" aria-hidden="true"></div>',
+    );
+  }
 
   $book.turn({
     width: Math.round(pageWidth * spreadPageCount),
@@ -208,9 +218,9 @@ async function initializeTurnJs({
     when: {
       turning: (_event: unknown, page: number, view: number[]) => {
         setTurnJsAnimatedCentering($book, true);
-        // Turn.js passes the destination view here. The two half-shadows fade
-        // toward it over the same 500ms as the leaf, so a closing page's shadow
-        // leaves with the paper instead of lingering under the empty half.
+        // Turn.js passes the destination view here. The parent uses it only to
+        // classify the turn (an opening, a closing, or a spread-to-spread
+        // turn); the body shadow itself stays on the pages still lying flat.
         onTurnTargetChangeRef.current(
           normalizeVisibleTurnView(view, renderedPages.length, page ?? currentPageRef.current),
         );
@@ -220,15 +230,22 @@ async function initializeTurnJs({
         const normalizedView = normalizeVisibleTurnView(view, renderedPages.length, page);
         currentPageRef.current = page;
         setTurnJsAnimatedCentering($book, false);
-        onTurningChangeRef.current(false);
-        onTurnTargetChangeRef.current(null);
-                clearIdlePeelAffordance($book);
+        // Publish the landed view before clearing the turn target. If the target
+        // is cleared first, React briefly renders the old view with no target,
+        // which flashes the source-side body shadow back in exactly at landing.
         onViewChangeRef.current(normalizedView, page);
-      },
-      end: () => {
-        setTurnJsAnimatedCentering($book, false);
-        onTurningChangeRef.current(false);
         onTurnTargetChangeRef.current(null);
+        onTurningChangeRef.current(false);
+        clearIdlePeelAffordance($book);
+      },
+      end: (_event: unknown, _page: number, completed: boolean) => {
+        setTurnJsAnimatedCentering($book, false);
+        // `turned` follows a completed flip and publishes the new view there.
+        // A cancelled drag never reaches it, so clear the in-flight state here.
+        if (!completed) {
+          onTurnTargetChangeRef.current(null);
+          onTurningChangeRef.current(false);
+        }
       },
     },
   });

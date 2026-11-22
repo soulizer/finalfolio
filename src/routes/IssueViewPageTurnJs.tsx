@@ -104,23 +104,31 @@ export function IssueViewPage() {
   // cover; treating [0,0] as a spread would flash a left shadow for 500ms.
   const viewKnown = currentViewPages[0] > 0 || currentViewPages[1] > 0;
   const restMode = viewKnown ? currentView.mode : 'single-right';
-  const shadowHalves = (() => {
-    if (turnShadowView) {
-      const left = turnShadowView[0] > 0;
-      const right = turnShadowView[1] > 0;
-      // Going from a spread to the single last page: that page is the sheet in
-      // the air. Drop the body shadow for the flight and let it return when the
-      // page lands, instead of leaving a shadow under the lifted sheet.
-      if (left && !right && restMode === 'spread') {
-        return { left: false, right: false };
-      }
-      return { left, right };
-    }
-    return {
-      left: restMode !== 'single-right',
-      right: restMode !== 'single-left',
-    };
-  })();
+  const coverageFor = (mode: typeof restMode) => ({
+    left: mode !== 'single-right',
+    right: mode !== 'single-left',
+  });
+  const targetMode = !turnShadowView
+    ? restMode
+    : turnShadowView[0] > 0 && turnShadowView[1] > 0
+      ? 'spread'
+      : turnShadowView[1] > 0
+        ? 'single-right'
+        : turnShadowView[0] > 0
+          ? 'single-left'
+          : restMode;
+  // The body shadow follows the paper that is still lying flat. A sheet that
+  // is in the air must not cast the book's contact shadow: when a spread closes,
+  // the left half loses its paper as soon as the page lifts, and when a cover
+  // opens, the left half only gains paper when the cover lands. Destination
+  // halves therefore switch after `turned`, not as the turn starts. Turning
+  // between two spreads keeps both halves because the stacks stay put.
+  const leftPageLifting =
+    turnShadowView !== null &&
+    targetMode === 'single-right' &&
+    coverageFor(restMode).left;
+  const shadowMode = leftPageLifting ? targetMode : restMode;
+  const shadowHalves = coverageFor(shadowMode);
   const initialBookPage = clamp(
     stableTurnPageRef.current || currentTurnPage,
     1,
