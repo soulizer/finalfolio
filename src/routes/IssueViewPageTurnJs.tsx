@@ -104,12 +104,23 @@ export function IssueViewPage() {
   // cover; treating [0,0] as a spread would flash a left shadow for 500ms.
   const viewKnown = currentViewPages[0] > 0 || currentViewPages[1] > 0;
   const restMode = viewKnown ? currentView.mode : 'single-right';
-  const shadowHalves = turnShadowView
-    ? { left: turnShadowView[0] > 0, right: turnShadowView[1] > 0 }
-    : {
-        left: restMode !== 'single-right',
-        right: restMode !== 'single-left',
-      };
+  const shadowHalves = (() => {
+    if (turnShadowView) {
+      const left = turnShadowView[0] > 0;
+      const right = turnShadowView[1] > 0;
+      // Going from a spread to the single last page: that page is the sheet in
+      // the air. Drop the body shadow for the flight and let it return when the
+      // page lands, instead of leaving a shadow under the lifted sheet.
+      if (left && !right && restMode === 'spread') {
+        return { left: false, right: false };
+      }
+      return { left, right };
+    }
+    return {
+      left: restMode !== 'single-right',
+      right: restMode !== 'single-left',
+    };
+  })();
   const initialBookPage = clamp(
     stableTurnPageRef.current || currentTurnPage,
     1,

@@ -1885,6 +1885,9 @@
 
 ### 2026-11-22 — The reader gets real paper depth
 
+- The spread → last-page transition now drops both half-shadows while the final
+  sheet is in the air and fades the left one back in after it lands, so no
+  background shadow sits under a lifted last page.
 - The reader shadow is now two halves that fade with the paper on each side:
   opening fades the left in, closing fades it out instead of leaving it under an
   empty half. Turn.js still renders a single face per sheet, so the cover

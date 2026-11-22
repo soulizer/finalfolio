@@ -189,3 +189,33 @@ test('the book shadow follows the visible paper in every rest state', async ({ p
   expect(last!.left.left).toBeCloseTo(0, 0);
   expect(last!.right.opacity).toBeCloseTo(0, 2);
 });
+
+
+test('the book shadow leaves while the last page is in the air', async ({ page }) => {
+  await signIn(page, '/editor');
+  const sharePath = await createShare(page);
+  await page.goto(sharePath);
+  await expect(page.locator('.issue-viewer__turnjs--ready')).toBeVisible({ timeout: 20_000 });
+  await page.waitForTimeout(1000);
+
+  const next = page.locator('.issue-view-sidebar button').filter({ hasText: /Next|下一页/ }).first();
+  // Cover -> spread 2-3 -> spread 4-5.
+  await next.click();
+  await page.waitForTimeout(800);
+  await next.click();
+  await page.waitForTimeout(900);
+
+  const book = page.locator('.issue-viewer__turnjs');
+  const classList = async () => (await book.getAttribute('class')) ?? '';
+
+  // The last page is the sheet in the air: no body shadow during the flight.
+  await next.click();
+  await expect
+    .poll(async () => /issue-viewer__turnjs--shadow-(left|right)/.test(await classList()), { timeout: 900, intervals: [50] })
+    .toBe(false);
+
+  await page.waitForTimeout(1200);
+  const rested = await classList();
+  expect(rested).toContain('issue-viewer__turnjs--shadow-left');
+  expect(rested).not.toContain('issue-viewer__turnjs--shadow-right');
+});

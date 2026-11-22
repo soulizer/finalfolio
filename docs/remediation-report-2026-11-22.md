@@ -26,6 +26,10 @@ paper block, not to the viewport:
   shadow in as page 2 is revealed; closing fades the left shadow out as the page
   lifts, so it never lingers under an empty half. The destination view comes
   from turn.js's `turning` event.
+- The spread → single-left transition (second-to-last page to the last page) is
+  the one case where the destination half is the sheet itself. Both halves fade
+  out for the flight and the left half fades back in after the page lands, so
+  the lifted last page never has a background shadow under it.
 - Folding/peeling needs no extra layer: turn.js already paints the fold
   gradients. The body shadow never rotates with a leaf, so it cannot smear
   across a folded corner.
@@ -42,6 +46,7 @@ paper block, not to the viewport:
 | Mid-turn (halves fade with their paper) | `2026-11-22-reader-turning.png` |
 | Turn finished / next spread | `2026-11-22-reader-spread.png` |
 | Last page (paper left) | `2026-11-22-reader-last.png` |
+| Last page lifted, shadow cleared | `2026-11-22-reader-last-turn.png` |
 | Hover peel (folded corner) | `2026-11-22-reader-peel.png` |
 | Dragged fold | `2026-11-22-reader-peel-drag.png` |
 | Mobile single page | `2026-11-22-reader-mobile.png` |
