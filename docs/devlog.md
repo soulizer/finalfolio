@@ -1907,3 +1907,19 @@
   corner never drags a rectangular shadow with it.
 - Verified at rest, mid-turn, after turn, hover peel, dragged fold, mobile and
   fullscreen; a new e2e asserts the three rest geometries.
+
+### 2026-11-22 — The desk shadow follows the lift, frame by frame
+
+- Measured the previous build per animation frame and found the desk shadow stayed
+  at full strength while a page was in the air, and that turn.js's fold gradients
+  were the direction-dependent spine shading. Turn.js's `.shadow` element paints
+  nothing and was ruled out.
+- The desk shadow is now controlled by a per-frame check of turn.js's own lift
+  state, applied as a `data-lifted` attribute that React does not overwrite. It
+  returns only after React has committed the page turn.js is on.
+- Turn.js gradients are disabled and their layers hidden, so the spine has the same
+  (no) shading in both directions.
+- Removed the moving-page drop-shadow, since it also falls on the background.
+- Earlier attempts used a React-driven mode and a turn-event flag. Both could show
+  a stale shadow when a re-layout cancelled a turn; the commit gate closes that.
+

@@ -11,13 +11,12 @@ import { useIssueViewPresentation } from './useIssueViewPresentation';
 import { useIssueViewShareState } from './useIssueViewShareState';
 import { IssueViewLoadingState, IssueViewUnavailableState } from './IssueViewShellStates';
 import { useSession } from '../session';
-import { clamp, type VisibleTurnView } from './issueViewReaderState';
+import { clamp } from './issueViewReaderState';
 
 export function IssueViewPage() {
   const { shareId = '' } = useParams();
   const { user: session, ready: sessionReady } = useSession();
   const [isTurning, setIsTurning] = useState(false);
-  const [turnShadowView, setTurnShadowView] = useState<VisibleTurnView | null>(null);
   const bookRef = useRef<TurnJsBookHandle | null>(null);
   const navigationBridge = useIssueViewNavigationBridge({
     onBeforeLoad: () => {
@@ -104,31 +103,13 @@ export function IssueViewPage() {
   // cover; treating [0,0] as a spread would flash a left shadow for 500ms.
   const viewKnown = currentViewPages[0] > 0 || currentViewPages[1] > 0;
   const restMode = viewKnown ? currentView.mode : 'single-right';
-  const coverageFor = (mode: typeof restMode) => ({
-    left: mode !== 'single-right',
-    right: mode !== 'single-left',
-  });
-  const targetMode = !turnShadowView
-    ? restMode
-    : turnShadowView[0] > 0 && turnShadowView[1] > 0
-      ? 'spread'
-      : turnShadowView[1] > 0
-        ? 'single-right'
-        : turnShadowView[0] > 0
-          ? 'single-left'
-          : restMode;
-  // The body shadow follows the paper that is still lying flat. A sheet that
-  // is in the air must not cast the book's contact shadow: when a spread closes,
-  // the left half loses its paper as soon as the page lifts, and when a cover
-  // opens, the left half only gains paper when the cover lands. Destination
-  // halves therefore switch after `turned`, not as the turn starts. Turning
-  // between two spreads keeps both halves because the stacks stay put.
-  const leftPageLifting =
-    turnShadowView !== null &&
-    targetMode === 'single-right' &&
-    coverageFor(restMode).left;
-  const shadowMode = leftPageLifting ? targetMode : restMode;
-  const shadowHalves = coverageFor(shadowMode);
+  // Rest state only: while any leaf is lifted, the book hides its desk shadow
+  // itself (see `data-lifted` in useIssueTurnJsRuntime), so this mode is shown
+  // only when the landed view is on the table.
+  const shadowHalves = {
+    left: restMode !== 'single-right',
+    right: restMode !== 'single-left',
+  };
   const initialBookPage = clamp(
     stableTurnPageRef.current || currentTurnPage,
     1,
@@ -217,8 +198,8 @@ export function IssueViewPage() {
                     turning={isTurning}
                     shadowLeft={shadowHalves.left}
                     shadowRight={shadowHalves.right}
-                    onTurnTargetChange={setTurnShadowView}
                     initialPage={initialBookPage}
+                    committedTurnPage={currentTurnPage}
                     onTurningChange={setIsTurning}
                     onViewChange={handleBookViewChange}
                   />

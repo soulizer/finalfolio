@@ -3,84 +3,84 @@
 ## Reader book surface: shadow and edge that follow the paper
 
 **Reported:** in the un-flipped state the shared folio looked like a white sheet
-with no background shadow and no outline, so it did not read as a magazine.
+with no background shadow and no outline. Later rounds reported that the
+background shadow stayed under a lifted page, and that the spine shading differed
+between forward and backward turns.
 
-**Root cause:** the reader already had a large block of shadow CSS, but no code
-ever set its `--shadow-*` state classes; the vendored turn.js shadow element was
-also forced to `opacity: 0`. Net effect: no depth at rest and no outline.
+**Rule (from the user):** the background shadow exists only while every page lies
+flat and the view has landed. Any lifted or still-landing page removes it. The
+spine has either the same shading in both turn directions or none at all.
 
-**Design.** The book is paper on a table, so the depth effect belongs to the
-paper block, not to the viewport:
+**Root causes found by frame-by-frame measurement:**
 
-- `::before` on `.issue-viewer__turnjs` is a non-rotating layer behind every
-  page (turn.js wrappers use `z-index >= 1`). It draws a 1px paper edge and two
-  soft contact/ambient shadows.
-- Geometry follows the actual paper footprint, taken from the reader's existing
-  `currentView.mode`:
-  - `spread` → both halves;
-  - `single-right` (cover) → right half only;
-  - `single-left` (last page) → left half only.
-  The empty half of a cover/last-page spread never receives a shadow.
-- The layer is split into left/right halves and follows **paper that is still
-  lying flat**, not the destination view:
-  - opening from the cover keeps the right shadow while the cover is in the air
-    and adds the left shadow only at `turned`, when page 2 lands;
-  - closing a spread removes the left shadow at the first frame of the turn,
-    because that page has left the table; the right stack keeps its shadow;
-  - a spread-to-spread turn keeps both halves for the whole turn, because the
-    stacks under the moving leaf do not move;
-  - the spread-to-last-page turn keeps both halves while pages 4 and 5 are still
-    flat, then drops the right one when the last page lands and the right half
-    becomes the empty back cover.
-- The in-flight state is cleared after `turned` publishes the new view. Clearing
-  it first made React render the old spread with no target for one frame, which
-  flashed the lifted page's shadow back in exactly at landing.
-- The turning sheet carries its own drop shadow on its `.page-wrapper` (outside
-  turn.js's clipped 3D faces). The shadow therefore travels with the page and
-  lands or leaves with it; it is never a stationary band at the spine. The
-  wrapper is marked on `turning` and again on the first flip frame, when
-  turn.js has populated `pageMv` (moving page plus target page), and unmarked at
-  `turned` or a cancelled drag. The same depth cue therefore exists when a right
-  page turns left and when a left page turns right.
-- Appearing is a 90ms fade after the class changes; disappearing is immediate
-  in the same frame as the class change. A shadow therefore cannot appear before
-  its page has landed or linger for even a frame while the page is already off
-  the table.
-- Folding/peeling needs no extra layer: turn.js already paints the fold
-  gradients. The body shadow never rotates with a leaf, so it cannot smear
-  across a folded corner.
-- The layer fades in only after `--ready`, so an empty box is never shadowed.
-- `overflow-clip-margin` was raised from 26px to 52px so the soft shadow is not
-  cut off; turning pages stay inside this margin.
+1. The desk shadow was driven by React state that only changed at the landing, so
+   it stayed at full strength while a page was in the air.
+2. Turn.js paints fold gradients (`inner-gradient` / `outer-gradient`) on whichever
+   page is moving or being revealed, even with `gradients: false`, and only in the
+   flipping direction. This was the direction-dependent spine shading.
+3. Turn.js's `.shadow` element is an empty div and paints nothing; it is not a
+   source.
+
+**Implementation:**
+
+- **Lift detection every frame.** A `requestAnimationFrame` loop reads turn.js's
+  own state. The book is lifted when a page is in flight (`pageMv`), a turn status
+  is set, a corner peel is active, or turn.js is on a page the parent has not yet
+  committed. While lifted, the book element carries `data-lifted`, and CSS sets
+  both desk layers to opacity 0 with no transition. The attribute is set
+  imperatively, so React re-renders cannot clear it.
+- **Commit gate.** The desk shadow returns only when React has committed the page
+  turn.js is on (`committedTurnPage`). That commit also carries the new shadow
+  mode, so the first resting frame never shows the previous view. A cancelled drag
+  leaves the page unchanged and releases at once; a 60-frame limit guards against a
+  stuck state.
+- **Desk layers.** Two half-layers under the paper, one per side, sized by the
+  landed mode: `spread` → both; `single-right` (cover) → right; `single-left` (last
+  page) → left. After release they fade in over 90ms.
+- **Spine.** Turn.js's `gradients` option is off and its gradient layers are hidden
+  in CSS. No spine shading is painted in either direction, at rest or in flight.
+- **No moving-page shadow.** A drop-shadow on the moving page would still fall on
+  the background, so it is not used.
+- **Mobile.** Turns lift the desk like desktop. The horizontal auto-slide does not
+  lift any page; the shadow stays under the page that is now centred.
+
+**Measured (1200ms turns, every animation frame):**
+
+| Transition | Frames lifted | Desk visible while lifted | Painted spine gradients |
+| --- | --- | --- | --- |
+| Cover → spread | 73 | 0 | 0 |
+| Spread → spread (forward) | 73 | 0 | 0 |
+| Spread → cover (closing) | 70 | 0 | 0 |
+| Spread → last page | 73 | 0 | 0 |
+| Last page → spread (backward) | 71 | 0 | 0 |
+| Drag, cancelled | 64 | 0 | 0 |
+| Drag, backward to cover | 102 | 0 | 0 |
+| Drag, forward to spread | 100 | 0 | 0 |
+
+After each landing: cover `right=1, left=0`; spread `both=1`; last page `left=1,
+right=0`.
 
 **States verified visually** (evidence in `docs/evidence/`):
 
 | State | Evidence |
 | --- | --- |
-| Cover (paper right) | `2026-11-22-reader-cover.png` |
-| Open spread (paper both halves) | `2026-11-22-reader-spread.png` |
-| Cover opening, left half still empty | `2026-11-22-reader-opening.png` |
-| Spread turn, shadow travels with the leaf | `2026-11-22-reader-turning.png` |
-| Closing, body shadow gone; leaf keeps its own | `2026-11-22-reader-closing.png` |
-| Turn finished / next spread | `2026-11-22-reader-spread.png` |
+| Cover opening, desk off while lifting | `2026-11-22-reader-opening.png` |
+| Forward turn mid-flight, no desk, no spine band | `2026-11-22-reader-turning.png` |
+| Backward turn mid-flight, same spine as forward | `2026-11-22-reader-backturn.png` |
+| Closing, no desk under the lifted page | `2026-11-22-reader-closing.png` |
+| Last page in the air, no desk | `2026-11-22-reader-last-turn.png` |
+| Resting spread, desk back after landing | `2026-11-22-reader-spread.png` |
 | Last page (paper left) | `2026-11-22-reader-last.png` |
-| Last page in the air, body stays under pages 4–5 | `2026-11-22-reader-last-turn.png` |
 | Hover peel (folded corner) | `2026-11-22-reader-peel.png` |
 | Dragged fold | `2026-11-22-reader-peel-drag.png` |
 | Mobile single page | `2026-11-22-reader-mobile.png` |
 | Fullscreen | `2026-11-22-reader-fullscreen.png` |
 
-**Regression guard:** `tests/e2e/reader-turn.spec.ts` asserts the rest-state
-geometry, then records the turn classes and computed opacities frame by frame.
-It verifies that an opening adds no left shadow before landing, a closing removes
-it immediately and only the flying leaf is filtered, a spread keeps both halves
-and a leaf shadow in either direction, the last page keeps the body under the
-flat pages until it lands and drops the leaf filter with the page, and the mobile
-auto-slide keeps the shadow on the centered page.
-
-The only page-level effect is the drop-shadow filter on the moving wrapper. It
-is not applied to resting pages (so it cannot double the body shadow or the fold
-gradients), and it is removed at the same event that lands the page.
+**Regression guard:** `tests/e2e/reader-turn.spec.ts` records every animation frame
+of each transition. It asserts that no frame with a lifted page has desk opacity
+above zero, that no frame paints a turn.js gradient, and that the first resting
+frame already shows the landed state. It also covers rest states, a cancelled
+drag, and the mobile slide-versus-turn distinction.
 
 ### Known limitation found while validating the opening
 
@@ -101,7 +101,7 @@ shadow or CSS-detail fix.
 ## Verification
 
 - `tsc --noEmit`, `vite build`, `npm run validate:mvp` clean.
-- Playwright 61/61.
+- Playwright 61/61 (reader spec 6/6, repeated 3× and mobile 8/8).
 - Global detail pass from the previous entry still holds (no overflow, broken
   images, unnamed controls, or console errors across public/editor/account/admin
   in zh/en, desktop and mobile).

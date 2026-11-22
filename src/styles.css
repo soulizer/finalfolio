@@ -5022,9 +5022,9 @@ button.asset-frame {
   display: none !important;
 }
 
-/* Two half-layers behind the paper: each fades with the paper on that side.
-   The left half disappears as a closing page lifts; the right half appears as
-   the cover opens. Body shadows never rotate with a leaf. */
+/* The desk shadow: two half-layers under the paper, one per side. It is shown
+   only while the book is at rest (see `data-lifted`); a lifted leaf removes it
+   on the same frame, and it fades back in over 90ms once the view has landed. */
 .issue-viewer__turnjs::before,
 .issue-viewer__turnjs::after {
   content: '';
@@ -5035,6 +5035,7 @@ button.asset-frame {
   pointer-events: none;
   border-radius: 1px;
   opacity: 0;
+  transition: opacity 90ms ease-out;
   box-shadow:
     0 1px 2px rgba(17, 17, 17, 0.14),
     0 6px 14px rgba(17, 17, 17, 0.1),
@@ -5055,28 +5056,12 @@ button.asset-frame {
 .issue-viewer__turnjs.issue-viewer__turnjs--ready.issue-viewer__turnjs--shadow-left::before,
 .issue-viewer__turnjs.issue-viewer__turnjs--ready.issue-viewer__turnjs--shadow-right::after {
   opacity: 1;
-  animation: issue-viewer-shadow-in 90ms ease-out;
 }
 
-/* A shadow may fade in after its page lands, but it must never linger once the
-   page lifts: removing the class drops it in the same frame as the turn starts. */
-@keyframes issue-viewer-shadow-in {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-/* The turning sheet carries its own drop shadow. It is a filter on the page
-   wrapper (outside turn.js's clipped 3D faces), so the shadow follows the paper
-   through the air and disappears with it instead of staying at the spine. */
-.issue-viewer__turnjs .page-wrapper.is-turn-shadow {
-  filter:
-    drop-shadow(0 14px 22px rgba(17, 17, 17, 0.16))
-    drop-shadow(0 3px 7px rgba(17, 17, 17, 0.09));
+.issue-viewer__turnjs[data-lifted]::before,
+.issue-viewer__turnjs[data-lifted]::after {
+  opacity: 0 !important;
+  transition: none !important;
 }
 
 .issue-viewer__turnjs .even .gradient,
@@ -5084,6 +5069,14 @@ button.asset-frame {
 .issue-viewer__turnjs .inner-gradient,
 .issue-viewer__turnjs .outer-gradient {
   pointer-events: none;
+}
+
+/* Turn.js paints fold gradients on the moving and revealed pages even when the
+   `gradients` option is off, and only in the direction it was flipping. The
+   spine shading must be the same in both directions, so none of them paint. */
+.issue-viewer__turnjs .inner-gradient,
+.issue-viewer__turnjs .outer-gradient {
+  display: none !important;
 }
 
 .issue-turnjs__page {

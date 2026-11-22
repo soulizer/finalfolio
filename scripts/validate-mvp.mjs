@@ -1846,10 +1846,12 @@ try {
     assert.match(styles, /\.issue-viewer__turnjs::before,\s+\.issue-viewer__turnjs::after \{/);
     assert.match(styles, /\.issue-viewer__turnjs--shadow-left::before/);
     assert.match(styles, /\.issue-viewer__turnjs--shadow-right::after/);
-    assert.match(styles, /\.page-wrapper\.is-turn-shadow \{/);
-    assert.match(styles, /drop-shadow\(0 14px 22px rgba\(17, 17, 17, 0\.16\)\)/);
-    assert.match(issueViewPageTurnJs, /leftPageLifting/);
-    assert.match(issueViewPageTurnJs, /coverageFor\(restMode\)/);
+    assert.match(styles, /\.issue-viewer__turnjs\[data-lifted\]::before,\s+\.issue-viewer__turnjs\[data-lifted\]::after \{\s+opacity: 0 !important;/);
+    assert.match(styles, /\.issue-viewer__turnjs \.inner-gradient,\s+\.issue-viewer__turnjs \.outer-gradient \{\s+display: none !important;/);
+    assert.match(useIssueTurnJsRuntime, /gradients: false/);
+    assert.match(useIssueTurnJsRuntime, /function isTurnJsLifted/);
+    assert.match(useIssueTurnJsRuntime, /toggleAttribute\('data-lifted', lifted\)/);
+    assert.doesNotMatch(issueViewPageTurnJs, /turnShadowView|onTurnTargetChange/);
     assert.match(editorProjectLifecycle, /export function buildDraftProjectHydration/);
     assert.match(editorProjectLifecycle, /export function normalizeEditorProjectRecord/);
     assert.match(editorProjectPersistence, /export function applyServerProjectRecordState/);

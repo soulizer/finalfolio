@@ -1,4 +1,4 @@
-import { ForwardedRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { ForwardedRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
 import type { Asset, ProjectFonts } from '../editor/types';
 import {
   clamp,
@@ -32,7 +32,10 @@ type UseIssueTurnJsRuntimeOptions = {
   initialPage: number;
   onViewChange: TurnJsPageChangeHandler;
   onTurningChange: (turning: boolean) => void;
-  onTurnTargetChange?: (view: VisibleTurnView | null) => void;
+  // The page the parent has committed as current. The desk shadow waits for
+  // this to catch up with the page turn.js is on, so it is never painted from
+  // a stale view.
+  committedTurnPage: number;
 };
 
 type TurnJsInstance = any;
@@ -57,7 +60,6 @@ type InitializeTurnJsOptions = {
   issueLabel: string;
   onTurningChangeRef: { current: (turning: boolean) => void };
   onViewChangeRef: { current: TurnJsPageChangeHandler };
-  onTurnTargetChangeRef: { current: (view: VisibleTurnView | null) => void };
   pageHeight: number;
   pageWidth: number;
   renderedPages: RenderedViewerPage[];
@@ -67,6 +69,21 @@ type InitializeTurnJsOptions = {
   targetPage: number;
   turnHost: HTMLDivElement;
 };
+
+// The book's desk shadow is only allowed while every leaf lies flat. Turn.js
+// records the lift in its own state: pages in flight (`pageMv`), a turn status,
+// or a corner peel. Reading that state every frame keeps the shadow in step
+// with the paper, even when a turn starts or cancels between React renders.
+function isTurnJsLifted(turnInstance: TurnJsInstance) {
+  const data = turnInstance?.data?.('t') as
+    | { pageMv?: number[]; status?: string; peel?: unknown }
+    | undefined;
+  if (!data) {
+    return false;
+  }
+
+  return (data.pageMv?.length ?? 0) > 0 || Boolean(data.status) || Boolean(data.peel);
+}
 
 function clearIdlePeelAffordance(turnInstance: TurnJsInstance) {
   if (!turnInstance?.turn) {
@@ -84,33 +101,6 @@ function syncTurnJsViewState(
   const currentPage = Number(turnInstance.turn('page')) || 1;
   clearIdlePeelAffordance(turnInstance);
   onViewChange(normalizeVisibleTurnView(turnInstance.turn('view'), totalPages, currentPage), currentPage);
-}
-
-function clearTurnLeafShadow(turnInstance: TurnJsInstance) {
-  const book = turnInstance?.[0] as HTMLElement | undefined;
-  book?.querySelectorAll('.page-wrapper.is-turn-shadow').forEach((page) => page.classList.remove('is-turn-shadow'));
-}
-
-function markTurnLeafShadow(turnInstance: TurnJsInstance, targetPage: number) {
-  clearTurnLeafShadow(turnInstance);
-  const book = turnInstance?.[0] as HTMLElement | undefined;
-  if (!book) {
-    return;
-  }
-
-  // The moving sheet and the sheet it lands on both take part in the turn.
-  // turn.js keeps the moving page numbers in `pageMv`; the event's target page
-  // is the leaf's destination. A drop shadow on those wrappers travels with the
-  // paper, so it leaves the table with the leaf instead of staying at the spine.
-  const turnData = turnInstance.data?.('t') as { pageMv?: number[]; status?: string } | undefined;
-  if (turnData?.status !== 'turning') {
-    return;
-  }
-  const pages = new Set<number>([targetPage, ...(turnData?.pageMv ?? [])].filter((page) => page > 0));
-  pages.forEach((pageNumber) => {
-    const page = book.querySelector(`.page-wrapper .page.p${pageNumber}`);
-    page?.closest('.page-wrapper')?.classList.add('is-turn-shadow');
-  });
 }
 
 function setTurnJsAnimatedCentering(turnInstance: TurnJsInstance, animated: boolean) {
@@ -179,7 +169,6 @@ async function initializeTurnJs({
   isDisposed,
   issueLabel,
   onTurningChangeRef,
-  onTurnTargetChangeRef,
   onViewChangeRef,
   pageHeight,
   pageWidth,
@@ -220,7 +209,10 @@ async function initializeTurnJs({
     height: Math.round(pageHeight),
     display: displayMode,
     autoCenter: true,
-    gradients: true,
+    // Turn.js paints its fold gradients on whichever page is moving or being
+    // revealed, so the spine shading differed between forward and backward
+    // turns. Off means no spine shading in either direction.
+    gradients: false,
     acceleration: true,
     duration: 500,
     elevation: '10%',
@@ -232,42 +224,24 @@ async function initializeTurnJs({
     page: clamp(targetPage, 1, renderedPages.length),
     pages: renderedPages.length,
     when: {
-      turning: (_event: unknown, page: number, view: number[]) => {
+      turning: () => {
         setTurnJsAnimatedCentering($book, true);
-        // Turn.js passes the destination view here. The parent uses it only to
-        // classify the turn (an opening, a closing, or a spread-to-spread
-        // turn); the body shadow itself stays on the pages still lying flat.
-        onTurnTargetChangeRef.current(
-          normalizeVisibleTurnView(view, renderedPages.length, page ?? currentPageRef.current),
-        );
-        markTurnLeafShadow($book, page);
-        // `pageMv` is populated by the first flip frame, after this event. Mark
-        // again on the next frame so the moving sheet itself is filtered too,
-        // not only the page it is landing on.
-        window.requestAnimationFrame(() => markTurnLeafShadow($book, page));
         onTurningChangeRef.current(true);
       },
       turned: (_event: unknown, page: number, view: number[]) => {
         const normalizedView = normalizeVisibleTurnView(view, renderedPages.length, page);
         currentPageRef.current = page;
         setTurnJsAnimatedCentering($book, false);
-        // Publish the landed view before clearing the turn target. If the target
-        // is cleared first, React briefly renders the old view with no target,
-        // which flashes the source-side body shadow back in exactly at landing.
         onViewChangeRef.current(normalizedView, page);
-        onTurnTargetChangeRef.current(null);
         onTurningChangeRef.current(false);
-        clearTurnLeafShadow($book);
         clearIdlePeelAffordance($book);
       },
       end: (_event: unknown, _page: number, completed: boolean) => {
         setTurnJsAnimatedCentering($book, false);
-        // `turned` follows a completed flip and publishes the new view there.
-        // A cancelled drag never reaches it, so clear the in-flight state here.
+        // `turned` follows a completed flip. A cancelled drag never reaches it,
+        // so the in-flight state is cleared here.
         if (!completed) {
-          onTurnTargetChangeRef.current(null);
           onTurningChangeRef.current(false);
-          clearTurnLeafShadow($book);
         }
       },
     },
@@ -275,6 +249,11 @@ async function initializeTurnJs({
 
   return $book;
 }
+
+// Frames to wait for React to commit a page change before releasing the desk
+// shadow anyway. React normally commits within a frame; the limit only guards
+// against a stuck state if a page change never triggers a render.
+const UNCOMMITTED_PAGE_TIMEOUT_FRAMES = 60;
 
 export function useIssueTurnJsRuntime({
   ref,
@@ -291,14 +270,14 @@ export function useIssueTurnJsRuntime({
   initialPage,
   onViewChange,
   onTurningChange,
-  onTurnTargetChange,
+  committedTurnPage,
 }: UseIssueTurnJsRuntimeOptions) {
   const bookRef = useRef<HTMLDivElement | null>(null);
   const turnInstanceRef = useRef<TurnJsInstance | null>(null);
   const [bookReady, setBookReady] = useState(false);
   const onViewChangeRef = useRef(onViewChange);
   const onTurningChangeRef = useRef(onTurningChange);
-  const onTurnTargetChangeRef = useRef(onTurnTargetChange ?? (() => undefined));
+  const committedTurnPageRef = useRef(committedTurnPage);
   const pageWidthRef = useRef(pageWidth);
   const pageHeightRef = useRef(pageHeight);
   const currentPageRef = useRef(clamp(initialPage, 1, Math.max(renderedPages.length, 1)));
@@ -316,9 +295,38 @@ export function useIssueTurnJsRuntime({
     onTurningChangeRef.current = onTurningChange;
   }, [onTurningChange]);
 
+  // The page the parent has rendered. The desk shadow is kept off until this
+  // matches the page turn.js is on, so the landed shadow is never painted from
+  // the previous view.
+  useLayoutEffect(() => {
+    committedTurnPageRef.current = committedTurnPage;
+  });
+
   useEffect(() => {
-    onTurnTargetChangeRef.current = onTurnTargetChange ?? (() => undefined);
-  }, [onTurnTargetChange]);
+    let frame = 0;
+    let uncommittedFrames = 0;
+
+    const tick = () => {
+      const book = bookRef.current;
+      const turnInstance = turnInstanceRef.current;
+      if (book && turnInstance) {
+        const turnPage = Number(turnInstance.data?.('t')?.page) || 0;
+        const uncommitted = turnPage > 0 && turnPage !== committedTurnPageRef.current;
+        uncommittedFrames = uncommitted ? uncommittedFrames + 1 : 0;
+        const lifted =
+          isTurnJsLifted(turnInstance) ||
+          (uncommitted && uncommittedFrames <= UNCOMMITTED_PAGE_TIMEOUT_FRAMES);
+        if (book.hasAttribute('data-lifted') !== lifted) {
+          book.toggleAttribute('data-lifted', lifted);
+        }
+      }
+
+      frame = window.requestAnimationFrame(tick);
+    };
+
+    frame = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   const spreadPageCount = displayMode === 'double' ? 2 : 1;
   const canInitializeTurnJs = renderedPages.length > 0 && pageWidth > 0 && pageHeight > 0;
@@ -377,7 +385,6 @@ export function useIssueTurnJsRuntime({
       isDisposed: () => disposed,
       issueLabel,
       onTurningChangeRef,
-      onTurnTargetChangeRef,
       onViewChangeRef,
       pageHeight: pageHeightRef.current,
       pageWidth: pageWidthRef.current,
