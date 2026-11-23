@@ -30,6 +30,14 @@ test('destructive row actions are icon-only and confirmed', async ({ page }) => 
   const iconBox = await deleteButton.boundingBox();
   expect(iconBox?.width, 'delete icon width').toBe(iconBox?.height);
 
+  // Same skeuomorphic surface as the other buttons: gradient + control shadow.
+  const deleteSurface = await deleteButton.evaluate((button) => {
+    const style = getComputedStyle(button);
+    return { background: style.backgroundImage, shadow: style.boxShadow };
+  });
+  expect(deleteSurface.background, 'delete icon gradient').toContain('linear-gradient');
+  expect(deleteSurface.shadow, 'delete icon shadow').not.toBe('none');
+
   await deleteButton.click();
   const dialog = page.locator('.confirm-dialog');
   await expect(dialog).toBeVisible();
@@ -77,4 +85,26 @@ test('mobile row actions keep one height and a square delete icon', async ({ bro
   expect(iconBox?.height, 'mobile delete icon height').toBe(44);
 
   await context.close();
+});
+
+test('primary buttons keep their dark shadow on hover and press down', async ({ page }) => {
+  await page.goto('/auth');
+  await expect(page.locator('.auth-form button[type="submit"]')).toBeVisible();
+
+  const submit = page.locator('.auth-form button[type="submit"]');
+  await submit.hover();
+  await page.waitForTimeout(220);
+  const hover = await submit.evaluate((button) => getComputedStyle(button).boxShadow);
+  expect(hover, 'primary hover keeps the dark shadow').toContain('rgba(17, 17, 17, 0.24)');
+  expect(hover, 'primary hover has no light top edge').not.toContain('rgba(255, 255, 255, 0.98)');
+
+  await page.mouse.down();
+  await page.waitForTimeout(180);
+  const active = await submit.evaluate((button) => {
+    const style = getComputedStyle(button);
+    return { transform: style.transform, shadow: style.boxShadow };
+  });
+  expect(active.transform, 'pressed button moves down').not.toBe('none');
+  expect(active.shadow, 'pressed primary keeps the dark shadow').toContain('rgba(17, 17, 17, 0.2)');
+  await page.mouse.up();
 });
