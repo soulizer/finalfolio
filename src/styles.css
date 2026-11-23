@@ -5026,9 +5026,20 @@ button.asset-frame {
    present whether the page is closed, open, turning, or flat, and it follows
    the page through the air. */
 .issue-viewer__turnjs .page-wrapper {
-  filter:
-    drop-shadow(0 12px 20px rgba(17, 17, 17, 0.15))
-    drop-shadow(0 3px 7px rgba(17, 17, 17, 0.08));
+  overflow: visible !important;
+}
+
+/* Each page's `.clip` carries the same shadow values the page wrapper used to
+   produce with a drop-shadow filter. A box-shadow does not composite the page
+   content, so images are not re-rasterized during the turn; `.clip` is
+   transformed by turn.js, so the shadow follows the page. `backface-visibility`
+   stays visible on `.clip` so the shadow survives the whole turn, while
+   `.inner-page` keeps `hidden` so content still only shows on the front. */
+.issue-viewer__turnjs .clip {
+  backface-visibility: visible;
+  box-shadow:
+    0 12px 20px rgba(17, 17, 17, 0.15),
+    0 3px 7px rgba(17, 17, 17, 0.08);
 }
 
 .issue-viewer__turnjs .even .gradient,
