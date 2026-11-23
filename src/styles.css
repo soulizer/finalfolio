@@ -466,6 +466,7 @@ a:focus-visible {
 .button--icon {
   width: var(--control-height-sm);
   min-width: var(--control-height-sm);
+  min-height: var(--control-height-sm);
   padding: 0;
   justify-content: center;
 }
@@ -2936,6 +2937,12 @@ a:focus-visible {
 .admin-row__actions .button,
 .admin-row__actions a.button {
   min-width: 78px;
+}
+
+.admin-row__actions .button--icon,
+.admin-row__actions a.button--icon {
+  width: var(--control-height-sm);
+  min-width: var(--control-height-sm);
 }
 
 .admin-detail-preview,
@@ -7463,6 +7470,16 @@ html[lang='zh-CN'] .admin-stat-card strong {
 @media (pointer: coarse) {
   .button--small {
     min-height: 44px;
+  }
+
+  .button--icon,
+  .admin-row__actions .button--icon,
+  .admin-row__actions a.button--icon {
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    height: 44px;
+    align-self: flex-start;
   }
 }
 
