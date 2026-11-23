@@ -20,11 +20,11 @@ appear early.
   per-frame lift loop, pointer-drag tracking).
 - `.issue-viewer__turnjs .page-wrapper` has a `drop-shadow` filter. Turn.js
   transforms the page content, so the shadow follows the moving sheet.
-- `.clip` keeps `backface-visibility: visible` and a paper-coloured `::before`
-  back face, so the drop-shadow still has a surface to cast from after the page
-  passes 90°. `.inner-page` stays `hidden` and above it, so page content still
-  only shows on the front. This removes the shadow's abrupt disappearance
-  mid-turn.
+- `.clip` stays `backface-visibility: visible` and transparent. `.inner-page`
+  (the visible page box) carries the paper-coloured back face, and
+  `.magazine-page` keeps content front-only. The drop-shadow therefore has a
+  page-sized surface to cast from after 90°, without a board larger than the
+  page.
 - `.magazine-page img` gets `transform: translateZ(0)`, promoting images to
   their own compositor layers so the wrapper filter does not re-rasterize them
   every frame. This removes the slight image jitter.
@@ -61,9 +61,10 @@ appear early.
 
 **Regression guard:** `tests/e2e/reader-turn.spec.ts` asserts that visible page
 wrappers carry a `drop-shadow` filter in every state (cover, spread, last page,
-mid-turn, press, mobile, auto-slide), that `.clip` keeps a visible paper back
-face, that images have their own compositor layer, and that the book has no
-`::before`/`::after` background layer.
+mid-turn, press, mobile, auto-slide), that `.clip`/`.inner-page` keep a visible
+page-sized paper back while `.magazine-page` stays front-only, that images have
+their own compositor layer, and that the book has no `::before`/`::after`
+background layer.
 
 ### Known limitation found while validating the opening
 

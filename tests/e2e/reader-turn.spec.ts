@@ -110,7 +110,9 @@ type PageShadowState = {
   pageFilters: string[];
   visiblePageFilters: string[];
   clipBackface: string[];
-  clipBackBackground: string[];
+  innerBackface: string[];
+  innerBackground: string[];
+  pageBackface: string[];
   imageTransforms: string[];
 };
 
@@ -120,6 +122,9 @@ async function pageShadowState(page: Page): Promise<PageShadowState | null> {
     if (!book) return null;
     const wrappers = Array.from(book.querySelectorAll('.page-wrapper'));
     const visible = wrappers.filter((wrapper) => wrapper.getBoundingClientRect().width > 10);
+    const imageTransforms = Array.from(book.querySelectorAll('img')).map(
+      (image) => getComputedStyle(image).transform,
+    );
     return {
       className: book.className,
       globalBeforeContent: getComputedStyle(book, '::before').content,
@@ -131,12 +136,16 @@ async function pageShadowState(page: Page): Promise<PageShadowState | null> {
       clipBackface: visible.map((wrapper) =>
         getComputedStyle(wrapper.querySelector('.clip') ?? wrapper).backfaceVisibility,
       ),
-      clipBackBackground: visible.map((wrapper) =>
-        getComputedStyle(wrapper.querySelector('.clip') ?? wrapper, '::before').backgroundColor,
+      innerBackface: visible.map((wrapper) =>
+        getComputedStyle(wrapper.querySelector('.inner-page') ?? wrapper).backfaceVisibility,
       ),
-      imageTransforms: Array.from(book.querySelectorAll('img')).map(
-        (image) => getComputedStyle(image).transform,
+      innerBackground: visible.map((wrapper) =>
+        getComputedStyle(wrapper.querySelector('.inner-page') ?? wrapper).backgroundColor,
       ),
+      pageBackface: visible.map((wrapper) =>
+        getComputedStyle(wrapper.querySelector('.magazine-page') ?? wrapper).backfaceVisibility,
+      ),
+      imageTransforms,
     };
   });
 }
@@ -147,13 +156,20 @@ function expectPageShadows(state: PageShadowState | null) {
   for (const filter of state!.visiblePageFilters) {
     expect(filter).toContain('drop-shadow');
   }
-  // The shadow source exists on the back face, so the drop-shadow cannot
-  // disappear when the page passes 90°.
+  // The drop-shadow source survives the back face at the visible page size:
+  // `.clip` is visible, `.inner-page` carries the paper back, and the content
+  // page stays front-only. No board larger than the page is painted.
   for (const backface of state!.clipBackface) {
     expect(backface, 'clip backface').toBe('visible');
   }
-  for (const background of state!.clipBackBackground) {
-    expect(background, 'clip back-face paper').not.toBe('rgba(0, 0, 0, 0)');
+  for (const backface of state!.innerBackface) {
+    expect(backface, 'inner page backface').toBe('visible');
+  }
+  for (const background of state!.innerBackground) {
+    expect(background, 'inner page paper back').not.toBe('rgba(0, 0, 0, 0)');
+  }
+  for (const backface of state!.pageBackface) {
+    expect(backface, 'page content backface').toBe('hidden');
   }
   for (const transform of state!.imageTransforms) {
     expect(transform, 'image compositor layer').not.toBe('none');

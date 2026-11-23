@@ -5032,26 +5032,21 @@ button.asset-frame {
 }
 
 /* The drop-shadow is computed from the page wrapper's rendered content. After
-   the page passes 90°, `.clip`'s hidden back face would remove the content and
-   the shadow with it. Keep `.clip` visible and give it a paper-coloured back
-   pseudo-element; `.inner-page` stays hidden and above it, so page content
-   still only shows on the front. */
+   the page passes 90°, the hidden back face would remove the content and the
+   shadow with it. `.inner-page` is the visible page box, so it carries the
+   paper-coloured back; `.magazine-page` keeps content front-only. `.clip`
+   stays transparent, so no board larger than the page appears. */
 .issue-viewer__turnjs .clip {
   backface-visibility: visible;
 }
 
-.issue-viewer__turnjs .clip::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  background: #f7f4ee;
+.issue-viewer__turnjs .inner-page {
   backface-visibility: visible;
+  background: #f7f4ee !important;
 }
 
-.issue-viewer__turnjs .inner-page {
-  position: relative;
-  z-index: 1;
+.issue-viewer__turnjs .magazine-page {
+  backface-visibility: hidden;
 }
 
 /* Promote images to their own compositor layers so the wrapper filter does not

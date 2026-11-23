@@ -1844,6 +1844,10 @@ try {
     assert.doesNotMatch(styles, /issue-viewer__turnjs::before/);
     assert.doesNotMatch(styles, /data-lift-side/);
     assert.match(styles, /\.issue-viewer__turnjs \.page-wrapper \{\s+filter:\s+drop-shadow\(0 12px 20px rgba\(17, 17, 17, 0\.15\)\)/);
+    assert.match(styles, /\.issue-viewer__turnjs \.clip \{\s+backface-visibility: visible;/);
+    assert.match(styles, /\.issue-viewer__turnjs \.inner-page \{\s+backface-visibility: visible;\s+background: #f7f4ee !important;/);
+    assert.match(styles, /\.issue-viewer__turnjs \.magazine-page \{\s+backface-visibility: hidden;/);
+    assert.match(styles, /\.issue-viewer__turnjs \.magazine-page img \{\s+transform: translateZ\(0\);/);
     assert.match(styles, /\.issue-viewer__turnjs \.inner-gradient,\s+\.issue-viewer__turnjs \.outer-gradient \{\s+display: none !important;/);
     assert.match(useIssueTurnJsRuntime, /gradients: false/);
     assert.doesNotMatch(useIssueTurnJsRuntime, /data-lift-side|pointerDraggingRef|isTurnJsLifted|syncLiftedLeafShadows/);
