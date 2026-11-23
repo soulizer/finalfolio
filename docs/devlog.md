@@ -1914,13 +1914,11 @@
   at full strength while a page was in the air, and that turn.js's fold gradients
   were the direction-dependent spine shading. Turn.js's `.shadow` element paints
   nothing and was ruled out.
-- The desk shadow is per-side. The per-frame pass derives the moving sheet's
-  side from `pageMv` (even = left, odd = right) and sets `data-lift-side`; CSS
-  blanks only that side. The stationary side keeps its shadow, so a drag cannot
-  blank the whole desk. A bare press or hover does not blank anything: the desk
-  reacts only to a real drag or a `turning`/`moving` state, which removes the
-  probabilistic press-fold flicker. It returns after React commits the page
-  turn.js is on.
+- The desk shadow is the book block's contact shadow and is constant during a
+  turn. It follows only the resting shape (cover / spread / last page) and
+  changes when the landed view commits, with no transition. It never reacts to
+  `pageMv`, `status`, peels or presses, so a press cannot darken it, a drag
+  cannot blank it, and a cancelled drag cannot make a side appear early.
 - Turn.js gradients are disabled and their layers hidden, so the spine has the same
   (no) shading in both directions.
 - The moving sheet keeps its own shadow: the per-frame pass marks page wrappers
