@@ -1849,8 +1849,10 @@ try {
     assert.match(styles, /\.issue-viewer__turnjs \.inner-gradient,\s+\.issue-viewer__turnjs \.outer-gradient \{\s+display: none !important;/);
     assert.match(useIssueTurnJsRuntime, /gradients: false/);
     assert.match(useIssueTurnJsRuntime, /function isTurnJsLifted/);
-    assert.doesNotMatch(styles, /data-lift-side/);
-    assert.doesNotMatch(useIssueTurnJsRuntime, /data-lift-side|pointerDraggingRef/);
+    assert.match(styles, /\.issue-viewer__turnjs\[data-lift-side='left'\]::before,\s+\.issue-viewer__turnjs\[data-lift-side='right'\]::after \{\s+opacity: 0 !important;/);
+    assert.match(useIssueTurnJsRuntime, /setAttribute\('data-lift-side', liftSide\)/);
+    assert.match(useIssueTurnJsRuntime, /pointerDraggingRef/);
+    assert.match(useIssueTurnJsRuntime, /LIFT_SIDE_HOLD_FRAMES/);
     assert.match(useIssueTurnJsRuntime, /syncLiftedLeafShadows/);
     assert.doesNotMatch(issueViewPageTurnJs, /turnShadowView|onTurnTargetChange/);
     assert.match(styles, /\.page-wrapper\.is-leaf-lifting \{/);

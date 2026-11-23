@@ -199,6 +199,7 @@ export function IssueViewPage() {
                     shadowLeft={shadowHalves.left}
                     shadowRight={shadowHalves.right}
                     initialPage={initialBookPage}
+                    committedTurnPage={currentTurnPage}
                     onTurningChange={setIsTurning}
                     onViewChange={handleBookViewChange}
                   />

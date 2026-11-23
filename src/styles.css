@@ -5022,9 +5022,9 @@ button.asset-frame {
   display: none !important;
 }
 
-/* The desk shadow: two half-layers under the paper, one per side. It follows
-   the resting shape (cover / spread / last page) and does not change during a
-   turn, so it cannot flicker. Changes at landing are immediate. */
+/* The desk shadow: two half-layers under the paper, one per side. The side the
+   moving sheet belongs to drops out (`data-lift-side`) while the sheet is in the
+   air; the other side keeps its shadow. Changes are immediate. */
 .issue-viewer__turnjs::before,
 .issue-viewer__turnjs::after {
   content: '';
@@ -5063,6 +5063,11 @@ button.asset-frame {
 .issue-viewer__turnjs .inner-gradient,
 .issue-viewer__turnjs .outer-gradient {
   pointer-events: none;
+}
+
+.issue-viewer__turnjs[data-lift-side='left']::before,
+.issue-viewer__turnjs[data-lift-side='right']::after {
+  opacity: 0 !important;
 }
 
 /* A lifted sheet keeps its own shadow. It is a filter on the rotated page

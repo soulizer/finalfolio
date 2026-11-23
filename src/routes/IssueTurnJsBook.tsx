@@ -22,6 +22,7 @@ type TurnJsBookProps = {
   shadowLeft: boolean;
   shadowRight: boolean;
   initialPage: number;
+  committedTurnPage: number;
   onViewChange: (view: VisibleTurnView, page: number) => void;
   onTurningChange: (turning: boolean) => void;
 };
@@ -44,6 +45,7 @@ export const IssueTurnJsBook = forwardRef(function IssueTurnJsBook(
     shadowLeft,
     shadowRight,
     initialPage,
+    committedTurnPage,
     onViewChange,
     onTurningChange,
   }: TurnJsBookProps,
@@ -64,6 +66,7 @@ export const IssueTurnJsBook = forwardRef(function IssueTurnJsBook(
     initialPage,
     onViewChange,
     onTurningChange,
+    committedTurnPage,
   });
 
   return (

@@ -103,6 +103,7 @@ test('the loading state is a neutral indicator, not a fake spread', async ({ pag
 
 type DeskFrame = {
   t: number;
+  liftSide: string | null;
   turnState: string;
   pageMoving: number;
   peel: boolean;
@@ -161,6 +162,7 @@ async function startDeskRecording(page: Page) {
       const leaves = Array.from(book.querySelectorAll<HTMLElement>('.page-wrapper.is-leaf-lifting'));
       (scope.__deskFrames as unknown[]).push({
         t: Math.round(performance.now() - started),
+        liftSide: book.getAttribute('data-lift-side'),
         turnState: turn?.status ?? '',
         pageMoving: turn?.pageMv?.length ?? 0,
         peel: Boolean(turn?.peel),
@@ -186,7 +188,7 @@ async function stopDeskRecording(page: Page): Promise<DeskFrame[]> {
 }
 
 function isLiftedFrame(frame: DeskFrame) {
-  return frame.leafShadows > 0;
+  return frame.liftSide !== null || frame.leafShadows > 0;
 }
 
 // The shared rule: while any leaf is lifted the desk has no shadow at all, and
@@ -194,13 +196,19 @@ function isLiftedFrame(frame: DeskFrame) {
 function expectDeskRuleHolds(frames: DeskFrame[]) {
   const lifted = frames.filter(isLiftedFrame);
   expect(lifted.length).toBeGreaterThan(0);
-  // The desk shadow is the book block's contact shadow: it stays at the
-  // resting shape for the whole turn and only changes when the view lands.
-  for (const frame of frames) {
-    const expectedLeft = frame.classes.includes('shadow-left') ? 1 : 0;
-    const expectedRight = frame.classes.includes('shadow-right') ? 1 : 0;
-    expect(frame.left, `frame ${frame.t}ms: desk left`).toBeCloseTo(expectedLeft, 2);
-    expect(frame.right, `frame ${frame.t}ms: desk right`).toBeCloseTo(expectedRight, 2);
+  // Only the moving side may drop out; the stationary side keeps its shadow.
+  for (const frame of lifted) {
+    if (frame.liftSide === 'left') {
+      expect(frame.left, `frame ${frame.t}ms: moving left side`).toBeLessThan(0.001);
+      if (frame.classes.includes('shadow-right')) {
+        expect(frame.right, `frame ${frame.t}ms: stationary right side`).toBeCloseTo(1, 2);
+      }
+    } else if (frame.liftSide === 'right') {
+      expect(frame.right, `frame ${frame.t}ms: moving right side`).toBeLessThan(0.001);
+      if (frame.classes.includes('shadow-left')) {
+        expect(frame.left, `frame ${frame.t}ms: stationary left side`).toBeCloseTo(1, 2);
+      }
+    }
   }
   for (const frame of frames) {
     expect(frame.gradients, `frame ${frame.t}ms: painted spine gradient`).toBe(0);
@@ -272,7 +280,7 @@ test('the book shadow follows the visible paper in every rest state', async ({ p
   expect(last!.right).toBeCloseTo(0, 2);
 });
 
-test('the desk shadow stays constant during a turn and updates at landing', async ({ page }) => {
+test('a turn drops only the moving side and returns after landing', async ({ page }) => {
   await signIn(page, '/editor');
   const sharePath = await createShare(page);
   await page.goto(sharePath);
