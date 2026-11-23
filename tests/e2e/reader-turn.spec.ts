@@ -135,7 +135,7 @@ async function pageShadowState(page: Page): Promise<PageShadowState | null> {
       globalAfterShadow: getComputedStyle(book, '::after').boxShadow,
       wrapperFilters: wrappers.map((wrapper) => getComputedStyle(wrapper).filter),
       visiblePageShadows: visible.map(
-        (wrapper) => getComputedStyle(wrapper.querySelector('.magazine-page') ?? wrapper).boxShadow,
+        (wrapper) => getComputedStyle(wrapper.querySelector('.clip') ?? wrapper).boxShadow,
       ),
       imageAncestorFilters,
     };
@@ -233,7 +233,7 @@ test('hovering a corner and pressing a page do not change the page shadow', asyn
         if (wrapper.getBoundingClientRect().width <= 10) return;
         const page = wrapper.querySelector('.page');
         const key = page?.className.match(/\bp\d+\b/)?.[0] ?? Math.random().toString();
-        map.set(key, getComputedStyle(wrapper.querySelector('.magazine-page') ?? wrapper).boxShadow);
+        map.set(key, getComputedStyle(wrapper.querySelector('.clip') ?? wrapper).boxShadow);
       });
       return Array.from(map.entries());
     });

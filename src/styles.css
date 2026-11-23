@@ -5024,6 +5024,19 @@ button.asset-frame {
 
 
 
+.issue-viewer__turnjs .page-wrapper {
+  overflow: visible !important;
+}
+
+/* Each page's own shadow lives on .clip. .clip keeps overflow hidden, so its
+   own shadow is not clipped while the page content stays clipped. Only the
+   outer wrapper is opened so the shadow can leave it. */
+.issue-viewer__turnjs .clip {
+  box-shadow:
+    0 16px 30px rgba(17, 17, 17, 0.22),
+    0 4px 10px rgba(17, 17, 17, 0.12);
+}
+
 .issue-viewer__turnjs .even .gradient,
 .issue-viewer__turnjs .odd .gradient,
 .issue-viewer__turnjs .inner-gradient,
