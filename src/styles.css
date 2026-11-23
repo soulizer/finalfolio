@@ -5018,11 +5018,13 @@ button.asset-frame {
   backface-visibility: hidden;
 }
 
-.issue-viewer__turnjs .page-wrapper {
-  overflow: visible !important;
+.issue-viewer__turnjs.issue-viewer__turnjs--ready > .issue-turnjs__page {
+  display: none !important;
 }
 
-.issue-viewer__turnjs .inner-page {
+
+
+.issue-viewer__turnjs .page-wrapper {
   overflow: visible !important;
 }
 
@@ -5031,11 +5033,13 @@ button.asset-frame {
   overflow-clip-margin: 48px;
 }
 
-.issue-viewer__turnjs.issue-viewer__turnjs--ready > .issue-turnjs__page {
-  display: none !important;
+/* Each page's own shadow lives on the transformed inner sheet. It is a static
+   box-shadow, so it does not flicker and does not force image re-rasterization. */
+.issue-viewer__turnjs .inner-page {
+  box-shadow:
+    0 22px 40px rgba(17, 17, 17, 0.28),
+    0 6px 14px rgba(17, 17, 17, 0.16);
 }
-
-
 
 .issue-viewer__turnjs .even .gradient,
 .issue-viewer__turnjs .odd .gradient,
@@ -5060,7 +5064,9 @@ button.asset-frame {
 }
 
 .issue-turnjs__page--boundary {
-  overflow: visible;
+  overflow: hidden;
+  overflow: clip;
+  overflow-clip-margin: 14px;
 }
 
 .issue-turnjs__sheet {
@@ -5081,14 +5087,14 @@ button.asset-frame {
 
 .issue-turnjs__sheet-scale .magazine-page {
   box-shadow:
-    0 22px 40px rgba(17, 17, 17, 0.28),
-    0 6px 14px rgba(17, 17, 17, 0.16);
+    0 7px 12px rgba(17, 17, 17, 0.008),
+    0 2px 4px rgba(17, 17, 17, 0.004);
 }
 
 .issue-turnjs__page--boundary .issue-turnjs__sheet-scale .magazine-page {
   box-shadow:
-    0 20px 36px rgba(17, 17, 17, 0.26),
-    0 5px 12px rgba(17, 17, 17, 0.15);
+    0 8px 14px rgba(17, 17, 17, 0.011),
+    0 2px 5px rgba(17, 17, 17, 0.005);
 }
 
 .issue-viewer__boundary-turn {
