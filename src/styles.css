@@ -5022,61 +5022,20 @@ button.asset-frame {
   display: none !important;
 }
 
-/* The desk shadow: two half-layers under the paper, one per side. The side the
-   moving sheet belongs to drops out (`data-lift-side`) while the sheet is in the
-   air; the other side keeps its shadow. Changes are immediate. */
-.issue-viewer__turnjs::before,
-.issue-viewer__turnjs::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  z-index: 0;
-  pointer-events: none;
-  border-radius: 1px;
-  opacity: 0;
-  box-shadow:
-    0 1px 2px rgba(17, 17, 17, 0.14),
-    0 6px 14px rgba(17, 17, 17, 0.1),
-    0 20px 42px rgba(17, 17, 17, 0.14),
-    0 0 0 1px rgba(17, 17, 17, 0.07);
+/* No global background shadow. Each page carries its own drop shadow, so it is
+   present whether the page is closed, open, turning, or flat, and it follows
+   the page through the air. */
+.issue-viewer__turnjs .page-wrapper {
+  filter:
+    drop-shadow(0 12px 20px rgba(17, 17, 17, 0.15))
+    drop-shadow(0 3px 7px rgba(17, 17, 17, 0.08));
 }
-
-.issue-viewer__turnjs::before {
-  left: 0;
-  width: 50%;
-}
-
-.issue-viewer__turnjs::after {
-  left: 50%;
-  width: 50%;
-}
-
-.issue-viewer__turnjs.issue-viewer__turnjs--ready.issue-viewer__turnjs--shadow-left::before,
-.issue-viewer__turnjs.issue-viewer__turnjs--ready.issue-viewer__turnjs--shadow-right::after {
-  opacity: 1;
-}
-
 
 .issue-viewer__turnjs .even .gradient,
 .issue-viewer__turnjs .odd .gradient,
 .issue-viewer__turnjs .inner-gradient,
 .issue-viewer__turnjs .outer-gradient {
   pointer-events: none;
-}
-
-.issue-viewer__turnjs[data-lift-side='left']::before,
-.issue-viewer__turnjs[data-lift-side='right']::after {
-  opacity: 0 !important;
-}
-
-/* A lifted sheet keeps its own shadow. It is a filter on the rotated page
-   wrapper, so it follows the page through the air and is removed when the page
-   is flat again. The desk shadow is separate and stays off while lifting. */
-.issue-viewer__turnjs .page-wrapper.is-leaf-lifting {
-  filter:
-    drop-shadow(0 16px 24px rgba(17, 17, 17, 0.17))
-    drop-shadow(0 3px 7px rgba(17, 17, 17, 0.09));
 }
 
 /* Turn.js paints fold gradients on the moving and revealed pages even when the

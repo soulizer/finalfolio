@@ -101,283 +101,100 @@ test('the loading state is a neutral indicator, not a fake spread', async ({ pag
 });
 
 
-type DeskFrame = {
-  t: number;
-  liftSide: string | null;
-  turnState: string;
-  pageMoving: number;
-  peel: boolean;
-  left: number;
-  right: number;
-  classes: string;
-  gradients: number;
-  leafShadows: number;
-  leafFilters: string[];
-};
-
-type ShadowSnapshot = {
+type PageShadowState = {
   className: string;
-  left: number;
-  right: number;
-  leftClass: boolean;
-  rightClass: boolean;
+  globalBeforeContent: string;
+  globalAfterContent: string;
+  globalBeforeShadow: string;
+  globalAfterShadow: string;
+  pageFilters: string[];
+  visiblePageFilters: string[];
 };
 
-const nextButton = (page: Page) => page.locator('.issue-view-sidebar button').filter({ hasText: /Next|下一页/ }).first();
-const prevButton = (page: Page) => page.locator('.issue-view-sidebar button').filter({ hasText: /Previous|上一页/ }).first();
-
-async function snapshotDesk(page: Page): Promise<ShadowSnapshot | null> {
+async function pageShadowState(page: Page): Promise<PageShadowState | null> {
   return page.evaluate(() => {
     const book = document.querySelector('.issue-viewer__turnjs');
     if (!book) return null;
+    const wrappers = Array.from(book.querySelectorAll('.page-wrapper'));
+    const visible = wrappers.filter((wrapper) => wrapper.getBoundingClientRect().width > 10);
     return {
       className: book.className,
-      left: Number.parseFloat(getComputedStyle(book, '::before').opacity),
-      right: Number.parseFloat(getComputedStyle(book, '::after').opacity),
-      leftClass: book.classList.contains('issue-viewer__turnjs--shadow-left'),
-      rightClass: book.classList.contains('issue-viewer__turnjs--shadow-right'),
+      globalBeforeContent: getComputedStyle(book, '::before').content,
+      globalAfterContent: getComputedStyle(book, '::after').content,
+      globalBeforeShadow: getComputedStyle(book, '::before').boxShadow,
+      globalAfterShadow: getComputedStyle(book, '::after').boxShadow,
+      pageFilters: wrappers.map((wrapper) => getComputedStyle(wrapper).filter),
+      visiblePageFilters: visible.map((wrapper) => getComputedStyle(wrapper).filter),
     };
   });
 }
 
-// Records every animation frame of the book: turn.js's own lift state, the
-// lifted attribute, both desk opacities, and any painted turn.js gradient.
-async function startDeskRecording(page: Page) {
-  await page.evaluate(() => {
-    const scope = window as unknown as { __deskFrames?: unknown[]; __deskRecording?: boolean };
-    scope.__deskFrames = [];
-    scope.__deskRecording = true;
-    const book = document.querySelector<HTMLElement>('.issue-viewer__turnjs');
-    if (!book) return;
-    const started = performance.now();
-    const tick = () => {
-      if (!scope.__deskRecording) return;
-      const turn = (window as unknown as { jQuery: (el: Element) => { data: (key: string) => any } }).jQuery(book).data('t');
-      const gradients = Array.from(
-        book.querySelectorAll<HTMLElement>('.inner-gradient, .outer-gradient'),
-      ).filter((gradient) => {
-        const style = getComputedStyle(gradient);
-        return style.display !== 'none' && style.visibility === 'visible' && Number(style.opacity) > 0 && gradient.getBoundingClientRect().width > 1;
-      }).length;
-      const leaves = Array.from(book.querySelectorAll<HTMLElement>('.page-wrapper.is-leaf-lifting'));
-      (scope.__deskFrames as unknown[]).push({
-        t: Math.round(performance.now() - started),
-        liftSide: book.getAttribute('data-lift-side'),
-        turnState: turn?.status ?? '',
-        pageMoving: turn?.pageMv?.length ?? 0,
-        peel: Boolean(turn?.peel),
-        left: Number.parseFloat(getComputedStyle(book, '::before').opacity),
-        right: Number.parseFloat(getComputedStyle(book, '::after').opacity),
-        classes: (book.className.match(/shadow-(left|right)/g) ?? []).join('+') || 'none',
-        gradients,
-        leafShadows: leaves.length,
-        leafFilters: leaves.map((leaf) => getComputedStyle(leaf).filter),
-      });
-      requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  });
-}
-
-async function stopDeskRecording(page: Page): Promise<DeskFrame[]> {
-  return page.evaluate(() => {
-    const scope = window as unknown as { __deskFrames?: DeskFrame[]; __deskRecording?: boolean };
-    scope.__deskRecording = false;
-    return scope.__deskFrames ?? [];
-  });
-}
-
-function isLiftedFrame(frame: DeskFrame) {
-  return frame.liftSide !== null || frame.leafShadows > 0;
-}
-
-// The shared rule: while any leaf is lifted the desk has no shadow at all, and
-// no turn.js fold gradient is painted in either direction.
-function expectDeskRuleHolds(frames: DeskFrame[]) {
-  const lifted = frames.filter(isLiftedFrame);
-  expect(lifted.length).toBeGreaterThan(0);
-  // Only the moving side may drop out; the stationary side keeps its shadow.
-  for (const frame of lifted) {
-    if (frame.liftSide === 'left') {
-      expect(frame.left, `frame ${frame.t}ms: moving left side`).toBeLessThan(0.001);
-      if (frame.classes.includes('shadow-right')) {
-        expect(frame.right, `frame ${frame.t}ms: stationary right side`).toBeCloseTo(1, 2);
-      }
-    } else if (frame.liftSide === 'right') {
-      expect(frame.right, `frame ${frame.t}ms: moving right side`).toBeLessThan(0.001);
-      if (frame.classes.includes('shadow-left')) {
-        expect(frame.left, `frame ${frame.t}ms: stationary left side`).toBeCloseTo(1, 2);
-      }
-    }
+function expectPageShadows(state: PageShadowState | null) {
+  expect(state).not.toBeNull();
+  expect(state!.visiblePageFilters.length).toBeGreaterThan(0);
+  for (const filter of state!.visiblePageFilters) {
+    expect(filter).toContain('drop-shadow');
   }
-  for (const frame of frames) {
-    expect(frame.gradients, `frame ${frame.t}ms: painted spine gradient`).toBe(0);
-  }
-
-  // The correct shadows must survive: the lifted sheet keeps its own drop
-  // shadow, and no resting page carries one.
-  const leafFrames = lifted.filter((frame) => frame.leafShadows > 0);
-  expect(leafFrames.length, 'a lifted sheet keeps a shadow').toBeGreaterThan(0);
-  for (const frame of leafFrames) {
-    expect(frame.leafFilters.length, `frame ${frame.t}ms: leaf filter`).toBeGreaterThan(0);
-    for (const filter of frame.leafFilters) {
-      expect(filter, `frame ${frame.t}ms: leaf drop-shadow`).toContain('drop-shadow');
-    }
-  }
-  for (const frame of frames.filter((candidate) => !isLiftedFrame(candidate))) {
-    expect(frame.leafShadows, `frame ${frame.t}ms: leaf shadow at rest`).toBe(0);
-  }
+  expect(state!.globalBeforeContent).toBe('none');
+  expect(state!.globalAfterContent).toBe('none');
+  expect(state!.globalBeforeShadow).toBe('none');
+  expect(state!.globalAfterShadow).toBe('none');
 }
 
-// After the last lifted frame the first resting frame already shows the landed
-// state, so the desk never flashes the previous view's shadow at landing.
-function expectLandedWithoutStaleShadow(frames: DeskFrame[]) {
-  const lastLifted = frames.map(isLiftedFrame).lastIndexOf(true);
-  expect(lastLifted).toBeGreaterThanOrEqual(0);
-  const finalFrame = frames[frames.length - 1];
-  // turn.js can clear the rotation a frame before React commits the landed
-  // view. Allow a couple of frames for that commit, but the desk must not
-  // fade or show a different resting shape afterwards.
-  const settle = frames.slice(lastLifted + 1, lastLifted + 4);
-  const landed = settle.find((frame) => frame.classes === finalFrame.classes);
-  expect(landed, 'the landed shape appears within a few frames of the paper flattening').toBeTruthy();
-  expect(landed!.left, 'landed left opacity').toBeCloseTo(finalFrame.left, 2);
-  expect(landed!.right, 'landed right opacity').toBeCloseTo(finalFrame.right, 2);
-}
-
-test('the book shadow follows the visible paper in every rest state', async ({ page }) => {
+test('every page keeps its own shadow and there is no global background shadow', async ({ page }) => {
   await signIn(page, '/editor');
   const sharePath = await createShare(page);
   await page.goto(sharePath);
   await expect(page.locator('.issue-viewer__turnjs--ready')).toBeVisible({ timeout: 20_000 });
 
-  // Cover: paper only on the right half.
-  await expect.poll(async () => (await snapshotDesk(page))?.right ?? 0).toBeCloseTo(1, 2);
-  const cover = await snapshotDesk(page);
-  expect(cover?.rightClass).toBe(true);
-  expect(cover?.leftClass).toBe(false);
-  expect(cover!.left).toBeCloseTo(0, 2);
-
-  // Spread: both halves.
+  // Cover.
   await page.waitForTimeout(800);
-  await nextButton(page).click();
-  await expect.poll(async () => (await snapshotDesk(page))?.left ?? 0).toBeCloseTo(1, 2);
-  const spread = await snapshotDesk(page);
-  expect(spread?.leftClass).toBe(true);
-  expect(spread?.rightClass).toBe(true);
-  expect(spread!.right).toBeCloseTo(1, 2);
+  expectPageShadows(await pageShadowState(page));
 
-  // Last page: paper only on the left half.
+  // Spread.
+  const next = page.locator('.issue-view-sidebar button').filter({ hasText: /Next|下一页/ }).first();
+  await next.click();
+  await page.waitForTimeout(900);
+  expectPageShadows(await pageShadowState(page));
+
+  // Last page.
   for (let step = 0; step < 3; step += 1) {
-    const control = nextButton(page);
+    const control = page.locator('.issue-view-sidebar button').filter({ hasText: /Next|下一页/ }).first();
     if (!(await control.isEnabled().catch(() => false))) break;
     await control.click();
     await page.waitForTimeout(800);
   }
-  const last = await snapshotDesk(page);
-  expect(last?.leftClass).toBe(true);
-  expect(last?.rightClass).toBe(false);
-  expect(last!.right).toBeCloseTo(0, 2);
+  expectPageShadows(await pageShadowState(page));
 });
 
-test('a turn drops only the moving side and returns after landing', async ({ page }) => {
+test('a turn keeps the page shadow and never introduces a global background shadow', async ({ page }) => {
   await signIn(page, '/editor');
   const sharePath = await createShare(page);
   await page.goto(sharePath);
   await expect(page.locator('.issue-viewer__turnjs--ready')).toBeVisible({ timeout: 20_000 });
   await page.waitForTimeout(800);
 
-  const book = page.locator('.issue-viewer__turnjs');
-  const next = nextButton(page);
-  const prev = prevButton(page);
-
-  // Each step: cover -> spread, spread -> spread, spread -> cover, spread ->
-  // spread, spread -> last page, last page -> spread.
-  const steps: Array<{ name: string; control: typeof next; expectedClass: RegExp }> = [
-    { name: 'open the cover', control: next, expectedClass: /shadow-left.*shadow-right/ },
-    { name: 'turn forward to the next spread', control: next, expectedClass: /shadow-left.*shadow-right/ },
-    { name: 'close the spread to the cover', control: prev, expectedClass: /shadow-right(?!.*shadow-left)/ },
-    { name: 'open the spread again', control: next, expectedClass: /shadow-left.*shadow-right/ },
-    { name: 'turn to the last page', control: next, expectedClass: /shadow-left(?!.*shadow-right)/ },
-    { name: 'return from the last page', control: prev, expectedClass: /shadow-left.*shadow-right/ },
-  ];
-
-  for (const step of steps) {
-    await startDeskRecording(page);
-    await step.control.click();
-    await page.waitForTimeout(1_000);
-    const frames = await stopDeskRecording(page);
-    expect(frames.some(isLiftedFrame), step.name).toBe(true);
-    expectDeskRuleHolds(frames);
-    expectLandedWithoutStaleShadow(frames);
-    await expect(book).toHaveClass(step.expectedClass);
-  }
-});
-
-test('a dragged page lifts the desk shadow and a cancelled drag restores it', async ({ page }) => {
-  await signIn(page, '/editor');
-  const sharePath = await createShare(page);
-  await page.goto(sharePath);
-  await expect(page.locator('.issue-viewer__turnjs--ready')).toBeVisible({ timeout: 20_000 });
-  await page.waitForTimeout(800);
-  await nextButton(page).click();
+  const next = page.locator('.issue-view-sidebar button').filter({ hasText: /Next|下一页/ }).first();
+  await next.click();
+  await page.waitForTimeout(200);
+  expectPageShadows(await pageShadowState(page));
   await page.waitForTimeout(900);
+  expectPageShadows(await pageShadowState(page));
 
+  // A bare press changes neither the page shadows nor a global layer.
   const book = page.locator('.issue-viewer__turnjs');
   const box = await book.boundingBox();
   expect(box).not.toBeNull();
-
-  // Pull the bottom-right corner, then let go in the same place: a cancelled drag.
-  await startDeskRecording(page);
-  await page.mouse.move(box!.x + box!.width - 12, box!.y + box!.height - 8);
-  await page.mouse.down();
-  for (let step = 1; step <= 4; step += 1) {
-    await page.mouse.move(box!.x + box!.width - 12 - step * 6, box!.y + box!.height - 8 - step);
-    await page.waitForTimeout(30);
-  }
-  await page.mouse.up();
-  await page.waitForTimeout(1_200);
-  const cancelled = await stopDeskRecording(page);
-  expect(cancelled.some(isLiftedFrame)).toBe(true);
-  expectDeskRuleHolds(cancelled);
-  await expect(book).toHaveClass(/shadow-left.*shadow-right/);
-  await expect.poll(async () => (await snapshotDesk(page))?.left ?? 0).toBeCloseTo(1, 2);
-  await expect.poll(async () => (await snapshotDesk(page))?.right ?? 0).toBeCloseTo(1, 2);
-});
-
-test('pressing a page without lifting it does not remove the background shadow', async ({ page }) => {
-  await signIn(page, '/editor');
-  const sharePath = await createShare(page);
-  await page.goto(sharePath);
-  await expect(page.locator('.issue-viewer__turnjs--ready')).toBeVisible({ timeout: 20_000 });
-  await page.waitForTimeout(800);
-  await nextButton(page).click();
-  await page.waitForTimeout(900);
-
-  const book = page.locator('.issue-viewer__turnjs');
-  const box = await book.boundingBox();
-  expect(box).not.toBeNull();
-
-  await startDeskRecording(page);
-  // Hold the middle of the page, then release without dragging. No sheet
-  // rotates, so the desk must stay exactly as it was.
   await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
   await page.mouse.down();
-  await page.waitForTimeout(700);
+  await page.waitForTimeout(400);
+  expectPageShadows(await pageShadowState(page));
   await page.mouse.up();
   await page.waitForTimeout(300);
-  const frames = await stopDeskRecording(page);
-
-  for (const frame of frames) {
-    // The press may fold the sheet (its own shadow is fine), but it must never
-    // blank the whole desk: one side stays at full strength.
-    expect(frame.left, `frame ${frame.t}ms: desk left during press`).toBeCloseTo(1, 2);
-    expect(frame.right, `frame ${frame.t}ms: desk right during press`).toBeCloseTo(1, 2);
-  }
-  await expect(book).toHaveClass(/shadow-left.*shadow-right/);
+  expectPageShadows(await pageShadowState(page));
 });
 
-test('mobile turns lift the desk, and the auto-slide keeps it under the visible page', async ({ browser }) => {
+test('mobile keeps per-page shadows and no global background shadow', async ({ browser }) => {
   const context = await browser.newContext({ ...devices['iPhone 13'] });
   const page = await context.newPage();
   await page.addInitScript(() => localStorage.setItem('finalfolio-locale', 'zh'));
@@ -391,49 +208,20 @@ test('mobile turns lift the desk, and the auto-slide keeps it under the visible 
 
   const book = page.locator('.issue-viewer__turnjs');
   await expect(book).toHaveClass(/--ready/, { timeout: 20_000 });
-  await expect(book).toHaveClass(/--shadow-right/);
+  await page.waitForTimeout(500);
+  expectPageShadows(await pageShadowState(page));
 
   const next = page.locator('.issue-view-mobile-controls__actions button').filter({ hasText: /Next|下一页/ }).first();
-  const prev = page.locator('.issue-view-mobile-controls__actions button').filter({ hasText: /Previous|上一页/ }).first();
-
-  // Cover -> page 2 is a turn: the sheet keeps its own shadow throughout.
-  await startDeskRecording(page);
   await next.click();
-  await page.waitForTimeout(1_000);
-  const opening = await stopDeskRecording(page);
-  expect(opening.some(isLiftedFrame)).toBe(true);
-  expectDeskRuleHolds(opening);
-  expectLandedWithoutStaleShadow(opening);
-  await expect(book).toHaveClass(/--shadow-left/);
+  await page.waitForTimeout(250);
+  expectPageShadows(await pageShadowState(page));
+  await page.waitForTimeout(800);
+  expectPageShadows(await pageShadowState(page));
 
-  // Page 2 -> page 3 is the horizontal auto-slide: no page is lifted, so the
-  // desk stays under the page that is now centred.
-  await startDeskRecording(page);
+  // Auto-slide to the next page: still per-page shadow only.
   await next.click();
   await page.waitForTimeout(700);
-  const slide = await stopDeskRecording(page);
-  expect(slide.some(isLiftedFrame)).toBe(false);
-  await expect(book).toHaveClass(/--shadow-right/);
-  const page3Offset = await page.evaluate(() => {
-    const page3 = document.querySelector('.issue-viewer__turnjs .page.p3')?.getBoundingClientRect();
-    const clip = document.querySelector('.issue-viewer__clip--turnjs')?.getBoundingClientRect();
-    if (!page3 || !clip) return Number.POSITIVE_INFINITY;
-    return Math.abs(page3.x + page3.width / 2 - (clip.x + clip.width / 2));
-  });
-  expect(page3Offset).toBeLessThan(2);
-
-  // Page 3 -> page 4 is a turn again, and page 2 -> cover closes it.
-  await startDeskRecording(page);
-  await next.click();
-  await page.waitForTimeout(1_000);
-  expectDeskRuleHolds(await stopDeskRecording(page));
-
-  await startDeskRecording(page);
-  await prev.click();
-  await page.waitForTimeout(1_000);
-  const closing = await stopDeskRecording(page);
-  expectDeskRuleHolds(closing);
-  expectLandedWithoutStaleShadow(closing);
+  expectPageShadows(await pageShadowState(page));
 
   await context.close();
 });

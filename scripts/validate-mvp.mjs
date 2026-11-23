@@ -1645,8 +1645,6 @@ try {
     assert.match(issueTurnJsBook, /issue-viewer__turnjs--book-/);
     assert.match(issueTurnJsBook, /pageSideMode/);
     assert.match(issueTurnJsBook, /turning/);
-    assert.match(issueTurnJsBook, /shadowLeft/);
-    assert.match(issueTurnJsBook, /shadowRight/);
     assert.match(useIssueTurnJsRuntime, /await Promise\.all\(\[/);
     assert.match(useIssueTurnJsRuntime, /import\('\.\.\/turnjs'\)/);
     assert.match(useIssueTurnJsRuntime, /import\('\.\/issueViewTurnJsMarkup'\)/);
@@ -1843,21 +1841,13 @@ try {
       styles,
       /\.issue-viewer__placeholder-spinner \{\s+width: 22px;\s+height: 22px;/,
     );
-    assert.match(styles, /\.issue-viewer__turnjs::before,\s+\.issue-viewer__turnjs::after \{/);
-    assert.match(styles, /\.issue-viewer__turnjs--shadow-left::before/);
-    assert.match(styles, /\.issue-viewer__turnjs--shadow-right::after/);
+    assert.doesNotMatch(styles, /issue-viewer__turnjs::before/);
+    assert.doesNotMatch(styles, /data-lift-side/);
+    assert.match(styles, /\.issue-viewer__turnjs \.page-wrapper \{\s+filter:\s+drop-shadow\(0 12px 20px rgba\(17, 17, 17, 0\.15\)\)/);
     assert.match(styles, /\.issue-viewer__turnjs \.inner-gradient,\s+\.issue-viewer__turnjs \.outer-gradient \{\s+display: none !important;/);
     assert.match(useIssueTurnJsRuntime, /gradients: false/);
-    assert.match(useIssueTurnJsRuntime, /function isTurnJsLifted/);
-    assert.match(styles, /\.issue-viewer__turnjs\[data-lift-side='left'\]::before,\s+\.issue-viewer__turnjs\[data-lift-side='right'\]::after \{\s+opacity: 0 !important;/);
-    assert.match(useIssueTurnJsRuntime, /setAttribute\('data-lift-side', liftSide\)/);
-    assert.match(useIssueTurnJsRuntime, /pointerDraggingRef/);
-    assert.match(useIssueTurnJsRuntime, /LIFT_SIDE_HOLD_FRAMES/);
-    assert.match(useIssueTurnJsRuntime, /syncLiftedLeafShadows/);
-    assert.doesNotMatch(issueViewPageTurnJs, /turnShadowView|onTurnTargetChange/);
-    assert.match(styles, /\.page-wrapper\.is-leaf-lifting \{/);
-    assert.match(styles, /drop-shadow\(0 16px 24px rgba\(17, 17, 17, 0\.17\)\)/);
-    assert.match(useIssueTurnJsRuntime, /syncLiftedLeafShadows/);
+    assert.doesNotMatch(useIssueTurnJsRuntime, /data-lift-side|pointerDraggingRef|isTurnJsLifted|syncLiftedLeafShadows/);
+    assert.doesNotMatch(issueViewPageTurnJs, /turnShadowView|onTurnTargetChange|shadowHalves/);
     assert.match(editorProjectLifecycle, /export function buildDraftProjectHydration/);
     assert.match(editorProjectLifecycle, /export function normalizeEditorProjectRecord/);
     assert.match(editorProjectPersistence, /export function applyServerProjectRecordState/);

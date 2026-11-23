@@ -1914,12 +1914,11 @@
   at full strength while a page was in the air, and that turn.js's fold gradients
   were the direction-dependent spine shading. Turn.js's `.shadow` element paints
   nothing and was ruled out.
-- The desk shadow is per-side. The moving sheet's side (from `pageMv`, even =
-  left, odd = right) drops to zero while the sheet is in the air; the other side
-  keeps its shadow. A bare press or hover does not react: the desk follows only a
-  real drag or a `turning`/`moving` state. The side is held for a few frames after
-  the sheet flattens, so a cancelled drag cannot make it reappear early. There is
-  no transition, so it cannot flicker.
+- The global background shadow is gone. Every page wrapper carries its own
+  drop-shadow filter, so a page has a shadow whether closed, open, turning, or
+  flat, and it follows the sheet through the air. With no global layer there is
+  nothing to flicker, vanish on a drag, or reappear before a cancelled page
+  settles.
 - Turn.js gradients are disabled and their layers hidden, so the spine has the same
   (no) shading in both directions.
 - The moving sheet keeps its own shadow: the per-frame pass marks page wrappers

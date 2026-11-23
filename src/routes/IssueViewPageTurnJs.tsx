@@ -103,13 +103,6 @@ export function IssueViewPage() {
   // cover; treating [0,0] as a spread would flash a left shadow for 500ms.
   const viewKnown = currentViewPages[0] > 0 || currentViewPages[1] > 0;
   const restMode = viewKnown ? currentView.mode : 'single-right';
-  // Rest state only: while any leaf is lifted, the book hides its desk shadow
-  // itself (see `data-lifted` in useIssueTurnJsRuntime), so this mode is shown
-  // only when the landed view is on the table.
-  const shadowHalves = {
-    left: restMode !== 'single-right',
-    right: restMode !== 'single-left',
-  };
   const initialBookPage = clamp(
     stableTurnPageRef.current || currentTurnPage,
     1,
@@ -196,10 +189,7 @@ export function IssueViewPage() {
                     displayMode={viewerDisplayMode}
                     pageSideMode={currentView.mode}
                     turning={isTurning}
-                    shadowLeft={shadowHalves.left}
-                    shadowRight={shadowHalves.right}
                     initialPage={initialBookPage}
-                    committedTurnPage={currentTurnPage}
                     onTurningChange={setIsTurning}
                     onViewChange={handleBookViewChange}
                   />

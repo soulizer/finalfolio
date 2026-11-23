@@ -1,4 +1,4 @@
-import { ForwardedRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
+import { ForwardedRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import type { Asset, ProjectFonts } from '../editor/types';
 import {
   clamp,
@@ -32,10 +32,6 @@ type UseIssueTurnJsRuntimeOptions = {
   initialPage: number;
   onViewChange: TurnJsPageChangeHandler;
   onTurningChange: (turning: boolean) => void;
-  // The page the parent has committed as current. The desk shadow waits for
-  // this to catch up with the page turn.js is on, so it is never painted from
-  // a stale view.
-  committedTurnPage: number;
 };
 
 type TurnJsInstance = any;
@@ -69,60 +65,6 @@ type InitializeTurnJsOptions = {
   targetPage: number;
   turnHost: HTMLDivElement;
 };
-
-// The book's desk shadow is only allowed while every leaf lies flat. Turn.js
-// records the lift in its own state: pages in flight (`pageMv`), a turn status,
-// or a corner peel. Reading that state every frame keeps the shadow in step
-// with the paper, even when a turn starts or cancels between React renders.
-function isTurnJsLifted(turnInstance: TurnJsInstance) {
-  const data = turnInstance?.data?.('t') as
-    | { pageMv?: number[]; status?: string; peel?: unknown }
-    | undefined;
-  if (!data) {
-    return false;
-  }
-
-  return (data.pageMv?.length ?? 0) > 0 || Boolean(data.status) || Boolean(data.peel);
-}
-
-// Marks the sheets that are actually rotated away from the flat plane. Their
-// drop shadow travels with the paper, so a turn keeps depth without leaving a
-// shadow on the desk. Resting pages never get the filter.
-function syncLiftedLeafShadows(book: HTMLElement) {
-  book.querySelectorAll<HTMLElement>('.page-wrapper').forEach((wrapper) => {
-    const innerPage = wrapper.querySelector<HTMLElement>('.inner-page');
-    const transform = innerPage ? window.getComputedStyle(innerPage).transform : 'none';
-    const moving = transform !== '' && transform !== 'none';
-    wrapper.classList.toggle('is-leaf-lifting', moving);
-  });
-}
-
-function clearLiftedLeafShadows(book: HTMLElement) {
-  book.querySelectorAll('.page-wrapper.is-leaf-lifting').forEach((wrapper) => {
-    wrapper.classList.remove('is-leaf-lifting');
-  });
-}
-
-// Which half of the book the moving sheet belongs to. Even page numbers are
-// left pages, odd are right (page 1 is the cover on the right).
-function getLiftSide(book: HTMLElement, turnInstance: TurnJsInstance) {
-  const turnData = turnInstance?.data?.('t') as
-    | { pageMv?: number[]; page?: number; tpage?: number }
-    | undefined;
-  const target = Number(turnData?.tpage ?? turnData?.page ?? 0) || 0;
-  const liftedPages = Array.from(book.querySelectorAll('.page-wrapper.is-leaf-lifting .page'))
-    .map((page) => Number(page.className.match(/\bp(\d+)\b/)?.[1] ?? 0))
-    .filter((page) => page > 0);
-  const movingPage =
-    turnData?.pageMv?.find((page) => page > 0) ??
-    liftedPages.find((page) => page !== target) ??
-    liftedPages[0];
-  if (!movingPage) {
-    return null;
-  }
-
-  return movingPage % 2 === 0 ? 'left' : 'right';
-}
 
 function clearIdlePeelAffordance(turnInstance: TurnJsInstance) {
   if (!turnInstance?.turn) {
@@ -248,9 +190,8 @@ async function initializeTurnJs({
     height: Math.round(pageHeight),
     display: displayMode,
     autoCenter: true,
-    // Turn.js paints its fold gradients on whichever page is moving or being
-    // revealed, so the spine shading differed between forward and backward
-    // turns. Off means no spine shading in either direction.
+    // Turn.js fold gradients are direction-dependent, so they are disabled.
+    // Each page carries its own shadow instead.
     gradients: false,
     acceleration: true,
     duration: 500,
@@ -277,8 +218,6 @@ async function initializeTurnJs({
       },
       end: (_event: unknown, _page: number, completed: boolean) => {
         setTurnJsAnimatedCentering($book, false);
-        // `turned` follows a completed flip. A cancelled drag never reaches it,
-        // so the in-flight state is cleared here.
         if (!completed) {
           onTurningChangeRef.current(false);
         }
@@ -288,14 +227,6 @@ async function initializeTurnJs({
 
   return $book;
 }
-
-// Frames to wait for React to commit a page change before releasing the desk
-// shadow anyway. React normally commits within a frame; the limit only guards
-// against a stuck state if a page change never triggers a render.
-const UNCOMMITTED_PAGE_TIMEOUT_FRAMES = 60;
-// Frames to keep the moving side hidden after the sheet becomes flat, so the
-// desk cannot reappear before the page has visually settled.
-const LIFT_SIDE_HOLD_FRAMES = 4;
 
 export function useIssueTurnJsRuntime({
   ref,
@@ -312,17 +243,12 @@ export function useIssueTurnJsRuntime({
   initialPage,
   onViewChange,
   onTurningChange,
-  committedTurnPage,
 }: UseIssueTurnJsRuntimeOptions) {
   const bookRef = useRef<HTMLDivElement | null>(null);
   const turnInstanceRef = useRef<TurnJsInstance | null>(null);
   const [bookReady, setBookReady] = useState(false);
   const onViewChangeRef = useRef(onViewChange);
   const onTurningChangeRef = useRef(onTurningChange);
-  const committedTurnPageRef = useRef(committedTurnPage);
-  const lastLiftSideRef = useRef<'left' | 'right' | null>(null);
-  const liftSideHoldRef = useRef(0);
-  const pointerDraggingRef = useRef(false);
   const pageWidthRef = useRef(pageWidth);
   const pageHeightRef = useRef(pageHeight);
   const currentPageRef = useRef(clamp(initialPage, 1, Math.max(renderedPages.length, 1)));
@@ -339,117 +265,6 @@ export function useIssueTurnJsRuntime({
   useEffect(() => {
     onTurningChangeRef.current = onTurningChange;
   }, [onTurningChange]);
-
-  // The page the parent has rendered. The desk shadow is kept off until this
-  // matches the page turn.js is on, so the landed shadow is never painted from
-  // the previous view.
-  useLayoutEffect(() => {
-    committedTurnPageRef.current = committedTurnPage;
-  });
-
-  // A bare press can make turn.js fold the page (`tapping`) before any drag.
-  // The desk must not react to that; it reacts to a real drag or a turn.
-  useEffect(() => {
-    const book = bookRef.current;
-    if (!book) {
-      return;
-    }
-
-    let active = false;
-    let startX = 0;
-    let startY = 0;
-    const onPointerDown = (event: PointerEvent) => {
-      active = true;
-      pointerDraggingRef.current = false;
-      startX = event.clientX;
-      startY = event.clientY;
-    };
-    const onPointerMove = (event: PointerEvent) => {
-      if (!active) {
-        return;
-      }
-      if (Math.hypot(event.clientX - startX, event.clientY - startY) > 10) {
-        pointerDraggingRef.current = true;
-      }
-    };
-    const onPointerEnd = () => {
-      active = false;
-      pointerDraggingRef.current = false;
-    };
-
-    book.addEventListener('pointerdown', onPointerDown);
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', onPointerEnd);
-    window.addEventListener('pointercancel', onPointerEnd);
-    return () => {
-      book.removeEventListener('pointerdown', onPointerDown);
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerEnd);
-      window.removeEventListener('pointercancel', onPointerEnd);
-    };
-  }, []);
-
-  useEffect(() => {
-    let frame = 0;
-    let uncommittedFrames = 0;
-
-    const tick = () => {
-      const book = bookRef.current;
-      const turnInstance = turnInstanceRef.current;
-      if (book && turnInstance) {
-        const turnPage = Number(turnInstance.data?.('t')?.page) || 0;
-        const uncommitted = turnPage > 0 && turnPage !== committedTurnPageRef.current;
-        uncommittedFrames = uncommitted ? uncommittedFrames + 1 : 0;
-
-        const turnData = turnInstance?.data?.('t') as { status?: string } | undefined;
-        const realMovement =
-          pointerDraggingRef.current || turnData?.status === 'turning' || turnData?.status === 'moving';
-
-        // A bare press can make turn.js fold the page (`tapping`) before any
-        // drag. Neither the desk nor the sheet shadow reacts to that.
-        if (realMovement && isTurnJsLifted(turnInstance)) {
-          syncLiftedLeafShadows(book);
-        } else {
-          clearLiftedLeafShadows(book);
-        }
-
-        const paperLifted = book.querySelector('.page-wrapper.is-leaf-lifting') !== null;
-        const waitingForCommit = uncommitted && uncommittedFrames <= UNCOMMITTED_PAGE_TIMEOUT_FRAMES;
-        let liftSide: 'left' | 'right' | null = null;
-        if (paperLifted && realMovement) {
-          liftSide = getLiftSide(book, turnInstance);
-          liftSideHoldRef.current = 0;
-        } else if ((waitingForCommit || liftSideHoldRef.current > 0) && lastLiftSideRef.current) {
-          // Hold the moving side until the page has settled, so the desk
-          // cannot reappear while the sheet is still coming down.
-          liftSideHoldRef.current += 1;
-          if (liftSideHoldRef.current <= LIFT_SIDE_HOLD_FRAMES) {
-            liftSide = lastLiftSideRef.current;
-          }
-        } else {
-          liftSideHoldRef.current = 0;
-        }
-
-        if (liftSide) {
-          lastLiftSideRef.current = liftSide;
-          if (book.getAttribute('data-lift-side') !== liftSide) {
-            book.setAttribute('data-lift-side', liftSide);
-          }
-        } else if (!waitingForCommit) {
-          lastLiftSideRef.current = null;
-          liftSideHoldRef.current = 0;
-          if (book.hasAttribute('data-lift-side')) {
-            book.removeAttribute('data-lift-side');
-          }
-        }
-      }
-
-      frame = window.requestAnimationFrame(tick);
-    };
-
-    frame = window.requestAnimationFrame(tick);
-    return () => window.cancelAnimationFrame(frame);
-  }, []);
 
   const spreadPageCount = displayMode === 'double' ? 2 : 1;
   const canInitializeTurnJs = renderedPages.length > 0 && pageWidth > 0 && pageHeight > 0;
