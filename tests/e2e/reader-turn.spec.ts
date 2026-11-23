@@ -107,8 +107,9 @@ type PageShadowState = {
   globalAfterContent: string;
   globalBeforeShadow: string;
   globalAfterShadow: string;
-  pageFilters: string[];
-  visiblePageFilters: string[];
+  wrapperFilters: string[];
+  visiblePageShadows: string[];
+  imageAncestorFilters: string[];
 };
 
 async function pageShadowState(page: Page): Promise<PageShadowState | null> {
@@ -117,23 +118,44 @@ async function pageShadowState(page: Page): Promise<PageShadowState | null> {
     if (!book) return null;
     const wrappers = Array.from(book.querySelectorAll('.page-wrapper'));
     const visible = wrappers.filter((wrapper) => wrapper.getBoundingClientRect().width > 10);
+    const imageAncestorFilters = Array.from(book.querySelectorAll('img')).flatMap((image) => {
+      const filters: string[] = [];
+      let node: HTMLElement | null = image;
+      while (node && node !== book) {
+        filters.push(getComputedStyle(node).filter);
+        node = node.parentElement;
+      }
+      return filters;
+    });
     return {
       className: book.className,
       globalBeforeContent: getComputedStyle(book, '::before').content,
       globalAfterContent: getComputedStyle(book, '::after').content,
       globalBeforeShadow: getComputedStyle(book, '::before').boxShadow,
       globalAfterShadow: getComputedStyle(book, '::after').boxShadow,
-      pageFilters: wrappers.map((wrapper) => getComputedStyle(wrapper).filter),
-      visiblePageFilters: visible.map((wrapper) => getComputedStyle(wrapper).filter),
+      wrapperFilters: wrappers.map((wrapper) => getComputedStyle(wrapper).filter),
+      visiblePageShadows: visible.map(
+        (wrapper) => getComputedStyle(wrapper.querySelector('.magazine-page') ?? wrapper).boxShadow,
+      ),
+      imageAncestorFilters,
     };
   });
 }
 
 function expectPageShadows(state: PageShadowState | null) {
   expect(state).not.toBeNull();
-  expect(state!.visiblePageFilters.length).toBeGreaterThan(0);
-  for (const filter of state!.visiblePageFilters) {
-    expect(filter).toContain('drop-shadow');
+  expect(state!.visiblePageShadows.length).toBeGreaterThan(0);
+  for (const shadow of state!.visiblePageShadows) {
+    expect(shadow, 'page surface shadow').not.toBe('none');
+    expect(shadow).toContain('rgba');
+  }
+  // No filter on the wrappers or on any image ancestor: filters force the
+  // page content to re-rasterize during 3D transforms and make images flicker.
+  for (const filter of state!.wrapperFilters) {
+    expect(filter, 'page wrapper filter').toBe('none');
+  }
+  for (const filter of state!.imageAncestorFilters) {
+    expect(filter, 'image ancestor filter').toBe('none');
   }
   expect(state!.globalBeforeContent).toBe('none');
   expect(state!.globalAfterContent).toBe('none');
@@ -192,6 +214,66 @@ test('a turn keeps the page shadow and never introduces a global background shad
   await page.mouse.up();
   await page.waitForTimeout(300);
   expectPageShadows(await pageShadowState(page));
+});
+
+test('hovering a corner and pressing a page do not change the page shadow', async ({ page }) => {
+  await signIn(page, '/editor');
+  const sharePath = await createShare(page);
+  await page.goto(sharePath);
+  await expect(page.locator('.issue-viewer__turnjs--ready')).toBeVisible({ timeout: 20_000 });
+  await page.waitForTimeout(800);
+  const next = page.locator('.issue-view-sidebar button').filter({ hasText: /Next|下一页/ }).first();
+  await next.click();
+  await page.waitForTimeout(900);
+
+  const shadows = () =>
+    page.evaluate(() => {
+      const map = new Map<string, string>();
+      document.querySelectorAll('.issue-viewer__turnjs .page-wrapper').forEach((wrapper) => {
+        if (wrapper.getBoundingClientRect().width <= 10) return;
+        const page = wrapper.querySelector('.page');
+        const key = page?.className.match(/\bp\d+\b/)?.[0] ?? Math.random().toString();
+        map.set(key, getComputedStyle(wrapper.querySelector('.magazine-page') ?? wrapper).boxShadow);
+      });
+      return Array.from(map.entries());
+    });
+
+  const before = await shadows();
+  const beforeMap = new Map(before);
+  const book = page.locator('.issue-viewer__turnjs');
+  const box = await book.boundingBox();
+  expect(box).not.toBeNull();
+
+  // Hover each corner; the page shadow value must not change.
+  const corners: Array<[number, number]> = [
+    [box!.x + 8, box!.y + 8],
+    [box!.x + box!.width - 8, box!.y + 8],
+    [box!.x + 8, box!.y + box!.height - 8],
+    [box!.x + box!.width - 8, box!.y + box!.height - 8],
+  ];
+  for (const [x, y] of corners) {
+    await page.mouse.move(x, y);
+    await page.waitForTimeout(350);
+    const after = new Map(await shadows());
+    for (const [key, value] of beforeMap) {
+      if (after.has(key)) {
+        expect(after.get(key), `shadow for ${key} after hovering ${x},${y}`).toBe(value);
+      }
+    }
+  }
+
+  // Press and hold the page centre; the shadow value must not change.
+  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(500);
+  const pressed = new Map(await shadows());
+  for (const [key, value] of beforeMap) {
+    if (pressed.has(key)) {
+      expect(pressed.get(key), `shadow for ${key} after press`).toBe(value);
+    }
+  }
+  await page.mouse.up();
+  await page.waitForTimeout(300);
 });
 
 test('mobile keeps per-page shadows and no global background shadow', async ({ browser }) => {

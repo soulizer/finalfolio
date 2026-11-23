@@ -7,19 +7,21 @@ vanished during a drag, and could reappear before a cancelled page had settled.
 After several attempts to drive it from the lift state, the user accepted the
 fallback: remove the global background shadow and keep each page's own shadow.
 
-**Decision.** There is no global background/contact shadow. Every page wrapper
-carries its own drop-shadow filter, so a page has a shadow whether it is closed,
-open, turning, or flat, and the shadow follows it through the air. Because the
-shadow is a static CSS filter on the page, it cannot flicker, disappear, or
-appear early.
+**Decision.** There is no global background/contact shadow. Every page surface
+carries its own `box-shadow`, so a page has a shadow whether it is closed, open,
+turning, or flat, and the shadow follows it through the air. A `box-shadow` does
+not create a filter layer, so the page content (including images) is not
+re-rasterized during the 3D turn, which removes the image flicker. The shadow is
+static CSS, so it cannot flicker, disappear, or appear early.
 
 **Implementation:**
 
 - Removed the two half-layers (`.issue-viewer__turnjs::before/::after`) and all
   code that toggled them (`shadowLeft`/`shadowRight`, `data-lift-side`, the
   per-frame lift loop, pointer-drag tracking).
-- `.issue-viewer__turnjs .page-wrapper` has a `drop-shadow` filter. Turn.js
-  transforms the wrapper, so the shadow follows the moving sheet.
+- `.issue-turnjs__sheet-scale .magazine-page` has a `box-shadow`. Turn.js
+  transforms the sheet, so the shadow follows the moving page. There is no
+  `filter` on the wrapper or on any image ancestor.
 - Turn.js `gradients` is off and its `inner-gradient`/`outer-gradient` layers are
   hidden, so there is no direction-dependent spine band.
 - The page's own `.magazine-page` box-shadow remains as a subtle surface edge.
@@ -29,11 +31,11 @@ appear early.
 | State | Global background shadow | Per-page shadow |
 | --- | --- | --- |
 | Cover (closed) | none | cover page |
-| Cover opening, mid-flight | none | moving sheet (`p1`/`p2`) |
+| Cover opening, mid-flight | none | moving page (`p1`/`p2`) |
 | Spread | none | both pages |
-| Closing / last page, mid-flight | none | moving sheet and flat pages |
+| Closing / last page, mid-flight | none | moving page and flat pages |
 | Drag, cancelled | none | unchanged |
-| Press / hover | none | unchanged |
+| Press / hover | none | shadow value unchanged |
 
 **States verified visually** (evidence in `docs/evidence/`):
 
@@ -51,10 +53,12 @@ appear early.
 | Mobile single page | `2026-11-22-reader-mobile.png` |
 | Fullscreen | `2026-11-22-reader-fullscreen.png` |
 
-**Regression guard:** `tests/e2e/reader-turn.spec.ts` asserts that visible page
-wrappers carry a `drop-shadow` filter in every state (cover, spread, last page,
-mid-turn, press, mobile, auto-slide) and that the book has no `::before`/`::after`
-background layer.
+**Regression guard:** `tests/e2e/reader-turn.spec.ts` asserts that visible pages
+carry a `box-shadow` in every state (cover, spread, last page, mid-turn, press,
+mobile, auto-slide), that no page wrapper or image ancestor has a `filter`, and
+that the book has no `::before`/`::after` background layer. A dedicated test
+hovers all four corners and presses the page, asserting the per-page shadow value
+does not change.
 
 ### Known limitation found while validating the opening
 
