@@ -7,25 +7,26 @@ vanished during a drag, and could reappear before a cancelled page had settled.
 After several attempts to drive it from the lift state, the user accepted the
 fallback: remove the global background shadow and keep each page's own shadow.
 
-**Decision.** There is no global background/contact shadow. Each page's `.clip`
-carries the same shadow values the page wrapper used to produce with a
-`drop-shadow` filter, so the look is unchanged. A `box-shadow` does not
-composite the page content, so images are not re-rasterized and do not jitter;
-the shadow is static CSS, so it cannot flicker or mutate abruptly. `.clip` is
-transformed by turn.js, so the shadow follows the page.
+**Decision.** There is no global background/contact shadow. Every page wrapper
+carries its own drop-shadow filter, so a page has a shadow whether it is closed,
+open, turning, or flat, and the shadow follows it through the air. Because the
+shadow is a static CSS filter on the page, it cannot flicker, disappear, or
+appear early.
 
 **Implementation:**
 
 - Removed the two half-layers (`.issue-viewer__turnjs::before/::after`) and all
   code that toggled them (`shadowLeft`/`shadowRight`, `data-lift-side`, the
   per-frame lift loop, pointer-drag tracking).
-- `.issue-viewer__turnjs .clip` has a static `box-shadow` with the same values
-  the wrapper's drop-shadow used. Turn.js transforms `.clip`, so the shadow
-  follows the moving page. `.clip` has `backface-visibility: visible` so the
-  shadow survives the whole turn; `.inner-page` keeps `hidden` so content still
-  only shows on the front. `.page-wrapper` is `overflow: visible` so the shadow
-  can leave the wrapper. There is no `filter` on the wrapper or on any image
-  ancestor.
+- `.issue-viewer__turnjs .page-wrapper` has a `drop-shadow` filter. Turn.js
+  transforms the page content, so the shadow follows the moving sheet.
+- `.clip` keeps `backface-visibility: visible` and a paper-coloured background,
+  so the drop-shadow still has a page surface to cast from after the page
+  passes 90°. `.inner-page` stays `hidden`, so content still only shows on the
+  front. This removes the shadow's abrupt disappearance mid-turn.
+- `.magazine-page img` gets `transform: translateZ(0)`, promoting images to
+  their own compositor layers so the wrapper filter does not re-rasterize them
+  every frame. This removes the slight image jitter.
 - Turn.js `gradients` is off and its `inner-gradient`/`outer-gradient` layers are
   hidden, so there is no direction-dependent spine band.
 - The page's own `.magazine-page` box-shadow remains as a subtle surface edge.
@@ -57,10 +58,11 @@ transformed by turn.js, so the shadow follows the page.
 | Mobile single page | `2026-11-22-reader-mobile.png` |
 | Fullscreen | `2026-11-22-reader-fullscreen.png` |
 
-**Regression guard:** `tests/e2e/reader-turn.spec.ts` asserts that visible pages
-carry a `.clip` box-shadow in every state (cover, spread, last page, mid-turn,
-press, mobile, auto-slide), that no page wrapper or image ancestor has a filter,
-and that the book has no `::before`/`::after` background layer.
+**Regression guard:** `tests/e2e/reader-turn.spec.ts` asserts that visible page
+wrappers carry a `drop-shadow` filter in every state (cover, spread, last page,
+mid-turn, press, mobile, auto-slide), that `.clip` keeps a visible back face and
+paper background, that images have their own compositor layer, and that the book
+has no `::before`/`::after` background layer.
 
 ### Known limitation found while validating the opening
 

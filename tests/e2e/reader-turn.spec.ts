@@ -107,9 +107,11 @@ type PageShadowState = {
   globalAfterContent: string;
   globalBeforeShadow: string;
   globalAfterShadow: string;
-  wrapperFilters: string[];
-  visiblePageShadows: string[];
-  imageAncestorFilters: string[];
+  pageFilters: string[];
+  visiblePageFilters: string[];
+  clipBackface: string[];
+  clipBackground: string[];
+  imageTransforms: string[];
 };
 
 async function pageShadowState(page: Page): Promise<PageShadowState | null> {
@@ -118,44 +120,37 @@ async function pageShadowState(page: Page): Promise<PageShadowState | null> {
     if (!book) return null;
     const wrappers = Array.from(book.querySelectorAll('.page-wrapper'));
     const visible = wrappers.filter((wrapper) => wrapper.getBoundingClientRect().width > 10);
-    const imageAncestorFilters = Array.from(book.querySelectorAll('img')).flatMap((image) => {
-      const filters: string[] = [];
-      let node: HTMLElement | null = image;
-      while (node && node !== book) {
-        filters.push(getComputedStyle(node).filter);
-        node = node.parentElement;
-      }
-      return filters;
-    });
     return {
       className: book.className,
       globalBeforeContent: getComputedStyle(book, '::before').content,
       globalAfterContent: getComputedStyle(book, '::after').content,
       globalBeforeShadow: getComputedStyle(book, '::before').boxShadow,
       globalAfterShadow: getComputedStyle(book, '::after').boxShadow,
-      wrapperFilters: wrappers.map((wrapper) => getComputedStyle(wrapper).filter),
-      visiblePageShadows: visible.map(
-        (wrapper) => getComputedStyle(wrapper.querySelector('.clip') ?? wrapper).boxShadow,
-      ),
-      imageAncestorFilters,
+      pageFilters: wrappers.map((wrapper) => getComputedStyle(wrapper).filter),
+      visiblePageFilters: visible.map((wrapper) => getComputedStyle(wrapper).filter),
+      clipBackface: visible.map((wrapper) => getComputedStyle(wrapper.querySelector('.clip') ?? wrapper).backfaceVisibility),
+      clipBackground: visible.map((wrapper) => getComputedStyle(wrapper.querySelector('.clip') ?? wrapper).backgroundColor),
+      imageTransforms: Array.from(book.querySelectorAll('img')).map((image) => getComputedStyle(image).transform),
     };
   });
 }
 
 function expectPageShadows(state: PageShadowState | null) {
   expect(state).not.toBeNull();
-  expect(state!.visiblePageShadows.length).toBeGreaterThan(0);
-  for (const shadow of state!.visiblePageShadows) {
-    expect(shadow, 'page surface shadow').not.toBe('none');
-    expect(shadow).toContain('rgba');
+  expect(state!.visiblePageFilters.length).toBeGreaterThan(0);
+  for (const filter of state!.visiblePageFilters) {
+    expect(filter).toContain('drop-shadow');
   }
-  // No filter on the wrapper or on any image ancestor: filters force the page
-  // content to re-rasterize during 3D transforms and make images flicker.
-  for (const filter of state!.wrapperFilters) {
-    expect(filter, 'page wrapper filter').toBe('none');
+  // The shadow source exists on the back face, so the drop-shadow cannot
+  // disappear when the page passes 90°.
+  for (const backface of state!.clipBackface) {
+    expect(backface, 'clip backface').toBe('visible');
   }
-  for (const filter of state!.imageAncestorFilters) {
-    expect(filter, 'image ancestor filter').toBe('none');
+  for (const background of state!.clipBackground) {
+    expect(background, 'clip back-face paper').not.toBe('rgba(0, 0, 0, 0)');
+  }
+  for (const transform of state!.imageTransforms) {
+    expect(transform, 'image compositor layer').not.toBe('none');
   }
   expect(state!.globalBeforeContent).toBe('none');
   expect(state!.globalAfterContent).toBe('none');

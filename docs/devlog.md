@@ -1914,12 +1914,13 @@
   at full strength while a page was in the air, and that turn.js's fold gradients
   were the direction-dependent spine shading. Turn.js's `.shadow` element paints
   nothing and was ruled out.
-- The global background shadow is gone. Each page's `.clip` carries a static
-  `box-shadow` with the same values the wrapper's drop-shadow used, so the look
-  is unchanged. A box-shadow does not composite the page content, so images do
-  not jitter during a turn, and the shadow is static so it cannot mutate
-  abruptly. `.clip` has `backface-visibility: visible` so the shadow survives the
-  whole turn; `.inner-page` stays `hidden` so content only shows on the front.
+- The global background shadow is gone. Every page wrapper carries its own
+  drop-shadow filter, so a page has a shadow whether closed, open, turning, or
+  flat, and it follows the sheet through the air. `.clip` keeps a visible paper
+  back face so the drop-shadow does not disappear after 90°, and images are
+  promoted with `translateZ(0)` so the filter does not re-rasterize them every
+  frame. With no global layer there is nothing to flicker, vanish on a drag, or
+  reappear before a cancelled page settles.
 - Turn.js gradients are disabled and their layers hidden, so the spine has the same
   (no) shading in both directions.
 - The moving sheet keeps its own shadow: the per-frame pass marks page wrappers

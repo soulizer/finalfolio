@@ -5026,20 +5026,25 @@ button.asset-frame {
    present whether the page is closed, open, turning, or flat, and it follows
    the page through the air. */
 .issue-viewer__turnjs .page-wrapper {
-  overflow: visible !important;
+  filter:
+    drop-shadow(0 12px 20px rgba(17, 17, 17, 0.15))
+    drop-shadow(0 3px 7px rgba(17, 17, 17, 0.08));
 }
 
-/* Each page's `.clip` carries the same shadow values the page wrapper used to
-   produce with a drop-shadow filter. A box-shadow does not composite the page
-   content, so images are not re-rasterized during the turn; `.clip` is
-   transformed by turn.js, so the shadow follows the page. `backface-visibility`
-   stays visible on `.clip` so the shadow survives the whole turn, while
-   `.inner-page` keeps `hidden` so content still only shows on the front. */
+/* The drop-shadow is computed from the page wrapper's rendered content. When
+   `.clip` rotates past 90°, its `backface-visibility: hidden` would remove the
+   content and the shadow with it, making the shadow jump. Keep `.clip` visible
+   and give it a paper-coloured back face; `.inner-page` stays hidden so page
+   content still only shows on the front. */
 .issue-viewer__turnjs .clip {
   backface-visibility: visible;
-  box-shadow:
-    0 12px 20px rgba(17, 17, 17, 0.15),
-    0 3px 7px rgba(17, 17, 17, 0.08);
+  background: #f7f4ee !important;
+}
+
+/* Promote images to their own compositor layers so the wrapper's filter does
+   not re-rasterize them every frame during a 3D turn. */
+.issue-viewer__turnjs .magazine-page img {
+  transform: translateZ(0);
 }
 
 .issue-viewer__turnjs .even .gradient,
