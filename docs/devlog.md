@@ -1914,9 +1914,13 @@
   at full strength while a page was in the air, and that turn.js's fold gradients
   were the direction-dependent spine shading. Turn.js's `.shadow` element paints
   nothing and was ruled out.
-- The desk shadow is now controlled by a per-frame check of turn.js's own lift
-  state, applied as a `data-lifted` attribute that React does not overwrite. It
-  returns only after React has committed the page turn.js is on.
+- The desk shadow is per-side. The per-frame pass derives the moving sheet's
+  side from `pageMv` (even = left, odd = right) and sets `data-lift-side`; CSS
+  blanks only that side. The stationary side keeps its shadow, so a drag cannot
+  blank the whole desk. A bare press or hover does not blank anything: the desk
+  reacts only to a real drag or a `turning`/`moving` state, which removes the
+  probabilistic press-fold flicker. It returns after React commits the page
+  turn.js is on.
 - Turn.js gradients are disabled and their layers hidden, so the spine has the same
   (no) shading in both directions.
 - The moving sheet keeps its own shadow: the per-frame pass marks page wrappers

@@ -1846,11 +1846,13 @@ try {
     assert.match(styles, /\.issue-viewer__turnjs::before,\s+\.issue-viewer__turnjs::after \{/);
     assert.match(styles, /\.issue-viewer__turnjs--shadow-left::before/);
     assert.match(styles, /\.issue-viewer__turnjs--shadow-right::after/);
-    assert.match(styles, /\.issue-viewer__turnjs\[data-lifted\]::before,\s+\.issue-viewer__turnjs\[data-lifted\]::after \{\s+opacity: 0 !important;/);
+    assert.match(styles, /\.issue-viewer__turnjs\[data-lift-side='left'\]::before,\s+\.issue-viewer__turnjs\[data-lift-side='right'\]::after \{\s+opacity: 0 !important;/);
     assert.match(styles, /\.issue-viewer__turnjs \.inner-gradient,\s+\.issue-viewer__turnjs \.outer-gradient \{\s+display: none !important;/);
     assert.match(useIssueTurnJsRuntime, /gradients: false/);
     assert.match(useIssueTurnJsRuntime, /function isTurnJsLifted/);
-    assert.match(useIssueTurnJsRuntime, /toggleAttribute\('data-lifted', lifted\)/);
+    assert.match(useIssueTurnJsRuntime, /setAttribute\('data-lift-side', liftSide\)/);
+    assert.match(useIssueTurnJsRuntime, /pointerDraggingRef/);
+    assert.match(useIssueTurnJsRuntime, /status === 'turning'/);
     assert.doesNotMatch(issueViewPageTurnJs, /turnShadowView|onTurnTargetChange/);
     assert.match(styles, /\.page-wrapper\.is-leaf-lifting \{/);
     assert.match(styles, /drop-shadow\(0 16px 24px rgba\(17, 17, 17, 0\.17\)\)/);

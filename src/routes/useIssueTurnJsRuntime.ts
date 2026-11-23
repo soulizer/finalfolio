@@ -103,6 +103,27 @@ function clearLiftedLeafShadows(book: HTMLElement) {
   });
 }
 
+// Which half of the book the moving sheet belongs to. Even page numbers are
+// left pages, odd are right (page 1 is the cover on the right).
+function getLiftSide(book: HTMLElement, turnInstance: TurnJsInstance) {
+  const turnData = turnInstance?.data?.('t') as
+    | { pageMv?: number[]; page?: number; tpage?: number }
+    | undefined;
+  const target = Number(turnData?.tpage ?? turnData?.page ?? 0) || 0;
+  const liftedPages = Array.from(book.querySelectorAll('.page-wrapper.is-leaf-lifting .page'))
+    .map((page) => Number(page.className.match(/\bp(\d+)\b/)?.[1] ?? 0))
+    .filter((page) => page > 0);
+  const movingPage =
+    turnData?.pageMv?.find((page) => page > 0) ??
+    liftedPages.find((page) => page !== target) ??
+    liftedPages[0];
+  if (!movingPage) {
+    return null;
+  }
+
+  return movingPage % 2 === 0 ? 'left' : 'right';
+}
+
 function clearIdlePeelAffordance(turnInstance: TurnJsInstance) {
   if (!turnInstance?.turn) {
     return;
@@ -296,6 +317,8 @@ export function useIssueTurnJsRuntime({
   const onViewChangeRef = useRef(onViewChange);
   const onTurningChangeRef = useRef(onTurningChange);
   const committedTurnPageRef = useRef(committedTurnPage);
+  const lastLiftSideRef = useRef<'left' | 'right' | null>(null);
+  const pointerDraggingRef = useRef(false);
   const pageWidthRef = useRef(pageWidth);
   const pageHeightRef = useRef(pageHeight);
   const currentPageRef = useRef(clamp(initialPage, 1, Math.max(renderedPages.length, 1)));
@@ -320,6 +343,48 @@ export function useIssueTurnJsRuntime({
     committedTurnPageRef.current = committedTurnPage;
   });
 
+  // A bare press can make turn.js fold the page (`tapping`) before any drag.
+  // The desk must not react to that; it reacts to a real drag or a turn.
+  useEffect(() => {
+    const book = bookRef.current;
+    if (!book) {
+      return;
+    }
+
+    let active = false;
+    let startX = 0;
+    let startY = 0;
+    const onPointerDown = (event: PointerEvent) => {
+      active = true;
+      pointerDraggingRef.current = false;
+      startX = event.clientX;
+      startY = event.clientY;
+    };
+    const onPointerMove = (event: PointerEvent) => {
+      if (!active) {
+        return;
+      }
+      if (Math.hypot(event.clientX - startX, event.clientY - startY) > 10) {
+        pointerDraggingRef.current = true;
+      }
+    };
+    const onPointerEnd = () => {
+      active = false;
+      pointerDraggingRef.current = false;
+    };
+
+    book.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerEnd);
+    window.addEventListener('pointercancel', onPointerEnd);
+    return () => {
+      book.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerEnd);
+      window.removeEventListener('pointercancel', onPointerEnd);
+    };
+  }, []);
+
   useEffect(() => {
     let frame = 0;
     let uncommittedFrames = 0;
@@ -331,16 +396,37 @@ export function useIssueTurnJsRuntime({
         const turnPage = Number(turnInstance.data?.('t')?.page) || 0;
         const uncommitted = turnPage > 0 && turnPage !== committedTurnPageRef.current;
         uncommittedFrames = uncommitted ? uncommittedFrames + 1 : 0;
-        const lifted =
-          isTurnJsLifted(turnInstance) ||
-          (uncommitted && uncommittedFrames <= UNCOMMITTED_PAGE_TIMEOUT_FRAMES);
-        if (book.hasAttribute('data-lifted') !== lifted) {
-          book.toggleAttribute('data-lifted', lifted);
-        }
-        if (lifted) {
+
+        // The background follows the paper, not turn.js's press state. A
+        // mouse-down can set `status`/`pageMv` before any sheet has rotated,
+        // which used to blank the desk and flicker on every press.
+        if (isTurnJsLifted(turnInstance)) {
           syncLiftedLeafShadows(book);
         } else {
           clearLiftedLeafShadows(book);
+        }
+        const paperLifted = book.querySelector('.page-wrapper.is-leaf-lifting') !== null;
+        const waitingForCommit = uncommitted && uncommittedFrames <= UNCOMMITTED_PAGE_TIMEOUT_FRAMES;
+        const turnData = turnInstance?.data?.('t') as { status?: string } | undefined;
+        const realMovement =
+          pointerDraggingRef.current || turnData?.status === 'turning' || turnData?.status === 'moving';
+        const liftSide =
+          paperLifted && realMovement
+            ? getLiftSide(book, turnInstance)
+            : waitingForCommit
+              ? lastLiftSideRef.current
+              : null;
+        if (liftSide) {
+          lastLiftSideRef.current = liftSide;
+        } else if (!waitingForCommit) {
+          lastLiftSideRef.current = null;
+        }
+        if (liftSide) {
+          if (book.getAttribute('data-lift-side') !== liftSide) {
+            book.setAttribute('data-lift-side', liftSide);
+          }
+        } else if (book.hasAttribute('data-lift-side')) {
+          book.removeAttribute('data-lift-side');
         }
       }
 

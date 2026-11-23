@@ -5022,9 +5022,9 @@ button.asset-frame {
   display: none !important;
 }
 
-/* The desk shadow: two half-layers under the paper, one per side. It is shown
-   only while the book is at rest (see `data-lifted`); a lifted leaf removes it
-   on the same frame, and it fades back in over 90ms once the view has landed. */
+/* The desk shadow: two half-layers under the paper, one per side. The side the
+   moving sheet belongs to drops out (`data-lift-side`); the other side keeps its
+   shadow, so a turn never blanks the whole desk. Changes are immediate. */
 .issue-viewer__turnjs::before,
 .issue-viewer__turnjs::after {
   content: '';
@@ -5035,7 +5035,6 @@ button.asset-frame {
   pointer-events: none;
   border-radius: 1px;
   opacity: 0;
-  transition: opacity 90ms ease-out;
   box-shadow:
     0 1px 2px rgba(17, 17, 17, 0.14),
     0 6px 14px rgba(17, 17, 17, 0.1),
@@ -5058,10 +5057,9 @@ button.asset-frame {
   opacity: 1;
 }
 
-.issue-viewer__turnjs[data-lifted]::before,
-.issue-viewer__turnjs[data-lifted]::after {
+.issue-viewer__turnjs[data-lift-side='left']::before,
+.issue-viewer__turnjs[data-lift-side='right']::after {
   opacity: 0 !important;
-  transition: none !important;
 }
 
 .issue-viewer__turnjs .even .gradient,

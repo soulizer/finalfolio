@@ -7,9 +7,10 @@ with no background shadow and no outline. Later rounds reported that the
 background shadow stayed under a lifted page, and that the spine shading differed
 between forward and backward turns.
 
-**Rule (from the user):** the background shadow exists only while every page lies
-flat and the view has landed. Any lifted or still-landing page removes it. The
-spine has either the same shading in both turn directions or none at all.
+**Rule (from the user):** the desk shadow belongs to the paper that is still
+lying flat. The side the moving sheet belongs to drops out while it is in the
+air; the other side keeps its shadow. The spine has either the same shading in
+both turn directions or none at all.
 
 **Root causes found by frame-by-frame measurement:**
 
@@ -23,20 +24,24 @@ spine has either the same shading in both turn directions or none at all.
 
 **Implementation:**
 
-- **Lift detection every frame.** A `requestAnimationFrame` loop reads turn.js's
-  own state. The book is lifted when a page is in flight (`pageMv`), a turn status
-  is set, a corner peel is active, or turn.js is on a page the parent has not yet
-  committed. While lifted, the book element carries `data-lifted`, and CSS sets
-  both desk layers to opacity 0 with no transition. The attribute is set
-  imperatively, so React re-renders cannot clear it.
-- **Commit gate.** The desk shadow returns only when React has committed the page
-  turn.js is on (`committedTurnPage`). That commit also carries the new shadow
-  mode, so the first resting frame never shows the previous view. A cancelled drag
-  leaves the page unchanged and releases at once; a 60-frame limit guards against a
-  stuck state.
+- **Per-side lift detection every frame.** A `requestAnimationFrame` loop reads
+  turn.js's own state and the rotated page wrappers. The moving sheet's side is
+  derived from `pageMv` (even page = left, odd = right). The book carries
+  `data-lift-side`, and CSS sets only that side's desk layer to opacity 0 with no
+  transition. The other side keeps its shadow, so a turn never blanks the whole
+  desk and a press cannot make the background flicker. The attribute is set
+  imperatively, so React re-renders cannot clear it. A bare press or hover does
+  not count: the desk reacts only once the pointer has actually dragged the page
+  or turn.js is in `turning`/`moving`. That removes the press-time fold flicker
+  while keeping the sheet's own shadow.
+- **Commit gate.** The lift side is held until React has committed the page
+  turn.js is on (`committedTurnPage`), so the first resting frame never shows the
+  previous view. A cancelled drag releases at once; a 60-frame limit guards
+  against a stuck state.
 - **Desk layers.** Two half-layers under the paper, one per side, sized by the
   landed mode: `spread` → both; `single-right` (cover) → right; `single-left` (last
-  page) → left. After release they fade in over 90ms.
+  page) → left. The moving side is removed immediately; the other side is
+  untouched.
 - **Spine.** Turn.js's `gradients` option is off and its gradient layers are hidden
   in CSS. No spine shading is painted in either direction, at rest or in flight.
 - **The moving sheet keeps its own shadow.** A per-frame pass marks the page
@@ -49,16 +54,16 @@ spine has either the same shading in both turn directions or none at all.
 
 **Measured (1200ms turns, every animation frame):**
 
-| Transition | Frames lifted | Desk visible while lifted | Painted spine gradients | Sheet shadow present |
+| Transition | Moving side visible while lifted | Stationary side kept | Painted spine gradients | Sheet shadow present |
 | --- | --- | --- | --- | --- |
-| Cover → spread | 73 | 0 | 0 | yes (`p1`/`p2`) |
-| Spread → spread (forward) | 73 | 0 | 0 | yes (`p3`/`p4`) |
-| Spread → cover (closing) | 70 | 0 | 0 | yes (`p1`/`p2`) |
-| Spread → last page | 73 | 0 | 0 | yes (`p5`/`p6`) |
-| Last page → spread (backward) | 71 | 0 | 0 | yes (`p3`/`p4`) |
-| Drag, cancelled | 64 | 0 | 0 | yes |
-| Drag, backward to cover | 102 | 0 | 0 | yes |
-| Drag, forward to spread | 100 | 0 | 0 | yes |
+| Cover → spread | 0 | n/a (left empty) | 0 | yes (`p1`/`p2`) |
+| Spread → spread (forward) | 0 | yes (left) | 0 | yes (`p3`/`p4`) |
+| Spread → cover (closing) | 0 | yes (right) | 0 | yes (`p1`/`p2`) |
+| Spread → last page | 0 | yes (left) | 0 | yes (`p5`/`p6`) |
+| Last page → spread (backward) | 0 | yes (right) | 0 | yes (`p3`/`p4`) |
+| Drag, cancelled | 0 | yes | 0 | yes |
+| Drag, backward to cover | 0 | yes | 0 | yes |
+| Drag, forward to spread | 0 | yes | 0 | yes |
 
 After each landing: cover `right=1, left=0`; spread `both=1`; last page `left=1,
 right=0`.
@@ -67,11 +72,11 @@ right=0`.
 
 | State | Evidence |
 | --- | --- |
-| Cover opening: desk off, sheet shadow stays | `2026-11-22-reader-opening.png` |
-| Forward turn: no desk, sheet shadow travels | `2026-11-22-reader-turning.png` |
-| Backward turn: same sheet shadow as forward | `2026-11-22-reader-backturn.png` |
-| Closing: no desk, sheet shadow leaves with it | `2026-11-22-reader-closing.png` |
-| Last page: no desk, sheet shadow stays | `2026-11-22-reader-last-turn.png` |
+| Cover opening: moving side off, sheet shadow stays | `2026-11-22-reader-opening.png` |
+| Forward turn: right off, left desk stays | `2026-11-22-reader-turning.png` |
+| Backward turn: left off, right desk stays | `2026-11-22-reader-backturn.png` |
+| Closing: left off, right desk stays | `2026-11-22-reader-closing.png` |
+| Last page: right off, left desk stays | `2026-11-22-reader-last-turn.png` |
 | Resting spread, desk back after landing | `2026-11-22-reader-spread.png` |
 | Last page (paper left) | `2026-11-22-reader-last.png` |
 | Hover peel (folded corner) | `2026-11-22-reader-peel.png` |
@@ -80,10 +85,12 @@ right=0`.
 | Fullscreen | `2026-11-22-reader-fullscreen.png` |
 
 **Regression guard:** `tests/e2e/reader-turn.spec.ts` records every animation frame
-of each transition. It asserts that no frame with a lifted page has desk opacity
-above zero, that no frame paints a turn.js gradient, that a lifted frame keeps a
-drop-shadow on the rotated sheet while resting pages have none, and that the
-first resting frame already shows the landed state. It also covers rest states, a cancelled
+of each transition. It asserts that the moving side's desk opacity is zero while
+the stationary side keeps its shadow, that no frame paints a turn.js gradient,
+that a lifted frame keeps a drop-shadow on the rotated sheet while resting pages
+have none, and that the first resting frame already shows the landed state. A
+dedicated test holds the mouse on a spread and asserts the desk is never blanked
+on both sides. It also covers rest states, a cancelled
 drag, and the mobile slide-versus-turn distinction.
 
 ### Known limitation found while validating the opening
