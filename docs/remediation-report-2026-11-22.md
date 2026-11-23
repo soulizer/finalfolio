@@ -19,9 +19,12 @@ static CSS, so it cannot flicker, disappear, or appear early.
 - Removed the two half-layers (`.issue-viewer__turnjs::before/::after`) and all
   code that toggled them (`shadowLeft`/`shadowRight`, `data-lift-side`, the
   per-frame lift loop, pointer-drag tracking).
-- `.issue-turnjs__sheet-scale .magazine-page` has a `box-shadow`. Turn.js
-  transforms the sheet, so the shadow follows the moving page. There is no
-  `filter` on the wrapper or on any image ancestor.
+- `.issue-viewer__turnjs .clip` has a static `box-shadow` and
+  `backface-visibility: visible`, so the shadow survives the whole turn. Turn.js
+  transforms `.clip`, so the shadow follows the moving page. `.page-wrapper` is
+  `overflow: visible` so the shadow can leave the wrapper; `.inner-page` keeps
+  `backface-visibility: hidden` so content still only shows on the front. There
+  is no `filter` on the wrapper or on any image ancestor.
 - Turn.js `gradients` is off and its `inner-gradient`/`outer-gradient` layers are
   hidden, so there is no direction-dependent spine band.
 - The page's own `.magazine-page` box-shadow remains as a subtle surface edge.

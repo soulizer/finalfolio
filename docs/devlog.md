@@ -1918,9 +1918,12 @@
   `box-shadow`, so a page has a shadow whether closed, open, turning, or flat,
   and it follows the sheet through the air. `.clip` keeps `overflow: hidden`, so
   its own shadow shows while content stays clipped; only `.page-wrapper` is
-  overflow visible. `.inner-page` and the boundary page keep their original
-  clipping, so the turn animation is unchanged. No `filter` is used on the
-  wrapper or on image ancestors, so page content is not re-rasterized during the
+  overflow visible. `.clip` also has `backface-visibility: visible` so the
+  shadow survives past 90° in the turn, while `.inner-page` stays `hidden` so
+  content still only shows on the front. `.inner-page` and the boundary page
+  keep their original clipping, so the turn animation is unchanged. No `filter`
+  is used on the wrapper or on image ancestors, so page content is not
+  re-rasterized during the
   turn and images do not flicker.
 - Turn.js gradients are disabled and their layers hidden, so the spine has the same
   (no) shading in both directions.
