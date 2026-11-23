@@ -117,21 +117,19 @@ export function AdminUploadsPanel({
                         >
                           {t('Retry mirror')}</button>
                       ) : null}
-                      <button
-                        type="button"
-                        className="button button--danger button--small"
-                        disabled={upload.referencedProjectCount > 0}
+                      <DeleteIconButton
+                        label={t('Delete')}
                         title={
                           upload.referencedProjectCount > 0
                             ? t('This image is used by a project. Remove it from the project first.')
                             : undefined
                         }
+                        disabled={upload.referencedProjectCount > 0}
                         onClick={(event) => {
                           event.stopPropagation();
                           void handleDeleteUpload(upload.filename);
                         }}
-                      >
-                        {t('Delete')}</button>
+                      />
                     </div>
                   </div>
                 </article>

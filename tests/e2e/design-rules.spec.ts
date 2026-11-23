@@ -108,3 +108,72 @@ test('primary buttons keep their dark shadow on hover and press down', async ({ 
   expect(active.shadow, 'pressed primary keeps the dark shadow').toContain('rgba(17, 17, 17, 0.2)');
   await page.mouse.up();
 });
+
+test('admin uploads and projects use the same icon-only delete', async ({ browser }) => {
+  const userContext = await browser.newContext({ locale: 'en-US' });
+  const user = await userContext.newPage();
+  await user.goto('/auth?next=%2Feditor');
+  await user.locator('.auth-form input[autocomplete="username"]').fill('e2e-user@example.com');
+  await user.locator('.auth-form input[autocomplete="current-password"]').fill('Password123!');
+  await user.locator('.auth-form button[type="submit"]').click();
+  await user.waitForURL((url) => url.pathname.startsWith('/editor'));
+
+  const image = readFileSync('public/icon-192.png');
+  const uploaded = await user.request.post('/api/uploads', {
+    multipart: { files: { name: 'admin-delete.png', mimeType: 'image/png', buffer: image } },
+  });
+  expect(uploaded.ok()).toBe(true);
+  const created = await user.request.post('/api/projects', {
+    data: {
+      project: {
+        title: 'Admin delete check',
+        subtitle: '',
+        issue: 'ADM',
+        frameRadius: 12,
+        fonts: { title: 'default', deck: 'default', caption: 'default', body: 'default' },
+        assets: [],
+        pages: [
+          {
+            id: 'adm-p1',
+            template: 'cover',
+            theme: 'warm-beige',
+            kicker: '',
+            title: 'P1',
+            deck: '',
+            body: '',
+            caption: '',
+            customTemplate: null,
+            slots: { hero: null },
+            crops: { hero: { x: 50, y: 50, scale: 1, fit: 'cover' } },
+          },
+        ],
+      },
+    },
+  });
+  expect(created.ok()).toBe(true);
+  await userContext.close();
+
+  const adminContext = await browser.newContext({ locale: 'en-US' });
+  const page = await adminContext.newPage();
+  await page.goto('/auth?next=%2Fadmin');
+  await page.locator('.auth-form input[autocomplete="username"]').fill('e2e-admin@example.com');
+  await page.locator('.auth-form input[autocomplete="current-password"]').fill('Password123!');
+  await page.locator('.auth-form button[type="submit"]').click();
+  await page.waitForURL((url) => url.pathname.startsWith('/admin'));
+
+  for (const section of ['uploads', 'projects']) {
+    await page.goto(`/admin?section=${section}`, { waitUntil: 'networkidle' });
+    const row = page.locator('.admin-row').first();
+    await expect(row).toBeVisible({ timeout: 15_000 });
+    const deleteButton = row.getByRole('button', { name: 'Delete', exact: true });
+    await expect(deleteButton).toBeVisible();
+    expect((await deleteButton.innerText()).trim(), `${section} delete is icon-only`).toBe('');
+    const deleteBox = await deleteButton.boundingBox();
+    expect(deleteBox?.width, `${section} delete width`).toBe(deleteBox?.height);
+    const firstAction = row.locator('.admin-row__actions .button').first();
+    const actionBox = await firstAction.boundingBox();
+    expect(actionBox?.height, `${section} row action height`).toBe(deleteBox?.height);
+  }
+
+  await adminContext.close();
+});
