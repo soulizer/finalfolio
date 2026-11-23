@@ -110,7 +110,7 @@ type PageShadowState = {
   pageFilters: string[];
   visiblePageFilters: string[];
   clipBackface: string[];
-  clipBackground: string[];
+  clipBackBackground: string[];
   imageTransforms: string[];
 };
 
@@ -128,9 +128,15 @@ async function pageShadowState(page: Page): Promise<PageShadowState | null> {
       globalAfterShadow: getComputedStyle(book, '::after').boxShadow,
       pageFilters: wrappers.map((wrapper) => getComputedStyle(wrapper).filter),
       visiblePageFilters: visible.map((wrapper) => getComputedStyle(wrapper).filter),
-      clipBackface: visible.map((wrapper) => getComputedStyle(wrapper.querySelector('.clip') ?? wrapper).backfaceVisibility),
-      clipBackground: visible.map((wrapper) => getComputedStyle(wrapper.querySelector('.clip') ?? wrapper).backgroundColor),
-      imageTransforms: Array.from(book.querySelectorAll('img')).map((image) => getComputedStyle(image).transform),
+      clipBackface: visible.map((wrapper) =>
+        getComputedStyle(wrapper.querySelector('.clip') ?? wrapper).backfaceVisibility,
+      ),
+      clipBackBackground: visible.map((wrapper) =>
+        getComputedStyle(wrapper.querySelector('.clip') ?? wrapper, '::before').backgroundColor,
+      ),
+      imageTransforms: Array.from(book.querySelectorAll('img')).map(
+        (image) => getComputedStyle(image).transform,
+      ),
     };
   });
 }
@@ -146,7 +152,7 @@ function expectPageShadows(state: PageShadowState | null) {
   for (const backface of state!.clipBackface) {
     expect(backface, 'clip backface').toBe('visible');
   }
-  for (const background of state!.clipBackground) {
+  for (const background of state!.clipBackBackground) {
     expect(background, 'clip back-face paper').not.toBe('rgba(0, 0, 0, 0)');
   }
   for (const transform of state!.imageTransforms) {
