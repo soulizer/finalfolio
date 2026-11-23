@@ -22,6 +22,9 @@ static CSS, so it cannot flicker, disappear, or appear early.
 - `.issue-turnjs__sheet-scale .magazine-page` has a `box-shadow`. Turn.js
   transforms the sheet, so the shadow follows the moving page. There is no
   `filter` on the wrapper or on any image ancestor.
+- `.inner-page` is `overflow: visible` and `.clip` is `overflow: clip` with a
+  48px clip margin, so the page's box-shadow can extend outside the sheet while
+  the page content is still clipped.
 - Turn.js `gradients` is off and its `inner-gradient`/`outer-gradient` layers are
   hidden, so there is no direction-dependent spine band.
 - The page's own `.magazine-page` box-shadow remains as a subtle surface edge.
@@ -54,9 +57,9 @@ static CSS, so it cannot flicker, disappear, or appear early.
 | Fullscreen | `2026-11-22-reader-fullscreen.png` |
 
 **Regression guard:** `tests/e2e/reader-turn.spec.ts` asserts that visible pages
-carry a `box-shadow` in every state (cover, spread, last page, mid-turn, press,
-mobile, auto-slide), that no page wrapper or image ancestor has a `filter`, and
-that the book has no `::before`/`::after` background layer. A dedicated test
+carry a visible `box-shadow` in every state (cover, spread, last page, mid-turn,
+press, mobile, auto-slide), that no page wrapper or image ancestor has a `filter`,
+and that the book has no `::before`/`::after` background layer. A dedicated test
 hovers all four corners and presses the page, asserting the per-page shadow value
 does not change.
 

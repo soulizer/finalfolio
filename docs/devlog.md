@@ -1916,10 +1916,12 @@
   nothing and was ruled out.
 - The global background shadow is gone. Every page surface carries its own
   `box-shadow`, so a page has a shadow whether closed, open, turning, or flat,
-  and it follows the sheet through the air. No `filter` is used on the wrapper or
-  on image ancestors, so page content is not re-rasterized during the turn and
-  images do not flicker. With no global layer there is nothing to vanish on a
-  drag or reappear before a cancelled page settles.
+  and it follows the sheet through the air. `.inner-page` is overflow visible and
+  `.clip` keeps a 48px clip margin so the shadow shows while content stays
+  clipped. No `filter` is used on the wrapper or on image ancestors, so page
+  content is not re-rasterized during the turn and images do not flicker. With no
+  global layer there is nothing to vanish on a drag or reappear before a
+  cancelled page settles.
 - Turn.js gradients are disabled and their layers hidden, so the spine has the same
   (no) shading in both directions.
 - The moving sheet keeps its own shadow: the per-frame pass marks page wrappers

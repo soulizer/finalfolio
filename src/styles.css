@@ -5018,6 +5018,19 @@ button.asset-frame {
   backface-visibility: hidden;
 }
 
+.issue-viewer__turnjs .page-wrapper {
+  overflow: visible !important;
+}
+
+.issue-viewer__turnjs .inner-page {
+  overflow: visible !important;
+}
+
+.issue-viewer__turnjs .clip {
+  overflow: clip !important;
+  overflow-clip-margin: 48px;
+}
+
 .issue-viewer__turnjs.issue-viewer__turnjs--ready > .issue-turnjs__page {
   display: none !important;
 }
@@ -5047,9 +5060,7 @@ button.asset-frame {
 }
 
 .issue-turnjs__page--boundary {
-  overflow: hidden;
-  overflow: clip;
-  overflow-clip-margin: 14px;
+  overflow: visible;
 }
 
 .issue-turnjs__sheet {
@@ -5070,14 +5081,14 @@ button.asset-frame {
 
 .issue-turnjs__sheet-scale .magazine-page {
   box-shadow:
-    0 12px 22px rgba(17, 17, 17, 0.16),
-    0 3px 7px rgba(17, 17, 17, 0.08);
+    0 22px 40px rgba(17, 17, 17, 0.28),
+    0 6px 14px rgba(17, 17, 17, 0.16);
 }
 
 .issue-turnjs__page--boundary .issue-turnjs__sheet-scale .magazine-page {
   box-shadow:
-    0 10px 18px rgba(17, 17, 17, 0.14),
-    0 2px 6px rgba(17, 17, 17, 0.07);
+    0 20px 36px rgba(17, 17, 17, 0.26),
+    0 5px 12px rgba(17, 17, 17, 0.15);
 }
 
 .issue-viewer__boundary-turn {
