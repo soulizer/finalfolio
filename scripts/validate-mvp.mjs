@@ -1283,6 +1283,7 @@ try {
     const issueViewReaderState = await fs.readFile(path.join(rootDir, 'src/routes/issueViewReaderState.ts'), 'utf8');
     const useIssueViewLayout = await fs.readFile(path.join(rootDir, 'src/routes/useIssueViewLayout.ts'), 'utf8');
     const useIssueViewNavigation = await fs.readFile(path.join(rootDir, 'src/routes/useIssueViewNavigation.ts'), 'utf8');
+    const useIssueViewPresentation = await fs.readFile(path.join(rootDir, 'src/routes/useIssueViewPresentation.ts'), 'utf8');
     const useIssueViewShareState = await fs.readFile(path.join(rootDir, 'src/routes/useIssueViewShareState.ts'), 'utf8');
     const useIssueViewChromeState = await fs.readFile(path.join(rootDir, 'src/routes/useIssueViewChromeState.ts'), 'utf8');
     const issueViewChrome = await fs.readFile(path.join(rootDir, 'src/routes/IssueViewChrome.tsx'), 'utf8');
@@ -1673,8 +1674,7 @@ try {
     assert.match(useIssueViewNavigation, /function handleJumpToFirstPage/);
     assert.match(useIssueViewNavigation, /function handleJumpToLastPage/);
     assert.match(useIssueViewNavigation, /function handleBookViewChange/);
-    assert.match(useIssueViewNavigation, /function handleMobileTouchStart/);
-    assert.match(useIssueViewNavigation, /function handleMobileTouchEnd/);
+    assert.doesNotMatch(useIssueViewNavigation, /function handleMobileTouch/);
     assert.match(useIssueViewNavigation, /window\.addEventListener\('keydown', handleKeyDown\)/);
     assert.match(useIssueViewNavigation, /getLeadingVisiblePage/);
     assert.match(useIssueViewShareState, /export function useIssueViewShareState/);
@@ -1690,6 +1690,11 @@ try {
     assert.match(issueViewChrome, /export function IssueViewReaderChrome/);
     assert.match(issueViewChrome, /export function IssueViewSidebar/);
     assert.match(issueViewChrome, /issue-view-mobile-controls/);
+    assert.doesNotMatch(issueViewChrome, /issue-view-mobile-controls__status/);
+    assert.match(useIssueViewPresentation, /mobileSinglePageActive \? 'single' : 'double'/);
+    assert.doesNotMatch(styles, /issue-view-mobile-controls__status/);
+    assert.match(styles, /grid-template-rows: auto minmax\(0, 1fr\) auto/);
+    assert.match(styles, /\.issue-viewer__turnjs \.page \{\s*pointer-events: auto/);
     assert.match(issueViewChrome, /issue-view-fullscreen-controls/);
     assert.match(issueViewChrome, /issue-view-sidebar/);
     assert.match(issueViewChrome, /Current view/);

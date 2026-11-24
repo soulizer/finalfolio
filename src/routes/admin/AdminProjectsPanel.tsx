@@ -9,7 +9,7 @@ import { createPreviewPageStyle } from '../../editor/previewScale';
 import type { Asset } from '../../editor/types';
 import { formatCompactTimestamp, formatTimestamp } from './adminFormatting';
 import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
-import { handleRowSelectKeyDown } from '../../ui/rowSelection';
+import { handleRowClick, handleRowSelectKeyDown } from '../../ui/rowSelection';
 
 const adminPreviewStyle = createPreviewPageStyle();
 
@@ -68,6 +68,7 @@ export function AdminProjectsPanel({
                   <article
                     key={project.id}
                     className={`admin-row ${selectedProjectId === project.id ? 'is-selected' : ''}`}
+                    onClick={(event) => handleRowClick(event, () => setSelectedProjectId(project.id))}
                   >
                     <div
                       className="admin-row__main"

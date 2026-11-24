@@ -8,7 +8,7 @@ import {
 import type { AccountUploadListItem } from '../../editor/api';
 import { formatBytes, formatCompactTimestamp, formatDimensions, formatTimestamp } from './accountFormatting';
 import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
-import { handleRowSelectKeyDown } from '../../ui/rowSelection';
+import { handleRowClick, handleRowSelectKeyDown } from '../../ui/rowSelection';
 
 type AccountUploadsPanelProps = {
   filteredUploads: AccountUploadListItem[];
@@ -58,6 +58,7 @@ export function AccountUploadsPanel({
                 <article
                   key={upload.assetId}
                   className={`admin-row admin-row--with-thumb admin-row--interactive ${selectedUpload?.assetId === upload.assetId ? 'is-selected' : ''}`}
+                  onClick={(event) => handleRowClick(event, () => setSelectedUploadAssetId(upload.assetId))}
                 >
                   <div className="admin-row__thumb admin-row__thumb--upload">
                     <img

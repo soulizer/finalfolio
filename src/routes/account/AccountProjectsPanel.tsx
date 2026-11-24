@@ -9,7 +9,7 @@ import type { Asset, ProjectRecord } from '../../editor/types';
 import { formatCompactTimestamp, formatTimestamp } from './accountFormatting';
 import type { ProjectVisibilityFilter } from './useAccountWorkspace';
 import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
-import { handleRowSelectKeyDown } from '../../ui/rowSelection';
+import { handleRowClick, handleRowSelectKeyDown } from '../../ui/rowSelection';
 
 const accountPreviewStyle = createPreviewPageStyle();
 
@@ -105,6 +105,7 @@ export function AccountProjectsPanel({
                   <article
                     key={project.id}
                     className={`admin-row admin-row--interactive ${selectedProject?.id === project.id ? 'is-selected' : ''}`}
+                    onClick={(event) => handleRowClick(event, () => setSelectedProjectId(project.id))}
                   >
                     <div
                       className="admin-row__main"

@@ -1,4 +1,4 @@
-import type { RefObject, TouchEvent as ReactTouchEvent } from 'react';
+import type { RefObject } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import type { TurnJsBookHandle } from './IssueTurnJsBook';
 import { clamp, getLeadingVisiblePage, type VisibleTurnView } from './issueViewReaderState';
@@ -34,8 +34,6 @@ export function useIssueViewNavigation({
   const [currentViewPages, setCurrentViewPages] = useState<VisibleTurnView>([0, 0]);
   const [mobileVisiblePage, setMobileVisiblePage] = useState(1);
   const stableTurnPageRef = useRef(1);
-  const mobileTurnTargetRef = useRef<number | null>(null);
-  const mobileTouchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const normalizedView = pageCount ? currentViewPages : ([0, 0] as VisibleTurnView);
   const normalizedMobileVisiblePage = clamp(mobileVisiblePage, 1, Math.max(pageCount, 1));
@@ -45,8 +43,6 @@ export function useIssueViewNavigation({
 
   function resetNavigationState() {
     stableTurnPageRef.current = 1;
-    mobileTurnTargetRef.current = null;
-    mobileTouchStartRef.current = null;
     setCurrentTurnPage(1);
     setCurrentViewPages([0, 0]);
     setMobileVisiblePage(1);
@@ -54,8 +50,6 @@ export function useIssueViewNavigation({
 
   function initializeLoadedIssue(nextPageCount: number) {
     stableTurnPageRef.current = 1;
-    mobileTurnTargetRef.current = null;
-    mobileTouchStartRef.current = null;
     setCurrentTurnPage(1);
     setCurrentViewPages(nextPageCount ? [0, 1] : [0, 0]);
     setMobileVisiblePage(1);
@@ -71,9 +65,7 @@ export function useIssueViewNavigation({
       return;
     }
 
-    const normalizedTargetPage = clamp(targetPage, 1, pageCount);
-    mobileTurnTargetRef.current = normalizedTargetPage;
-    book.page(normalizedTargetPage);
+    book.page(clamp(targetPage, 1, pageCount));
   }
 
   function handleAdvanceToNextPage() {
@@ -86,12 +78,7 @@ export function useIssueViewNavigation({
       return;
     }
 
-    if (normalizedMobileVisiblePage === 1 || normalizedMobileVisiblePage % 2 === 1) {
-      requestMobileTurn(Math.min(pageCount, normalizedMobileVisiblePage + 1));
-      return;
-    }
-
-    setMobileVisiblePage((current) => clamp(current + 1, 1, pageCount));
+    requestMobileTurn(normalizedMobileVisiblePage + 1);
   }
 
   function handleAdvanceToPreviousPage() {
@@ -104,12 +91,7 @@ export function useIssueViewNavigation({
       return;
     }
 
-    if (normalizedMobileVisiblePage % 2 === 0) {
-      requestMobileTurn(Math.max(1, normalizedMobileVisiblePage - 1));
-      return;
-    }
-
-    setMobileVisiblePage((current) => clamp(current - 1, 1, pageCount));
+    requestMobileTurn(normalizedMobileVisiblePage - 1);
   }
 
   function handleJumpToFirstPage() {
@@ -143,69 +125,14 @@ export function useIssueViewNavigation({
     setCurrentTurnPage(page);
     setCurrentViewPages(view);
 
-    if (!mobileSinglePageActive) {
-      mobileTurnTargetRef.current = null;
-      return;
+    if (mobileSinglePageActive) {
+      // In single-page mode the book's current page is the page on screen.
+      setMobileVisiblePage(clamp(page, 1, Math.max(pageCount, 1)));
     }
-
-    if (mobileTurnTargetRef.current !== null) {
-      setMobileVisiblePage(clamp(mobileTurnTargetRef.current, 1, Math.max(pageCount, 1)));
-      mobileTurnTargetRef.current = null;
-    }
-  }
-
-  function handleMobileTouchStart(event: ReactTouchEvent<HTMLDivElement>) {
-    if (!mobileSinglePageActive || isTurning) {
-      mobileTouchStartRef.current = null;
-      return;
-    }
-
-    const touch = event.touches[0];
-    if (!touch) {
-      mobileTouchStartRef.current = null;
-      return;
-    }
-
-    mobileTouchStartRef.current = { x: touch.clientX, y: touch.clientY };
-  }
-
-  function handleMobileTouchCancel() {
-    mobileTouchStartRef.current = null;
-  }
-
-  function handleMobileTouchEnd(event: ReactTouchEvent<HTMLDivElement>) {
-    const start = mobileTouchStartRef.current;
-    mobileTouchStartRef.current = null;
-
-    if (!mobileSinglePageActive || !start || isTurning) {
-      return;
-    }
-
-    const touch = event.changedTouches[0];
-    if (!touch) {
-      return;
-    }
-
-    const deltaX = touch.clientX - start.x;
-    const deltaY = touch.clientY - start.y;
-    const absDeltaX = Math.abs(deltaX);
-    const absDeltaY = Math.abs(deltaY);
-
-    if (absDeltaX < 42 || absDeltaX <= absDeltaY * 1.15) {
-      return;
-    }
-
-    if (deltaX < 0) {
-      handleAdvanceToNextPage();
-      return;
-    }
-
-    handleAdvanceToPreviousPage();
   }
 
   useEffect(() => {
     if (!mobileSinglePageActive) {
-      mobileTurnTargetRef.current = null;
       return;
     }
 
@@ -218,6 +145,11 @@ export function useIssueViewNavigation({
     }
 
     function handleKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) {
+        return;
+      }
+
       if (event.key === 'ArrowRight') {
         event.preventDefault();
         handleAdvanceToNextPage();
@@ -245,9 +177,6 @@ export function useIssueViewNavigation({
     handleBookViewChange,
     handleJumpToFirstPage,
     handleJumpToLastPage,
-    handleMobileTouchCancel,
-    handleMobileTouchEnd,
-    handleMobileTouchStart,
     initializeLoadedIssue,
     mobileVisiblePage,
     resetNavigationState,

@@ -80,6 +80,12 @@ test('dragging a shared page releases with the mouse', async ({ page }) => {
     await page.mouse.move(startX - step * 14, startY - step * 2);
     await page.waitForTimeout(15);
   }
+  const desktopDragging = await page.evaluate(() => {
+    const jq = (window as any).jQuery;
+    const bookEl = document.querySelector('.issue-viewer__turnjs');
+    return Boolean(jq && bookEl && jq(bookEl).turn('animating') === true);
+  });
+  expect(desktopDragging, 'desktop drag follows the pointer').toBe(true);
   await page.mouse.up();
   await page.waitForTimeout(1_400);
   await page.mouse.move(220, 220);
@@ -261,6 +267,131 @@ test('a turn keeps the page shadow and never introduces a global background shad
   await page.mouse.up();
   await page.waitForTimeout(300);
   expectPageShadows(await pageShadowState(page));
+});
+
+test('mobile chrome never covers the paper and turns directly to the next page', async ({ browser }) => {
+  const context = await browser.newContext({ ...devices['iPhone 13'] });
+  const page = await context.newPage();
+  await page.addInitScript(() => localStorage.setItem('finalfolio-locale', 'zh'));
+  await page.goto('/auth?next=%2Feditor');
+  await page.locator('.auth-form input[autocomplete="username"]').fill('e2e-user@example.com');
+  await page.locator('.auth-form input[autocomplete="current-password"]').fill('Password123!');
+  await page.locator('.auth-form button[type="submit"]').click();
+  await page.waitForURL((url) => url.pathname.startsWith('/editor'));
+  const sharePath = await createShare(page);
+  await page.goto(sharePath);
+
+  const book = page.locator('.issue-viewer__turnjs');
+  await expect(book).toHaveClass(/--ready/, { timeout: 20_000 });
+  await expect(page.locator('.issue-view-mobile-topbar')).toBeVisible();
+  await expect(page.locator('.issue-view-mobile-controls__status')).toHaveCount(0);
+
+  const geometry = await page.evaluate(() => {
+    const viewport = document.querySelector('.issue-viewer__viewport')!.getBoundingClientRect();
+    const topbar = document.querySelector('.issue-view-mobile-topbar')!.getBoundingClientRect();
+    const controls = document.querySelector('.issue-view-mobile-controls')!.getBoundingClientRect();
+    const stage = document.querySelector('.issue-viewer__turnjs-stage') as HTMLElement;
+    const turn = document.querySelector('.issue-viewer__turnjs') as HTMLElement;
+    return {
+      viewportBottom: viewport.bottom,
+      viewportTop: viewport.top,
+      topbarBottom: topbar.bottom,
+      controlsTop: controls.top,
+      stageTransform: getComputedStyle(stage).transform,
+      pointerEvents: getComputedStyle(turn).pointerEvents,
+      touchAction: getComputedStyle(turn).touchAction,
+    };
+  });
+
+  // Chrome is in the layout flow, so it can never overlap the page area.
+  expect(geometry.topbarBottom).toBeLessThanOrEqual(geometry.viewportTop + 1);
+  expect(geometry.controlsTop).toBeGreaterThanOrEqual(geometry.viewportBottom - 1);
+  // Single-page turns need no camera translation, and must accept touch drags.
+  expect(geometry.stageTransform).toBe('none');
+  expect(geometry.pointerEvents).not.toBe('none');
+  expect(geometry.touchAction).toBe('none');
+
+  const next = page.locator('.issue-view-mobile-controls__actions button').filter({ hasText: /Next|下一页/ }).first();
+  const waitForTurn = async () => {
+    await expect(page.locator('.issue-viewer__turnjs--turning')).toHaveCount(0, { timeout: 5_000 });
+    await page.waitForTimeout(120);
+  };
+
+  await next.click();
+  await waitForTurn();
+  await next.click();
+  await waitForTurn();
+  await next.click();
+  await waitForTurn();
+
+  // 3 -> 4 must show page 4 directly; the old translated double spread briefly
+  // exposed page 5 before sliding back.
+  const visibleCopy = await page.evaluate(() => {
+    const viewport = document.querySelector('.issue-viewer__viewport')!.getBoundingClientRect();
+    const topmost = document.elementFromPoint(
+      viewport.left + viewport.width / 2,
+      viewport.top + viewport.height / 2,
+    );
+    return topmost?.textContent ?? '';
+  });
+  expect(visibleCopy).toContain('第 4 页');
+  expect(visibleCopy).not.toContain('第 5 页');
+
+  // The paper itself must accept the drag on mobile and follow the finger.
+  const bookBox = await book.boundingBox();
+  expect(bookBox).not.toBeNull();
+  const startX = bookBox!.x + bookBox!.width - 24;
+  const startY = bookBox!.y + bookBox!.height - 18;
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ x: startX, y: startY }],
+  });
+  for (let step = 1; step <= 6; step += 1) {
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ x: startX - step * 16, y: startY - step * 2 }],
+    });
+    await page.waitForTimeout(30);
+  }
+
+  const dragging = await page.evaluate(() => {
+    const jq = (window as any).jQuery;
+    const bookEl = document.querySelector('.issue-viewer__turnjs');
+    if (!jq || !bookEl) {
+      return false;
+    }
+    const animated = jq(bookEl).turn('animating') === true;
+    const transformed = Array.from(document.querySelectorAll('.issue-viewer__turnjs .page-wrapper')).some(
+      (element) => getComputedStyle(element).transform !== 'none',
+    );
+    return animated || transformed;
+  });
+  expect(dragging, 'dragged page follows the finger').toBe(true);
+
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await waitForTurn();
+
+  // A short phone must still keep both chrome blocks outside the paper area.
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.waitForTimeout(700);
+  const shortScreen = await page.evaluate(() => {
+    const viewport = document.querySelector('.issue-viewer__viewport')!.getBoundingClientRect();
+    const topbar = document.querySelector('.issue-view-mobile-topbar')!.getBoundingClientRect();
+    const controls = document.querySelector('.issue-view-mobile-controls')!.getBoundingClientRect();
+    return {
+      viewportHeight: viewport.height,
+      viewportTop: viewport.top,
+      viewportBottom: viewport.bottom,
+      topbarBottom: topbar.bottom,
+      controlsTop: controls.top,
+    };
+  });
+  expect(shortScreen.viewportHeight).toBeGreaterThan(100);
+  expect(shortScreen.topbarBottom).toBeLessThanOrEqual(shortScreen.viewportTop + 1);
+  expect(shortScreen.controlsTop).toBeGreaterThanOrEqual(shortScreen.viewportBottom - 1);
+
+  await context.close();
 });
 
 test('mobile keeps per-page shadows and no global background shadow', async ({ browser }) => {

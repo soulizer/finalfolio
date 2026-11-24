@@ -210,6 +210,4 @@ export function getLeadingVisiblePage(view: VisibleTurnView, totalPages: number)
   return 1;
 }
 
-export function getMobileStageSide(pageNumber: number, totalPages: number): 'left' | 'right' {
-  return getRenderedPageSide(pageNumber, totalPages) === 'left' ? 'left' : 'right';
-}
+
