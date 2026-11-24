@@ -372,6 +372,28 @@ test('mobile chrome never covers the paper and turns directly to the next page',
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await waitForTurn();
 
+  // A normal horizontal swipe must also advance the single-page book.
+  const beforeSwipe = await page.locator('.issue-view-mobile-topbar small').innerText();
+  const swipeBox = await page.locator('.issue-viewer__viewport').boundingBox();
+  expect(swipeBox).not.toBeNull();
+  const swipeY = swipeBox!.y + swipeBox!.height / 2;
+  const swipeStartX = swipeBox!.x + swipeBox!.width * 0.72;
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ x: swipeStartX, y: swipeY }],
+  });
+  for (let step = 1; step <= 5; step += 1) {
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ x: swipeStartX - step * 42, y: swipeY }],
+    });
+    await page.waitForTimeout(16);
+  }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await waitForTurn();
+  const afterSwipe = await page.locator('.issue-view-mobile-topbar small').innerText();
+  expect(afterSwipe, 'horizontal swipe advances the page').not.toBe(beforeSwipe);
+
   // A short phone must still keep both chrome blocks outside the paper area.
   await page.setViewportSize({ width: 320, height: 568 });
   await page.waitForTimeout(700);
