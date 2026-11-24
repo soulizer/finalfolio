@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchSession, UserSession } from './editor/api';
 
 type SessionContextValue = {
@@ -19,6 +19,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [refreshFailed, setRefreshFailed] = useState(false);
   const mountedRef = useRef(true);
   const userRef = useRef<UserSession | null>(null);
+  const inFlightRefreshRef = useRef<Promise<UserSession | null> | null>(null);
 
   useEffect(() => {
     userRef.current = user;
@@ -30,45 +31,62 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  async function refreshSession() {
-    if (mountedRef.current) {
-      setRefreshing(true);
+  const refreshSession = useCallback(async () => {
+    // Focus and visibility events can fire back-to-back; share one request so
+    // the whole consumer tree does not re-render for each duplicate poll.
+    if (inFlightRefreshRef.current) {
+      return inFlightRefreshRef.current;
     }
 
-    try {
-      const payload = await fetchSession();
-      if (!mountedRef.current) {
-        return payload.user ?? null;
-      }
-
-      userRef.current = payload.user;
-      setUser(payload.user);
-      setRefreshFailed(false);
-      return payload.user ?? null;
-    } catch {
-      if (!mountedRef.current) {
-        return userRef.current;
-      }
-
-      if (!userRef.current) {
-        setUser(null);
-      }
-      setRefreshFailed(true);
-      return userRef.current;
-    } finally {
+    const request = (async () => {
       if (mountedRef.current) {
-        setRefreshing(false);
-        setReady(true);
+        setRefreshing(true);
+      }
+
+      try {
+        const payload = await fetchSession();
+        if (!mountedRef.current) {
+          return payload.user ?? null;
+        }
+
+        userRef.current = payload.user;
+        setUser(payload.user);
+        setRefreshFailed(false);
+        return payload.user ?? null;
+      } catch {
+        if (!mountedRef.current) {
+          return userRef.current;
+        }
+
+        if (!userRef.current) {
+          setUser(null);
+        }
+        setRefreshFailed(true);
+        return userRef.current;
+      } finally {
+        if (mountedRef.current) {
+          setRefreshing(false);
+          setReady(true);
+        }
+      }
+    })();
+
+    inFlightRefreshRef.current = request;
+    try {
+      return await request;
+    } finally {
+      if (inFlightRefreshRef.current === request) {
+        inFlightRefreshRef.current = null;
       }
     }
-  }
+  }, []);
 
-  function setSessionUser(nextUser: UserSession | null) {
+  const setSessionUser = useCallback((nextUser: UserSession | null) => {
     userRef.current = nextUser;
     setUser(nextUser);
     setRefreshFailed(false);
     setReady(true);
-  }
+  }, []);
 
   useEffect(() => {
     void refreshSession();
@@ -89,22 +107,21 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, []);
+  }, [refreshSession]);
 
-  return (
-    <SessionContext.Provider
-      value={{
-        user,
-        ready,
-        refreshing,
-        refreshFailed,
-        refreshSession,
-        setSessionUser,
-      }}
-    >
-      {children}
-    </SessionContext.Provider>
+  const contextValue = useMemo(
+    () => ({
+      user,
+      ready,
+      refreshing,
+      refreshFailed,
+      refreshSession,
+      setSessionUser,
+    }),
+    [user, ready, refreshing, refreshFailed, refreshSession, setSessionUser],
   );
+
+  return <SessionContext.Provider value={contextValue}>{children}</SessionContext.Provider>;
 }
 
 export function useSession() {

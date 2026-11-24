@@ -4,13 +4,14 @@ import type { CSSProperties } from 'react';
 import { MagazinePreview } from '../../components/MagazinePreview';
 import type { AdminProjectDetail, AdminProjectListItem } from '../../editor/api';
 import { getTemplateLabel, templateMeta } from '../../editor/demoData';
+import { buildProjectFontVars } from '../../editor/fonts';
+import { createPreviewPageStyle } from '../../editor/previewScale';
 import type { Asset } from '../../editor/types';
 import { formatCompactTimestamp, formatTimestamp } from './adminFormatting';
 import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
+import { handleRowSelectKeyDown } from '../../ui/rowSelection';
 
-const adminPreviewStyle = {
-  '--page-scale': 0.32,
-} as CSSProperties;
+const adminPreviewStyle = createPreviewPageStyle();
 
 type AdminProjectsPanelProps = {
   filteredProjects: AdminProjectListItem[];
@@ -67,11 +68,19 @@ export function AdminProjectsPanel({
                   <article
                     key={project.id}
                     className={`admin-row ${selectedProjectId === project.id ? 'is-selected' : ''}`}
-                    onClick={() => setSelectedProjectId(project.id)}
                   >
-                    <div className="admin-row__main">
+                    <div
+                      className="admin-row__main"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={t('Select a project')}
+                      onClick={() => setSelectedProjectId(project.id)}
+                      onKeyDown={(event) => handleRowSelectKeyDown(event, () => setSelectedProjectId(project.id))}
+                    >
                       <div className="admin-row__header">
-                        <strong className="admin-row__title">{project.title}</strong>
+                        <strong className="admin-row__title admin-row__title--truncate" title={project.title}>
+                          {project.title}
+                        </strong>
                       </div>
                       <p className="admin-row__subline">{project.id}</p>
                       <p className="admin-row__description">
@@ -86,7 +95,7 @@ export function AdminProjectsPanel({
                       <div className="admin-row__meta">
                         <span className="admin-pill admin-pill--strong">{project.issue}</span>
                         <span className={`admin-pill ${project.ownerDisplay ? '' : 'admin-pill--warning'}`}>
-                          {project.ownerDisplay ?? 'unowned'}
+                          {project.ownerDisplay ?? t('unowned')}
                         </span>
                         <span className={`admin-pill ${project.health === 'healthy' ? 'admin-pill--success' : 'admin-pill--warning'}`}>
                           {t(project.health)}
@@ -99,7 +108,6 @@ export function AdminProjectsPanel({
                             href={project.publicSharePath}
                             target="_blank"
                             rel="noreferrer"
-                            onClick={(event) => event.stopPropagation()}
                           >
                             {t('Public Link')}</a>
                         ) : null}
@@ -108,13 +116,11 @@ export function AdminProjectsPanel({
                           href={`/editor/${project.id}`}
                           target="_blank"
                           rel="noreferrer"
-                          onClick={(event) => event.stopPropagation()}
                         >
                           {t('Edit')}</a>
                         <DeleteIconButton
                           label={t('Delete')}
-                          onClick={(event) => {
-                            event.stopPropagation();
+                          onClick={() => {
                             void handleDeleteProject(project.id);
                           }}
                         />
@@ -147,7 +153,13 @@ export function AdminProjectsPanel({
                     <div className="admin-detail-preview__strip">
                       {selectedProjectDetail.preview.pages.map((page, index) => (
                         <article key={page.id} className="admin-detail-preview__page">
-                          <div className="magazine-sheet magazine-sheet--editor" style={adminPreviewStyle}>
+                          <div
+                            className="magazine-sheet magazine-sheet--editor"
+                            style={{
+                              ...adminPreviewStyle,
+                              ...buildProjectFontVars(selectedProjectDetail.preview.fonts),
+                            }}
+                          >
                             <MagazinePreview
                               issue={selectedProjectDetail.issue}
                               page={page}
@@ -171,7 +183,7 @@ export function AdminProjectsPanel({
                 <div className="admin-detail-metrics admin-detail-metrics--compact">
                   <article>
                     <span>{t('Owner')}</span>
-                    <strong>{selectedProjectDetail.ownerDisplay ?? 'unowned'}</strong>
+                    <strong>{selectedProjectDetail.ownerDisplay ?? t('unowned')}</strong>
                   </article>
                   <article>
                     <span>{t('Pages')}</span>

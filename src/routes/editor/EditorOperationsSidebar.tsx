@@ -235,8 +235,8 @@ export function EditorOperationsSidebar({
               {t('Reload latest')}</button>
           </div>
         ) : null}
-        <div className="editor-project-action-rows" aria-label={t('Project actions')}>
-          <div className="editor-button-grid editor-button-grid--two" role="group">
+        <div className="editor-project-action-rows" role="group" aria-label={t('Project actions')}>
+          <div className="editor-button-grid editor-button-grid--two" role="group" aria-label={t('History')}>
             <button
               type="button"
               className="button button--ghost button--small"
@@ -256,7 +256,7 @@ export function EditorOperationsSidebar({
               {t('Redo')}
             </button>
           </div>
-          <div className="editor-button-grid editor-button-grid--two" role="group">
+          <div className="editor-button-grid editor-button-grid--two" role="group" aria-label={t('Save and export')}>
             <button
               type="button"
               className="button button--primary button--small"
@@ -275,7 +275,7 @@ export function EditorOperationsSidebar({
               {exportActionLabel}
             </button>
           </div>
-          <div className="editor-button-grid editor-button-grid--two" role="group">
+          <div className="editor-button-grid editor-button-grid--two" role="group" aria-label={t('Duplicate and archive')}>
             <button
               type="button"
               className="button button--ghost button--small"

@@ -237,6 +237,7 @@ export interface PublicIssuePayload {
   subtitle: string;
   issue: string;
   frameRadius: number;
+  fonts?: ProjectFonts;
   pages: PageData[];
   assets: Asset[];
 }

@@ -12,6 +12,7 @@ import { PhotoThumb } from '../../ui/PhotoThumb';
 import { MarqueeGrid } from '../../ui/MarqueeGrid';
 import type { Asset, AssetAnalysis } from '../../editor/types';
 import { ExperimentalBadge } from '../../ui/ExperimentalBadge';
+import { useModalFocus } from '../../ui/useModalFocus';
 import {
   aiTemplateLabel,
   normalizeAiPlanBundle,
@@ -401,6 +402,8 @@ export function AiArrangeDialog({
   const readingAssetRef = useRef<string | null>(null);
   const anchorAssetIdRef = useRef<string | null>(null);
   const photosRef = useRef<AiPhoto[]>([]);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  useModalFocus(dialogRef, { active: true });
 
   photosRef.current = photos;
   const maxPhotos = Math.max(0, Math.min(status?.maxImages ?? 50, maxPhotosProp ?? 50));
@@ -845,7 +848,14 @@ export function AiArrangeDialog({
 
   return (
     <div className="ai-dialog-overlay" role="presentation">
-      <div className="ai-dialog surface-popover" role="dialog" aria-modal="true" aria-labelledby="ai-dialog-title">
+      <div
+        ref={dialogRef}
+        className="ai-dialog surface-popover"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ai-dialog-title"
+        tabIndex={-1}
+      >
         <header className="ai-dialog__header">
           <div>
             <p className="eyebrow">

@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DeleteIconButton } from '../../ui/DeleteIconButton';
+import { useModalFocus } from '../../ui/useModalFocus';
 import { translate, useT } from '../../i18n';
 import {
   testAdminAiProvider,
@@ -54,6 +55,20 @@ function ProviderEditorDialog({
   const [testError, setTestError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  useModalFocus(dialogRef, { active: true });
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !saving) {
+        event.preventDefault();
+        onCancel();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onCancel, saving]);
 
   function update<Key extends keyof AdminAiProviderDraft>(field: Key, value: AdminAiProviderDraft[Key]) {
     setProvider((current) => ({ ...current, [field]: value }));
@@ -106,7 +121,14 @@ function ProviderEditorDialog({
         }
       }}
     >
-      <div className="admin-ai-dialog" role="dialog" aria-modal="true" aria-labelledby="ai-provider-dialog-title">
+      <div
+        ref={dialogRef}
+        className="admin-ai-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ai-provider-dialog-title"
+        tabIndex={-1}
+      >
         <header className="admin-ai-dialog__header">
           <div>
             <p className="eyebrow">{t('Interface pool')}</p>

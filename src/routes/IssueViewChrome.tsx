@@ -1,5 +1,6 @@
 import { countLabel, useT } from '../i18n';
-import type { CSSProperties } from 'react';
+import { useRef, type CSSProperties } from 'react';
+import { useModalFocus } from '../ui/useModalFocus';
 import type { UserSession } from '../editor/api';
 import type { PublicIssuePayload } from '../editor/types';
 import { Link } from 'react-router-dom';
@@ -171,6 +172,8 @@ export function IssueViewReaderChrome({
   onToggleMobilePanel,
 }: IssueViewReaderChromeProps) {
   const t = useT();
+  const sheetRef = useRef<HTMLDivElement | null>(null);
+  useModalFocus(sheetRef, { active: mobilePanelOpen });
   return (
     <>
       {showMobileChrome ? (
@@ -227,11 +230,13 @@ export function IssueViewReaderChrome({
           ) : null}
 
           <div
+            ref={sheetRef}
             id="issue-view-mobile-panel"
             className={`issue-view-mobile-sheet ${mobilePanelOpen ? 'is-open' : ''}`.trim()}
             role="dialog"
             aria-modal="true"
             aria-label={t('Shared folio details')}
+            tabIndex={-1}
           >
             <div className="issue-view-mobile-sheet__card">
               <div className="issue-view-mobile-sheet__header">

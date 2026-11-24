@@ -2004,6 +2004,7 @@ export function EditorPage() {
                 onTextEditCommit={handleTextEditCommit}
                 onRequestUpload={handleRequestUpload}
                 assets={previewAssetsById}
+                imageLoading="eager"
                 frameRadius={project.frameRadius}
                 pageNumber={selectedPageIndex + 1}
                 selectedSlot={selectedSlot}
@@ -2192,6 +2193,8 @@ export function EditorPage() {
                   issue={project.issue}
                   page={page}
                   assets={printAssetsById ?? assetsById}
+                  imageLoading="eager"
+                  imageDecoding="sync"
                   frameRadius={project.frameRadius}
                   pageNumber={index + 1}
                 />

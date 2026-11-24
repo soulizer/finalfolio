@@ -1,5 +1,6 @@
 import { CSSProperties, RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { useT } from '../../i18n';
+import { useModalFocus } from '../../ui/useModalFocus';
 import { createCustomTemplateDefinition } from '../../editor/demoData';
 import {
   CUSTOM_LAYOUT_GAP_X_PERCENT,
@@ -115,6 +116,7 @@ export function LayoutEditorDialog({
   const previewAreaRef = useRef<HTMLDivElement | null>(null);
   const previewCanvasRef = useRef<HTMLDivElement | null>(null);
   const dialogRef = useRef<HTMLDivElement | null>(null);
+  useModalFocus(dialogRef, { active: true });
   const nameInputRef = useRef<HTMLInputElement | null>(null);
   const previewScale = useEditorPreviewScale({
     loadState: 'ready',
@@ -130,14 +132,11 @@ export function LayoutEditorDialog({
   );
 
   useEffect(() => {
-    const previousActiveElement = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    dialogRef.current?.focus();
 
     return () => {
       document.body.style.overflow = previousOverflow;
-      previousActiveElement?.focus?.();
     };
   }, []);
 

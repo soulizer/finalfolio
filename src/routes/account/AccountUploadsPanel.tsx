@@ -8,6 +8,7 @@ import {
 import type { AccountUploadListItem } from '../../editor/api';
 import { formatBytes, formatCompactTimestamp, formatDimensions, formatTimestamp } from './accountFormatting';
 import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
+import { handleRowSelectKeyDown } from '../../ui/rowSelection';
 
 type AccountUploadsPanelProps = {
   filteredUploads: AccountUploadListItem[];
@@ -57,7 +58,6 @@ export function AccountUploadsPanel({
                 <article
                   key={upload.assetId}
                   className={`admin-row admin-row--with-thumb admin-row--interactive ${selectedUpload?.assetId === upload.assetId ? 'is-selected' : ''}`}
-                  onClick={() => setSelectedUploadAssetId(upload.assetId)}
                 >
                   <div className="admin-row__thumb admin-row__thumb--upload">
                     <img
@@ -67,9 +67,18 @@ export function AccountUploadsPanel({
                       decoding="async"
                     />
                   </div>
-                  <div className="admin-row__main">
+                  <div
+                    className="admin-row__main"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={t('Select an upload')}
+                    onClick={() => setSelectedUploadAssetId(upload.assetId)}
+                    onKeyDown={(event) => handleRowSelectKeyDown(event, () => setSelectedUploadAssetId(upload.assetId))}
+                  >
                     <div className="admin-row__header">
-                      <strong className="admin-row__title">{upload.name}</strong>
+                      <strong className="admin-row__title admin-row__title--truncate" title={upload.name}>
+                        {upload.name}
+                      </strong>
                       <span
                         className={`delivery-indicator delivery-indicator--${getAssetDeliveryTone(upload.delivery)}`}
                         title={getAssetDeliveryTooltip(upload.delivery)}
@@ -96,7 +105,7 @@ export function AccountUploadsPanel({
                           : t('unused')}
                       </span>
                     </div>
-                    <div className="admin-row__actions" onClick={(event) => event.stopPropagation()}>
+                    <div className="admin-row__actions">
                       <a
                         className="button button--primary button--small"
                         href={upload.original?.src ?? upload.src}

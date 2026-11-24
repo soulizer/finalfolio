@@ -391,7 +391,7 @@ export function AuthPage() {
         ) : null}
         {session ? (
           <>
-            <p>{`${getUserIdentitySummary(session)} · ${t(session.role)} · ${session.emailVerifiedAt ? 'verified' : 'unverified'}`}</p>
+            <p>{`${getUserIdentitySummary(session)} · ${t(session.role)} · ${t(session.emailVerifiedAt ? 'verified' : 'unverified')}`}</p>
             <div className="editor-empty-state__actions">
               <button
                 type="button"

@@ -1,5 +1,3 @@
-import JSZip from 'jszip';
-import { toJpeg } from 'html-to-image';
 import {
   ExportFormat,
   ExportPageSize,
@@ -407,6 +405,9 @@ export function applyPrintLayout(pageSize: ExportPageSize) {
 }
 
 export async function capturePageNodeAsJpeg(node: HTMLElement, settings: ExportSettings) {
+  // html-to-image is only needed once an export actually starts; keeping it out
+  // of the editor's initial chunk saves roughly 12-15 KB gzip on first paint.
+  const { toJpeg } = await import('html-to-image');
   await waitForFontsReady();
   const pixelRatio = getExportCapturePixelRatio(settings);
   const bounds = node.getBoundingClientRect();
@@ -430,6 +431,16 @@ export async function createCombinedJpeg(dataUrls: string[], settings: ExportSet
   const images = await Promise.all(dataUrls.map((dataUrl) => dataUrlToImage(dataUrl)));
   const width = Math.max(...images.map((image) => image.naturalWidth));
   const height = images.reduce((sum, image) => sum + image.naturalHeight, 0);
+
+  // Browsers reject canvases beyond roughly 16k per side / a few hundred
+  // million pixels; a stitched A3 folio can exceed that. Fail with an honest
+  // message instead of producing a blank/incomplete image.
+  const MAX_CANVAS_DIMENSION = 16_384;
+  const MAX_CANVAS_PIXELS = 200_000_000;
+  if (width > MAX_CANVAS_DIMENSION || height > MAX_CANVAS_DIMENSION || width * height > MAX_CANVAS_PIXELS) {
+    throw new Error('This folio is too tall for one stitched JPG. Export the page set instead.');
+  }
+
   const canvas = document.createElement('canvas');
   const context = canvas.getContext('2d');
   if (!context) {
@@ -502,6 +513,8 @@ export async function createJpegZip(
   pages: Array<{ name: string; dataUrl: string }>,
   project: Pick<ProjectState, 'title' | 'issue'>,
 ) {
+  // JSZip is only needed for the JPG archive export path.
+  const { default: JSZip } = await import('jszip');
   const zip = new JSZip();
   const baseName = buildExportFilenameBase(project);
 

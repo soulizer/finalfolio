@@ -36,7 +36,7 @@ export function AccountSettingsPanel({
 }: AccountSettingsPanelProps) {
   const t = useT();
   return (
-    <div className="admin-page admin-page--users">
+    <div className="admin-page admin-page--settings">
       <section className="editor-panel admin-panel">
         <div className="editor-panel__heading">
           <div>

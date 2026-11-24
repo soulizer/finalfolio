@@ -1,16 +1,17 @@
 import { countLabel, useT } from '../../i18n';
 import { DeleteIconButton } from '../../ui/DeleteIconButton';
-import type { CSSProperties } from 'react';
+import type { KeyboardEvent } from 'react';
 import { MagazinePreview } from '../../components/MagazinePreview';
 import { getTemplateLabel } from '../../editor/demoData';
+import { buildProjectFontVars } from '../../editor/fonts';
+import { createPreviewPageStyle } from '../../editor/previewScale';
 import type { Asset, ProjectRecord } from '../../editor/types';
 import { formatCompactTimestamp, formatTimestamp } from './accountFormatting';
 import type { ProjectVisibilityFilter } from './useAccountWorkspace';
 import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
+import { handleRowSelectKeyDown } from '../../ui/rowSelection';
 
-const accountPreviewStyle = {
-  '--page-scale': 0.32,
-} as CSSProperties;
+const accountPreviewStyle = createPreviewPageStyle();
 
 type AccountProjectsPanelProps = {
   filteredProjects: ProjectRecord[];
@@ -104,9 +105,19 @@ export function AccountProjectsPanel({
                   <article
                     key={project.id}
                     className={`admin-row admin-row--interactive ${selectedProject?.id === project.id ? 'is-selected' : ''}`}
-                    onClick={() => setSelectedProjectId(project.id)}
                   >
-                    <div className="admin-row__main">
+                    <div
+                      className="admin-row__main"
+                      {...(isEditing
+                        ? {}
+                        : {
+                            role: 'button',
+                            tabIndex: 0,
+                            'aria-label': t('Select a project'),
+                            onClick: () => setSelectedProjectId(project.id),
+                            onKeyDown: (event: KeyboardEvent<HTMLDivElement>) =>
+                              handleRowSelectKeyDown(event, () => setSelectedProjectId(project.id)),
+                          })}>
                       {isEditing ? (
                         <div className="template-library-card__form">
                           <label className="field">
@@ -144,7 +155,7 @@ export function AccountProjectsPanel({
                         </span>
                         {project.archivedAt ? <span className="admin-pill admin-pill--warning">{t('Archived')}</span> : null}
                       </div>
-                      <div className="admin-row__actions" onClick={(event) => event.stopPropagation()}>
+                      <div className="admin-row__actions">
                         {isEditing ? (
                           <>
                             <button
@@ -228,7 +239,10 @@ export function AccountProjectsPanel({
                     <div className="admin-detail-preview__strip">
                       {selectedProject.project.pages.map((page, index) => (
                         <article key={page.id} className="admin-detail-preview__page">
-                          <div className="magazine-sheet magazine-sheet--editor" style={accountPreviewStyle}>
+                          <div
+                            className="magazine-sheet magazine-sheet--editor"
+                            style={{ ...accountPreviewStyle, ...buildProjectFontVars(selectedProject.project.fonts) }}
+                          >
                             <MagazinePreview
                               issue={selectedProject.project.issue}
                               page={page}

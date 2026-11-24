@@ -1654,6 +1654,9 @@ export function createApp({
     },
   });
   const indexFile = path.join(distDir, 'index.html');
+  let cachedIndexHtml = null;
+  let cachedBuildId = '';
+  let cachedIndexSignature = '';
   const app = express();
   app.set('trust proxy', true);
   let mailService;
@@ -2129,6 +2132,7 @@ export function createApp({
       return {
         pages: [],
         assets: [],
+        fonts: record.project.fonts,
       };
     }
 
@@ -2141,6 +2145,7 @@ export function createApp({
     return {
       pages,
       assets: previewAssets,
+      fonts: record.project.fonts,
     };
   }
 
@@ -2164,6 +2169,7 @@ export function createApp({
       subtitle: record.project.subtitle,
       issue: record.project.issue,
       frameRadius: record.project.frameRadius,
+      fonts: record.project.fonts,
       pages: record.project.pages,
       assets,
     };
@@ -2265,6 +2271,7 @@ export function createApp({
         title: record.project.title,
         subtitle: record.project.subtitle,
         frameRadius: record.project.frameRadius,
+        fonts: record.project.fonts,
         assets: await hydrateAssets(selectHomepagePreviewAssets(pages, record.project.assets)),
         pages,
         updatedAt: record.updatedAt,
@@ -3734,16 +3741,21 @@ export function createApp({
         try {
           await Promise.all(files.map((file) => assertReadableImageFile(file)));
 
-          // Process every file in parallel: variant generation is CPU-bound and
-          // the previous serial loop made multi-photo uploads crawl.
-          await Promise.all(
-            files.map(async (file, index) => {
-              const baseAsset = store.createStoredUpload(file, uploadMetadata[index]);
-              createdAssets[index] = await store.hydrateStoredUploadAsset(baseAsset, {
-                ensureVariants: true,
-              });
-            }),
-          );
+          // Variant generation is CPU-bound, so process files concurrently, but
+          // cap the fan-out: 24 parallel ffmpeg processes can starve the server.
+          const UPLOAD_VARIANT_CONCURRENCY = 4;
+          for (let offset = 0; offset < files.length; offset += UPLOAD_VARIANT_CONCURRENCY) {
+            const batch = files.slice(offset, offset + UPLOAD_VARIANT_CONCURRENCY);
+            await Promise.all(
+              batch.map(async (file, batchIndex) => {
+                const fileIndex = offset + batchIndex;
+                const baseAsset = store.createStoredUpload(file, uploadMetadata[fileIndex]);
+                createdAssets[fileIndex] = await store.hydrateStoredUploadAsset(baseAsset, {
+                  ensureVariants: true,
+                });
+              }),
+            );
+          }
         } catch (error) {
           await cleanupUploadedFiles();
           throw mapImageProcessingError(error);
@@ -5210,11 +5222,19 @@ export function createApp({
     }
 
     try {
-      await fs.access(indexFile);
-      const indexHtml = await fs.readFile(indexFile, 'utf8');
-      // The HTML changes on every build (asset hashes), so its hash doubles as a
-      // deploy id. The client renders it so a stale tab can be spotted at a glance.
-      const buildId = crypto.createHash('sha256').update(indexHtml).digest('hex').slice(0, 12);
+      const indexStat = await fs.stat(indexFile);
+      const indexSignature = `${indexStat.mtimeMs}:${indexStat.size}`;
+      if (!cachedIndexHtml || cachedIndexSignature !== indexSignature) {
+        const indexHtml = await fs.readFile(indexFile, 'utf8');
+        // The HTML changes on every build (asset hashes), so its hash doubles as a
+        // deploy id. The client renders it so a stale tab can be spotted at a glance.
+        cachedBuildId = crypto.createHash('sha256').update(indexHtml).digest('hex').slice(0, 12);
+        cachedIndexHtml = indexHtml;
+        cachedIndexSignature = indexSignature;
+      }
+
+      const indexHtml = cachedIndexHtml;
+      const buildId = cachedBuildId;
       const taggedHtml = indexHtml.includes('name="ff-build"')
         ? indexHtml
         : indexHtml.replace('</head>', `<meta name="ff-build" content="${buildId}">\n</head>`);

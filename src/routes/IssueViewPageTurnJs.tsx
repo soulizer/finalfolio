@@ -180,6 +180,7 @@ export function IssueViewPage() {
                     issueLabel={issue.issue}
                     renderedPages={renderedPages}
                     assetsById={assetsById}
+                    fonts={issue.fonts}
                     frameRadius={issue.frameRadius}
                     sheetWidth={sheetMetrics.width}
                     sheetHeight={sheetMetrics.height}

@@ -319,6 +319,7 @@ export function useIssueTurnJsRuntime({
       assetsById,
       currentPageRef,
       displayMode,
+      fonts,
       frameRadius,
       isDisposed: () => disposed,
       issueLabel,
@@ -382,15 +383,27 @@ export function useIssueTurnJsRuntime({
     });
   }, [displayMode, pageHeight, pageWidth, renderedPages.length, spreadPageCount]);
 
+  // The book owns the current page once it exists: every turn reports its new
+  // page through onViewChange, which flows back into `initialPage`. Applying the
+  // prop again after each turn would re-run a full layout sync for no reason.
+  // The initial value is applied once, when this hook instance mounts; a new
+  // issue or display mode remounts the book through bookKey.
+  const didApplyInitialPageRef = useRef(false);
   useEffect(() => {
+    if (didApplyInitialPageRef.current) {
+      return;
+    }
+    didApplyInitialPageRef.current = true;
+
+    const nextPage = clamp(initialPage, 1, Math.max(renderedPages.length, 1));
     const turnInstance = turnInstanceRef.current;
     if (!turnInstance) {
-      currentPageRef.current = clamp(initialPage, 1, Math.max(renderedPages.length, 1));
+      currentPageRef.current = nextPage;
       return;
     }
 
     syncTurnJsLayout(turnInstance, currentPageRef, {
-      currentPage: initialPage,
+      currentPage: nextPage,
       displayMode,
       onViewChange: onViewChangeRef.current,
       pageHeight,

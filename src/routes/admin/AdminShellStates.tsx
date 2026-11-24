@@ -49,7 +49,7 @@ export function AdminLoadingState({ activeSection }: { activeSection: AdminSecti
               <div className={activeSection === 'projects' ? 'admin-detail-preview' : 'admin-upload-preview'}>
                 <div
                   className={`loading-placeholder loading-placeholder--line-full ${
-                    activeSection === 'projects' ? t('admin-detail-preview__placeholder') : t('admin-upload-preview__placeholder')
+                    activeSection === 'projects' ? 'admin-detail-preview__placeholder' : 'admin-upload-preview__placeholder'
                   }`.trim()}
                 />
                 <p className="panel-note">

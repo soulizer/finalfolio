@@ -128,6 +128,7 @@
   --z-modal: 120;
   --z-confirm: 150;
   --z-skip: 200;
+  --header-gap: 12px;
   --control-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.94),
     inset 0 -1px 0 rgba(226, 217, 204, 0.3),
@@ -309,23 +310,6 @@ a:focus-visible {
   color: var(--muted);
 }
 
-.site-nav__action {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-.site-nav__button {
-  flex: none;
-  align-self: center;
-  min-height: var(--control-height);
-  padding-inline: var(--space-4);
-  white-space: nowrap;
-}
-
 .site-page-header {
   gap: 18px 24px;
 }
@@ -334,7 +318,7 @@ a:focus-visible {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 14px 18px;
+  gap: var(--space-3) var(--header-gap);
   flex-wrap: wrap;
 }
 
@@ -342,7 +326,7 @@ a:focus-visible {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
+  gap: var(--header-gap);
   flex-wrap: wrap;
 }
 
@@ -1309,7 +1293,7 @@ a:focus-visible {
 
 .editor-topbar__actions {
   display: flex;
-  gap: 10px;
+  gap: var(--header-gap);
   flex-wrap: wrap;
 }
 
@@ -1475,24 +1459,7 @@ a:focus-visible {
   line-height: 1.08;
 }
 
-.editor-section-heading {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: start;
-}
 
-.editor-section-heading > * {
-  min-width: 0;
-}
-
-.editor-section-heading h3 {
-  margin: 4px 0 0;
-  font-family: var(--font-ui);
-  font-size: 1.18rem;
-  font-weight: 500;
-  line-height: 1.05;
-}
 
 .panel-tag {
   display: inline-flex;
@@ -1617,8 +1584,8 @@ a:focus-visible {
 .export-dialog {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  width: min(980px, calc(100vw - 40px));
-  max-height: min(88vh, 920px);
+  /* Width and max-height stay on .editor-modal__panel; only the internal grid
+     and padding differ for the export layout. */
   padding: 0;
   overflow: hidden;
 }
@@ -2822,14 +2789,6 @@ a:focus-visible {
   cursor: pointer;
 }
 
-.account-project-row {
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas:
-    "main meta"
-    "actions actions";
-  align-items: start;
-}
-
 .account-project-row > .admin-row__main {
   grid-area: main;
 }
@@ -3238,24 +3197,10 @@ a:focus-visible {
   grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
 }
 
-.admin-config-row {
-  display: grid;
-  gap: 12px;
-  padding: 14px;
-  border-radius: var(--surface-radius);
-  border: 1px solid rgba(17, 17, 17, 0.12);
-  background: rgba(255, 255, 255, 0.56);
-}
-
 .admin-config-row__copy,
 .admin-form-grid {
   display: grid;
   gap: 12px;
-}
-
-.admin-config-row__controls {
-  display: grid;
-  gap: 8px;
 }
 
 .admin-config-row__toggles,
@@ -3418,6 +3363,28 @@ a:focus-visible {
   display: none;
 }
 
+.admin-collapsible summary::marker {
+  content: '';
+}
+
+/* Give the disclosure the same expand/collapse affordance as the editor's
+   sub-sections instead of relying on cursor:pointer alone. */
+.admin-collapsible summary::after {
+  content: '';
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-left: auto;
+  border-right: 1.5px solid var(--muted);
+  border-bottom: 1.5px solid var(--muted);
+  transform: rotate(45deg);
+  transition: transform 160ms ease;
+}
+
+.admin-collapsible[open] > summary::after {
+  transform: rotate(-135deg);
+}
+
 .admin-collapsible summary span {
   font-family: var(--font-ui);
   font-size: 1.02rem;
@@ -3484,6 +3451,14 @@ a:focus-visible {
     align-items: start;
   }
 
+  /* Settings stacks profile, credentials and UnAlbum binding vertically;
+     inheriting the users two-column layout squeezed UnAlbum into the narrow
+     column beside Profile. */
+  .admin-page--settings {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
   .admin-product-layout {
     grid-template-columns: minmax(0, 1.65fr) minmax(360px, 0.95fr);
     align-items: start;
@@ -3491,11 +3466,6 @@ a:focus-visible {
 
   .admin-split-panel--inspector {
     grid-template-columns: minmax(0, 1.38fr) minmax(380px, 0.92fr);
-  }
-
-  .admin-config-row__controls {
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: start;
   }
 
   .admin-form-grid {
@@ -4197,13 +4167,6 @@ button.asset-frame {
   align-items: stretch;
 }
 
-.editor-page-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 12px;
-}
-
 .editor-page-actions__button {
   width: 100%;
 }
@@ -4332,19 +4295,6 @@ button.asset-frame {
   background: var(--page-chip-surface-active);
   border-color: rgba(17, 17, 17, 0.22);
   box-shadow: var(--pressed-card-shadow);
-}
-
-.page-chip__main {
-  grid-area: main;
-  display: grid;
-  gap: 5px;
-  width: 100%;
-  min-height: 30px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
 }
 
 .page-chip.is-active .page-chip__main {
@@ -5737,10 +5687,15 @@ button.asset-frame {
 .issue-view-shell--mobile-portrait .issue-view-reader {
   overflow: hidden;
   contain: none;
+  /* The overlay chrome is taller than it looks: the top bar can wrap to two
+     title lines plus meta, and the bottom stack pairs a 56px status card with
+     two buttons. Reserve measured maxima so neither covers the paper. */
+  --issue-mobile-top-chrome: 100px;
+  --issue-mobile-bottom-chrome: 120px;
   padding:
-    calc(var(--issue-mobile-top-inset) + 74px)
+    calc(var(--issue-mobile-top-inset) + var(--issue-mobile-top-chrome))
     12px
-    calc(var(--issue-mobile-bottom-inset) + 72px)
+    calc(var(--issue-mobile-bottom-inset) + var(--issue-mobile-bottom-chrome))
     12px;
 }
 
@@ -5814,7 +5769,7 @@ button.asset-frame {
 }
 
 .issue-view-mobile-topbar__action {
-  align-self: start;
+  white-space: nowrap;
 }
 
 .issue-view-mobile-controls {
@@ -6180,27 +6135,6 @@ button.asset-frame {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.96),
     0 8px 18px rgba(17, 17, 17, 0.04);
-}
-
-.custom-layout-details {
-  border-radius: var(--surface-radius);
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.34);
-}
-
-.custom-layout-details summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  list-style: none;
-  cursor: pointer;
-  padding: 12px 14px;
-  color: var(--muted);
-  font-family: var(--font-ui);
-  font-size: 0.76rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 
 .custom-layout-details summary::-webkit-details-marker {
@@ -6754,14 +6688,6 @@ button.asset-frame {
     gap: 6px;
   }
 
-  .account-project-row {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      "main"
-      "meta"
-      "actions";
-  }
-
   .account-project-row > .account-project-row__meta,
   .account-project-row > .account-project-row__actions {
     justify-content: flex-start;
@@ -6901,7 +6827,7 @@ button.asset-frame {
     display: grid;
     grid-template-columns: 1fr;
     width: 100%;
-    gap: 8px;
+    gap: var(--header-gap);
   }
 
   .site-page-header--home .site-page-header__actions > *,
@@ -6913,11 +6839,6 @@ button.asset-frame {
 
   .site-nav {
     gap: 12px;
-  }
-
-  .site-nav__button {
-    align-self: stretch;
-    justify-content: center;
   }
 
   .editor-sidebar--operations .editor-topbar__actions {
@@ -7593,14 +7514,6 @@ html[lang='zh-CN'] .admin-stat-card strong {
    inline stage text editing, and the first-steps hint.
    --------------------------------------------------------------------------- */
 
-.page-chip__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding-right: 0;
-}
-
 .page-chip__row em {
   font-style: normal;
   color: var(--muted);
@@ -8136,13 +8049,6 @@ html[lang='zh-CN'] body {
     padding-top: 0;
   }
 
-  .page-chip__row {
-    padding-right: 0;
-  }
-
-  .page-chip__main {
-    min-height: 44px;
-  }
 }
 
 /* Public viewer: long project titles must never escape the sidebar. */
@@ -8224,13 +8130,6 @@ html[lang='zh-CN'] body {
   color: var(--muted);
 }
 
-.admin-config-row__fields {
-  display: grid;
-  grid-template-columns: 80px minmax(0, 1fr) minmax(0, 1fr);
-  gap: 8px;
-  align-items: end;
-}
-
 .admin-save-bar {
   position: sticky;
   bottom: 10px;
@@ -8240,9 +8139,6 @@ html[lang='zh-CN'] body {
 }
 
 @media (max-width: 760px) {
-  .admin-config-row__fields {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* Governance rows: stack the field label above its input so values stay readable. */
@@ -8321,32 +8217,6 @@ html[lang='zh-CN'] body {
 .editor-subsection__body {
   display: grid;
   gap: 10px;
-}
-
-.editor-project-title-field {
-  margin-top: 4px;
-}
-
-.editor-panel__toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
-}
-
-.editor-panel__toolbar > .editor-panel__label {
-  margin-right: auto;
-}
-
-.editor-panel__label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 24px;
-  min-width: 0;
-  font-size: 0.92rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
 }
 
 .unsaved-dot {
@@ -8505,6 +8375,10 @@ html[lang='zh-CN'] body {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.editor-section-heading > * {
+  min-width: 0;
 }
 
 .editor-section-heading h3 {
@@ -9244,14 +9118,6 @@ html[lang='zh-CN'] body {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-}
-
-.admin-ai-provider-card__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
 }
 
 .admin-ai-provider-card__footer .panel-note {

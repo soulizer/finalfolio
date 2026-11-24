@@ -195,23 +195,40 @@ export function createSecurityStore({
     await fs.mkdir(rateLimitsDir, { recursive: true, mode: 0o700 });
   }
 
-  async function ensureConfigSecretKey() {
-    await ensureSecurityDirectories();
+  let configSecretKeyPromise = null;
 
-    try {
-      const value = (await fs.readFile(configSecretKeyFile, 'utf8')).trim();
-      if (/^[a-f0-9]{64}$/i.test(value)) {
-        return Buffer.from(value, 'hex');
-      }
-    } catch (error) {
-      if (error?.code !== 'ENOENT') {
-        throw error;
-      }
+  async function ensureConfigSecretKey() {
+    // Decrypting configuration secrets happens on hot paths; the key file is
+    // written once and then reused, so keep a single in-flight/long-lived read.
+    if (configSecretKeyPromise) {
+      return configSecretKeyPromise;
     }
 
-    const nextKey = randomBytes(CONFIG_SECRET_KEY_BYTES).toString('hex');
-    await fs.writeFile(configSecretKeyFile, `${nextKey}\n`, { mode: 0o600 });
-    return Buffer.from(nextKey, 'hex');
+    configSecretKeyPromise = (async () => {
+      await ensureSecurityDirectories();
+
+      try {
+        const value = (await fs.readFile(configSecretKeyFile, 'utf8')).trim();
+        if (/^[a-f0-9]{64}$/i.test(value)) {
+          return Buffer.from(value, 'hex');
+        }
+      } catch (error) {
+        if (error?.code !== 'ENOENT') {
+          throw error;
+        }
+      }
+
+      const nextKey = randomBytes(CONFIG_SECRET_KEY_BYTES).toString('hex');
+      await fs.writeFile(configSecretKeyFile, `${nextKey}\n`, { mode: 0o600 });
+      return Buffer.from(nextKey, 'hex');
+    })();
+
+    try {
+      return await configSecretKeyPromise;
+    } catch (error) {
+      configSecretKeyPromise = null;
+      throw error;
+    }
   }
 
   async function encryptConfigSecret(secret) {

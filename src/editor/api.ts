@@ -6,6 +6,7 @@ import {
   AssetDelivery,
   AssetVariant,
   ExportSettings,
+  ProjectFonts,
   ProjectRecord,
   ProjectState,
   PublicIssuePayload,
@@ -869,6 +870,7 @@ export interface AdminProjectDetail extends AdminProjectListItem {
   preview: {
     pages: ProjectRecord['project']['pages'];
     assets: Asset[];
+    fonts?: ProjectFonts;
   };
   recentEvents: AdminSummary['events'];
   recentFailures: AdminSummary['failures'];

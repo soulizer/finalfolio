@@ -131,7 +131,9 @@ export function useIssueViewViewportLayout({
 
     clearQueuedLayoutRefresh();
 
-    [0, 120, 280, 560, 900].forEach((delay) => {
+    // Each resize event cancels the previous burst, so dragging the window only
+    // runs one immediate pass plus two settling passes instead of five.
+    [0, 240, 700].forEach((delay) => {
       const timerId = window.setTimeout(() => {
         runLayoutRefreshPass();
       }, delay);

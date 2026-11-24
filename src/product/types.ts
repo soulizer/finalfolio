@@ -1,4 +1,4 @@
-import { Asset, PageData } from '../editor/types';
+import { Asset, PageData, ProjectFonts } from '../editor/types';
 
 export interface SiteFeatureCard {
   id: string;
@@ -67,6 +67,7 @@ export interface HomepagePreviewPayload {
   title: string;
   subtitle: string;
   frameRadius: number;
+  fonts?: ProjectFonts;
   assets: Asset[];
   pages: PageData[];
   updatedAt: string | null;

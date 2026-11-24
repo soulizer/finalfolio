@@ -17,7 +17,15 @@ function pageData(index: number) {
   };
 }
 
-async function createShare(page: import('@playwright/test').Page) {
+async function createShare(
+  page: import('@playwright/test').Page,
+  fonts: { title: string; deck: string; caption: string; body: string } = {
+    title: 'default',
+    deck: 'default',
+    caption: 'default',
+    body: 'default',
+  },
+) {
   const created = await page.request.post('/api/projects', {
     data: {
       project: {
@@ -25,7 +33,7 @@ async function createShare(page: import('@playwright/test').Page) {
         subtitle: '',
         issue: 'TURN',
         frameRadius: 12,
-        fonts: { title: 'default', deck: 'default', caption: 'default', body: 'default' },
+        fonts,
         assets: [],
         pages: Array.from({ length: 6 }, (_, index) => pageData(index + 1)),
       },
@@ -82,6 +90,28 @@ test('dragging a shared page releases with the mouse', async ({ page }) => {
   expect(pageErrors).toEqual([]);
   await expect(page.locator('.issue-viewer__turnjs--turning')).toHaveCount(0);
   await expect(page.locator('.issue-viewer__turnjs.animated')).toHaveCount(0);
+});
+
+test('the public reader keeps the project typography', async ({ page }) => {
+  await signIn(page, '/editor');
+  const sharePath = await createShare(page, {
+    title: 'serif-cn',
+    deck: 'default',
+    caption: 'default',
+    body: 'default',
+  });
+
+  await page.goto(sharePath);
+  await expect(page.locator('.issue-viewer__turnjs--ready')).toBeVisible({ timeout: 20_000 });
+
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const title = document.querySelector('.issue-viewer__turnjs .magazine-text--title');
+        return title ? getComputedStyle(title).fontFamily : '';
+      }),
+    )
+    .toContain('FF Serif SC');
 });
 
 test('the loading state is a neutral indicator, not a fake spread', async ({ page }) => {

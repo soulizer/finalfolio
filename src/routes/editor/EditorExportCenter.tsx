@@ -1,4 +1,6 @@
+import { useRef } from 'react';
 import { useT } from '../../i18n';
+import { useModalFocus } from '../../ui/useModalFocus';
 import {
   exportFormatMeta,
   exportPageSizeMeta,
@@ -73,13 +75,17 @@ export function EditorExportCenter({
   updateExportSettings,
 }: EditorExportCenterProps) {
   const t = useT();
+  const dialogRef = useRef<HTMLElement | null>(null);
+  useModalFocus(dialogRef, { active: true });
   return (
     <div className="editor-modal" role="presentation" onClick={onRequestCloseIfIdle}>
       <section
+        ref={dialogRef}
         className="editor-modal__panel export-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="export-center-title"
+        tabIndex={-1}
         onClick={(event) => event.stopPropagation()}
       >
         <header className="export-dialog__header">

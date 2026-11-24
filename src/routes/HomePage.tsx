@@ -5,6 +5,7 @@ import { SiteLegalFooter } from '../components/SiteLegalFooter';
 import { SitePageHeader } from '../components/SitePageHeader';
 import { fetchSiteContent, logoutUser } from '../editor/api';
 import { getTemplateLabel } from '../editor/demoData';
+import { buildProjectFontVars } from '../editor/fonts';
 import { translate as tModule, useT } from '../i18n';
 import { createHomepageDemoPreview, defaultSiteContent } from '../product/defaults';
 import { HomepagePreviewPayload, SiteContent } from '../product/types';
@@ -190,12 +191,20 @@ export function HomePage() {
   }, []);
 
   const heroPreviewStyle = useMemo(
-    () => ({ '--page-scale': mobilePreviewMode ? 0.17 : 0.19 }) as CSSProperties,
-    [mobilePreviewMode],
+    () =>
+      ({
+        '--page-scale': mobilePreviewMode ? 0.17 : 0.19,
+        ...buildProjectFontVars(homepagePreview.fonts),
+      }) as CSSProperties,
+    [homepagePreview.fonts, mobilePreviewMode],
   );
   const browserPreviewStyle = useMemo(
-    () => ({ '--page-scale': mobilePreviewMode ? 0.22 : 0.24 }) as CSSProperties,
-    [mobilePreviewMode],
+    () =>
+      ({
+        '--page-scale': mobilePreviewMode ? 0.22 : 0.24,
+        ...buildProjectFontVars(homepagePreview.fonts),
+      }) as CSSProperties,
+    [homepagePreview.fonts, mobilePreviewMode],
   );
 
   const previewAssetsById = useMemo(
@@ -208,11 +217,15 @@ export function HomePage() {
       return sourcePages.slice(0, 1);
     }
 
-    const targetCount = mobilePreviewMode ? Math.min(4, sourcePages.length) : 10;
+    const targetCount = mobilePreviewMode ? Math.min(3, sourcePages.length) : 6;
     return Array.from({ length: targetCount }, (_, index) => sourcePages[index % sourcePages.length]);
   }, [homepagePreview.pages, mobilePreviewMode]);
-  const heroPreviewCopies = heroPreviewPages.length > 1 ? (mobilePreviewMode ? 2 : 3) : 1;
-  const homepagePreviewAssetVariant = mobilePreviewMode ? 'thumb' : 'preview';
+  // Two identical tracks are enough for the seamless loop; three triples the
+  // number of preview trees painted above the fold.
+  const heroPreviewCopies = heroPreviewPages.length > 1 ? 2 : 1;
+  // Preview cards render around 150-200 px wide, so the thumbnail derivative is
+  // the right size even on desktop.
+  const homepagePreviewAssetVariant = 'thumb';
   const heroPreviewTrackRef = useRef<HTMLDivElement | null>(null);
   const heroPreviewItemRefs = useRef<Array<HTMLElement | null>>([]);
   const [heroPreviewLoopDistance, setHeroPreviewLoopDistance] = useState(0);

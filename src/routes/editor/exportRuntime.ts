@@ -15,8 +15,12 @@ export function waitForImageElement(image: HTMLImageElement) {
     return Promise.resolve();
   }
 
-  return new Promise<void>((resolve) => {
+  return new Promise<void>((resolve, reject) => {
+    let timerId = 0;
     const finish = () => {
+      if (timerId) {
+        window.clearTimeout(timerId);
+      }
       image.removeEventListener('load', finish);
       image.removeEventListener('error', finish);
       resolve();
@@ -24,6 +28,13 @@ export function waitForImageElement(image: HTMLImageElement) {
 
     image.addEventListener('load', finish, { once: true });
     image.addEventListener('error', finish, { once: true });
+    // A lazy image inside a hidden print stack may never load on its own; do not
+    // let one stalled request hold the export dialog hostage forever.
+    timerId = window.setTimeout(() => {
+      image.removeEventListener('load', finish);
+      image.removeEventListener('error', finish);
+      reject(new Error('Image loading timed out during export.'));
+    }, 20_000);
   });
 }
 

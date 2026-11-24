@@ -8,6 +8,7 @@ import {
 import type { AdminUploadDetail, AdminUploadListItem } from '../../editor/api';
 import { formatBytes, formatCompactTimestamp, formatDimensions, formatTimestamp } from './adminFormatting';
 import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
+import { handleRowSelectKeyDown } from '../../ui/rowSelection';
 
 type AdminUploadsPanelProps = {
   filteredUploads: AdminUploadListItem[];
@@ -57,7 +58,6 @@ export function AdminUploadsPanel({
                 <article
                   key={upload.filename}
                   className={`admin-row admin-row--with-thumb ${selectedUploadFilename === upload.filename ? 'is-selected' : ''}`}
-                  onClick={() => setSelectedUploadFilename(upload.filename)}
                 >
                   <div className="admin-row__thumb admin-row__thumb--upload">
                     <img
@@ -67,7 +67,14 @@ export function AdminUploadsPanel({
                       decoding="async"
                     />
                   </div>
-                  <div className="admin-row__main">
+                  <div
+                    className="admin-row__main"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={t('Select an upload')}
+                    onClick={() => setSelectedUploadFilename(upload.filename)}
+                    onKeyDown={(event) => handleRowSelectKeyDown(event, () => setSelectedUploadFilename(upload.filename))}
+                  >
                     <div className="admin-row__header">
                       <strong className="admin-row__title admin-row__title--truncate" title={upload.filename}>
                         {upload.filename}
@@ -103,15 +110,13 @@ export function AdminUploadsPanel({
                         href={upload.original?.src ?? upload.src}
                         target="_blank"
                         rel="noreferrer"
-                        onClick={(event) => event.stopPropagation()}
                       >
                         {t('Open')}</a>
                       {upload.delivery.canRetry ? (
                         <button
                           type="button"
                           className="button button--ghost button--small"
-                          onClick={(event) => {
-                            event.stopPropagation();
+                          onClick={() => {
                             void handleRetryUpload(upload.filename);
                           }}
                         >
@@ -125,8 +130,7 @@ export function AdminUploadsPanel({
                             : undefined
                         }
                         disabled={upload.referencedProjectCount > 0}
-                        onClick={(event) => {
-                          event.stopPropagation();
+                        onClick={() => {
                           void handleDeleteUpload(upload.filename);
                         }}
                       />
@@ -181,7 +185,7 @@ export function AdminUploadsPanel({
                   </article>
                   <article>
                     <span>{t('Owners')}</span>
-                    <strong>{selectedUploadDetail.ownerDisplayNames.length ? selectedUploadDetail.ownerDisplayNames.join(', ') : 'unowned'}</strong>
+                    <strong>{selectedUploadDetail.ownerDisplayNames.length ? selectedUploadDetail.ownerDisplayNames.join(', ') : t('unowned')}</strong>
                   </article>
                   <article>
                     <span>{t('Projects')}</span>
@@ -197,11 +201,11 @@ export function AdminUploadsPanel({
                   </article>
                   <article>
                     <span>{t('Preview')}</span>
-                    <strong>{selectedUploadDetail.preview?.bytes ? formatBytes(selectedUploadDetail.preview.bytes) : 'fallback'}</strong>
+                    <strong>{selectedUploadDetail.preview?.bytes ? formatBytes(selectedUploadDetail.preview.bytes) : t('unavailable')}</strong>
                   </article>
                   <article>
                     <span>{t('Thumb')}</span>
-                    <strong>{selectedUploadDetail.thumb?.bytes ? formatBytes(selectedUploadDetail.thumb.bytes) : 'fallback'}</strong>
+                    <strong>{selectedUploadDetail.thumb?.bytes ? formatBytes(selectedUploadDetail.thumb.bytes) : t('unavailable')}</strong>
                   </article>
                   <article>
                     <span>{t('Delivery')}</span>

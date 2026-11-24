@@ -120,7 +120,8 @@ function TurnJsPageMarkup({
               page={renderedPage.page}
               assets={assets}
               assetVariant="preview"
-              imageDecoding="sync"
+              imageDecoding="async"
+              imageLoading="lazy"
               frameRadius={frameRadius}
               pageNumber={renderedPage.pageNumber ?? undefined}
             />
@@ -160,10 +161,14 @@ export function renderTurnJsPageMarkup({
   sheetWidth,
   sheetHeight,
 }: RenderTurnJsPageMarkupOptions) {
-  return renderedPages
-    .map((renderedPage) =>
-      renderDetachedMarkup(
+  // Render the whole book in one detached root. Creating and unmounting a root
+  // per page cost 48 synchronous renders (plus their layout effects) before the
+  // book could initialize; one tree keeps the markup identical and much cheaper.
+  return renderDetachedMarkup(
+    <>
+      {renderedPages.map((renderedPage) => (
         <TurnJsPageMarkup
+          key={renderedPage.id}
           issue={issue}
           renderedPage={renderedPage}
           assets={assets}
@@ -172,8 +177,8 @@ export function renderTurnJsPageMarkup({
           totalPages={renderedPages.length}
           sheetWidth={sheetWidth}
           sheetHeight={sheetHeight}
-        />,
-      ),
-    )
-    .join('');
+        />
+      ))}
+    </>,
+  );
 }

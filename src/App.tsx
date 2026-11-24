@@ -72,9 +72,21 @@ function useRevealObserver(pathname: string) {
     // observer miss), reveal it anyway instead of leaving hidden content.
     const fallback = window.setTimeout(revealAll, 1200);
 
-    const mutationObserver = new MutationObserver(() => {
-      observeRevealNodes();
-    });
+    // Route bodies can produce a burst of DOM mutations while they mount. Scan
+    // at most once per frame instead of once per mutation record.
+    let revealScanFrame = 0;
+    const scheduleRevealScan = () => {
+      if (revealScanFrame) {
+        return;
+      }
+
+      revealScanFrame = window.requestAnimationFrame(() => {
+        revealScanFrame = 0;
+        observeRevealNodes();
+      });
+    };
+
+    const mutationObserver = new MutationObserver(scheduleRevealScan);
     mutationObserver.observe(document.body, { childList: true, subtree: true });
 
     const frameId = window.requestAnimationFrame(() => {
@@ -84,6 +96,10 @@ function useRevealObserver(pathname: string) {
     return () => {
       window.clearTimeout(fallback);
       window.cancelAnimationFrame(frameId);
+      if (revealScanFrame) {
+        window.cancelAnimationFrame(revealScanFrame);
+        revealScanFrame = 0;
+      }
       mutationObserver.disconnect();
       observer.disconnect();
     };

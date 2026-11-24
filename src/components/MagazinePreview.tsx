@@ -27,6 +27,7 @@ interface MagazinePreviewProps {
   assets: Record<string, Asset>;
   assetVariant?: AssetVariantKind;
   imageDecoding?: 'sync' | 'async' | 'auto';
+  imageLoading?: 'lazy' | 'eager';
   frameRadius?: number;
   pageNumber?: number;
   selectedSlot?: string | null;
@@ -138,6 +139,7 @@ function AssetFrame({
   onRequestUpload,
   assetVariant = 'original',
   imageDecoding,
+  imageLoading = 'lazy',
   className,
   hintLabel,
 }: {
@@ -146,6 +148,7 @@ function AssetFrame({
   assets: Record<string, Asset>;
   assetVariant?: AssetVariantKind;
   imageDecoding?: 'sync' | 'async' | 'auto';
+  imageLoading?: 'lazy' | 'eager';
   selectedSlot?: string | null;
   interactive?: boolean;
   onSelectSlot?: (slot: string) => void;
@@ -443,6 +446,7 @@ function AssetFrame({
             className="asset-frame__image"
             style={interactiveImageStyle}
             draggable={false}
+            loading={imageLoading}
             decoding={imageDecoding ?? (assetVariant === 'original' ? 'sync' : 'async')}
             onDragStart={(event) => event.preventDefault()}
             onLoad={(event) => {
@@ -495,7 +499,7 @@ function AssetFrame({
       data-has-asset={hasAsset ? 'true' : 'false'}
       data-frame-ready={frameReady ? 'true' : 'false'}
       data-geometry-ready={geometryReady ? 'true' : 'false'}
-      aria-label={`Select the ${slot} frame`}
+      aria-label={t('Select the %s frame').replace('%s', slot)}
       title={canAdjustCrop ? t('Drag to move the photo naturally. Arrow keys nudge. Use the wheel or +/- to zoom.') : undefined}
       onClick={() => onSelectSlot?.(slot)}
       onPointerDown={startCropInteraction}
@@ -533,6 +537,7 @@ export function MagazinePreview({
   assets,
   assetVariant = 'original',
   imageDecoding,
+  imageLoading = 'lazy',
   frameRadius,
   pageNumber,
   selectedSlot,
@@ -608,6 +613,7 @@ export function MagazinePreview({
         assets={assets}
         assetVariant={assetVariant}
         imageDecoding={imageDecoding}
+        imageLoading={imageLoading}
         selectedSlot={selectedSlot}
         interactive={interactive}
         onSelectSlot={onSelectSlot}

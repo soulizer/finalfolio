@@ -87,6 +87,22 @@ test('mobile row actions keep one height and a square delete icon', async ({ bro
   await context.close();
 });
 
+test('account rows can be selected from the keyboard', async ({ page }) => {
+  await signIn(page, '/account?section=uploads');
+
+  const image = readFileSync('public/icon-192.png');
+  const uploaded = await page.request.post('/api/uploads', {
+    multipart: { files: { name: '键盘选择.png', mimeType: 'image/png', buffer: image } },
+  });
+  expect(uploaded.ok()).toBe(true);
+  await page.reload();
+  await expect(page.locator('.admin-row').first()).toBeVisible({ timeout: 15_000 });
+
+  await page.locator('.admin-row__main').first().focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.admin-detail-card__title')).toBeVisible({ timeout: 10_000 });
+});
+
 test('primary buttons keep their dark shadow on hover and press down', async ({ page }) => {
   await page.goto('/auth');
   await expect(page.locator('.auth-form button[type="submit"]')).toBeVisible();

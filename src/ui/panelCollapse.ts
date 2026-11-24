@@ -101,7 +101,26 @@ export function initPanelCollapse() {
     }
   };
 
-  const observer = new MutationObserver(scheduleScan);
+  // Typing inside a field or an image state change should not rescan every
+  // panel. Only panel trees entering or leaving the DOM can change the result.
+  const observer = new MutationObserver((records) => {
+    const panelChanged = records.some((record) => {
+      if (record.type !== 'childList') {
+        return false;
+      }
+
+      return Array.from(record.addedNodes).some(
+        (node) =>
+          node.nodeType === 1 &&
+          ((node as Element).matches('.editor-panel, .page-strip-panel') ||
+            Boolean((node as Element).querySelector('.editor-panel, .page-strip-panel'))),
+      );
+    });
+
+    if (panelChanged) {
+      scheduleScan();
+    }
+  });
   observer.observe(document.body, { childList: true, subtree: true });
   document.addEventListener('click', handleClick);
   scan();

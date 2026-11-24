@@ -1337,6 +1337,8 @@ const zh: Record<string, string> = {
   'Drop a photo here': '把照片拖到这里',
   'Drag to move the photo naturally. Arrow keys nudge. Use the wheel or +/- to zoom.':
     '拖动即可移动照片，方向键微调，滚轮或 +/- 缩放。',
+  'Select the %s frame': '选择 %s 画框',
+  unavailable: '不可用',
   'Frame A': '图框 A',
   'Frame B': '图框 B',
   'Frame C': '图框 C',

@@ -309,6 +309,13 @@ export function createObjectStorageStore({
   const objectStorageDir = path.join(dataRoot, 'site');
   const configFile = path.join(objectStorageDir, 'object-storage.json');
   const syncIndexFile = path.join(objectStorageDir, 'object-storage-sync.json');
+  // The config and sync index are read on hot paths (every request's CSP
+  // middleware, every hydrated upload asset). They change only through
+  // updateConfig/writeValidationMetadata and the sync-entry writers below, so
+  // memoize them and invalidate explicitly instead of re-reading and re-decrypting
+  // secrets per request.
+  let cachedConfig = null;
+  let cachedSyncIndex = null;
   const signedUploadAgent = new https.Agent({
     keepAlive: true,
     maxSockets: 6,
@@ -462,15 +469,28 @@ export function createObjectStorageStore({
   }
 
   async function readSyncIndex() {
-    return sanitizeSyncIndex((await readStoredRecord(syncIndexFile)) ?? { version: OBJECT_STORAGE_SYNC_INDEX_VERSION, uploads: {} });
+    if (cachedSyncIndex) {
+      return { ...cachedSyncIndex, uploads: { ...cachedSyncIndex.uploads } };
+    }
+
+    cachedSyncIndex = sanitizeSyncIndex(
+      (await readStoredRecord(syncIndexFile)) ?? { version: OBJECT_STORAGE_SYNC_INDEX_VERSION, uploads: {} },
+    );
+    return { ...cachedSyncIndex, uploads: { ...cachedSyncIndex.uploads } };
   }
 
   async function writeSyncIndex(syncIndex) {
     await ensureDirectory();
-    await writeJsonRecord(syncIndexFile, sanitizeSyncIndex(syncIndex));
+    const nextSyncIndex = sanitizeSyncIndex(syncIndex);
+    await writeJsonRecord(syncIndexFile, nextSyncIndex);
+    cachedSyncIndex = nextSyncIndex;
   }
 
   async function readConfig() {
+    if (cachedConfig) {
+      return cachedConfig;
+    }
+
     const stored = (await readStoredRecord(configFile)) ?? {};
     const storedConfig = stored.config && typeof stored.config === 'object' ? stored.config : {};
     const merged = {
@@ -494,7 +514,7 @@ export function createObjectStorageStore({
       process.env.FINALFOLIO_OBJECT_STORAGE_SECRET_KEY ??
       '';
 
-    return {
+    cachedConfig = {
       ...merged,
       credentials: {
         accessKeyId: accessKeyId.trim(),
@@ -507,6 +527,7 @@ export function createObjectStorageStore({
         lastValidationOk: typeof stored.lastValidationOk === 'boolean' ? stored.lastValidationOk : null,
       },
     };
+    return cachedConfig;
   }
 
   async function readAdminConfig(uploadInventory = null) {
@@ -625,6 +646,7 @@ export function createObjectStorageStore({
 
     await ensureDirectory();
     await writeJsonRecord(configFile, record);
+    cachedConfig = null;
     return await readAdminConfig();
   }
 
@@ -638,6 +660,7 @@ export function createObjectStorageStore({
     };
     await ensureDirectory();
     await writeJsonRecord(configFile, nextRecord);
+    cachedConfig = null;
   }
 
   async function testConfig(payload) {

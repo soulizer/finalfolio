@@ -1,5 +1,6 @@
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { useT } from '../i18n';
+import { useModalFocus } from './useModalFocus';
 
 export type ConfirmOptions = {
   title: string;
@@ -34,8 +35,9 @@ export function confirmAction(options: ConfirmOptions): Promise<boolean> {
 export function ConfirmProvider({ children }: { children: ReactNode }) {
   const t = useT();
   const [queue, setQueue] = useState<PendingConfirm[]>([]);
-  const cancelRef = useRef<HTMLButtonElement | null>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
   const current = queue[0] ?? null;
+  useModalFocus(dialogRef, { active: Boolean(current) });
 
   const enqueue = useCallback<EnqueueConfirm>(
     (options) =>
@@ -67,8 +69,6 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    cancelRef.current?.focus();
-
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -90,8 +90,10 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
           }
         }}>
           <div
+            ref={dialogRef}
             className="confirm-dialog surface-popover"
             role="dialog"
+            tabIndex={-1}
             aria-modal="true"
             aria-labelledby="confirm-dialog-title"
             aria-describedby={current.body ? 'confirm-dialog-body' : undefined}
@@ -101,7 +103,6 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
             {current.body ? <p id="confirm-dialog-body">{t(current.body)}</p> : null}
             <div className="confirm-dialog__actions">
               <button
-                ref={cancelRef}
                 type="button"
                 className="button button--ghost button--small"
                 onClick={() => settle(false)}
