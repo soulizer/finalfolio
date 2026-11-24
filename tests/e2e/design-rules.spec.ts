@@ -177,3 +177,14 @@ test('admin uploads and projects use the same icon-only delete', async ({ browse
 
   await adminContext.close();
 });
+
+test('AI entry points are marked experimental', async ({ page }) => {
+  await signIn(page, '/editor');
+  await expect(page.locator('.editor-project-action__hint .experimental-badge')).toHaveText('Experimental');
+
+  await page.getByRole('button', { name: 'Lay out with AI' }).click();
+  const dialog = page.locator('.ai-dialog');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('.experimental-badge')).toHaveText('Experimental');
+  await dialog.getByRole('button', { name: 'Close' }).click();
+});

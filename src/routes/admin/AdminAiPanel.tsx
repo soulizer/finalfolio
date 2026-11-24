@@ -10,6 +10,7 @@ import { confirmAction } from '../../ui/confirm';
 import { AdminInlineField, AdminToggleField } from './AdminFormFields';
 import { AdminAiUsagePanel } from './AdminAiUsagePanel';
 import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
+import { ExperimentalBadge } from '../../ui/ExperimentalBadge';
 
 type ProviderEditorState = {
   index: number | null;
@@ -320,7 +321,7 @@ export function AdminAiPanel({
       <section className="editor-panel admin-panel">
         <div className="editor-panel__heading">
           <div>
-            <p className="eyebrow">{t('AI arrangement')}</p>
+            <p className="eyebrow">{t('AI arrangement')} <ExperimentalBadge /></p>
             <h2>{t('Interface pool, usage limits and the default prompt')}</h2>
             <p className="panel-note">
               {t('The editor tries enabled interfaces in order. It only reports an error after every interface fails.')}

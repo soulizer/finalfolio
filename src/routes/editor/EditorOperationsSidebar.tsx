@@ -14,6 +14,7 @@ import {
 import type { ProjectRecord, ProjectState, UserTemplateKind } from '../../editor/types';
 import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
 import { EditorSubsection } from '../../ui/EditorSubsection';
+import { ExperimentalBadge } from '../../ui/ExperimentalBadge';
 
 type SaveState = 'draft' | 'dirty' | 'saving' | 'saved' | 'error';
 type ProjectActionBusy = 'duplicate' | 'archive' | 'unarchive' | null;
@@ -302,7 +303,7 @@ export function EditorOperationsSidebar({
           {t('Lay out with AI')}
         </button>
         <p className="panel-note editor-project-action__hint">
-          {t('Choose photos and let AI build a complete layout.')}
+          <ExperimentalBadge /> {t('Choose photos and let AI build a complete layout.')}
         </p>
 
         <div className="editor-button-grid editor-button-grid--two" role="group" aria-label={t('Project tools')}>

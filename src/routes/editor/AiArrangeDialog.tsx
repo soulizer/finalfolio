@@ -11,6 +11,7 @@ import type { UnalbumPhoto } from '../../editor/api';
 import { PhotoThumb } from '../../ui/PhotoThumb';
 import { MarqueeGrid } from '../../ui/MarqueeGrid';
 import type { Asset, AssetAnalysis } from '../../editor/types';
+import { ExperimentalBadge } from '../../ui/ExperimentalBadge';
 import {
   aiTemplateLabel,
   normalizeAiPlanBundle,
@@ -848,7 +849,7 @@ export function AiArrangeDialog({
         <header className="ai-dialog__header">
           <div>
             <p className="eyebrow">
-              {t('AI arrangement')}
+              {t('AI arrangement')} <ExperimentalBadge />
               {buildId ? ` · v${buildId.slice(0, 8)}` : ''}
             </p>
             <h2 id="ai-dialog-title">{t('Pick photos, generate layout plans')}</h2>

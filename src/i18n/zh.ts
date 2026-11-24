@@ -6,6 +6,7 @@ const zh: Record<string, string> = {
   // ── 通用 ──────────────────────────────────────────────
   Home: '首页',
   AI: 'AI',
+  Experimental: '实验功能',
   Account: '账户',
   Admin: '管理后台',
   Terms: '服务条款',

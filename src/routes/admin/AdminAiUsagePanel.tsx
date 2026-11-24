@@ -6,6 +6,7 @@ import {
   type AdminAiUsageUser,
 } from '../../editor/api';
 import { confirmAction } from '../../ui/confirm';
+import { ExperimentalBadge } from '../../ui/ExperimentalBadge';
 
 type Draft = { total: string; daily: string };
 
@@ -101,7 +102,7 @@ export function AdminAiUsagePanel() {
     <div className="admin-ai-usage">
       <div className="admin-section-heading">
         <div>
-          <p className="eyebrow">{t('AI usage')}</p>
+          <p className="eyebrow">{t('AI usage')} <ExperimentalBadge /></p>
           <h3>{t('Adjust used credits per account')}</h3>
         </div>
         <span className="panel-tag">{t('%s accounts').replace('%s', String(users.length))}</span>
