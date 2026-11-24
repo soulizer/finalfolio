@@ -112,6 +112,22 @@
   --space-4: 16px;
   --space-5: 20px;
   --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-9: 36px;
+  --space-10: 48px;
+  --touch-target: 44px;
+  --line-1: rgba(17, 17, 17, 0.08);
+  --line-2: rgba(17, 17, 17, 0.12);
+  --line-3: rgba(17, 17, 17, 0.18);
+  --success: #2f6b45;
+  --warning: #8a6410;
+  --danger: #8d3a3a;
+  --z-sticky: 10;
+  --z-popover: 90;
+  --z-modal: 120;
+  --z-confirm: 150;
+  --z-skip: 200;
   --control-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.94),
     inset 0 -1px 0 rgba(226, 217, 204, 0.3),
@@ -2659,6 +2675,16 @@ a:focus-visible {
 }
 
 .admin-stat-card strong {
+  font-size: 1.4rem;
+}
+
+.admin-stat-card.template-card {
+  gap: 6px;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.admin-stat-card.template-card strong {
   font-size: 1.4rem;
 }
 
@@ -5659,7 +5685,7 @@ button.asset-frame {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 38px;
+  min-height: var(--control-height);
   min-width: 0;
 }
 
@@ -7518,7 +7544,26 @@ html[lang='zh-CN'] .admin-stat-card strong {
 
 @media (pointer: coarse) {
   .button--small {
-    min-height: 44px;
+    min-height: var(--touch-target);
+  }
+
+  .button--micro,
+  .page-chip__action,
+  .segmented-control button {
+    min-height: var(--touch-target);
+  }
+
+  .editor-panel__toggle {
+    width: var(--touch-target);
+    height: var(--touch-target);
+  }
+
+  .asset-tile__pick,
+  .asset-tile__delete-icon,
+  .asset-tile__retry-icon {
+    width: var(--touch-target);
+    min-width: var(--touch-target);
+    height: var(--touch-target);
   }
 
   .button--icon,
@@ -11061,7 +11106,7 @@ html[lang='zh-CN'] body {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.editor-button-grid .button {
+.editor-button-grid .button:not(.upload-button--compact) {
   width: 100%;
   min-width: 0;
   min-height: var(--control-height-sm);

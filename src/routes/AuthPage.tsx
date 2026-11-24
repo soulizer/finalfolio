@@ -395,13 +395,17 @@ export function AuthPage() {
             <div className="editor-empty-state__actions">
               <button
                 type="button"
-                className="button button--primary"
+                className={`button ${session.role === 'admin' || nextPath ? 'button--primary' : 'button--ghost'}`}
                 onClick={() => openRoute(nextPath ?? (session.role === 'admin' ? '/admin' : '/account'))}
               >
                 {nextPath ? t('Continue') : session.role === 'admin' ? t('Open admin') : t('Open account')}
               </button>
               {session.role !== 'admin' ? (
-                <button type="button" className="button button--primary" onClick={() => openRoute('/editor')}>
+                <button
+                  type="button"
+                  className={`button ${nextPath ? 'button--ghost' : 'button--primary'}`}
+                  onClick={() => openRoute('/editor')}
+                >
                   {t('Open editor')}
                 </button>
               ) : (

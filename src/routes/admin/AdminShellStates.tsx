@@ -153,7 +153,7 @@ export function AdminUnavailableState({
         <button type="button" className="button button--primary" disabled={primaryFallbackDisabled} onClick={onPrimaryAction}>
           {t(primaryFallbackLabel)}
         </button>
-        <button type="button" className="button button--primary" onClick={onBackToEditor}>
+        <button type="button" className="button button--ghost" onClick={onBackToEditor}>
           {t('Back to editor')}</button>
       </div>
     </section>
