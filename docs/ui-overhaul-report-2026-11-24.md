@@ -55,6 +55,8 @@ Plan: `docs/ui-overhaul-plan-2026-11-24.md`
   (64 tests) green before deploy.
 - New regression tests: AI experimental badge, reader typography, keyboard row
   selection.
+- Deployed commit `d38563c`; `/api/health` returns `{"ok":true}` and the served
+  editor chunk no longer contains JSZip/html-to-image (lazy chunks only).
 
 ## Still open (next pass)
 - Collapse the six pill/chip styles into `Tag`/`Chip`.
