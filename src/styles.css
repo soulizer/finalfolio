@@ -5705,6 +5705,7 @@ button.asset-frame {
   /* Chrome sits in the grid flow, not on top of the paper. The book gets the
      remaining row and can never be covered, even on very short screens. */
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 10px;
   padding:

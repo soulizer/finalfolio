@@ -64,7 +64,9 @@ Plan: `docs/ui-overhaul-plan-2026-11-24.md`
   issue title and page range, so the duplicated block is gone.
 - Reader chrome (top bar, previous/next) now sits in a grid row above and below
   the page viewport instead of floating over it. The paper can never be covered,
-  including on a 320x568 screen.
+  including on a 320x568 screen. An explicit `minmax(0, 1fr)` column also stops
+  the viewport collapsing to the clip's max-content width, so the page uses the
+  full available width (~320px instead of ~211px on an iPhone 13).
 - Mobile uses turn.js's native single-page display instead of a translated double
   spread. The camera no longer slides after a turn, so 3 -> 4 shows page 4
   directly instead of flashing page 5.
