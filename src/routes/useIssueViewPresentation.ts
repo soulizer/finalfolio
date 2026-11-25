@@ -5,6 +5,7 @@ import {
   clamp,
   describeSinglePageView,
   describeVisibleView,
+  getMobileStageSide,
   readSheetMetrics,
   type TurnJsDisplayMode,
   type VisibleTurnView,
@@ -45,11 +46,7 @@ export function useIssueViewPresentation({
     const currentView = mobileSinglePageActive
       ? describeSinglePageView(normalizedMobileVisiblePage, pages)
       : describeVisibleView(normalizedView, pages);
-    // Mobile reads one page at a time. Using turn.js's native single-page
-    // display (instead of a translated double spread) keeps the drag following
-    // the finger and removes the post-turn camera slide that briefly showed the
-    // next odd page after turning to an even page.
-    const viewerDisplayMode: TurnJsDisplayMode = mobileSinglePageActive ? 'single' : 'double';
+    const viewerDisplayMode: TurnJsDisplayMode = 'double';
     const layoutPageCount = mobileSinglePageActive ? 1 : 2;
     const viewerFramePad = 18;
     const viewerAvailableWidth =
@@ -71,12 +68,21 @@ export function useIssueViewPresentation({
     );
     const pageHeight = Number(((pageWidth * sheetMetrics.height) / sheetMetrics.width).toFixed(2));
     const pageScale = Number((pageWidth / sheetMetrics.width).toFixed(4));
-    const viewerStageWidth = Math.round(pageWidth * layoutPageCount);
+    const viewerStageWidth = Math.round(pageWidth * 2);
     const viewerClipWidth = Math.round(pageWidth * layoutPageCount + viewerFramePad * 2);
     const viewerClipHeight = Math.round(pageHeight + viewerFramePad * 2);
     const viewerReady = pageCount > 0 && pageWidth > 0 && pageHeight > 0;
     const showDesktopSidebar = !mobileSinglePageActive && !fullscreenActive;
     const showMobileChrome = mobileSinglePageActive && !fullscreenActive;
+    const mobileStatusLabel = pageCount
+      ? translate('Page %s of %s').replace('%s', String(normalizedMobileVisiblePage)).replace('%s', String(pageCount))
+      : translate('No pages');
+    const mobileStageSide = getMobileStageSide(normalizedMobileVisiblePage, pageCount);
+    const mobileBoundaryViewActive = normalizedView[0] === 0 || normalizedView[1] === 0;
+    const mobileStageTranslateX =
+      mobileSinglePageActive && !mobileBoundaryViewActive
+        ? (mobileStageSide === 'left' ? pageWidth / 2 : -pageWidth / 2)
+        : 0;
     const viewerHint = mobileSinglePageActive
       ? translate('Swipe across the page or use the controls below to move through the folio one page at a time.')
       : translate('Use left/right keys, drag the outer page, or click the page edge to turn the book.');
@@ -85,6 +91,8 @@ export function useIssueViewPresentation({
     return {
       bookKey,
       currentView,
+      mobileStatusLabel,
+      mobileStageTranslateX,
       pageHeight,
       pageScale,
       pageWidth,

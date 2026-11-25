@@ -58,22 +58,6 @@ Plan: `docs/ui-overhaul-plan-2026-11-24.md`
 - Deployed commit `d38563c`; `/api/health` returns `{"ok":true}` and the served
   editor chunk no longer contains JSZip/html-to-image (lazy chunks only).
 
-## Mobile reader follow-up
-
-- Removed the bottom page/title status card; the top bar already carries the
-  issue title and page range, so the duplicated block is gone.
-- Reader chrome (top bar, previous/next) now sits in a grid row above and below
-  the page viewport instead of floating over it. The paper can never be covered,
-  including on a 320x568 screen.
-- Mobile uses turn.js's native single-page display instead of a translated double
-  spread. The camera no longer slides after a turn, so 3 -> 4 shows page 4
-  directly instead of flashing page 5.
-- Page wrappers/content no longer swallow the press event: turn.js receives the
-  real page target, so dragging the paper follows the finger on touch and the
-  pointer on desktop. Regression tests cover drag-follow and the parity turn.
-- Closed mobile details sheets are inert/aria-hidden; page range updates are
-  announced politely; arrow-key paging ignores form fields.
-
 ## Still open (next pass)
 - Collapse the six pill/chip styles into `Tag`/`Chip`.
 - One `EmptyState` and one `Disclosure` primitive.

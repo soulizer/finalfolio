@@ -53,6 +53,9 @@ export function IssueViewPage() {
     handleAdvanceToNextPage,
     handleAdvanceToPreviousPage,
     handleBookViewChange,
+    handleMobileTouchCancel,
+    handleMobileTouchEnd,
+    handleMobileTouchStart,
     initializeLoadedIssue,
     mobileVisiblePage,
     resetNavigationState,
@@ -71,6 +74,8 @@ export function IssueViewPage() {
   const {
     bookKey,
     currentView,
+    mobileStatusLabel,
+    mobileStageTranslateX,
     pageHeight,
     pageScale,
     pageWidth,
@@ -144,6 +149,9 @@ export function IssueViewPage() {
           <div
             ref={viewerViewportRef}
             className={`issue-viewer__viewport issue-viewer__viewport--${viewerPositionMode}`.trim()}
+            onTouchStart={mobileSinglePageActive ? handleMobileTouchStart : undefined}
+            onTouchEnd={mobileSinglePageActive ? handleMobileTouchEnd : undefined}
+            onTouchCancel={mobileSinglePageActive ? handleMobileTouchCancel : undefined}
           >
             <div
               className="issue-viewer__clip issue-viewer__clip--turnjs"
@@ -161,6 +169,8 @@ export function IssueViewPage() {
                     {
                       width: `${viewerStageWidth}px`,
                       height: `${Math.round(pageHeight)}px`,
+                      transform: mobileSinglePageActive ? `translateX(${mobileStageTranslateX}px)` : undefined,
+                      transition: mobileSinglePageActive ? 'transform 320ms cubic-bezier(0.22, 1, 0.36, 1)' : undefined,
                     } as CSSProperties
                   }
                 >
@@ -195,7 +205,9 @@ export function IssueViewPage() {
             isTurning={isTurning}
             issue={issue}
             mobilePanelOpen={mobilePanelOpen}
+            mobileStatusLabel={mobileStatusLabel}
             pageCount={pageCount}
+            pageWidth={pageWidth}
             session={session}
             sessionReady={sessionReady}
             showMobileChrome={showMobileChrome}

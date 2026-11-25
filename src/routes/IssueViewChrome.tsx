@@ -1,5 +1,5 @@
 import { countLabel, useT } from '../i18n';
-import { useRef } from 'react';
+import { useRef, type CSSProperties } from 'react';
 import { useModalFocus } from '../ui/useModalFocus';
 import type { UserSession } from '../editor/api';
 import type { PublicIssuePayload } from '../editor/types';
@@ -18,7 +18,9 @@ type IssueViewReaderChromeProps = {
   isTurning: boolean;
   issue: PublicIssuePayload;
   mobilePanelOpen: boolean;
+  mobileStatusLabel: string;
   pageCount: number;
+  pageWidth: number;
   session: UserSession | null;
   sessionReady: boolean;
   showMobileChrome: boolean;
@@ -157,7 +159,9 @@ export function IssueViewReaderChrome({
   isTurning,
   issue,
   mobilePanelOpen,
+  mobileStatusLabel,
   pageCount,
+  pageWidth,
   session,
   sessionReady,
   showMobileChrome,
@@ -178,7 +182,7 @@ export function IssueViewReaderChrome({
             <div className="issue-view-mobile-topbar__summary">
               <span className="eyebrow">{t('Shared folio')}</span>
               <strong>{issue.title}</strong>
-              <small aria-live="polite">{`${issue.issue} · ${currentView.rangeLabel}`}</small>
+              <small>{`${issue.issue} · ${currentView.rangeLabel}`}</small>
             </div>
             <button
               type="button"
@@ -190,7 +194,14 @@ export function IssueViewReaderChrome({
               {t('Details')}</button>
           </div>
 
-          <div className="issue-view-mobile-controls">
+          <div
+            className="issue-view-mobile-controls"
+            style={{ '--issue-mobile-control-width': `${Math.round(pageWidth)}px` } as CSSProperties}
+          >
+            <div className="issue-view-mobile-controls__status">
+              <span>{mobileStatusLabel}</span>
+              <strong>{currentView.label}</strong>
+            </div>
             <div className="issue-view-mobile-controls__actions">
               <button
                 type="button"
@@ -225,8 +236,6 @@ export function IssueViewReaderChrome({
             role="dialog"
             aria-modal="true"
             aria-label={t('Shared folio details')}
-            aria-hidden={!mobilePanelOpen}
-            inert={!mobilePanelOpen}
             tabIndex={-1}
           >
             <div className="issue-view-mobile-sheet__card">

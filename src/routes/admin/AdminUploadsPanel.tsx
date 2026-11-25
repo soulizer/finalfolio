@@ -8,7 +8,7 @@ import {
 import type { AdminUploadDetail, AdminUploadListItem } from '../../editor/api';
 import { formatBytes, formatCompactTimestamp, formatDimensions, formatTimestamp } from './adminFormatting';
 import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
-import { handleRowClick, handleRowSelectKeyDown } from '../../ui/rowSelection';
+import { handleRowSelectKeyDown } from '../../ui/rowSelection';
 
 type AdminUploadsPanelProps = {
   filteredUploads: AdminUploadListItem[];
@@ -58,7 +58,6 @@ export function AdminUploadsPanel({
                 <article
                   key={upload.filename}
                   className={`admin-row admin-row--with-thumb ${selectedUploadFilename === upload.filename ? 'is-selected' : ''}`}
-                  onClick={(event) => handleRowClick(event, () => setSelectedUploadFilename(upload.filename))}
                 >
                   <div className="admin-row__thumb admin-row__thumb--upload">
                     <img
