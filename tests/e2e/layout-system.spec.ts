@@ -53,6 +53,13 @@ test('marketing keeps 1240px and the editor puts the canvas first when narrow', 
   expect(positions.stageTop).toBeLessThan(positions.sidebarTop);
 });
 
+test('accepted terms are informational, with no continue gate', async ({ page }) => {
+  await signIn(page, '/terms');
+  await expect(page.locator('.terms-accepted')).toContainText(/already accepted/i, { timeout: 10_000 });
+  await expect(page.locator('.terms-gate')).toHaveCount(0);
+  await expect(page.locator('.terms-gate button')).toHaveCount(0);
+});
+
 test('admin and account notices keep their own labels', async ({ page }) => {
   await signInAs(page, 'e2e-admin@example.com', 'Password123!', '/admin');
   await expect(page.locator('.admin-console')).toBeVisible({ timeout: 15_000 });

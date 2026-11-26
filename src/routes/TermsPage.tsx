@@ -110,30 +110,26 @@ export function TermsPage() {
             </div>
           </section>
         ) : session ? (
-          <section className="terms-gate">
-            <div className="terms-gate__copy">
-              <strong>{document.acceptanceHeading}</strong>
-              <p>
-                {session.needsTermsAcceptance ? document.acceptanceBody : document.acceptedSummaryLabel}
-              </p>
-            </div>
-            <div className="terms-actions">
-              {session.needsTermsAcceptance ? (
+          session.needsTermsAcceptance ? (
+            <section className="terms-gate">
+              <div className="terms-gate__copy">
+                <strong>{document.acceptanceHeading}</strong>
+                <p>{document.acceptanceBody}</p>
+              </div>
+              <div className="terms-actions">
                 <form onSubmit={handleAccept}>
                   <button type="submit" className="button button--primary" disabled={busy}>
                     {busy ? t('Working…') : document.acceptButtonLabel}
                   </button>
                 </form>
-              ) : (
-                <button type="button" className="button button--primary" onClick={() => openRoute(continuePath)}>
-                  {document.continueButtonLabel}
+                <button type="button" className="button button--ghost" onClick={() => void handleLogout()} disabled={busy}>
+                  {t('Sign out')}
                 </button>
-              )}
-              <button type="button" className="button button--ghost" onClick={() => void handleLogout()} disabled={busy}>
-                {t('Sign out')}
-              </button>
-            </div>
-          </section>
+              </div>
+            </section>
+          ) : (
+            <p className="terms-accepted">{document.acceptedSummaryLabel}</p>
+          )
         ) : (
           <section className="terms-gate">
             <div className="terms-gate__copy">

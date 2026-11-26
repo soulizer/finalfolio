@@ -2474,6 +2474,17 @@ a:focus-visible {
     0 12px 28px rgba(17, 17, 17, 0.05);
 }
 
+.terms-accepted {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(17, 17, 17, 0.1);
+  background: rgba(255, 255, 255, 0.48);
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
 .terms-gate {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
