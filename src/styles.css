@@ -145,15 +145,29 @@
     0 8px 18px rgba(17, 17, 17, 0.08);
   --overlay-bg: rgba(249, 246, 240, 0.82);
   --overlay-bg-strong: rgba(255, 253, 249, 0.94);
+  --overlay-backdrop: rgba(17, 17, 17, 0.34);
+  --overlay-backdrop-blur: blur(8px);
+  --overlay-pad: clamp(12px, 2.5vh, 24px);
   --overlay-border: 1px solid rgba(17, 17, 17, 0.14);
   --overlay-blur: blur(18px) saturate(140%);
   --overlay-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.9),
     0 24px 60px rgba(17, 17, 17, 0.16);
-  --site-width: min(1240px, calc(100vw - 48px));
-  --site-section-space: clamp(58px, 7vw, 88px);
+  --page-max: 1240px;
+  --page-max-console: 1440px;
+  --page-max-editor: 1880px;
+  --page-gutter: clamp(16px, 3vw, 32px);
+  --site-width: min(var(--page-max), calc(100vw - var(--page-gutter) - var(--page-gutter)));
+  --console-width: min(var(--page-max-console), calc(100vw - var(--page-gutter) - var(--page-gutter)));
+  --site-section-space: var(--section-gap);
   --site-panel-space: clamp(22px, 3vw, 32px);
-  --editor-shell-width: min(1880px, calc(100vw - 16px));
+  --section-gap: clamp(48px, 6vw, 80px);
+  --grid-gap: clamp(14px, 1.4vw, 20px);
+  --panel-pad: 14px;
+  --panel-pad-loose: 18px;
+  --card-pad: 12px;
+  --row-gap: 12px;
+  --editor-shell-width: min(var(--page-max-editor), calc(100vw - 16px));
   --editor-layout-gap: 12px;
   --font-ui: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
   --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
@@ -752,7 +766,7 @@ a:focus-visible {
 .feature-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 22px;
+  gap: var(--grid-gap);
   padding-bottom: var(--site-section-space);
 }
 
@@ -796,7 +810,7 @@ a:focus-visible {
 .split-panel {
   display: grid;
   grid-template-columns: minmax(300px, 0.72fr) minmax(0, 1.28fr);
-  gap: clamp(22px, 3vw, 36px);
+  gap: var(--grid-gap);
   align-items: start;
   padding-bottom: var(--site-section-space);
 }
@@ -1564,9 +1578,9 @@ a:focus-visible {
   z-index: 40;
   display: grid;
   place-items: center;
-  padding: 24px;
-  background: rgba(17, 17, 17, 0.42);
-  backdrop-filter: blur(10px);
+  padding: var(--overlay-pad);
+  background: var(--overlay-backdrop);
+  backdrop-filter: var(--overlay-backdrop-blur);
 }
 
 .editor-modal__panel {
@@ -1972,15 +1986,15 @@ a:focus-visible {
 }
 
 .placement-chip {
-  min-height: 20px;
-  padding: 0 6px;
-  border-radius: var(--control-radius);
+  min-height: 22px;
+  padding: 0 7px;
+  border-radius: var(--radius-xs);
   border: 0;
   background: rgba(17, 17, 17, 0.03);
   color: var(--muted);
-  font-size: 0.6rem;
-  letter-spacing: 0.04em;
-  opacity: 0.72;
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+  opacity: 0.78;
 }
 
 .placement-chip.is-active {
@@ -2497,11 +2511,24 @@ a:focus-visible {
 }
 
 .admin-console {
-  width: var(--site-width);
+  width: var(--console-width);
   margin: 0 auto;
   display: grid;
-  gap: 18px;
+  gap: var(--grid-gap);
   padding-bottom: 40px;
+}
+
+/* The console header sits on the same 1440px grid as the console content. */
+.editor-shell--account .site-header,
+.editor-shell--admin .site-header,
+.editor-shell--account .editor-topbar,
+.editor-shell--admin .editor-topbar {
+  width: var(--console-width);
+}
+
+.editor-shell--account .editor-topbar,
+.editor-shell--admin .editor-topbar {
+  padding: 12px 16px;
 }
 
 .admin-dashboard,
@@ -2516,20 +2543,48 @@ a:focus-visible {
 .admin-settings-stack,
 .admin-config-list {
   display: grid;
-  gap: 16px;
+  gap: var(--grid-gap);
   min-width: 0;
   align-content: start;
 }
 
 .admin-panel {
   display: grid;
-  gap: 22px;
+  gap: var(--panel-pad-loose);
   min-width: 0;
   align-content: start;
 }
 
 .admin-hero {
   gap: 18px;
+}
+
+/* Account/admin use one compact PageHeader: title, short lede, meta and tabs.
+   The marketing hero scale is intentionally not reused here. */
+.editor-shell--account .admin-hero,
+.editor-shell--admin .admin-hero {
+  gap: var(--row-gap);
+  padding: var(--panel-pad);
+}
+
+.editor-shell--account .admin-hero h2,
+.editor-shell--admin .admin-hero h2 {
+  font-size: clamp(1.25rem, 1.6vw, 1.45rem);
+  line-height: 1.15;
+}
+
+.editor-shell--account .admin-hero__lede,
+.editor-shell--admin .admin-hero__lede {
+  margin-top: 4px;
+  max-width: 52rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.editor-shell--account .admin-hero .admin-section-nav,
+.editor-shell--admin .admin-hero .admin-section-nav {
+  gap: 8px;
+  margin-top: 0;
 }
 
 .admin-hero__lede {
@@ -2901,6 +2956,7 @@ a:focus-visible {
 .admin-pill {
   display: inline-flex;
   align-items: center;
+  height: 24px;
   min-height: 24px;
   padding: 0 8px;
   border-radius: var(--radius-pill);
@@ -2909,8 +2965,9 @@ a:focus-visible {
   color: rgba(17, 17, 17, 0.76);
   font-family: var(--font-ui);
   font-size: 0.72rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: none;
 }
 
 .admin-pill--strong {
@@ -3430,7 +3487,7 @@ a:focus-visible {
 @media (min-width: 1180px) {
   .admin-page--overview,
   .admin-page--events {
-    grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.9fr);
+    grid-template-columns: minmax(0, 1.7fr) minmax(320px, 1fr);
     align-items: start;
   }
 
@@ -3440,7 +3497,7 @@ a:focus-visible {
   }
 
   .admin-page--users {
-    grid-template-columns: minmax(320px, 0.86fr) minmax(0, 1.4fr);
+    grid-template-columns: minmax(320px, 0.9fr) minmax(420px, 1.4fr);
     align-items: start;
   }
 
@@ -4443,8 +4500,8 @@ button.asset-frame {
 .template-card {
   display: grid;
   gap: 4px;
-  padding: 11px 12px;
-  border-radius: var(--control-radius);
+  padding: var(--card-pad);
+  border-radius: var(--radius-sm);
   appearance: none;
   -webkit-appearance: none;
   border: 1px solid rgba(17, 17, 17, 0.14);
@@ -6081,8 +6138,8 @@ button.asset-frame {
 .custom-layout-builder {
   display: grid;
   gap: 8px;
-  padding: 11px 12px;
-  border-radius: var(--surface-radius);
+  padding: var(--card-pad);
+  border-radius: var(--radius-sm);
   border: 1px solid rgba(17, 17, 17, 0.14);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(245, 241, 234, 0.78));
   box-shadow:
@@ -6504,6 +6561,32 @@ button.asset-frame {
   overflow: hidden;
 }
 
+/* Editor: below 1180 the canvas is the first pane; library and operations
+   stack underneath instead of forcing four narrow columns. */
+@media (min-width: 1101px) and (max-width: 1180px) {
+  .editor-layout {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+    min-height: 0;
+  }
+
+  .editor-stage {
+    order: -1;
+    min-height: 0;
+  }
+
+  .editor-sidebar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .editor-sidebar--content,
+  .editor-sidebar--operations {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 1100px) {
   .feature-grid,
   .split-panel,
@@ -6648,9 +6731,6 @@ button.asset-frame {
 }
 
 @media (max-width: 760px) {
-  :root {
-    --site-width: min(100vw - 28px, 1240px);
-  }
 
   .site-header,
   .hero,
@@ -6788,6 +6868,18 @@ button.asset-frame {
   .site-page-header--editor .site-page-header__editor-actions > a.button {
     width: 100%;
     justify-content: center;
+  }
+
+  .admin-section-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+  }
+
+  .admin-section-tab {
+    flex: 0 0 auto;
+    min-width: 0;
   }
 
   .site-nav {
@@ -7325,9 +7417,9 @@ html[lang='zh-CN'] .admin-stat-card strong {
   z-index: 150;
   display: grid;
   place-items: center;
-  padding: 20px;
-  background: rgba(17, 17, 17, 0.32);
-  backdrop-filter: blur(4px);
+  padding: var(--overlay-pad);
+  background: var(--overlay-backdrop);
+  backdrop-filter: var(--overlay-backdrop-blur);
 }
 
 .confirm-dialog {
@@ -7567,12 +7659,13 @@ html[lang='zh-CN'] .admin-stat-card strong {
 .import-url-form input {
   flex: 1;
   min-width: 0;
-  padding: 7px 9px;
-  border-radius: var(--radius-sm);
+  min-height: var(--control-height);
+  padding: 0 var(--control-pad-x-sm);
+  border-radius: var(--control-radius);
   border: var(--field-border);
   background: rgba(255, 255, 255, 0.86);
   font: inherit;
-  font-size: 0.82rem;
+  font-size: var(--control-font-sm);
 }
 
 
@@ -7956,8 +8049,8 @@ html[lang='zh-CN'] body {
   }
 
   .page-chip__action {
-    width: 40px;
-    height: 40px;
+    width: var(--touch-target);
+    height: var(--touch-target);
   }
 }
 
@@ -8627,9 +8720,9 @@ html[lang='zh-CN'] body {
   z-index: 120;
   display: grid;
   place-items: center;
-  padding: clamp(10px, 2.5vh, 24px);
-  background: rgba(20, 18, 15, 0.38);
-  backdrop-filter: blur(14px) saturate(120%);
+  padding: var(--overlay-pad);
+  background: var(--overlay-backdrop);
+  backdrop-filter: var(--overlay-backdrop-blur);
 }
 
 .layout-editor-dialog {
@@ -9101,9 +9194,9 @@ html[lang='zh-CN'] body {
   z-index: 120;
   display: grid;
   place-items: center;
-  padding: clamp(10px, 2.5vh, 24px);
-  background: rgba(20, 18, 15, 0.38);
-  backdrop-filter: blur(14px) saturate(120%);
+  padding: var(--overlay-pad);
+  background: var(--overlay-backdrop);
+  backdrop-filter: var(--overlay-backdrop-blur);
 }
 
 .ai-dialog {
@@ -10410,8 +10503,8 @@ html[lang='zh-CN'] body {
 
 /* AI dialog now uses the same material language as the confirm dialog. */
 .ai-dialog-overlay {
-  background: rgba(17, 17, 17, 0.32);
-  backdrop-filter: blur(4px);
+  background: var(--overlay-backdrop);
+  backdrop-filter: var(--overlay-backdrop-blur);
 }
 
 .ai-dialog {

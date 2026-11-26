@@ -132,6 +132,14 @@ Shared rules:
 Each phase: geometry tests at 1440/1024/768/390, one primary action per view, no
 horizontal overflow, full Playwright green.
 
+Status (2026-11-26): tokens/shell widths, compact console PageHeader, 1440px
+console grid, canvas-first editor below 1180px, homepage section rhythm,
+card/field/tag tiers and the shared dialog overlay recipe are implemented.
+`layout-system.spec.ts` pins the 1440/1240 widths, compact title size, editor
+canvas order and mobile overflow. A shared `EmptyState` component and optional
+editor drawers remain future refactors; the current markup already shares
+`.editor-empty-state`.
+
 ## 8. Copy voice
 
 - Say what the user gets, not how the system works.
