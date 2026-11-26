@@ -280,6 +280,8 @@ test('mobile chrome clears the paper and the camera moves with the 3 -> 4 turn',
   const range = topbar.locator('small');
   await expect(book).toHaveClass(/--ready/, { timeout: 20_000 });
   await expect(topbar).toBeVisible();
+  await expect(topbar.locator('.eyebrow')).toContainText('e2euser');
+  await expect(topbar.locator('.eyebrow')).toContainText('分享的作品集');
   await expect(page.locator('.issue-view-mobile-controls__status')).toHaveCount(0);
 
   const geometry = async () =>
@@ -366,6 +368,51 @@ test('mobile chrome clears the paper and the camera moves with the 3 -> 4 turn',
   expect(short.viewportHeight).toBeGreaterThan(100);
   expect(short.topbarBottom).toBeLessThanOrEqual(short.viewportTop + 1);
   expect(short.controlsTop).toBeGreaterThanOrEqual(short.viewportBottom - 1);
+
+  await context.close();
+});
+
+test('mobile first and last pages settle without an extra camera slide', async ({ browser }) => {
+  const context = await browser.newContext({ ...devices['iPhone 13'] });
+  const page = await context.newPage();
+  await page.addInitScript(() => localStorage.setItem('finalfolio-locale', 'zh'));
+  await page.goto('/auth?next=%2Feditor');
+  await page.locator('.auth-form input[autocomplete="username"]').fill('e2e-user@example.com');
+  await page.locator('.auth-form input[autocomplete="current-password"]').fill('Password123!');
+  await page.locator('.auth-form button[type="submit"]').click();
+  await page.waitForURL((url) => url.pathname.startsWith('/editor'));
+  const sharePath = await createShare(page);
+  await page.goto(sharePath);
+
+  await expect(page.locator('.issue-viewer__turnjs--ready')).toBeVisible({ timeout: 20_000 });
+  const range = page.locator('.issue-view-mobile-topbar small');
+  const next = page.locator('.issue-view-mobile-controls__actions button').filter({ hasText: /Next|下一页/ }).first();
+  const previous = page.locator('.issue-view-mobile-controls__actions button').filter({ hasText: /Previous|上一页/ }).first();
+  const cameraX = () =>
+    page.evaluate(() => {
+      const stage = document.querySelector('.issue-viewer__turnjs-stage') as HTMLElement;
+      return new DOMMatrix(getComputedStyle(stage).transform).m41;
+    });
+
+  await next.click();
+  await expect(range).toContainText('第 2');
+  await page.waitForTimeout(450);
+  await previous.click();
+  await expect(range).toContainText('第 1');
+  await page.waitForTimeout(100);
+  expect(Math.abs(await cameraX())).toBeLessThan(2);
+  await page.waitForTimeout(450);
+  expect(Math.abs(await cameraX())).toBeLessThan(2);
+
+  for (let pageNumber = 2; pageNumber <= 6; pageNumber += 1) {
+    await next.click();
+    await expect(range).toContainText(`第 ${pageNumber}`);
+    await page.waitForTimeout(450);
+  }
+  await page.waitForTimeout(100);
+  expect(Math.abs(await cameraX())).toBeLessThan(2);
+  await page.waitForTimeout(450);
+  expect(Math.abs(await cameraX())).toBeLessThan(2);
 
   await context.close();
 });

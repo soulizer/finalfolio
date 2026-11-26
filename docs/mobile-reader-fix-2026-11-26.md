@@ -27,6 +27,18 @@ It was rolled back to `35a9f4b` before this rework.
 - `turned` commits the visible page without a second camera move, so 3 -> 4 no
   longer shows page 5 and then slides back.
 
+### First and last pages
+- Entering page 1 or an even last page is a boundary target: the final camera is
+  the centred 0 position and is applied during the flip, so there is no extra
+  camera slide after `turned`.
+- Boundary behaviour is covered by a dedicated test that samples the transform
+  right after the page label changes and again after settling.
+
+### Owner attribution in the mobile top bar
+- Public issue payloads now include the owner's username only (never email).
+- The mobile top bar reads "e2euser 分享的作品集" / "Shared by e2euser" instead of
+  the generic "分享的作品集", with a generic fallback for older projects.
+
 ### Kept light-touch UX fixes
 - Closed mobile details sheet is `inert` / `aria-hidden`.
 - Page range is announced with `aria-live="polite"`.

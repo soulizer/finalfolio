@@ -2159,6 +2159,9 @@ export function createApp({
 
     const usedAssetIds = collectProjectAssetIds(record.project.pages);
     const assets = await hydrateAssets(record.project.assets.filter((asset) => usedAssetIds.has(asset.id)));
+    // Public pages only expose an explicitly chosen username, never an email.
+    const owner = record.ownerUserId ? await authStore.readUser(record.ownerUserId).catch(() => null) : null;
+    const ownerDisplay = typeof owner?.username === 'string' && owner.username.trim() ? owner.username.trim() : null;
 
     return {
       shareId: share.id,
@@ -2168,6 +2171,7 @@ export function createApp({
       title: record.project.title,
       subtitle: record.project.subtitle,
       issue: record.project.issue,
+      ownerDisplay,
       frameRadius: record.project.frameRadius,
       fonts: record.project.fonts,
       pages: record.project.pages,

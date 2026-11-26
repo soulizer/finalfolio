@@ -5741,6 +5741,9 @@ button.asset-frame {
 
 .issue-view-mobile-topbar__summary .eyebrow {
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .issue-view-mobile-topbar__summary strong {

@@ -176,7 +176,11 @@ export function IssueViewReaderChrome({
         <>
           <div className="issue-view-mobile-topbar">
             <div className="issue-view-mobile-topbar__summary">
-              <span className="eyebrow">{t('Shared folio')}</span>
+              <span className="eyebrow">
+                {issue.ownerDisplay
+                  ? t('Shared by %s').replace('%s', issue.ownerDisplay)
+                  : t('Shared folio')}
+              </span>
               <strong>{issue.title}</strong>
               <small aria-live="polite">{`${issue.issue} · ${currentView.rangeLabel}`}</small>
             </div>

@@ -81,8 +81,10 @@ export function useIssueViewPresentation({
     const normalizedCameraPage = clamp(mobileCameraPage, 1, Math.max(pageCount, 1));
     const mobileStageSide = getMobileStageSide(normalizedCameraPage, pageCount);
     const mobileBoundaryViewActive = normalizedView[0] === 0 || normalizedView[1] === 0;
+    const mobileCameraBoundaryTarget =
+      normalizedCameraPage === 1 || (pageCount > 0 && pageCount % 2 === 0 && normalizedCameraPage === pageCount);
     const mobileStageTranslateX =
-      mobileSinglePageActive && !mobileBoundaryViewActive
+      mobileSinglePageActive && !mobileBoundaryViewActive && !mobileCameraBoundaryTarget
         ? (mobileStageSide === 'left' ? pageWidth / 2 : -pageWidth / 2)
         : 0;
     const mobileStageTransition = mobileSinglePageActive
