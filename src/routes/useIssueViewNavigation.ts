@@ -33,6 +33,11 @@ export function useIssueViewNavigation({
   const [currentTurnPage, setCurrentTurnPage] = useState(1);
   const [currentViewPages, setCurrentViewPages] = useState<VisibleTurnView>([0, 0]);
   const [mobileVisiblePage, setMobileVisiblePage] = useState(1);
+  // Camera page leads the committed page while a turn is in flight, so the
+  // half-page shift and turn.js flip animate together instead of the camera
+  // sliding only after the flip has already exposed the next odd page.
+  const [mobileCameraPage, setMobileCameraPage] = useState(1);
+  const [mobileCameraSyncing, setMobileCameraSyncing] = useState(false);
   const stableTurnPageRef = useRef(1);
   const mobileTurnTargetRef = useRef<number | null>(null);
   const mobileTouchStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -50,6 +55,8 @@ export function useIssueViewNavigation({
     setCurrentTurnPage(1);
     setCurrentViewPages([0, 0]);
     setMobileVisiblePage(1);
+    setMobileCameraPage(1);
+    setMobileCameraSyncing(false);
   }
 
   function initializeLoadedIssue(nextPageCount: number) {
@@ -59,6 +66,8 @@ export function useIssueViewNavigation({
     setCurrentTurnPage(1);
     setCurrentViewPages(nextPageCount ? [0, 1] : [0, 0]);
     setMobileVisiblePage(1);
+    setMobileCameraPage(1);
+    setMobileCameraSyncing(false);
   }
 
   function requestMobileTurn(targetPage: number) {
@@ -73,7 +82,16 @@ export function useIssueViewNavigation({
 
     const normalizedTargetPage = clamp(targetPage, 1, pageCount);
     mobileTurnTargetRef.current = normalizedTargetPage;
+    setMobileCameraSyncing(true);
+    setMobileCameraPage(normalizedTargetPage);
     book.page(normalizedTargetPage);
+  }
+
+  function panMobileCamera(targetPage: number) {
+    const normalizedTargetPage = clamp(targetPage, 1, pageCount);
+    setMobileCameraSyncing(false);
+    setMobileCameraPage(normalizedTargetPage);
+    setMobileVisiblePage(normalizedTargetPage);
   }
 
   function handleAdvanceToNextPage() {
@@ -91,7 +109,9 @@ export function useIssueViewNavigation({
       return;
     }
 
-    setMobileVisiblePage((current) => clamp(current + 1, 1, pageCount));
+    // The next odd page is already the right half of the open spread; only the
+    // camera needs to move, with no page flip.
+    panMobileCamera(Math.min(pageCount, normalizedMobileVisiblePage + 1));
   }
 
   function handleAdvanceToPreviousPage() {
@@ -109,7 +129,7 @@ export function useIssueViewNavigation({
       return;
     }
 
-    setMobileVisiblePage((current) => clamp(current - 1, 1, pageCount));
+    panMobileCamera(Math.max(1, normalizedMobileVisiblePage - 1));
   }
 
   function handleJumpToFirstPage() {
@@ -149,7 +169,10 @@ export function useIssueViewNavigation({
     }
 
     if (mobileTurnTargetRef.current !== null) {
-      setMobileVisiblePage(clamp(mobileTurnTargetRef.current, 1, Math.max(pageCount, 1)));
+      const committedPage = clamp(mobileTurnTargetRef.current, 1, Math.max(pageCount, 1));
+      setMobileVisiblePage(committedPage);
+      setMobileCameraPage(committedPage);
+      setMobileCameraSyncing(false);
       mobileTurnTargetRef.current = null;
     }
   }
@@ -209,7 +232,10 @@ export function useIssueViewNavigation({
       return;
     }
 
-    setMobileVisiblePage(getLeadingVisiblePage(currentViewPages, pageCount));
+    const leadingPage = getLeadingVisiblePage(currentViewPages, pageCount);
+    setMobileVisiblePage(leadingPage);
+    setMobileCameraPage(leadingPage);
+    setMobileCameraSyncing(false);
   }, [mobileSinglePageActive]);
 
   useEffect(() => {
@@ -218,6 +244,11 @@ export function useIssueViewNavigation({
     }
 
     function handleKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) {
+        return;
+      }
+
       if (event.key === 'ArrowRight') {
         event.preventDefault();
         handleAdvanceToNextPage();
@@ -249,6 +280,8 @@ export function useIssueViewNavigation({
     handleMobileTouchEnd,
     handleMobileTouchStart,
     initializeLoadedIssue,
+    mobileCameraPage,
+    mobileCameraSyncing,
     mobileVisiblePage,
     resetNavigationState,
     stableTurnPageRef,

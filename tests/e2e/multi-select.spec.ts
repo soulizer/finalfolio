@@ -89,6 +89,15 @@ test('gallery selection works without a mode toggle', async ({ page }) => {
   await expect(page.locator('.asset-batch-bar')).toContainText('1 selected');
   await expect(tiles.first()).toHaveClass(/is-picked/);
 
+  // Selection is the check control only; no extra ink border or inset ring.
+  const pickedStyle = await tiles.first().evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { borderColor: style.borderColor, boxShadow: style.boxShadow };
+  });
+  expect(pickedStyle.borderColor).not.toBe('rgb(17, 17, 17)');
+  expect(pickedStyle.boxShadow).not.toContain('2px inset');
+  expect(pickedStyle.boxShadow).not.toContain('1px inset');
+
   // Shift extends the range from the first pick, Ctrl removes one tile.
   await tiles.nth(ownCount - 1).click({ modifiers: ['Shift'] });
   await expect(page.locator('.asset-batch-bar')).toContainText(`${ownCount} selected`);

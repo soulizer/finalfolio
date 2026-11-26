@@ -20,6 +20,8 @@ type UseIssueViewPresentationOptions = {
   currentViewPages: VisibleTurnView;
   effectiveViewerViewportSize: ViewportSize;
   fullscreenActive: boolean;
+  mobileCameraPage: number;
+  mobileCameraSyncing: boolean;
   mobileSinglePageActive: boolean;
   mobileVisiblePage: number;
   pageCount: number;
@@ -31,6 +33,8 @@ export function useIssueViewPresentation({
   currentViewPages,
   effectiveViewerViewportSize,
   fullscreenActive,
+  mobileCameraPage,
+  mobileCameraSyncing,
   mobileSinglePageActive,
   mobileVisiblePage,
   pageCount,
@@ -74,15 +78,18 @@ export function useIssueViewPresentation({
     const viewerReady = pageCount > 0 && pageWidth > 0 && pageHeight > 0;
     const showDesktopSidebar = !mobileSinglePageActive && !fullscreenActive;
     const showMobileChrome = mobileSinglePageActive && !fullscreenActive;
-    const mobileStatusLabel = pageCount
-      ? translate('Page %s of %s').replace('%s', String(normalizedMobileVisiblePage)).replace('%s', String(pageCount))
-      : translate('No pages');
-    const mobileStageSide = getMobileStageSide(normalizedMobileVisiblePage, pageCount);
+    const normalizedCameraPage = clamp(mobileCameraPage, 1, Math.max(pageCount, 1));
+    const mobileStageSide = getMobileStageSide(normalizedCameraPage, pageCount);
     const mobileBoundaryViewActive = normalizedView[0] === 0 || normalizedView[1] === 0;
     const mobileStageTranslateX =
       mobileSinglePageActive && !mobileBoundaryViewActive
         ? (mobileStageSide === 'left' ? pageWidth / 2 : -pageWidth / 2)
         : 0;
+    const mobileStageTransition = mobileSinglePageActive
+      ? mobileCameraSyncing
+        ? 'transform 500ms cubic-bezier(0.645, 0.045, 0.355, 1)'
+        : 'transform 320ms cubic-bezier(0.22, 1, 0.36, 1)'
+      : undefined;
     const viewerHint = mobileSinglePageActive
       ? translate('Swipe across the page or use the controls below to move through the folio one page at a time.')
       : translate('Use left/right keys, drag the outer page, or click the page edge to turn the book.');
@@ -91,7 +98,7 @@ export function useIssueViewPresentation({
     return {
       bookKey,
       currentView,
-      mobileStatusLabel,
+      mobileStageTransition,
       mobileStageTranslateX,
       pageHeight,
       pageScale,
@@ -113,6 +120,8 @@ export function useIssueViewPresentation({
     effectiveViewerViewportSize.height,
     effectiveViewerViewportSize.width,
     fullscreenActive,
+    mobileCameraPage,
+    mobileCameraSyncing,
     mobileSinglePageActive,
     mobileVisiblePage,
     pageCount,

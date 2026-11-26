@@ -1874,13 +1874,6 @@ a:focus-visible {
   height: 14px;
 }
 
-.asset-tile.is-picked {
-  border-color: #111111;
-  box-shadow:
-    inset 0 0 0 1px #ffffff,
-    inset 0 0 0 2px #111111;
-}
-
 /* Pick control for bulk actions. It follows the tile icon geometry (24px pill,
    13px inset) and only appears on hover, on keyboard focus, or while the tile is
    picked, so the gallery does not look like a selection mode. */
@@ -5687,19 +5680,22 @@ button.asset-frame {
 .issue-view-shell--mobile-portrait .issue-view-reader {
   overflow: hidden;
   contain: none;
-  /* The overlay chrome is taller than it looks: the top bar can wrap to two
-     title lines plus meta, and the bottom stack pairs a 56px status card with
-     two buttons. Reserve measured maxima so neither covers the paper. */
-  --issue-mobile-top-chrome: 100px;
-  --issue-mobile-bottom-chrome: 120px;
+  /* Chrome sits in the grid flow, not on top of the paper. The book gets the
+     remaining row and can never be covered, even on very short screens. */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 10px;
   padding:
-    calc(var(--issue-mobile-top-inset) + var(--issue-mobile-top-chrome))
+    var(--issue-mobile-top-inset)
     12px
-    calc(var(--issue-mobile-bottom-inset) + var(--issue-mobile-bottom-chrome))
+    var(--issue-mobile-bottom-inset)
     12px;
 }
 
 .issue-view-shell--mobile-portrait .issue-viewer__viewport {
+  grid-row: 2;
+  min-height: 0;
   margin-inline: auto;
 }
 
@@ -5722,15 +5718,13 @@ button.asset-frame {
 }
 
 .issue-view-mobile-topbar {
-  position: absolute;
-  top: var(--issue-mobile-top-inset);
-  left: 12px;
-  right: 12px;
+  grid-row: 1;
   z-index: 15;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
+  min-width: 0;
   padding: 12px 14px;
   border-radius: var(--radius-lg);
   border: var(--overlay-border);
@@ -5773,15 +5767,12 @@ button.asset-frame {
 }
 
 .issue-view-mobile-controls {
-  position: absolute;
-  left: 50%;
-  bottom: var(--issue-mobile-bottom-inset);
+  grid-row: 3;
   z-index: 15;
-  width: min(calc(100% - 24px), var(--issue-mobile-control-width, 100%));
+  width: 100%;
   display: grid;
   gap: 10px;
   align-items: stretch;
-  transform: translateX(-50%);
 }
 
 .issue-view-mobile-controls__actions {
@@ -5793,48 +5784,7 @@ button.asset-frame {
 .issue-view-mobile-controls__button {
   width: 100%;
   min-width: 0;
-}
-
-.issue-view-mobile-controls__status {
-  min-height: 56px;
-  min-width: 0;
-  display: grid;
-  gap: 4px;
-  align-content: center;
-  padding: 12px 14px;
-  color: var(--ink);
-  text-align: left;
-  border-radius: var(--radius-lg);
-  border: 1px solid rgba(17, 17, 17, 0.1);
-  background: rgba(255, 251, 245, 0.88);
-  box-shadow:
-    0 18px 36px rgba(17, 17, 17, 0.14),
-    0 4px 10px rgba(17, 17, 17, 0.06);
-  backdrop-filter: blur(18px);
-}
-
-.issue-view-mobile-controls__status span,
-.issue-view-mobile-controls__status strong {
-  min-width: 0;
-  overflow: hidden;
-}
-
-.issue-view-mobile-controls__status span {
-  color: var(--muted);
-  font-size: 0.72rem;
-  line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.issue-view-mobile-controls__status strong {
-  display: -webkit-box;
-  font-size: 0.96rem;
-  font-weight: 600;
-  line-height: 1.22;
-  text-wrap: balance;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  min-height: var(--touch-target);
 }
 
 .issue-view-mobile-overlay {
@@ -10171,12 +10121,10 @@ html[lang='zh-CN'] body {
   border-color: rgba(17, 17, 17, 0.26);
 }
 
-/* Selection stays light: a single ink outline plus the check badge. Heavy
-   multi-ring frames overpower the photo and read as a crop, not a selection. */
+/* Selection is communicated by the check badge alone. Heavy ink outlines and
+   inset rings overpower the photo and read as a crop, not a selection. */
 .ai-library-item.is-selected {
-  border-color: #111111;
   background: #fff;
-  box-shadow: inset 0 0 0 1px #111111;
 }
 
 .ai-library-item.is-selected img {

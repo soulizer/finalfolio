@@ -263,6 +263,113 @@ test('a turn keeps the page shadow and never introduces a global background shad
   expectPageShadows(await pageShadowState(page));
 });
 
+test('mobile chrome clears the paper and the camera moves with the 3 -> 4 turn', async ({ browser }) => {
+  const context = await browser.newContext({ ...devices['iPhone 13'] });
+  const page = await context.newPage();
+  await page.addInitScript(() => localStorage.setItem('finalfolio-locale', 'zh'));
+  await page.goto('/auth?next=%2Feditor');
+  await page.locator('.auth-form input[autocomplete="username"]').fill('e2e-user@example.com');
+  await page.locator('.auth-form input[autocomplete="current-password"]').fill('Password123!');
+  await page.locator('.auth-form button[type="submit"]').click();
+  await page.waitForURL((url) => url.pathname.startsWith('/editor'));
+  const sharePath = await createShare(page);
+  await page.goto(sharePath);
+
+  const book = page.locator('.issue-viewer__turnjs');
+  const topbar = page.locator('.issue-view-mobile-topbar');
+  const range = topbar.locator('small');
+  await expect(book).toHaveClass(/--ready/, { timeout: 20_000 });
+  await expect(topbar).toBeVisible();
+  await expect(page.locator('.issue-view-mobile-controls__status')).toHaveCount(0);
+
+  const geometry = async () =>
+    page.evaluate(() => {
+      const viewport = document.querySelector('.issue-viewer__viewport')!.getBoundingClientRect();
+      const topbarBox = document.querySelector('.issue-view-mobile-topbar')!.getBoundingClientRect();
+      const controls = document.querySelector('.issue-view-mobile-controls')!.getBoundingClientRect();
+      return {
+        viewportHeight: viewport.height,
+        viewportTop: viewport.top,
+        viewportBottom: viewport.bottom,
+        topbarBottom: topbarBox.bottom,
+        controlsTop: controls.top,
+      };
+    });
+
+  const tall = await geometry();
+  expect(tall.topbarBottom).toBeLessThanOrEqual(tall.viewportTop + 1);
+  expect(tall.controlsTop).toBeGreaterThanOrEqual(tall.viewportBottom - 1);
+
+  const next = page.locator('.issue-view-mobile-controls__actions button').filter({ hasText: /Next|下一页/ }).first();
+  await next.click();
+  await expect(range).toContainText('第 2');
+  await page.waitForTimeout(500);
+  // Even -> odd is a camera pan across the open spread.
+  await next.click();
+  await expect(range).toContainText('第 3');
+  await page.waitForTimeout(450);
+
+  const stageTransform = () =>
+    page.evaluate(() => {
+      const stage = document.querySelector('.issue-viewer__turnjs-stage') as HTMLElement;
+      const width = stage.getBoundingClientRect().width;
+      return { width, x: new DOMMatrix(getComputedStyle(stage).transform).m41 };
+    });
+  const cameraStart = await stageTransform();
+
+  // Odd -> even must run the camera move and the page flip together.
+  await next.click();
+  await page.waitForTimeout(180);
+  const cameraMid = await stageTransform();
+  await page.waitForTimeout(180);
+  const cameraLater = await stageTransform();
+  expect(cameraMid.x).toBeGreaterThan(cameraStart.x + 1);
+  expect(cameraLater.x).toBeGreaterThan(cameraMid.x + 1);
+
+  await expect(range).toContainText('第 4');
+  await page.waitForTimeout(700);
+  const cameraEnd = await stageTransform();
+  expect(cameraEnd.x).toBeGreaterThan(0);
+  await page.waitForTimeout(300);
+  const cameraStable = await stageTransform();
+  expect(cameraStable.x).toBeCloseTo(cameraEnd.x, 0);
+
+  const pagePlacement = await page.evaluate(() => {
+    const viewport = document.querySelector('.issue-viewer__viewport')!.getBoundingClientRect();
+    const pages = Array.from(document.querySelectorAll('.issue-viewer__turnjs .page')).map((element) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        text: element.textContent ?? '',
+        left: Math.round(rect.left),
+        right: Math.round(rect.right),
+        display: getComputedStyle(element).display,
+        visibility: getComputedStyle(element).visibility,
+      };
+    });
+    return {
+      viewport: { left: Math.round(viewport.left), right: Math.round(viewport.right) },
+      pages,
+    };
+  });
+  const page4 = pagePlacement.pages.find((entry) => entry.text.includes('第 4 页'));
+  const page5 = pagePlacement.pages.find((entry) => entry.text.includes('第 5 页'));
+  expect(page4).toBeTruthy();
+  expect(page5).toBeTruthy();
+  const viewportCenter = (pagePlacement.viewport.left + pagePlacement.viewport.right) / 2;
+  expect(page4!.left).toBeLessThan(viewportCenter);
+  expect(page4!.right).toBeGreaterThan(viewportCenter);
+  expect(page5!.left).toBeGreaterThanOrEqual(page4!.right - 1);
+
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.waitForTimeout(700);
+  const short = await geometry();
+  expect(short.viewportHeight).toBeGreaterThan(100);
+  expect(short.topbarBottom).toBeLessThanOrEqual(short.viewportTop + 1);
+  expect(short.controlsTop).toBeGreaterThanOrEqual(short.viewportBottom - 1);
+
+  await context.close();
+});
+
 test('mobile keeps per-page shadows and no global background shadow', async ({ browser }) => {
   const context = await browser.newContext({ ...devices['iPhone 13'] });
   const page = await context.newPage();

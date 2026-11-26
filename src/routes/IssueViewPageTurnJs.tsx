@@ -57,6 +57,8 @@ export function IssueViewPage() {
     handleMobileTouchEnd,
     handleMobileTouchStart,
     initializeLoadedIssue,
+    mobileCameraPage,
+    mobileCameraSyncing,
     mobileVisiblePage,
     resetNavigationState,
     stableTurnPageRef,
@@ -74,7 +76,7 @@ export function IssueViewPage() {
   const {
     bookKey,
     currentView,
-    mobileStatusLabel,
+    mobileStageTransition,
     mobileStageTranslateX,
     pageHeight,
     pageScale,
@@ -93,6 +95,8 @@ export function IssueViewPage() {
     currentViewPages,
     effectiveViewerViewportSize,
     fullscreenActive,
+    mobileCameraPage,
+    mobileCameraSyncing,
     mobileSinglePageActive,
     mobileVisiblePage,
     pageCount,
@@ -170,7 +174,7 @@ export function IssueViewPage() {
                       width: `${viewerStageWidth}px`,
                       height: `${Math.round(pageHeight)}px`,
                       transform: mobileSinglePageActive ? `translateX(${mobileStageTranslateX}px)` : undefined,
-                      transition: mobileSinglePageActive ? 'transform 320ms cubic-bezier(0.22, 1, 0.36, 1)' : undefined,
+                      transition: mobileStageTransition,
                     } as CSSProperties
                   }
                 >
@@ -205,9 +209,7 @@ export function IssueViewPage() {
             isTurning={isTurning}
             issue={issue}
             mobilePanelOpen={mobilePanelOpen}
-            mobileStatusLabel={mobileStatusLabel}
             pageCount={pageCount}
-            pageWidth={pageWidth}
             session={session}
             sessionReady={sessionReady}
             showMobileChrome={showMobileChrome}
