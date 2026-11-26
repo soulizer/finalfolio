@@ -103,6 +103,7 @@ test('the public reader keeps the project typography', async ({ page }) => {
 
   await page.goto(sharePath);
   await expect(page.locator('.issue-viewer__turnjs--ready')).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator('.issue-view-copy .eyebrow')).toContainText('e2euser');
 
   await expect
     .poll(() =>

@@ -62,7 +62,11 @@ function IssueViewSharedFolioSection({
   const t = useT();
   return (
     <section className={className}>
-      <p className="eyebrow">{t('Shared folio')}</p>
+      <p className="eyebrow">
+        {issue.ownerDisplay
+          ? t('Shared by %s').replace('%s', issue.ownerDisplay)
+          : t('Shared folio')}
+      </p>
       <h1>{issue.title}</h1>
       <div className="issue-view-copy__meta">
         <span className="panel-tag">{t('Read only')}</span>

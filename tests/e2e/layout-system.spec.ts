@@ -53,6 +53,21 @@ test('marketing keeps 1240px and the editor puts the canvas first when narrow', 
   expect(positions.stageTop).toBeLessThan(positions.sidebarTop);
 });
 
+test('admin and account notices keep their own labels', async ({ page }) => {
+  await signInAs(page, 'e2e-admin@example.com', 'Password123!', '/admin');
+  await expect(page.locator('.admin-console')).toBeVisible({ timeout: 15_000 });
+  await page.route('**/api/admin/summary', (route) => route.abort());
+  await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+  await expect(page.locator('.admin-notice__label')).toHaveText(/admin update/i, { timeout: 10_000 });
+
+  await page.unroute('**/api/admin/summary');
+  await page.goto('/account');
+  await expect(page.locator('.account-console')).toBeVisible({ timeout: 15_000 });
+  await page.route('**/api/account/summary', (route) => route.abort());
+  await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+  await expect(page.locator('.admin-notice__label')).toHaveText(/account update/i, { timeout: 10_000 });
+});
+
 test('mobile pages do not overflow horizontally', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   const page = await context.newPage();

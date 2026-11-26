@@ -53,7 +53,7 @@ export function TransientNotice({
   return (
     <div className="admin-notice-overlay" role="status" aria-live="polite" aria-atomic="true">
       <div className="admin-notice cookie-bar message-bar">
-        <span className="admin-notice__label">{t(label ?? t('Notice'))}</span>
+        <span className="admin-notice__label">{label ?? t('Notice')}</span>
         <p>{t(message)}</p>
       </div>
     </div>
