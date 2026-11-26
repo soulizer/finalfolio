@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { translate as t } from '../i18n';
+import { isStaleChunkError, reloadForFreshAssets } from '../ui/staleChunk';
 
 type AppErrorBoundaryState = {
   error: Error | null;
@@ -14,6 +15,9 @@ export class AppErrorBoundary extends Component<{ children: ReactNode }, AppErro
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error(t('FinalFolio render failure'), error, info.componentStack);
+    if (isStaleChunkError(error)) {
+      reloadForFreshAssets();
+    }
   }
 
   private handleReload = () => {
