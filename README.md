@@ -32,7 +32,7 @@ npm run uploads:manage -- list
 - Signed-in users can use **Arrange with AI** to turn up to 50 photos into three
   proposed folio sequences. AI only writes to the editor after a plan is chosen.
   Admin → **AI** owns the interface pool, ordering, connection tests, default
-  prompt and per-user usage limits. See `docs/ai-arrangement.md`.
+  prompt and per-user usage limits. See `docs/product.md`.
 - The rendered page, the exported PDF/JPG files and the public viewer all use the
   same `MagazinePreview` page renderer.
 - Drafts stay local until you save; guest uploads can be recovered and attached

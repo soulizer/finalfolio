@@ -1,232 +1,155 @@
-# FinalFolio Design System
+# FinalFolio design system
 
-The editor and admin are dense tools. Consistency is enforced from a small set
-of tokens instead of per-screen fixes. New controls must use these rules before
-adding new CSS.
+FinalFolio is a dense editorial tool with a warm paper tone. Consistency comes
+from tokens and shared primitives, not per-screen overrides. New UI must consume
+these rules before adding CSS.
+
+Non-negotiables:
+
+- Warm paper background, soft skeuomorphic controls, no hover lift.
+- UI chrome uses `--font-ui`; the editorial serif only renders inside
+  `.magazine-page`.
+- Delete is always a trash icon; destructive confirmation uses the shared dialog.
+- One primary action per view; secondary actions recede.
+- The reader shadow/turn model is documented in `reader-and-mobile.md` and must
+  not be changed casually.
 
 ## 1. Control heights
 
-| Tier | Token | Height | Use |
-| --- | --- | --- | --- |
-| Micro icon | `--control-height-xs` | **24px** | Page-chip actions, gallery thumbnail corners, panel collapse chevrons, colour swatches |
-| Dense editor / admin | `--control-height-sm` | **36px** | `button--small`, sidebar fields, toolbar rows, dialog footers, inline geometry fields |
-| Standard | `--control-height` | **40px** | Default buttons, standalone form fields, captcha, panel inputs |
-| Public site | `--control-height-sm` + coarse pointer | **44px** | Marketing and auth calls to action on touch (`@media (pointer: coarse)`) |
-
-Every control in one row uses the same tier. Inputs never exceed the button
-height beside them: a 36px footer button pairs with a 36px name field, and a
-40px panel input pairs with 40px buttons.
-
-The tiers are declared once. A dense surface re-scopes the token instead of
-re-declaring heights per field:
-
-```css
-.editor-sidebar,
-.admin-config-table__cell,
-.layout-editor-geometry,
-.admin-ai-usage__fields,
-.admin-ai-usage__search,
-.import-url-form {
-  --control-height: var(--control-height-sm);
-}
-```
-
-A zero-specificity `:where(input[type=…], select)` rule gives every single-line
-field the shared default height, including inputs written without an explicit
-`type` attribute (they otherwise fall back to the ~19px UA default). Contexts
-only override the token, never `min-height`, so one rule stays authoritative.
-
-Panel headers are one 24px row: the label, `.panel-tag`, `.editor-collapsible-meta`
-and the collapse chevron all measure 24px inside a 32px toolbar. Never give the
-tag a taller box than the chevron; the row then looks ragged even when the
-centres match.
-
-## 1b. Radius scale
-
-One scale, referenced by token. A literal radius in a rule is a bug unless it is
-`50%` (circles), `1–2px` (miniature schematic art) or a page-content radius that
-the user controls (`--page-frame-radius`).
-
-| Token | Value | Use |
+| Token | Height | Use |
 | --- | --- | --- |
-| `--radius-xs` (`--control-radius`) | 4px | Buttons, inputs, chips, thumbnails |
-| `--radius-sm` (`--surface-radius`) | 8px | Sub-panels, popovers, small cards |
-| `--radius-md` | 12px | Panels, layout cards, the editor canvas |
-| `--radius-lg` (`--radius`) | 20px | Dialogs, topbar, large cards |
-| `--radius-xl` | 28px | Marketing cards and feature panels |
-| `--radius-pill` | 999px | Tags and pills |
+| `--control-height-xs` | 24px | Gallery corner actions, page-chip actions, collapse chevrons |
+| `--control-height-sm` | 36px | Dense editor/admin rows, `button--small`, inline fields |
+| `--control-height` | 40px | Default buttons and fields |
+| `--touch-target` | 44px | Coarse-pointer targets (and mobile reader controls) |
 
-## 2. Spacing
+- Controls in one row use the same tier.
+- Dense contexts re-scope `--control-height` instead of hardcoding heights.
+- Icon-only controls on touch are 44×44.
+- Disabled controls do not move; pressed controls translate 1px down.
 
-Use the 4px scale: `--space-1` 4, `--space-2` 8, `--space-3` 12, `--space-4` 16,
-`--space-5` 20, `--space-6` 24. 6px and 10px remain acceptable for legacy
-optical tweaks but new rules should land on the scale.
+## 2. Radius and spacing
 
-- Toolbar gap: **6–8px** between icon buttons.
-- Mixed button rows: **16px** gap so the optical gap remains around 10px after
-  borders and inner padding.
-- Panel padding: **12–14px**.
-- Page chip padding: **12px**, plus the 1px border, puts the action row **13px**
-  from the chip edge.
-- A caption that follows a frame keeps at least `--page-rail-gap` (4mm) from the
-  image. If the caption needs to sit on the image instead, it must be a
-  translucent overlay with its own contrast treatment — never flush against the
-  frame edge.
-- Thumbnail corner actions sit **13px** from the top and right edges so their
-  optical inset matches the page-chip actions.
+Radius tokens: `--radius-xs` 4, `--radius-sm` 8, `--radius-md` 12,
+`--radius-lg` 20, `--radius-xl` 28, `--radius-pill` 999.
+Literal radii are only acceptable for circles, 1–2px schematic art, or the
+user-controlled page frame radius.
 
-## 2b. Type roles
+Spacing tokens: `--space-1..10` (4–48px). Component tokens:
+`--panel-pad`, `--card-pad`, `--row-gap`, `--grid-gap`, `--page-gutter`,
+`--section-gap`.
 
-- UI chrome (buttons, labels, tags, eyebrows, tables, hints) always uses
-  `--font-ui`. Monospace is reserved for values where digit alignment matters:
-  the zoom input, AI elapsed time, page numbers and the captcha code.
-- CJK display type needs more leading than Latin: `html[lang='zh-CN']`
-  headings use 1.26 (hero 1.18) while the Latin layout keeps 1.04–1.08.
-  A Chinese headline must not wrap at a Latin `ch` measure: the hero uses a
-  6.05em box so six characters fit per line; `ch` is a Latin digit width.
-- The editorial serif is only used inside `.magazine-page`. Every text node on
-  a page must carry a role class so the four project fonts reach it:
-  title, deck, caption (kickers and small labels), body.
-- The layout name is library metadata. It must never be printed on the page.
+- Toolbar gap: 6–8px between icon buttons.
+- Mixed text-button rows: 10–12px.
+- Panel padding: 14px (loose panels 16–22px).
+- Keep 4mm between an image frame and its caption.
+- Gallery corner controls sit 13px from the tile edge.
 
-## 3. Text and icon actions
+## 3. Typography
 
-Panel and dialog actions use **text labels** so their meaning stays explicit.
+- UI: `--font-ui`.
+- Mono: zoom input, elapsed time, page numbers, captcha.
+- Display: `--font-display` / project fonts, only inside the folio page.
+- Every page text node carries a role class (`magazine-text--title`,
+  `--deck`, `--caption`, `--body`) so the four project fonts reach it.
+- CJK headings use looser leading than Latin; test both locales.
+- English copy is written as product copy, not implementation notes. Chinese is
+  written as Chinese, not a literal translation.
 
-- Standard actions sit in equal-width button grids: two or three columns.
-- Long actions span the full row instead of truncating or shrinking neighbours.
-- **Micro actions inside page chips and thumbnail corners use icons only**, with
-  `aria-label` and `title` carrying the wording: paper colour, duplicate, move
-  up, move down, delete, retry mirror. Icons keep the 24px tier and never widen
-  the chip or cover the photo.
-- Only decorative illustrations inside layout previews may use SVG. They are not
-  controls and must not be interactive.
-- **Every destructive action is a trash icon** with `aria-label` and `title`,
-  including account/admin row actions; it always goes through the shared
-  delete-confirmation dialog. Text buttons named "Delete" are not allowed.
+## 4. Buttons and actions
 
-## 4. Buttons and icon buttons
+- Shared material: warm gradient, 1px inset highlight, soft shadow, 4px radius.
+- Primary: dark ink material. Ghost: warm translucent. Danger: danger glyph/tone.
+- No `translateY` lift on hover; press moves 1px down.
+- Text buttons keep readable labels; icon-only actions require `aria-label` and
+  `title`.
+- Every destructive row action uses `DeleteIconButton` and the shared confirm
+  dialog.
+- No one-off button heights. Status/tab/toolbar buttons compose existing sizes.
 
-- Buttons and icon buttons share the tier height and the same material: a warm
-  gradient, a 1px inset white top highlight, a soft outer shadow, and a 7px
-  radius. Icon-only micro actions inherit the same material at 24px.
-- Hover changes border, background, colour, or shadow only. **No `translateY`
-  lift.**
-- Panel actions keep a readable text label. Micro icon actions carry `aria-label`
-  and `title` instead.
-- Primary actions use the dark filled material. Secondary actions use the warm
-  ghost material. Destructive actions use the danger tone only for the glyph.
+## 5. Selected states
 
-## 4b. Typography roles
+Selection is communicated by the check control, not by framing the photo.
 
-The project panel sets one font per role: title, deck and caption. The default
-role is a single “默认” entry (the designed display face); every other entry is
-a real font name. The Chinese UI lists only CJK-capable faces. Faces ship as
-subset WOFF2 files under `public/fonts` and load on demand:
+- Gallery tiles: the checkbox/check badge is the only selected marker. No ink
+  border, no inset white/black double ring, no dimming.
+- The tile must not change size when selected.
+- Keyboard focus uses the shared focus ring; it is separate from selection.
+- Row selection may use a quiet background + the row's own selection state, but
+  must not swallow the row's buttons.
 
-| Label | File |
-| --- | --- |
-| 思源宋体 | `NotoSerifSC-Regular.woff2` |
-| 思源黑体 | `NotoSansSC-Regular.woff2` |
-| 霞鹜文楷 | `LXGWWenKai-Regular.woff2` |
-| 马善政毛笔楷书 | `MaShanZheng-Regular.woff2` |
-| 志莽行书 | `ZhiMangXing-Regular.woff2` |
-| 龙藏体 | `LongCang-Regular.woff2` |
-| 得意黑 | `SmileySans-Regular.woff2` |
+## 6. Panels, headers and forms
 
-Role rules must reach descendants (`.magazine-text--title *`), because the page
-renders text inside a nested editable span.
+- `Panel`: one header row (eyebrow/title/meta/actions/collapse), one body grid.
+- Panel header controls share a 24px optical row; the collapse chevron is last.
+- `PanelCollapseToggle` is the only collapse control; sections that must not
+  fold the parent use `EditorSubsection` (`<details>`).
+- `Field`: label above input; one height token; focus ring from `--field-border`.
+- `FormGrid`: two columns at ≥640px, one below. Settings pages stay single
+  column.
+- Empty states use one structure: eyebrow + title + optional body + actions.
+- Dialogs share one backdrop/panel/focus recipe; no thick inner rings.
 
-## 5. Dialogs and popovers
+## 7. Page shells and layout system
 
-- Use `.surface-popover` material for dialogs: one thin outer border, a 1px
-  inset white top highlight, a blur backdrop, and a soft large shadow.
-- Do **not** add thick multi-pixel inner rings or dark frames around a dialog.
-- The delete-confirmation dialog is the reference material. The AI layout dialog
-  must match it rather than inventing a heavier shell.
-- Floating popovers render through a portal on `document.body` with fixed,
-  viewport-clamped coordinates, following the Radix popover anatomy
-  (trigger → portal → content). They must not be absolute children of a
-  scrolling strip: the strip's overflow clips them and later panels cover them.
-  Close them on outside pointer-down, Escape, scroll and resize.
-- The AI dialog sizes to its content; it should not reserve a fixed tall body
-  when there are only a few photos.
+Approved widths/decisions (2026-11-26):
 
-## 6. Selected states
+| Surface | Max width | Notes |
+| --- | --- | --- |
+| Marketing / auth / legal | 1240px | `--site-width` |
+| Account / admin console | **1440px** | Approved; console header is compact |
+| Editor | 1880px | Full-height tool; canvas first |
+| Reader | viewport | Immersive, chrome never covers the paper |
 
-A selected card or photo must be readable without hunting for a tiny check:
+Shared rules:
 
-- A small high-contrast check for confirmation.
-- The selection frame sits on the tile's own border (darker border plus one
-  inset line). Never draw a frame floating inside the image or outside the
-  tile, and never dim the photo.
-- The selection must not change the tile's size, so horizontal and vertical
-  grid gaps stay identical.
+- Horizontal gutter: `--page-gutter: clamp(16px, 3vw, 32px)`.
+- Section rhythm: `--section-gap: clamp(48px, 6vw, 80px)`.
+- Grid gap: `--grid-gap: clamp(14px, 1.4vw, 20px)`.
+- One compact `PageHeader` for account/admin: eyebrow, title, optional lede,
+  meta and actions. No large hero on console pages.
+- Console grids:
+  - overview: `minmax(0, 1.7fr) minmax(320px, 1fr)`
+  - list + inspector: `minmax(320px, .9fr) minmax(420px, 1.4fr)`
+  - settings: single column
+- Editor:
+  - desktop: page strip / library / canvas / inspector / operations
+  - narrow: canvas first; library and operations below, or as a drawer and a
+    bottom sheet
+  - do not force three columns below 1180px
+- Homepage sections share gutter, max width and `--section-gap`.
 
-### 6d. Reader book surface
+### Layout roadmap
 
-The shared reader (turn.js) represents paper on a table, so its depth must
-follow the paper, not the viewport:
+1. Tokens + shells + compact PageHeader (marketing/auth/legal/account/admin).
+2. Console grids, list rows and settings.
+3. Editor panes, panel headers, gallery/card tiers, narrow-screen drawers.
+4. Homepage section rhythm and shared grids.
+5. Forms, dialogs, empty states, tags/chips.
+6. Responsive/a11y pass (44px targets, keyboard rows, container queries).
+7. Visual regression + performance verification.
 
-- A **non-rotating contact shadow** sits behind the current paper block: two
-  soft layers plus a 1px edge. It is a pseudo-element of the book, never a child
-  that turn.js could mistake for a page.
-- **Spread:** the shadow spans both halves. **Cover:** only the right half.
-  **Last page:** only the left half. Never shadow the empty half of a spread.
-- **During a turn or drag:** the shadow spans the full spread until the turn
-  lands, because the book block is still under the moving leaf. The leaf's own
-  fold shading comes from turn.js; the body shadow never rotates with it.
-- The shadow fades in only after turn.js reports its pages ready, so it never
-  appears around an empty box.
-- Do not add page-level `box-shadow`/`drop-shadow`: turn.js clips and transforms
-  page wrappers, and per-leaf shadows double the fold gradients.
+Each phase: geometry tests at 1440/1024/768/390, one primary action per view, no
+horizontal overflow, full Playwright green.
 
-## 6b. Panel collapse and sub-sections
+## 8. Copy voice
 
-Every `.editor-panel` on the site (editor sidebars, editor canvas panels,
-admin console, account console) is collapsible:
+- Say what the user gets, not how the system works.
+- No internal terms such as "governance language" or "one-shot canvas" on
+  customer pages.
+- Admin copy may be operational but still names the object and action.
+- Mobile reader top bar credits the owner: "e2euser 分享的作品集" /
+  "Shared by e2euser" (username only, never email).
 
-- `PanelCollapseToggle` renders a 24px skeuomorphic chevron as the last child
-  of the header row (the label's `margin-right: auto` pushes the tag and
-  chevron to the right). Headers need no reserved right padding.
-- Toggling adds `is-collapsed` to the section; CSS hides every direct child
-  except the header. The delegated behavior lives in `ui/panelCollapse.ts`,
-  and the collapsed state is remembered per route in localStorage.
-- Never build a one-off collapse control inside a panel; reuse this one.
+## 9. Verification
 
-A panel that contains two editing regions (for example Page content = text +
-image frame) uses `EditorSubsection` — a native `<details>` styled by
-`.editor-subsection` — for the secondary region. The native element cannot
-trigger the delegated panel collapse, so folding "Image frame", "Image corners"
-or "Folio details" keeps the parent panel open.
+Before shipping UI:
 
-## 6c. Copy voice
-
-- Write what the user gets, not how the system is built. No "governance
-  language", "one-shot canvas", "the product falls back to…" on customer pages.
-- Chinese is written as Chinese, not translated English: short clauses, real
-  verbs, no stacked 的/进行/一个. Avoid "有呼吸感"、"所见即所得" as filler.
-- Admin copy may be operational, but still names the object and the action.
-
-## 7. Typography and colour
-
-- All site chrome uses the UI sans-serif stack.
-- The display face is reserved for the rendered folio page only.
-- Paper, ink, muted, and border colours come from the existing CSS variables.
-- Every field outline uses `--field-border` / `--field-border-color`
-  (`1px solid rgba(17, 17, 17, 0.16)`). Do not paste the rgba literal into a
-  rule: it drifts, and a token that references itself silently invalidates the
-  whole `var()` chain.
-- Do not introduce new one-off greys when an existing token is close.
-
-## 8. Verification
-
-Before shipping a UI change:
-
-1. Run `npm run typecheck`, `npm run build`, `npm run validate:mvp`, and
+1. `npm run typecheck`, `npm run build`, `npm run validate:mvp`,
    `npx playwright test`.
-2. Check 360 / 390 / 768 / 1024 widths for horizontal overflow.
-3. Confirm newly added controls resolve to 24 / 36 / 40px, not a new height.
-   `tests/e2e/editor-ux.spec.ts` pins the sidebar tiers, chevron tier and the
-   single field outline; `validate:mvp` rejects new hardcoded field borders.
-4. Confirm no hover rule contains `translateY`.
+2. Check 360 / 390 / 768 / 1024 / 1440 widths for overflow.
+3. Confirm controls resolve to 24 / 36 / 40 / 44px tiers.
+4. Confirm no hover rule adds a lift or a white border.
+5. Confirm gallery selection adds no extra frame.
+6. For reader changes, run `tests/e2e/reader-turn.spec.ts` and read
+   `reader-and-mobile.md`.
