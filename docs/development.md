@@ -74,6 +74,27 @@ Do not serve `dist/` from the host copy; the image builds its own client bundle.
 
 See `product.md` for UnAlbum endpoints and AI configuration.
 
+## AI providers
+
+FinalFolio calls any OpenAI-compatible `POST {baseUrl}/chat/completions` with
+streaming SSE. Every arrangement sends 256px JPEG thumbnails as `image_url`
+parts, so the model must accept image input.
+
+| Provider | Base URL | Model | Notes |
+| --- | --- | --- | --- |
+| OpenCode Console (pay as you go) | `https://opencode.ai/inference/openai/v1` | `deepseek-v4.1-flash` | No extra headers. Uses Console credit. |
+| OpenCode Go (subscription) | `https://opencode.ai/inference/go/openai/v1` | `deepseek-v4.1-flash` | Requires `x-opencode-session`; the server adds it for `opencode.ai/inference/go` URLs. |
+| Command Code | `https://api.commandcode.ai/provider/v1` | `deepseek/deepseek-v4.1-flash` | Off-peak/peak pricing; standard bearer auth. |
+
+- Use the full base URL shown above. The app appends `/chat/completions`.
+- A Go API key is not accepted on the Console endpoint (`unsupported_model`);
+  a Console key is not needed on the Go endpoint, but the session header is.
+- The admin **Test connection** only sends text. Confirm vision with a real
+  multi-photo arrangement.
+- `data/ai/provider-stats.json` is telemetry, not configuration. It is written
+  through a per-file queue with unique temp files; a corrupt file is ignored
+  and replaced on the next write.
+
 ## Performance guardrails
 
 - `jszip` and `html-to-image` are dynamic imports inside the export functions;

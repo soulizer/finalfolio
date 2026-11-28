@@ -36,6 +36,46 @@ const AI_PAGE_CAPACITY = {
   triptych: 3,
 };
 
+// Paper colours used by the client. A model that ignores the enum and emits a
+// hex value is mapped to the nearest allowed paper instead of failing the
+// whole generation.
+const AI_THEME_PAPER = {
+  'warm-beige': '#faf6ee',
+  'butter-cream': '#fbf6e8',
+  'pale-blue': '#edf4fb',
+  'sea-glass': '#eef7f3',
+  'pure-white': '#ffffff',
+  'light-gray': '#f1f2f4',
+  sandstone: '#f7efe7',
+  'sage-mist': '#eef2ea',
+  'dusty-rose': '#f7efed',
+  'pearl-blush': '#faf2f4',
+};
+
+function normalizePlanTheme(value) {
+  const theme = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  if (!theme || AI_PAGE_THEMES.has(theme)) {
+    return theme || 'warm-beige';
+  }
+  const match = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(theme);
+  if (!match) {
+    return 'warm-beige';
+  }
+  const hex = match[1].length === 3 ? match[1].split('').map((c) => c + c).join('') : match[1];
+  const target = [0, 2, 4].map((offset) => parseInt(hex.slice(offset, offset + 2), 16));
+  let best = 'warm-beige';
+  let bestDistance = Infinity;
+  for (const [id, paper] of Object.entries(AI_THEME_PAPER)) {
+    const candidate = [1, 3, 5].map((offset) => parseInt(paper.slice(offset, offset + 2), 16));
+    const distance = candidate.reduce((sum, channel, index) => sum + (channel - target[index]) ** 2, 0);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = id;
+    }
+  }
+  return best;
+}
+
 const AI_PAGE_THEMES = new Set([
   'warm-beige', 'butter-cream', 'pale-blue', 'sea-glass', 'pure-white',
   'light-gray', 'sandstone', 'sage-mist', 'dusty-rose', 'pearl-blush',
@@ -344,13 +384,7 @@ function validatePlanBundle(parsed, imageCount = 0) {
           `第 ${planIndex + 1} 套方案第 ${pageIndex + 1} 页缺少具体标题。每一页都必须写贴合该页内容的 title，不能为空或复用模板默认句。`,
         );
       }
-      const theme = typeof page?.theme === 'string' ? page.theme.toLowerCase() : '';
-      if (theme && !AI_PAGE_THEMES.has(theme)) {
-        throw new PlanValidationError(
-          `Plan ${planIndex + 1} used an unknown page colour: ${theme.slice(0, 20)}.`,
-          `第 ${planIndex + 1} 套方案第 ${pageIndex + 1} 页的 theme「${theme.slice(0, 20)}」不在允许的纸色列表内。`,
-        );
-      }
+      page.theme = normalizePlanTheme(page?.theme);
       if (!Array.isArray(page.assetIndexes)) {
         throw new PlanValidationError(
           `Plan ${planIndex + 1} had a page without photo references.`,
@@ -415,11 +449,32 @@ async function readJsonFile(filename, fallback) {
   }
 }
 
-async function writeJsonFile(filename, value) {
-  const tempFile = `${filename}.tmp`;
-  await fs.writeFile(tempFile, JSON.stringify(value, null, 2), { mode: 0o600 });
-  await fs.chmod(tempFile, 0o600);
-  await fs.rename(tempFile, filename);
+// One queue per file. Concurrent provider-stat updates used to share a single
+// `${file}.tmp` path, so two writers could clobber each other and leave the
+// JSON with a duplicated closing brace.
+const jsonWriteQueues = new Map();
+
+async function writeJsonFileNow(filename, value) {
+  const tempFile = `${filename}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`;
+  try {
+    await fs.writeFile(tempFile, JSON.stringify(value, null, 2), { mode: 0o600 });
+    await fs.chmod(tempFile, 0o600);
+    await fs.rename(tempFile, filename);
+  } finally {
+    await fs.rm(tempFile, { force: true }).catch(() => {});
+  }
+}
+
+function writeJsonFile(filename, value) {
+  const previous = jsonWriteQueues.get(filename) ?? Promise.resolve();
+  const next = previous.catch(() => {}).then(() => writeJsonFileNow(filename, value));
+  jsonWriteQueues.set(filename, next);
+  void next.finally(() => {
+    if (jsonWriteQueues.get(filename) === next) {
+      jsonWriteQueues.delete(filename);
+    }
+  }).catch(() => {});
+  return next;
 }
 
 function currentDay() {
@@ -459,8 +514,14 @@ function providerScore(stats) {
 
 async function readProviderStats() {
   await ensureAiDirectory();
-  const parsed = await readJsonFile(providerStatsFile, { providers: {} });
-  return parsed && typeof parsed === 'object' ? parsed : { providers: {} };
+  try {
+    const parsed = await readJsonFile(providerStatsFile, { providers: {} });
+    return parsed && typeof parsed === 'object' ? parsed : { providers: {} };
+  } catch {
+    // Corrupt telemetry must never disable AI arrangement. Start fresh; the
+    // next write replaces the file.
+    return { providers: {} };
+  }
 }
 
 async function recordProviderStat(providerId, { latencyMs = null, ok, corrected = false }) {
@@ -664,7 +725,30 @@ async function selectProviders(config) {
   return url.toString();
 }
 
-async function callProvider(provider, messages, { timeoutMs = AI_TOTAL_BUDGET_MS, maxTokens = 8000, signal: externalSignal } = {}) {
+function isOpenCodeGoProvider(provider) {
+  try {
+    const url = new URL(provider.baseUrl);
+    return url.hostname === 'opencode.ai' && url.pathname.includes('/inference/go');
+  } catch {
+    return false;
+  }
+}
+
+function buildProviderHeaders(provider, sessionId) {
+  const headers = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${provider.apiKey}`,
+  };
+  // OpenCode Go routes each conversation with this header and rejects
+  // requests without it. Console pay-as-you-go keys do not need it.
+  if (isOpenCodeGoProvider(provider)) {
+    headers['User-Agent'] = 'finalfolio/1.0';
+    headers['x-opencode-session'] = sessionId;
+  }
+  return headers;
+}
+
+async function callProvider(provider, messages, { timeoutMs = AI_TOTAL_BUDGET_MS, maxTokens = 8000, signal: externalSignal, sessionId = `finalfolio-${crypto.randomBytes(8).toString('hex')}` } = {}) {
   const controller = new AbortController();
   const startedAt = Date.now();
   const budgetMs = Math.max(15_000, timeoutMs);
@@ -697,10 +781,7 @@ async function callProvider(provider, messages, { timeoutMs = AI_TOTAL_BUDGET_MS
   try {
     const response = await fetch(buildChatCompletionsUrl(provider.baseUrl), {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${provider.apiKey}`,
-      },
+      headers: buildProviderHeaders(provider, sessionId),
       body: JSON.stringify({
         model: provider.model,
         messages,
@@ -726,7 +807,7 @@ async function callProvider(provider, messages, { timeoutMs = AI_TOTAL_BUDGET_MS
       if (!content.trim()) {
         throw new Error('The AI provider returned an empty message.');
       }
-      return { content, latencyMs: Date.now() - startedAt };
+      return { content, latencyMs: Date.now() - startedAt, sessionId };
     }
     if (!response.body) {
       throw new Error('The AI provider returned an empty response.');
@@ -792,7 +873,7 @@ async function callProvider(provider, messages, { timeoutMs = AI_TOTAL_BUDGET_MS
           : 'The AI provider returned an empty message.',
       );
     }
-    return { content, latencyMs: Date.now() - startedAt };
+    return { content, latencyMs: Date.now() - startedAt, sessionId };
   } catch (error) {
     if (error?.name === 'AbortError') {
       if (abortCause === 'caller') {
@@ -866,7 +947,9 @@ function recoverChatContent(raw) {
           { role: 'system', content: 'You are a connection test. Reply with exactly: OK' },
           { role: 'user', content: 'Reply with OK.' },
         ],
-        { timeoutMs: Math.min(config.requestTimeoutMs, 45_000), maxTokens: 10 },
+        // Reasoning models spend the first tokens on hidden reasoning, so a
+        // tiny budget returns an empty message even on a healthy connection.
+        { timeoutMs: Math.min(config.requestTimeoutMs, 45_000), maxTokens: 512 },
       );
       await recordProviderStat(draft.id, { latencyMs: result.latencyMs, ok: true });
       return {
@@ -1017,7 +1100,12 @@ function recoverChatContent(raw) {
                 'theme 只能使用给定纸色，assetIndexes 必须是数组。只输出 JSON 本身，不要 Markdown，不要解释。',
             },
           ],
-          { timeoutMs: remainingBudgetMs(), maxTokens: 32_000, signal: providerController.signal },
+          {
+            timeoutMs: remainingBudgetMs(),
+            maxTokens: 32_000,
+            signal: providerController.signal,
+            sessionId: result.sessionId,
+          },
         );
         parsed = extractJson(fixed.content);
         const stillInvalid = validatePlanBundle(parsed, normalizedImages.length);
