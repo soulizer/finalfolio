@@ -83,11 +83,25 @@ test('gallery selection works without a mode toggle', async ({ page }) => {
   await tiles.first().locator('.asset-tile__main').click();
   await expect(page.locator('.asset-batch-bar')).toHaveCount(0);
 
+  const beforeSelection = await page.evaluate(() => {
+    const gallery = document.querySelector('.asset-rail--gallery')!.getBoundingClientRect();
+    return { galleryTop: gallery.top };
+  });
+
   // The pick control appears on hover and starts the selection.
   await tiles.first().hover();
   await tiles.first().getByRole('button', { name: 'Select for bulk actions' }).click();
   await expect(page.locator('.asset-batch-bar')).toContainText('1 selected');
   await expect(tiles.first()).toHaveClass(/is-picked/);
+
+  // The floating bar must not move the gallery or add a tall row.
+  const afterSelection = await page.evaluate(() => {
+    const bar = document.querySelector('.asset-batch-bar')!.getBoundingClientRect();
+    const gallery = document.querySelector('.asset-rail--gallery')!.getBoundingClientRect();
+    return { barHeight: bar.height, galleryTop: gallery.top };
+  });
+  expect(Math.abs(afterSelection.galleryTop - beforeSelection.galleryTop)).toBeLessThan(1);
+  expect(afterSelection.barHeight).toBeLessThanOrEqual(52);
 
   // Selection is the check control only; no extra ink border or inset ring.
   const pickedStyle = await tiles.first().evaluate((element) => {

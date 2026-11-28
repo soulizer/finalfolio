@@ -1437,6 +1437,7 @@ const zh: Record<string, string> = {
   // ── 阅读页 ────────────────────────────────────────────
   'Shared folio': '分享的作品集',
   'Shared by %s': '%s 分享的作品集',
+  'Selected photos': '已选照片',
   'Read only': '只读',
   'Back to FinalFolio': '返回 FinalFolio',
   'Make my folio': '我也要做一本',

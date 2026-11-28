@@ -74,6 +74,10 @@ Selection is communicated by the check control, not by framing the photo.
 - Gallery tiles: the checkbox/check badge is the only selected marker. No ink
   border, no inset white/black double ring, no dimming.
 - The tile must not change size when selected.
+- Bulk actions replace the library's upload/import row for the duration of the
+  selection. The row keeps the same height, so the grid never moves; the count
+  reads `selected/total`, and search plus the unused-clear action stay in their
+  own utility row.
 - Keyboard focus uses the shared focus ring; it is separate from selection.
 - Row selection may use a quiet background + the row's own selection state, but
   must not swallow the row's buttons.

@@ -1865,16 +1865,46 @@ a:focus-visible {
   padding-right: 4px;
 }
 
+/* The library utility slot shows either search or selection actions. Both are
+   one 40px row, so picking a photo never adds a row or moves the grid. */
 .asset-batch-bar {
   display: flex;
   align-items: center;
+  gap: 4px;
+  width: max-content;
+  max-width: 100%;
+  min-height: var(--control-height-sm);
+  margin: 0;
+  flex-wrap: nowrap;
+}
+
+.asset-utility-row {
+  display: flex;
+  align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
-  margin-bottom: 8px;
+  min-width: 0;
+}
+
+.asset-utility-row .asset-search-field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.asset-utility-row__clear {
+  flex: 0 0 auto;
 }
 
 .asset-batch-bar .panel-tag {
-  margin-left: auto;
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asset-batch-bar .button {
+  flex: none;
 }
 
 .asset-batch-bar__delete {
@@ -11060,10 +11090,6 @@ html[lang='zh-CN'] body {
 .photo-actions .upload-button {
   width: 100%;
   height: var(--control-height-sm);
-}
-
-.photo-actions__clear {
-  grid-column: 1 / -1;
 }
 
 

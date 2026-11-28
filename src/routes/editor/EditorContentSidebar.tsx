@@ -18,6 +18,7 @@ import {
 import type { Asset, CropSettings, PageData } from '../../editor/types';
 import type { UnalbumPhoto } from '../../editor/api';
 import type { UploadState } from './uploadState';
+import { DeleteIconButton } from '../../ui/DeleteIconButton';
 import { PanelCollapseToggle } from '../../ui/PanelCollapseToggle';
 import { PhotoThumb } from '../../ui/PhotoThumb';
 import { EditorSubsection } from '../../ui/EditorSubsection';
@@ -234,6 +235,43 @@ export function EditorContentSidebar({
           </span>
                 <PanelCollapseToggle />
         </div>
+        {libraryAssets.length && pickedIds.size ? (
+          <div className="asset-batch-bar" role="group" aria-label={t('Selected photos')}>
+            <span className="panel-tag" aria-hidden="true">{pickedIds.size}/{libraryAssets.length}</span>
+            <span className="sr-only" aria-live="polite">
+              {t('%s selected').replace('%s', String(pickedIds.size))}
+            </span>
+            <button
+              type="button"
+              className="button button--ghost button--small"
+              onClick={() => setPickedIds(new Set(visibleAssets.map((asset) => asset.id)))}
+            >
+              {t('Select all')}
+            </button>
+            <button
+              type="button"
+              className="button button--ghost button--small"
+              onClick={() => {
+                setPickedIds(new Set());
+                pickAnchorRef.current = null;
+              }}
+            >
+              {t('Clear')}
+            </button>
+            <DeleteIconButton
+              className="asset-batch-bar__delete"
+              label={t('Delete selected photos')}
+              disabled={assetMutationBusy}
+              onClick={() => {
+                const selectedAssets = libraryAssets.filter((asset) => pickedIds.has(asset.id));
+                void Promise.resolve(onDeleteAssets(selectedAssets)).then(() => {
+                  setPickedIds(new Set());
+                  pickAnchorRef.current = null;
+                });
+              }}
+            />
+          </div>
+        ) : (
         <div className="editor-panel__actions editor-panel__actions--tight photo-actions editor-button-grid editor-button-grid--two">
           <label className={`button button--primary button--small upload-button upload-button--compact ${uploadBusy ? 'is-busy' : ''}`.trim()}>
             {uploadProgressLabel}
@@ -265,18 +303,8 @@ export function EditorContentSidebar({
             {t('Add from URL')}
           </button>
 
-          {unusedAssetCount > 0 ? (
-            <button
-              type="button"
-              className="button button--ghost button--small photo-actions__clear"
-              disabled={assetMutationBusy || uploadBusy}
-              title={assetMutationBusy || uploadBusy ? t('Wait for the current library mutation to finish.') : undefined}
-              onClick={() => void removeUnusedAssetsFromIssue()}
-            >
-              {countLabel(unusedAssetCount, 'Clear 1 unused', 'Clear %s unused')}
-            </button>
-          ) : null}
         </div>
+        )}
         {importUrlOpen ? (
           <form
             className="import-url-form"
@@ -350,57 +378,26 @@ export function EditorContentSidebar({
             ) : null}
           </div>
         ) : null}
-        {libraryAssets.length > 6 ? (
-          <label className="field asset-search-field">
-            <span>{t('Search photos')}</span>
-            <input
-              type="search"
-              value={assetSearch}
-              placeholder={t('Search by file name')}
-              onChange={(event) => setAssetSearch(event.target.value)}
-            />
-          </label>
-        ) : null}
-        {libraryAssets.length && pickedIds.size ? (
-          <div className="asset-batch-bar" role="status" aria-live="polite">
-            <span className="panel-tag">
-              {t('%s selected').replace('%s', String(pickedIds.size))}
-            </span>
-            <button
-              type="button"
-              className="button button--ghost button--small"
-              onClick={() => setPickedIds(new Set(visibleAssets.map((asset) => asset.id)))}
-            >
-              {t('Select all')}
-            </button>
-            <button
-              type="button"
-              className="button button--ghost button--small"
-              onClick={() => {
-                setPickedIds(new Set());
-                pickAnchorRef.current = null;
-              }}
-            >
-              {t('Clear')}
-            </button>
-            <button
-              type="button"
-              className="button button--danger-ghost button--small asset-batch-bar__delete"
-              disabled={assetMutationBusy}
-              aria-label={t('Delete selected photos')}
-              title={t('Delete selected photos')}
-              onClick={() => {
-                const selectedAssets = libraryAssets.filter((asset) => pickedIds.has(asset.id));
-                void Promise.resolve(onDeleteAssets(selectedAssets)).then(() => {
-                  setPickedIds(new Set());
-                  pickAnchorRef.current = null;
-                });
-              }}
-            >
-              <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M2.5 4.5h11M6 4.5V3.2h4v1.3M4 4.5l.6 8.2h6.8l.6-8.2M6.6 7v3.4M9.4 7v3.4" />
-              </svg>
-            </button>
+        {libraryAssets.length ? (
+          <div className="asset-utility-row">
+            <label className="field asset-search-field">
+              <input
+                type="search"
+                aria-label={t('Search photos')}
+                value={assetSearch}
+                placeholder={t('Search by file name')}
+                onChange={(event) => setAssetSearch(event.target.value)}
+              />
+            </label>
+            {unusedAssetCount > 0 ? (
+              <DeleteIconButton
+                className="asset-utility-row__clear"
+                label={countLabel(unusedAssetCount, 'Clear 1 unused', 'Clear %s unused')}
+                title={countLabel(unusedAssetCount, 'Clear 1 unused', 'Clear %s unused')}
+                disabled={assetMutationBusy || uploadBusy}
+                onClick={() => void removeUnusedAssetsFromIssue()}
+              />
+            ) : null}
           </div>
         ) : null}
         <div className="asset-rail asset-rail--gallery">
@@ -565,7 +562,7 @@ export function EditorContentSidebar({
             </div>
           ) : null}
         </div>
-        {unalbumHasMore ? (
+        {unalbumHasMore && !pickedIds.size ? (
           <button
             type="button"
             className="button button--ghost button--small asset-rail__more"
