@@ -77,10 +77,6 @@ export function planPageCapacity(template: TemplateId) {
   return getPageSlotOrder({ template, customTemplate: null }).length;
 }
 
-function pageCapacity(page: AiPlanPage) {
-  return planPageCapacity(page.template);
-}
-
 /**
  * Every page must carry a title: the server rejects projects with empty page
  * titles, and a blank heading is a broken page for the reader. Providers
@@ -151,15 +147,9 @@ function ensureAllPhotosUsed(pages: AiPlanPage[], imageCount: number, baseTitle 
 
   const result = pages.map((page) => ({ ...page, assetIndexes: [...page.assetIndexes] }));
 
-  // 1) Fill frames that are still empty in existing pages.
-  for (const page of result) {
-    const capacity = pageCapacity(page);
-    while (page.assetIndexes.length < capacity && missing.length) {
-      page.assetIndexes.push(missing.shift() as number);
-    }
-  }
-
-  // 2) Append extra pages for whatever is left, largest capacity first.
+  // Never inject photos into a page the model already wrote copy for: the
+  // title/caption would then describe different images. Append dedicated
+  // filler pages instead, largest capacity first.
   const fillers: Array<{ template: TemplateId; capacity: number }> = [
     { template: 'grid', capacity: 4 },
     { template: 'triptych', capacity: 3 },

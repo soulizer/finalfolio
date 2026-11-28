@@ -174,3 +174,135 @@ Before shipping UI:
 5. Confirm gallery selection adds no extra frame.
 6. For reader changes, run `tests/e2e/reader-turn.spec.ts` and read
    `reader-and-mobile.md`.
+
+## 10. Action menus and editor UX roadmap
+
+### Goal
+
+Reduce visible clutter without hiding the actions people use most. Give images
+and page chips one predictable “More” menu, keep frequent actions one click
+away, and make every action reachable by pointer, keyboard and touch.
+
+### Shared ActionMenu primitive
+
+One component in `src/ui` used by image tiles, page chips and later other lists:
+
+- Trigger: 24px icon button (36px dense row, 44px touch) with `aria-haspopup="menu"`.
+- Content: portal to `document.body`, frosted popover material, viewport-clamped,
+  flipped above the trigger when there is no room below.
+- One menu open at a time; close on outside pointer-down, Escape, scroll, resize
+  and route change.
+- Keyboard: ArrowUp/Down/Home/End, Enter/Space, Escape; focus returns to trigger.
+- Destructive items use danger text and the shared confirmation dialog; do not
+  put a second red filled button inside the menu.
+- Mobile: if the trigger is in a narrow viewport, use the existing bottom-sheet
+  pattern instead of a tiny popover.
+- Items support icon + label + optional shortcut/description; disabled items
+  explain why through title/aria-description.
+
+### Image tile “More” menu
+
+The tile keeps:
+
+- click = assign to the current frame
+- drag = drag to a page frame
+- top-left checkbox = bulk selection
+- drag handle = swap with another frame on the same page
+
+Menu actions:
+
+| Action | Notes |
+| --- | --- |
+| Place in selected frame | Disabled until a page frame is selected |
+| Remove from current page | Only when this asset is placed on the selected page |
+| View / open original | Opens the original in a new tab |
+| Download | Downloads the original file |
+| Retry delivery | Only when mirroring failed |
+| Show usage | “Used on N pages” with a jump to the first use |
+| Delete from library | Destructive, shared confirmation; disabled while referenced |
+
+Keep the trash shortcut only if it remains visually distinct; otherwise move
+delete into the menu to avoid accidental clicks. Do not duplicate the same
+action in both places.
+
+### Page chip “More” menu
+
+Keep the page chip’s primary select/drag affordances and paper-colour swatch.
+Consolidate secondary actions into the menu:
+
+- Duplicate page
+- Move page up / down
+- Insert page before / after
+- Save page as template
+- Delete page (disabled when only one page remains)
+- Jump to page (number input or first/last shortcuts, for long folios)
+
+The page chip should keep one visible drag handle separate from the title, so
+dragging to reorder never fights clicking to select. Page chips auto-scroll into
+view when added, duplicated or reordered.
+
+### Context menu
+
+Right-click / long-press on an image tile or page chip opens the same ActionMenu
+at the pointer. This is a convenience layer only; the visible More button remains
+the discoverable path. Never rely on right-click alone.
+
+### Other UX opportunities, in priority order
+
+1. **Undo instead of confirmation for reversible actions**
+   Reordering, duplicating, moving a page or removing an image from the current
+   page should show a short “Undone” toast with Undo. Keep confirmation for
+   irreversible delete from the server/library.
+
+2. **Gallery filters that match the editing task**
+   Quick filters: All / Used in this folio / Unused / Delivery failed. Combine
+   with search; keep the bulk bar selection aware of hidden items (`+n`).
+
+3. **Image usage navigation**
+   From the image menu, show which pages use it and jump to the first one. This
+   reduces hunting through a 48-page folio.
+
+4. **Page insertion at the point of intent**
+   Add “Insert page before/after” to the page menu and a subtle `+` between page
+   chips; the current “Add page” at the end stays for quick growth.
+
+5. **Keyboard shortcuts with discoverability**
+   `Ctrl/Cmd+Z` / `Shift+Ctrl/Cmd+Z` already exist; add `Delete` on a selected
+   page chip (with confirm), `Ctrl/Cmd+D` duplicate page, `Escape` clears
+   gallery selection. Surface them in tooltips, not a separate cheat sheet.
+
+6. **Image replacement by drag**
+   Dropping a new image onto an occupied frame should replace it without
+   changing the frame geometry; dropping onto empty space moves/assigns. Make
+   the drop target outline consistent with the new swap handle.
+
+7. **Selection mode clarity**
+   The bulk bar should always show `selected/total`, `+n outside search`, and
+   what will be deleted. Never delete a hidden selection without saying so in
+   the confirmation body.
+
+8. **Mobile action sheet**
+   On touch, More opens a bottom sheet with 44px rows; the image library and page
+   strip should not show hover-only affordances as the only path.
+
+### Implementation order
+
+1. `ActionMenu` primitive + tests (open/close, keyboard, portal, mobile sheet).
+2. Image tile menu; move delete/retry/usage actions; keep click/drag/checkbox.
+3. Page chip menu; consolidate duplicate/move/insert/template/delete.
+4. Right-click/long-press wiring, sharing the same menu data.
+5. Undo toast for reversible actions.
+6. Gallery quick filters and usage navigation.
+7. Mobile bottom-sheet variant and final a11y pass.
+
+### Acceptance checks
+
+- Opening a menu never moves the gallery or page strip.
+- Exactly one menu can be open; Escape/outside click/scroll closes it.
+- Every menu action is keyboard reachable and returns focus to its trigger.
+- Destructive actions still use the shared confirmation; disabled actions have
+  a reason.
+- Image click/drag/checkbox/swap behaviour remains unchanged.
+- Page drag reorder remains unchanged; page actions work for long folios.
+- Full Playwright green; new tests for menu state, image actions, page actions
+  and mobile sheet.

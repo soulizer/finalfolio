@@ -25,6 +25,17 @@ const AI_SLOW_PROVIDER_HEDGE_MS = 100_000;
 // Hard ceiling for one whole generation (client polls for 5 minutes).
 const AI_TOTAL_BUDGET_MS = 280_000;
 const AI_PAGE_TEMPLATES = new Set(['cover', 'essay', 'folio', 'grid', 'diptych', 'panorama', 'mosaic', 'triptych']);
+const AI_PAGE_CAPACITY = {
+  cover: 1,
+  essay: 1,
+  folio: 1,
+  grid: 4,
+  diptych: 2,
+  panorama: 2,
+  mosaic: 3,
+  triptych: 3,
+};
+
 const AI_PAGE_THEMES = new Set([
   'warm-beige', 'butter-cream', 'pale-blue', 'sea-glass', 'pure-white',
   'light-gray', 'sandstone', 'sage-mist', 'dusty-rose', 'pearl-blush',
@@ -301,7 +312,7 @@ function extractJson(text) {
  * Returns null when valid, otherwise { reason, detail } where `reason` is the
  * user-facing (localizable) English text and `detail` is what the model sees.
  */
-function validatePlanBundle(parsed) {
+function validatePlanBundle(parsed, imageCount = 0) {
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
     return { reason: 'The AI provider did not return valid JSON.', detail: '回复不是 JSON 对象。' };
   }
@@ -346,7 +357,35 @@ function validatePlanBundle(parsed) {
           `第 ${planIndex + 1} 套方案第 ${pageIndex + 1} 页缺少 assetIndexes 数组。`,
         );
       }
+      const expectedCapacity = AI_PAGE_CAPACITY[template];
+      if (page.assetIndexes.length !== expectedCapacity) {
+        throw new PlanValidationError(
+          'The AI plan placed the wrong number of photos on a page.',
+          `第 ${planIndex + 1} 套方案第 ${pageIndex + 1} 页是 ${template}，必须正好放 ${expectedCapacity} 张照片，现在放了 ${page.assetIndexes.length} 张。`,
+        );
+      }
     });
+
+    if (Number.isFinite(imageCount) && imageCount > 0) {
+      const used = new Set();
+      pages.forEach((page) => {
+        if (Array.isArray(page?.assetIndexes)) {
+          page.assetIndexes.forEach((index) => {
+            if (Number.isInteger(index)) {
+              used.add(index);
+            }
+          });
+        }
+      });
+      for (let index = 0; index < imageCount; index += 1) {
+        if (!used.has(index)) {
+          throw new PlanValidationError(
+            'The AI plan did not use every selected photo.',
+            `第 ${planIndex + 1} 套方案没有使用第 ${index} 张照片。每一张选中照片都必须至少出现一次；请重新分配 assetIndexes 并确保文字描述对应的照片。`,
+          );
+        }
+      }
+    }
   });
   } catch (error) {
     if (error instanceof PlanValidationError) {
@@ -883,40 +922,41 @@ function recoverChatContent(raw) {
     }
 
     const userPrompt = sanitizeText(prompt || config.prompt, 'AI prompt', 12000);
-    const imageList = normalizedImages
-      .map((image) => {
-        const orientation =
-          image.width && image.height
-            ? image.width > image.height * 1.15
-              ? '横向'
-              : image.height > image.width * 1.15
-                ? '竖向'
-                : '近方形'
-            : '';
-        const dimensions =
-          image.width && image.height ? ` (${image.width}×${image.height}${orientation ? `，${orientation}` : ''})` : '';
-        const parts = [`${image.index}. ${image.name}${dimensions} — 附缩略图`];
-        if (image.analysis?.description) {
-          parts.push(`参考分析（可能不准确，必须以缩略图为准）：${image.analysis.description}`);
-        }
-        if (image.analysis?.tags.length) {
-          parts.push(`参考标签（可能不准确）：${image.analysis.tags.join('、')}`);
-        }
-        return parts.join('；');
-      })
-      .join('\n');
-    const attachedImages = normalizedImages;
-    const listIntro = `请逐张查看以下 ${normalizedImages.length} 张照片的缩略图，再设计画册。缩略图是唯一视觉事实来源；清单里的既有分析可能不准确或来自别的照片，只能作为辅助，不能直接照抄其中的物种、人物或物体名称。`;
+    const labeledImages = normalizedImages.map((image) => {
+      const orientation =
+        image.width && image.height
+          ? image.width > image.height * 1.15
+            ? '横向'
+            : image.height > image.width * 1.15
+              ? '竖向'
+              : '近方形'
+          : ''
+      const dimensions =
+        image.width && image.height ? `｜${image.width}×${image.height}${orientation ? `｜${orientation}` : ''}` : '';
+      const analysisParts = [];
+      if (image.analysis?.description) {
+        analysisParts.push(`参考描述（可能不准确，以缩略图为准）：${image.analysis.description}`);
+      }
+      if (image.analysis?.tags.length) {
+        analysisParts.push(`参考标签（可能不准确）：${image.analysis.tags.join('、')}`);
+      }
+      const label = `图片 ${image.index}｜${image.name}${dimensions}${analysisParts.length ? `｜${analysisParts.join('；')}` : ''}`;
+      return {
+        label,
+        dataUrl: image.dataUrl,
+      };
+    });
+    const listIntro = `请逐张查看以下 ${normalizedImages.length} 张照片。标签与图片交替出现，标签中的编号就是 assetIndexes 使用的编号。缩略图是唯一视觉事实来源；既有分析可能不准确或来自别的照片，只能参考，不能直接照抄其中的物种、人物或物体名称。`;
     const messages = [
       { role: 'system', content: `${userPrompt}\n\n${AI_LAYOUT_GUIDE}` },
       {
         role: 'user',
         content: [
-          { type: 'text', text: `${listIntro}\n\n图片清单：\n${imageList}` },
-          ...attachedImages.map((image) => ({
-            type: 'image_url',
-            image_url: { url: image.dataUrl },
-          })),
+          { type: 'text', text: listIntro },
+          ...labeledImages.flatMap((image) => [
+            { type: 'text', text: image.label },
+            { type: 'image_url', image_url: { url: image.dataUrl } },
+          ]),
         ],
       },
     ];
@@ -959,7 +999,7 @@ function recoverChatContent(raw) {
         };
       }
       if (!invalid) {
-        invalid = validatePlanBundle(parsed);
+        invalid = validatePlanBundle(parsed, normalizedImages.length);
       }
       let corrected = false;
       if (invalid) {
@@ -980,7 +1020,7 @@ function recoverChatContent(raw) {
           { timeoutMs: remainingBudgetMs(), maxTokens: 32_000, signal: providerController.signal },
         );
         parsed = extractJson(fixed.content);
-        const stillInvalid = validatePlanBundle(parsed);
+        const stillInvalid = validatePlanBundle(parsed, normalizedImages.length);
         if (stillInvalid) {
           throw new Error(stillInvalid.reason);
         }

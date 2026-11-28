@@ -922,6 +922,30 @@ export function EditorPage() {
     [updateSelectedPage],
   );
 
+  const handleSwapPageSlots = useCallback(
+    (sourceSlot: string, targetSlot: string) => {
+      if (sourceSlot === targetSlot) {
+        return;
+      }
+      updateSelectedPage((current) => {
+        const sourceAssetId = current.slots[sourceSlot];
+        if (!sourceAssetId) {
+          return current;
+        }
+        return {
+          ...current,
+          slots: {
+            ...current.slots,
+            [sourceSlot]: current.slots[targetSlot] ?? null,
+            [targetSlot]: sourceAssetId,
+          },
+        };
+      });
+      setSelectedSlot(targetSlot);
+    },
+    [setSelectedSlot, updateSelectedPage],
+  );
+
   useEffect(() => {
     if (!colorPickerPageId) {
       return undefined;
@@ -2018,6 +2042,7 @@ export function EditorPage() {
                 interactive
                 onSelectSlot={setSelectedSlot}
                 onAssignDroppedAsset={assignAsset}
+                onSwapSlots={handleSwapPageSlots}
                 onUpdateCrop={updateSlotCrop}
                 onCropMetricsChange={handleCropMetricsChange}
               />

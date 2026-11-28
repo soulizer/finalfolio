@@ -101,9 +101,15 @@ Entry points are marked **Experimental / 实验功能**.
 - Small JPEG thumbnails are always sent as visual ground truth. Existing
   analysis (for example UnAlbum imports) is auxiliary context only, because it
   can be incomplete or belong to a different photo.
+- Each image is labelled immediately before its thumbnail (index, name,
+  dimensions, orientation) so page copy can be tied to the right photo.
 - The prompt includes frame-shape guidance per template and requires each
   page's title/copy to describe only the photos assigned to that page, including
-  how multiple photos on one page relate.
+  how multiple photos on one page relate. A plan that misses any selected photo
+  is rejected and sent back for correction.
+- The client never injects leftover photos into pages the model already wrote
+  copy for; missing photos get dedicated filler pages instead, so existing copy
+  stays matched to its images.
 - Plans are validated against built-in templates/themes and clamped to the
   selected assets. Every page must carry a page-specific title; missing titles
   are sent back to the provider for one correction.

@@ -505,6 +505,8 @@ const zh: Record<string, string> = {
   'The AI provider returned a non-JSON response.': 'AI 接口返回了非 JSON 响应。',
   'The AI provider did not return valid JSON.': 'AI 接口没有返回有效 JSON。',
   'The AI provider returned an empty response.': 'AI 接口返回了空内容。',
+  'The AI plan did not use every selected photo.': 'AI 方案没有使用全部所选照片。',
+  'The AI plan placed the wrong number of photos on a page.': 'AI 方案在某一页放置的照片数量不正确。',
   'The AI response did not include any plans.': 'AI 返回的内容没有包含方案。',
   'The AI response did not contain any usable plans.': 'AI 返回的内容没有可用方案。',
   'The selected photo thumbnails are too large for one AI request.': '所选照片缩略图总大小超出单次 AI 请求限制。',

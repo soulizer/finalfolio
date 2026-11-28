@@ -1741,11 +1741,15 @@ try {
     assert.match(serverAi, /缩略图是唯一视觉事实来源/);
     assert.match(serverAi, /画框形状与选图/);
     assert.match(serverAi, /had no specific title/);
-    assert.match(serverAi, /参考分析（可能不准确，必须以缩略图为准）/);
+    assert.match(serverAi, /可能不准确/);
     assert.match(aiArrangeDialog, /dataUrl: photo\.thumbnail/);
     assert.match(aiArrangeDialog, /Even analyzed photos need their pixels/);
     assert.doesNotMatch(aiArrangeDialog, /thumbnail: '',/);
     assert.match(serverAi, /Every AI image must include a JPEG, PNG, or WebP thumbnail/);
+    assert.match(serverAi, /标签与图片交替出现/);
+    assert.match(serverAi, /AI_PAGE_CAPACITY/);
+    assert.match(serverAi, /did not use every selected photo/);
+    assert.match(aiPlans, /Never inject photos into a page the model already wrote copy for/);
     assert.match(aiPlans, /AI_FALLBACK_ROLE/);
     assert.doesNotMatch(serverAi, /Math\.min\(config\.requestTimeoutMs, 90_000\)/);
     assert.match(aiArrangeDialog, /streaming its answer and usually takes 1–3 minutes/);

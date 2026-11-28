@@ -34,6 +34,7 @@ interface MagazinePreviewProps {
   interactive?: boolean;
   onSelectSlot?: (slot: string) => void;
   onAssignDroppedAsset?: (slot: string, assetId: string) => void;
+  onSwapSlots?: (sourceSlot: string, targetSlot: string) => void;
   onUpdateCrop?: (slot: string, updater: (crop: CropSettings) => CropSettings) => void;
   onCropMetricsChange?: (slot: string, metrics: { maxOffsetX: number; maxOffsetY: number } | null) => void;
   onRequestUpload?: (slot: string) => void;
@@ -134,6 +135,7 @@ function AssetFrame({
   interactive,
   onSelectSlot,
   onAssignDroppedAsset,
+  onSwapSlots,
   onUpdateCrop,
   onCropMetricsChange,
   onRequestUpload,
@@ -153,6 +155,7 @@ function AssetFrame({
   interactive?: boolean;
   onSelectSlot?: (slot: string) => void;
   onAssignDroppedAsset?: (slot: string, assetId: string) => void;
+  onSwapSlots?: (sourceSlot: string, targetSlot: string) => void;
   onUpdateCrop?: (slot: string, updater: (crop: CropSettings) => CropSettings) => void;
   onCropMetricsChange?: (slot: string, metrics: { maxOffsetX: number; maxOffsetY: number } | null) => void;
   onRequestUpload?: (slot: string) => void;
@@ -166,8 +169,9 @@ function AssetFrame({
   const isSelected = selectedSlot === slot;
   const canAdjustCrop = Boolean(interactive && asset && isSelected && onUpdateCrop);
   const [isDragging, setIsDragging] = useState(false);
+  const [isDropTarget, setIsDropTarget] = useState(false);
   const [imageState, setImageState] = useState<'loading' | 'ready' | 'error'>('loading');
-  const frameClassName = `asset-frame ${className ?? ''} ${isSelected ? 'is-selected' : ''} ${canAdjustCrop ? 'is-draggable' : ''} ${isDragging ? 'is-dragging' : ''}`.trim();
+  const frameClassName = `asset-frame ${className ?? ''} ${isSelected ? 'is-selected' : ''} ${canAdjustCrop ? 'is-draggable' : ''} ${isDragging ? 'is-dragging' : ''} ${isDropTarget ? 'is-drop-target' : ''}`.trim();
   const slotHint = hintLabel ?? slot;
   const frameRef = useRef<HTMLButtonElement | HTMLDivElement | null>(null);
   const setFrameElement = (node: HTMLButtonElement | HTMLDivElement | null) => {
@@ -517,15 +521,60 @@ function AssetFrame({
       }
       onDragOver={(event) => {
         event.preventDefault();
+        if (event.dataTransfer.types.includes('text/finalfolio-page-slot')) {
+          event.dataTransfer.dropEffect = 'move';
+          setIsDropTarget(true);
+        }
       }}
+      onDragLeave={() => setIsDropTarget(false)}
       onDrop={(event) => {
         event.preventDefault();
+        setIsDropTarget(false);
+        const rawSlot = event.dataTransfer.getData('text/finalfolio-page-slot');
+        if (rawSlot) {
+          try {
+            const source = JSON.parse(rawSlot) as { pageId?: string; slot?: string };
+            if (source.pageId === page.id && source.slot && source.slot !== slot) {
+              onSwapSlots?.(source.slot, slot);
+            }
+          } catch {
+            // Ignore malformed payloads from other drag sources.
+          }
+          return;
+        }
         const droppedAssetId = event.dataTransfer.getData(t('text/finalfolio-asset'));
         if (droppedAssetId) {
           onAssignDroppedAsset?.(slot, droppedAssetId);
         }
       }}
     >
+      {interactive && asset ? (
+        <span
+          className="asset-frame__move-handle"
+          draggable
+          aria-label={t('Drag to swap this photo with another frame')}
+          title={t('Drag to swap this photo with another frame')}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
+          onDragStart={(event) => {
+            event.stopPropagation();
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData(
+              'text/finalfolio-page-slot',
+              JSON.stringify({ pageId: page.id, slot }),
+            );
+          }}
+        >
+          <svg viewBox="0 0 12 12" aria-hidden="true" fill="currentColor">
+            <circle cx="4" cy="3" r="1" />
+            <circle cx="8" cy="3" r="1" />
+            <circle cx="4" cy="6" r="1" />
+            <circle cx="8" cy="6" r="1" />
+            <circle cx="4" cy="9" r="1" />
+            <circle cx="8" cy="9" r="1" />
+          </svg>
+        </span>
+      ) : null}
       {content}
     </button>
   );
@@ -544,6 +593,7 @@ export function MagazinePreview({
   interactive,
   onSelectSlot,
   onAssignDroppedAsset,
+  onSwapSlots,
   onUpdateCrop,
   onCropMetricsChange,
   onRequestUpload,
@@ -618,6 +668,7 @@ export function MagazinePreview({
         interactive={interactive}
         onSelectSlot={onSelectSlot}
         onAssignDroppedAsset={onAssignDroppedAsset}
+        onSwapSlots={onSwapSlots}
         onUpdateCrop={onUpdateCrop}
         onCropMetricsChange={onCropMetricsChange}
         className={options.className}
