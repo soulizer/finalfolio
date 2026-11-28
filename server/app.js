@@ -3473,11 +3473,24 @@ export function createApp({
             })
             .catch(() => null);
         })
-        .catch((error) => {
+        .catch(async (error) => {
           job.status = 'failed';
           job.error = error instanceof Error ? error.message : 'AI arrangement failed.';
           job.code = error?.code ?? null;
           job.finishedAt = Date.now();
+          await opsStore
+            .recordEvent({
+              type: 'ai',
+              status: 'error',
+              userId: user.id,
+              detail: {
+                action: 'generate-ai-plans',
+                message: job.error.slice(0, 800),
+                code: job.code,
+                imageCount: Array.isArray(request.body?.images) ? request.body.images.length : 0,
+              },
+            })
+            .catch(() => null);
         });
     } catch (error) {
       next(error);

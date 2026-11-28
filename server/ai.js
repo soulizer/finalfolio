@@ -76,6 +76,23 @@ function normalizePlanTheme(value) {
   return best;
 }
 
+function buildPageBudgetInstruction(imageCount) {
+  const count = Number.isFinite(imageCount) ? imageCount : 0;
+  let min = 4;
+  let max = 6;
+  if (count > 36) {
+    min = 14;
+    max = 20;
+  } else if (count > 24) {
+    min = 10;
+    max = 14;
+  } else if (count > 12) {
+    min = 6;
+    max = 10;
+  }
+  return `【本次页数】本次共 ${count} 张照片。每套方案请输出 ${min}-${max} 页（必须是偶数），这是本次最高优先级的页数要求，覆盖前面任何固定页数说明。请让每张照片尽量进入正式页面，同一张最多重复 2 次；系统会补齐仍未使用的照片，但不要依赖补页。`;
+}
+
 const AI_PAGE_THEMES = new Set([
   'warm-beige', 'butter-cream', 'pale-blue', 'sea-glass', 'pure-white',
   'light-gray', 'sandstone', 'sage-mist', 'dusty-rose', 'pearl-blush',
@@ -117,7 +134,7 @@ export const DEFAULT_AI_PROMPT = `你是一位资深摄影画册编辑与图片�
 
 硬性规则：
 1. 必须给出 3 套方案，风格明显不同（例如：克制编辑感、强烈视觉冲击、安静手记感）。
-2. 每套方案必须是偶数页：4 或 6 页；第一页用 cover 或 folio 开场，最后一页安静收束。
+2. 每套方案必须是偶数页：4-10 页；照片超过 24 张时可扩展到 12-16 页，优先保证每张照片落在合适的版式里。第一页用 cover 或 folio 开场，最后一页安静收束。
 3. 页数必须是偶数，方便双页翻页；不要输出奇数页方案。
 4. 每个页面只使用上面列出的 template。每个 template 的图片数量必须匹配：
    cover=1, essay=1, folio=1, grid=4, diptych=2, panorama=2, mosaic=3, triptych=3。
@@ -173,7 +190,7 @@ export const AI_LAYOUT_GUIDE = `【版式与容量手册】（文字按中文字
 4. 每张照片最多出现 2 次；重要照片可跨页重复形成母题，不要为用满而堆砌。
 5. 3 套方案要在结构、节奏与文字语气上明显不同，而不是只换纸色。
 6. 所有文字必须能放进对应版式并留有余量；宁可短，不要顶满边界。
-7. 必须使用全部选中照片：每一张照片至少出现一次（最多两次）。不要遗漏编号。`;
+7. 尽量覆盖所选照片：选中不超过 24 张时，每张至少出现一次（最多两次）；超过 24 张时，优先保证叙事、版式与文字质量，不必强行塞满，系统会把未用到的照片补到后续页面。`;
 
 const DEFAULT_AI_CONFIG = {
   enabled: false,
@@ -400,24 +417,27 @@ function validatePlanBundle(parsed, imageCount = 0) {
       }
     });
 
+    // The client already appends dedicated filler pages for selected photos
+    // the model did not place. Requiring every photo here made large
+    // selections (30-50 photos) impossible to satisfy within the 10-page
+    // limit, so valid first answers were discarded and retried until timeout.
+    // Only reject a plan that references no selected photo at all.
     if (Number.isFinite(imageCount) && imageCount > 0) {
       const used = new Set();
       pages.forEach((page) => {
         if (Array.isArray(page?.assetIndexes)) {
           page.assetIndexes.forEach((index) => {
-            if (Number.isInteger(index)) {
+            if (Number.isInteger(index) && index >= 0 && index < imageCount) {
               used.add(index);
             }
           });
         }
       });
-      for (let index = 0; index < imageCount; index += 1) {
-        if (!used.has(index)) {
-          throw new PlanValidationError(
-            'The AI plan did not use every selected photo.',
-            `第 ${planIndex + 1} 套方案没有使用第 ${index} 张照片。每一张选中照片都必须至少出现一次；请重新分配 assetIndexes 并确保文字描述对应的照片。`,
-          );
-        }
+      if (used.size === 0) {
+        throw new PlanValidationError(
+          'The AI plan did not reference any selected photo.',
+          `第 ${planIndex + 1} 套方案没有引用任何选中的照片。请重新分配 assetIndexes。`,
+        );
       }
     }
   });
@@ -1031,7 +1051,7 @@ function recoverChatContent(raw) {
     });
     const listIntro = `请逐张查看以下 ${normalizedImages.length} 张照片。标签与图片交替出现，标签中的编号就是 assetIndexes 使用的编号。缩略图是唯一视觉事实来源；既有分析可能不准确或来自别的照片，只能参考，不能直接照抄其中的物种、人物或物体名称。`;
     const messages = [
-      { role: 'system', content: `${userPrompt}\n\n${AI_LAYOUT_GUIDE}` },
+      { role: 'system', content: `${userPrompt}\n\n${AI_LAYOUT_GUIDE}\n\n${buildPageBudgetInstruction(normalizedImages.length)}` },
       {
         role: 'user',
         content: [

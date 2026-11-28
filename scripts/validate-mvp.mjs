@@ -1748,7 +1748,9 @@ try {
     assert.match(serverAi, /Every AI image must include a JPEG, PNG, or WebP thumbnail/);
     assert.match(serverAi, /标签与图片交替出现/);
     assert.match(serverAi, /AI_PAGE_CAPACITY/);
-    assert.match(serverAi, /did not use every selected photo/);
+    assert.match(serverAi, /did not reference any selected photo/);
+    assert.match(serverAi, /buildPageBudgetInstruction/);
+    assert.match(serverAi, /x-opencode-session/);
     assert.match(aiPlans, /Never inject photos into a page the model already wrote copy for/);
     assert.match(aiPlans, /AI_FALLBACK_ROLE/);
     assert.doesNotMatch(serverAi, /Math\.min\(config\.requestTimeoutMs, 90_000\)/);

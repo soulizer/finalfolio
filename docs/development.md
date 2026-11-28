@@ -91,6 +91,11 @@ parts, so the model must accept image input.
   a Console key is not needed on the Go endpoint, but the session header is.
 - The admin **Test connection** only sends text. Confirm vision with a real
   multi-photo arrangement.
+- Large selections get a larger page budget (14-20 pages at 37-50 photos).
+  The server only rejects a plan that references no selected photo; the client
+  appends filler pages for any photo the model leaves out.
+- Failed AI jobs are recorded as `ai` events with the provider error, so a
+  generic client message can be diagnosed from `data/events`.
 - `data/ai/provider-stats.json` is telemetry, not configuration. It is written
   through a per-file queue with unique temp files; a corrupt file is ignored
   and replaced on the next write.
