@@ -53,6 +53,28 @@ test('marketing keeps 1240px and the editor puts the canvas first when narrow', 
   expect(positions.stageTop).toBeLessThan(positions.sidebarTop);
 });
 
+test('every panel toggle sits in the panel top-right corner', async ({ page }) => {
+  await signIn(page, '/account');
+  await expect(page.locator('.editor-panel .editor-panel__toggle').first()).toBeVisible({ timeout: 15_000 });
+  const toggles = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('.editor-panel .editor-panel__toggle')).map((toggle) => {
+      const panel = toggle.closest('.editor-panel')!.getBoundingClientRect();
+      const box = toggle.getBoundingClientRect();
+      return {
+        position: getComputedStyle(toggle).position,
+        rightGap: Math.round(panel.right - box.right),
+        topGap: Math.round(box.top - panel.top),
+      };
+    }),
+  );
+  expect(toggles.length).toBeGreaterThan(3);
+  for (const toggle of toggles) {
+    expect(toggle.position).toBe('absolute');
+    expect(Math.abs(toggle.rightGap - 14)).toBeLessThanOrEqual(1);
+    expect(Math.abs(toggle.topGap - 14)).toBeLessThanOrEqual(1);
+  }
+});
+
 test('accepted terms are informational, with no continue gate', async ({ page }) => {
   await signIn(page, '/terms');
   await expect(page.locator('.terms-accepted')).toContainText(/already accepted/i, { timeout: 10_000 });

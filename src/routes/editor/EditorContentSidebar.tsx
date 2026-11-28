@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { countLabel, useT } from '../../i18n';
-import type { ChangeEvent } from 'react';
+import type { ChangeEvent, KeyboardEvent } from 'react';
 import {
   getAssetDeliveryLabel,
   getAssetDeliveryTooltip,
@@ -140,6 +140,7 @@ export function EditorContentSidebar({
   // enter: the checkbox on a tile, Shift for a range and Ctrl/Cmd for a single
   // tile are always available, so the normal click still assigns the photo.
   const [pickedIds, setPickedIds] = useState<Set<string>>(new Set());
+  const assetRailRef = useRef<HTMLDivElement | null>(null);
   const [importingUnalbumIds, setImportingUnalbumIds] = useState<Set<string>>(new Set());
   const pickAnchorRef = useRef<string | null>(null);
   const [importUrlOpen, setImportUrlOpen] = useState(false);
@@ -178,6 +179,8 @@ export function EditorContentSidebar({
     return libraryAssets.filter((asset) => asset.name.toLowerCase().includes(query));
   }, [assetSearch, libraryAssets]);
   const libraryAssetIds = useMemo(() => new Set(libraryAssets.map((asset) => asset.id)), [libraryAssets]);
+  const visibleAssetIds = new Set(visibleAssets.map((asset) => asset.id));
+  const hiddenPickedCount = Array.from(pickedIds).filter((id) => !visibleAssetIds.has(id)).length;
 
   // Deleted or replaced assets must not stay picked, otherwise the count in the
   // action bar drifts from what a click would actually delete.
@@ -225,9 +228,28 @@ export function EditorContentSidebar({
     uploadBusy ? uploadProgressPercent : Math.round((uploadState.completedFiles / Math.max(uploadState.totalFiles, 1)) * 100)
   }%`;
 
+  function handleLibraryKeyDown(event: KeyboardEvent<HTMLElement>) {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('input, textarea, select, [contenteditable="true"]')) {
+      return;
+    }
+
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
+      event.preventDefault();
+      setPickedIds(new Set(visibleAssets.map((asset) => asset.id)));
+      return;
+    }
+
+    if (event.key === 'Escape' && pickedIds.size) {
+      event.preventDefault();
+      setPickedIds(new Set());
+      pickAnchorRef.current = null;
+    }
+  }
+
   return (
     <aside className="editor-sidebar editor-sidebar--content">
-      <section className="editor-panel editor-panel--photos">
+      <section className="editor-panel editor-panel--photos" onKeyDown={handleLibraryKeyDown}>
         <div className="editor-panel__toolbar">
           <span className="editor-panel__label">{t('Media library')}</span>
           <span className="panel-tag">
@@ -237,16 +259,31 @@ export function EditorContentSidebar({
         </div>
         {libraryAssets.length && pickedIds.size ? (
           <div className="asset-batch-bar" role="group" aria-label={t('Selected photos')}>
-            <span className="panel-tag" aria-hidden="true">{pickedIds.size}/{libraryAssets.length}</span>
+            <span
+              className="panel-tag"
+              aria-hidden="true"
+              title={
+                hiddenPickedCount
+                  ? t('%s selected, %s outside this search')
+                      .replace('%s', String(pickedIds.size))
+                      .replace('%s', String(hiddenPickedCount))
+                  : t('%s selected').replace('%s', String(pickedIds.size))
+              }
+            >
+              {pickedIds.size}/{libraryAssets.length}
+              {hiddenPickedCount ? ` +${hiddenPickedCount}` : ''}
+            </span>
             <span className="sr-only" aria-live="polite">
               {t('%s selected').replace('%s', String(pickedIds.size))}
             </span>
             <button
               type="button"
               className="button button--ghost button--small"
+              aria-label={t(assetSearch.trim() ? 'Select all visible photos' : 'Select all photos')}
+              title={t(assetSearch.trim() ? 'Select all visible photos' : 'Select all photos')}
               onClick={() => setPickedIds(new Set(visibleAssets.map((asset) => asset.id)))}
             >
-              {t('Select all')}
+              {t('All')}
             </button>
             <button
               type="button"
@@ -264,9 +301,15 @@ export function EditorContentSidebar({
               disabled={assetMutationBusy}
               onClick={() => {
                 const selectedAssets = libraryAssets.filter((asset) => pickedIds.has(asset.id));
+                const previousScrollTop = assetRailRef.current?.scrollTop ?? 0;
                 void Promise.resolve(onDeleteAssets(selectedAssets)).then(() => {
                   setPickedIds(new Set());
                   pickAnchorRef.current = null;
+                  window.requestAnimationFrame(() => {
+                    if (assetRailRef.current) {
+                      assetRailRef.current.scrollTop = previousScrollTop;
+                    }
+                  });
                 });
               }}
             />
@@ -400,7 +443,7 @@ export function EditorContentSidebar({
             ) : null}
           </div>
         ) : null}
-        <div className="asset-rail asset-rail--gallery">
+        <div ref={assetRailRef} className="asset-rail asset-rail--gallery">
           {libraryAssets.length || remoteAssets.length ? (
             visibleAssets.map((asset) => {
               const placements = assetUsageCounts[asset.id] ?? 0;

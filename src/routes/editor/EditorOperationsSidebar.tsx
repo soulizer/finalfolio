@@ -329,7 +329,6 @@ export function EditorOperationsSidebar({
           <div className="editor-panel__toolbar">
             <span className="editor-panel__label">{t('Share project')}</span>
             <span className="panel-tag">{!projectRecord ? t('Save first') : projectRecord.share.enabled ? t('Live') : t('Off')}</span>
-                    <PanelCollapseToggle />
           </div>
           <label className="field">
             <span>{t('Share link')}</span>
@@ -402,7 +401,6 @@ export function EditorOperationsSidebar({
             <div className="editor-panel__toolbar">
               <span className="editor-panel__label">{t('Template')}</span>
               <span className="panel-tag">{templateSaveKind === 'page' ? t('Page template') : t('Project template')}</span>
-                        <PanelCollapseToggle />
             </div>
             <p className="panel-note">
               {t('Save the current page or the whole folio as a reusable template. Page templates change one page at a time; project templates keep the full sequence.')}</p>

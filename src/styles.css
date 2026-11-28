@@ -1456,10 +1456,6 @@ a:focus-visible {
   flex: 1 1 240px;
 }
 
-.editor-panel__heading > .editor-panel__toggle {
-  margin-left: auto;
-}
-
 .editor-panel__heading--compact .eyebrow,
 .page-strip-panel__header--compact .eyebrow {
   margin: 0;
@@ -8496,8 +8492,17 @@ html[lang='zh-CN'] body {
   gap: 8px;
 }
 
+.editor-panel__heading:has(> .editor-panel__toggle),
+.editor-panel__toolbar:has(> .editor-panel__toggle) {
+  padding-right: 34px;
+}
+
+/* Every panel toggle lives in the panel's top-right corner, independent of
+   how long the heading or meta row becomes. */
 .editor-panel__toggle {
-  position: static;
+  position: absolute;
+  top: var(--panel-pad);
+  right: var(--panel-pad);
   flex: none;
   z-index: 1;
   display: grid;

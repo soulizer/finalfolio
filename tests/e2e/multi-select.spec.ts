@@ -192,3 +192,21 @@ test('AI arrangement selects photos with Shift, Ctrl and a rubber band', async (
   await dragBand();
   await expect.poll(selectedCount).toBe(4);
 });
+
+test('gallery supports keyboard select-all and escape', async ({ page }) => {
+  await signIn(page, '/editor');
+  await uploadPhotos(page, 3, 'keys');
+  const search = page.getByLabel('Search photos');
+  await search.fill('keys-');
+  const tiles = page.locator('.asset-tile');
+  await expect(tiles).toHaveCount(3);
+  await tiles.first().locator('.asset-tile__main').focus();
+  await page.keyboard.press('Control+a');
+  await expect(page.locator('.asset-tile.is-picked')).toHaveCount(3);
+  await expect(page.locator('.asset-batch-bar')).toBeVisible();
+  await expect(page.locator('.asset-batch-bar')).toContainText('All');
+  await expect(page.getByRole('button', { name: 'Select all visible photos' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.asset-batch-bar')).toHaveCount(0);
+  await expect(page.locator('.asset-tile.is-picked')).toHaveCount(0);
+});

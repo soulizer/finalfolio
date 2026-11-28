@@ -76,16 +76,21 @@ Selection is communicated by the check control, not by framing the photo.
 - The tile must not change size when selected.
 - Bulk actions replace the library's upload/import row for the duration of the
   selection. The row keeps the same height, so the grid never moves; the count
-  reads `selected/total`, and search plus the unused-clear action stay in their
-  own utility row.
+  reads `selected/total` (plus `+n` when selected photos are outside the current
+  search), and search plus the unused-clear action stay in their own utility row.
+- With focus inside the media library, `Ctrl/Cmd+A` selects the visible photos
+  and `Escape` clears the selection. The “All” button selects the visible result
+  set and carries a full accessible label.
 - Keyboard focus uses the shared focus ring; it is separate from selection.
 - Row selection may use a quiet background + the row's own selection state, but
   must not swallow the row's buttons.
 
 ## 6. Panels, headers and forms
 
-- `Panel`: one header row (eyebrow/title/meta/actions/collapse), one body grid.
-- Panel header controls share a 24px optical row; the collapse chevron is last.
+- `Panel`: one header row (eyebrow/title/meta/actions), one body grid.
+- The collapse chevron is absolutely positioned in the panel's top-right
+  corner, independent of heading length; headers reserve right padding when the
+  chevron is present.
 - `PanelCollapseToggle` is the only collapse control; sections that must not
   fold the parent use `EditorSubsection` (`<details>`).
 - `Field`: label above input; one height token; focus ring from `--field-border`.
