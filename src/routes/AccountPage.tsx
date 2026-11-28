@@ -78,6 +78,7 @@ export function AccountPage() {
     preferences,
     projectSearch,
     projectVisibilityFilter,
+    removeProjectRecord,
     replaceProjectRecord,
     replaceTemplateRecord,
     selectedProject,
@@ -183,10 +184,16 @@ export function AccountPage() {
 
     try {
       await deleteProject(projectId);
+      removeProjectRecord(projectId);
       if (projectEditingId === projectId) {
         stopEditingProject();
       }
-      await refreshAll();
+      try {
+        await refreshAll();
+      } catch {
+        // The server deletion succeeded; keep the row removed even if a later
+        // refresh fails transiently.
+      }
       setMessage(t('Project deleted.'));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : t('Unable to delete project.'));

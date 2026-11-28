@@ -72,7 +72,7 @@ export const DEFAULT_AI_PROMPT = `你是一位资深摄影画册编辑与图片�
    cover=1, essay=1, folio=1, grid=4, diptych=2, panorama=2, mosaic=3, triptych=3。
 5. assetIndexes 使用上传顺序的编号，不能越界；尽量让每张照片至少出现一次，但不要为了用完而重复堆砌。
 6. 主图放在 cover、folio、mosaic 的 lead 或大幅页面；次图、细节图放在 grid、diptych、triptych、panorama。
-7. 每页只填写该版式需要的文字；没有导语或正文时用空字符串。文字使用中文，简洁、有编辑感，不要空泛营销语。
+7. 每页只填写该版式需要的文字；没有导语或正文时用空字符串。文字使用中文，简洁、有编辑感，不要空泛营销语。每一页的 title 必须是针对该页照片、版式和叙事位置写的具体短标题，不能为空，也不能复用模板默认句（例如「构建内页节奏」「给一张图整页」）。
 8. theme 必须从列表中选择，同一套方案可以有 1-3 个主色，不要每页都换色。
 9. frameRadius 为 0-24 的整数，整套方案统一。
 10. 每套方案都要给出自己的 folioTitle、folioSubtitle、issue、frameRadius，三者要互相契合；切换方案时作品集标识也应随之变化。
@@ -84,6 +84,7 @@ export const DEFAULT_AI_PROMPT = `你是一位资深摄影画册编辑与图片�
  * capacity constraints.
  */
 export const AI_LAYOUT_GUIDE = `【版式与容量手册】（文字按中文字符计；英文可按 1.6 倍；超长会破坏版面，必须遵守）
+【标题硬性要求】每一页都必须有具体 title；即使该版式不用导语/正文，也必须写标题。禁止空标题，禁止把模板说明当标题（如「构建内页节奏」「使用双图页」），禁止多页复用同一句。
 - cover（1 图，封面开场）：标题 ≤12，导语 ≤34，图注 ≤26；不用引题和正文。
 - essay（1 图，图文页）：引题 ≤12，标题 ≤16，导语 ≤46，正文 ≤150，图注 ≤30。
 - folio（1 图，整幅主图）：引题 ≤12，标题 ≤16，导语 ≤40，图注 ≤28；不用正文。
@@ -307,6 +308,13 @@ function validatePlanBundle(parsed) {
         throw new PlanValidationError(
           `Plan ${planIndex + 1} used an unknown page template: ${String(page?.template ?? '').slice(0, 20)}.`,
           `第 ${planIndex + 1} 套方案第 ${pageIndex + 1} 页的 template「${String(page?.template ?? '').slice(0, 20)}」不在允许列表 cover|essay|folio|grid|diptych|panorama|mosaic|triptych 内。`,
+        );
+      }
+      const title = typeof page?.title === 'string' ? page.title.trim() : '';
+      if (!title) {
+        throw new PlanValidationError(
+          `Plan ${planIndex + 1} page ${pageIndex + 1} had no specific title.`,
+          `第 ${planIndex + 1} 套方案第 ${pageIndex + 1} 页缺少具体标题。每一页都必须写贴合该页内容的 title，不能为空或复用模板默认句。`,
         );
       }
       const theme = typeof page?.theme === 'string' ? page.theme.toLowerCase() : '';

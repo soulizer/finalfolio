@@ -154,6 +154,26 @@ test('AI arrangement shows account library photos that are not in the draft', as
   await expect(page.locator('.ai-library-item').first()).toBeVisible();
 });
 
+test('reopening AI arrangement keeps generated, unused plans', async ({ page }) => {
+  await page.route('**/api/ai/status', (route) => route.fulfill({ json: status }));
+  await page.route('**/api/ai/plans', (route) => route.fulfill({ json: bundle }));
+  await signIn(page, '/editor');
+
+  await page.getByRole('button', { name: 'Lay out with AI' }).click();
+  const dialog = page.locator('.ai-dialog');
+  await dialog.getByRole('button', { name: 'Upload from device' }).click();
+  await dialog.locator('input[type="file"]').setInputFiles('public/icon-192.png');
+  await page.getByRole('button', { name: 'Generate plans' }).click();
+  await expect(page.locator('.ai-plan-card')).toHaveCount(3);
+  await expect(page.getByRole('button', { name: 'Apply this plan' })).toBeVisible();
+
+  await dialog.getByRole('button', { name: 'Close' }).click();
+  await expect(dialog).toHaveCount(0);
+  await page.getByRole('button', { name: 'Lay out with AI' }).click();
+  await expect(page.locator('.ai-plan-card')).toHaveCount(3);
+  await expect(page.getByRole('button', { name: 'Apply this plan' })).toBeVisible();
+});
+
 test('AI plans are padded to an even page count', async ({ page }) => {
   const oddBundle = {
     ...bundle,

@@ -2,7 +2,6 @@ import { translate } from '../i18n';
 import {
   createPageDraft,
   getPageSlotOrder,
-  pageStarters,
   templateMeta,
 } from './demoData';
 import {
@@ -89,8 +88,16 @@ function pageCapacity(page: AiPlanPage) {
  * count, unused photos) have no model copy at all — both get the localized
  * starter title for their template instead.
  */
-function defaultPlanPageTitle(template: TemplateId) {
-  return translate(pageStarters[template]?.title ?? 'Untitled page');
+function defaultPlanPageTitle(template: TemplateId, page?: Partial<AiPlanPage>) {
+  const kicker = sanitizeString(page?.kicker);
+  if (kicker) {
+    return kicker;
+  }
+  const caption = sanitizeString(page?.caption);
+  if (caption) {
+    return caption.length > 28 ? `${caption.slice(0, 27)}…` : caption;
+  }
+  return translate('Untitled page');
 }
 
 function createEmptyPlanPage(template: TemplateId, theme: PageThemeId): AiPlanPage {
@@ -203,7 +210,7 @@ function normalizePage(value: unknown, imageCount: number): AiPlanPage | null {
     template: template as TemplateId,
     theme,
     kicker: sanitizeString(page.kicker),
-    title: sanitizeString(page.title) || defaultPlanPageTitle(template as TemplateId),
+    title: sanitizeString(page.title) || defaultPlanPageTitle(template as TemplateId, page),
     deck: sanitizeString(page.deck),
     body: sanitizeString(page.body),
     caption: sanitizeString(page.caption),
@@ -306,7 +313,7 @@ export function applyAiPlanToProject({
     return createPageDraft(page.template, createPageId(), {
       theme: page.theme,
       kicker: page.kicker,
-      title: page.title.trim() || defaultPlanPageTitle(page.template),
+      title: page.title.trim() || defaultPlanPageTitle(page.template, page),
       deck: page.deck,
       body: page.body,
       caption: page.caption,

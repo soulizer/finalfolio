@@ -2261,24 +2261,23 @@ export function EditorPage() {
           )
         : null}
 
-      {aiDialogOpen ? (
-        <AiArrangeDialog
-          maxPhotos={Math.min(50, aiPhotoCapacity)}
-          onApply={handleApplyAiPlan}
-          onClose={() => setAiDialogOpen(false)}
-          onImportUrl={handleImportUrlForAi}
-          onUploadPhotos={handleUploadFiles}
-          uploadCompleted={uploadState.completedFiles}
-          uploadTotal={uploadState.totalFiles}
-          uploadProgressPercent={uploadProgressPercent}
-          availableAssets={libraryAssets}
-          unalbumPhotos={remoteUnalbumPhotos}
-          unalbumLoading={unalbumPhotos.loading}
-          unalbumHasMore={Boolean(unalbumPhotos.nextCursor)}
-          onLoadMoreUnalbum={unalbumPhotos.loadMore}
-          onImportUnalbumPhoto={importUnalbumPhoto}
-        />
-      ) : null}
+      <AiArrangeDialog
+        open={aiDialogOpen}
+        maxPhotos={Math.min(50, aiPhotoCapacity)}
+        onApply={handleApplyAiPlan}
+        onClose={() => setAiDialogOpen(false)}
+        onImportUrl={handleImportUrlForAi}
+        onUploadPhotos={handleUploadFiles}
+        uploadCompleted={uploadState.completedFiles}
+        uploadTotal={uploadState.totalFiles}
+        uploadProgressPercent={uploadProgressPercent}
+        availableAssets={libraryAssets}
+        unalbumPhotos={remoteUnalbumPhotos}
+        unalbumLoading={unalbumPhotos.loading}
+        unalbumHasMore={Boolean(unalbumPhotos.nextCursor)}
+        onLoadMoreUnalbum={unalbumPhotos.loadMore}
+        onImportUnalbumPhoto={importUnalbumPhoto}
+      />
 
 
       {layoutEditor ? (

@@ -37,6 +37,7 @@ export type AiPhoto = {
 };
 
 type AiArrangeDialogProps = {
+  open: boolean;
   maxPhotos?: number;
   onApply: (bundle: AiPlanBundle, plan: AiPlan, photos: AiPhoto[]) => Promise<void>;
   onClose: () => void;
@@ -358,6 +359,7 @@ function readBuildId() {
 }
 
 export function AiArrangeDialog({
+  open,
   maxPhotos: maxPhotosProp,
   onApply,
   onClose,
@@ -403,7 +405,7 @@ export function AiArrangeDialog({
   const anchorAssetIdRef = useRef<string | null>(null);
   const photosRef = useRef<AiPhoto[]>([]);
   const dialogRef = useRef<HTMLDivElement | null>(null);
-  useModalFocus(dialogRef, { active: true });
+  useModalFocus(dialogRef, { active: open });
 
   photosRef.current = photos;
   const maxPhotos = Math.max(0, Math.min(status?.maxImages ?? 50, maxPhotosProp ?? 50));
@@ -462,12 +464,24 @@ export function AiArrangeDialog({
   );
 
   useEffect(() => {
+    if (!open) {
+      return undefined;
+    }
+
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, []);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) {
+      return;
+    }
+    abortRef.current?.abort();
+    setPhase((current) => (current === 'generating' ? (bundle ? 'results' : 'select') : current));
+  }, [bundle, open]);
 
   useEffect(() => {
     if (phase !== 'generating') {
@@ -483,6 +497,10 @@ export function AiArrangeDialog({
   }, [phase]);
 
   useEffect(() => {
+    if (!open) {
+      return undefined;
+    }
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') {
         return;
@@ -497,7 +515,7 @@ export function AiArrangeDialog({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, phase]);
+  }, [onClose, open, phase]);
 
   async function addFiles(fileList: FileList | File[]) {
     if (readingFiles || uploadingFiles) {
@@ -831,6 +849,9 @@ export function AiArrangeDialog({
     setError(null);
     try {
       await onApply(bundle, selectedPlan, photos);
+      setBundle(null);
+      setSelectedPlanId(null);
+      setPhase('select');
       onClose();
     } catch (applyError) {
       setError(rawErrorMessage(applyError) || t('Unable to apply this AI plan.'));
@@ -845,6 +866,10 @@ export function AiArrangeDialog({
 
   const errorReport = error ? describeAiError(error, t) : null;
   const statusReport = statusError ? describeAiError(statusError, t) : null;
+
+  if (!open) {
+    return null;
+  }
 
   return (
     <div className="ai-dialog-overlay" role="presentation">

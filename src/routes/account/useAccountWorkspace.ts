@@ -191,6 +191,11 @@ export function useAccountWorkspace({
     });
   }, []);
 
+  const removeProjectRecord = useCallback((projectId: string) => {
+    setProjects((current) => current.filter((project) => project.id !== projectId));
+    setSelectedProjectId((current) => (current === projectId ? null : current));
+  }, []);
+
   const replaceTemplateRecord = useCallback((updatedTemplate: UserTemplateRecord) => {
     setTemplates((current) =>
       current
@@ -219,6 +224,7 @@ export function useAccountWorkspace({
     preferences,
     projectSearch,
     projectVisibilityFilter,
+    removeProjectRecord,
     replaceProjectRecord,
     replaceTemplateRecord,
     selectedProject,

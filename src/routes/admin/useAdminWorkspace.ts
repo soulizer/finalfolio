@@ -302,6 +302,11 @@ export function useAdminWorkspace({ session, setMessage }: UseAdminWorkspaceOpti
     [templateGovernanceDraft?.packs],
   );
 
+  const removeProjectRecord = useCallback((projectId: string) => {
+    setProjects((current) => current.filter((project) => project.id !== projectId));
+    setSelectedProjectId((current) => (current === projectId ? null : current));
+  }, []);
+
   return {
     activeDailyTrend,
     aiConfigDraft,
@@ -320,6 +325,7 @@ export function useAdminWorkspace({ session, setMessage }: UseAdminWorkspaceOpti
     projectSearch,
     projects,
     projectsById,
+    removeProjectRecord,
     rankedEventBreakdown,
     selectedProject,
     selectedProjectId,

@@ -45,6 +45,8 @@ Editing rules:
 - Custom layouts are created from a page's current geometry and can be renamed,
   duplicated and deleted.
 - Drafts autosave; `rev` + `409` prevents silent overwrite from a second tab.
+- Deleting a folio removes it from account/admin lists immediately, invalidates
+  its editor and share URL, and revalidates any editor tab restored from cache.
 - Export and screen preview share `MagazinePreview`, so pages look consistent.
 - The public reader, account strip and admin strip use the same renderer and the
   same project fonts.
@@ -99,7 +101,12 @@ Entry points are marked **Experimental / 实验功能**.
 - Only small JPEG thumbnails are sent. Photos with existing analysis (for
   example UnAlbum imports) send text only.
 - Plans are validated against built-in templates/themes and clamped to the
-  selected assets. Nothing changes in the editor until the user applies a plan.
+  selected assets. Every page must carry a page-specific title; missing titles
+  are sent back to the provider for one correction.
+- Generated plans stay in the dialog session when it is closed. Reopening
+  **Lay out with AI** returns to those unused plans instead of a blank screen;
+  after a plan is applied the session resets.
+- Nothing changes in the editor until the user applies a plan.
 - API keys are stored server-side in `data/ai/config.json` (`0600`); admin
   responses expose only `hasApiKey` and a masked hint.
 

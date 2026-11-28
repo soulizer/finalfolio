@@ -8,10 +8,15 @@ import { getConfirmationMessage } from '../../editor/confirmations';
 
 type UseAdminAssetGovernanceActionsOptions = {
   refreshAll: () => Promise<void>;
+  removeProjectRecord: (projectId: string) => void;
   setMessage: (message: string | null) => void;
 };
 
-export function useAdminAssetGovernanceActions({ refreshAll, setMessage }: UseAdminAssetGovernanceActionsOptions) {
+export function useAdminAssetGovernanceActions({
+  refreshAll,
+  removeProjectRecord,
+  setMessage,
+}: UseAdminAssetGovernanceActionsOptions) {
   async function handleDeleteProject(projectId: string) {
     const confirmed = await confirmAction({
       title: 'Delete this project?',
@@ -27,7 +32,12 @@ export function useAdminAssetGovernanceActions({ refreshAll, setMessage }: UseAd
 
     try {
       await deleteAdminProject(projectId);
-      await refreshAll();
+      removeProjectRecord(projectId);
+      try {
+        await refreshAll();
+      } catch {
+        // Deletion succeeded even if the follow-up refresh did not.
+      }
       setMessage('Project deleted.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to delete project.');

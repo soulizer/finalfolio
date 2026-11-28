@@ -43,6 +43,7 @@ export function AdminPage() {
     projectSearch,
     projects,
     projectsById,
+    removeProjectRecord,
     rankedEventBreakdown,
     selectedProjectDetail,
     selectedProjectId,
@@ -164,6 +165,7 @@ export function AdminPage() {
     handleRetryUpload,
   } = useAdminAssetGovernanceActions({
     refreshAll,
+    removeProjectRecord,
     setMessage,
   });
 
