@@ -169,7 +169,7 @@ export function AdminPage() {
 
   return (
     <div className="editor-shell editor-shell--site-page editor-shell--admin">
-      <TransientNotice message={message} onDismiss={() => setMessage(null)} label={t('Admin update')} />
+      <TransientNotice message={message} onDismiss={() => setMessage(null)} />
       <SitePageHeader
         current="admin"
         accountPath={accountPath}

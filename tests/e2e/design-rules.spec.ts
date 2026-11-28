@@ -103,6 +103,20 @@ test('account rows can be selected from the keyboard', async ({ page }) => {
   await expect(page.locator('.admin-detail-card__title')).toBeVisible({ timeout: 10_000 });
 });
 
+test('danger buttons keep light text on the red surface', async ({ page }) => {
+  await page.goto('/');
+  const style = await page.evaluate(() => {
+    const button = document.createElement('button');
+    button.className = 'button button--small button--danger';
+    button.textContent = 'Delete';
+    document.body.appendChild(button);
+    const computed = getComputedStyle(button);
+    return { color: computed.color, background: computed.backgroundImage };
+  });
+  expect(style.color).toBe('rgb(255, 247, 247)');
+  expect(style.background).toContain('122, 46, 46');
+});
+
 test('primary buttons keep their dark shadow on hover and press down', async ({ page }) => {
   await page.goto('/auth');
   await expect(page.locator('.auth-form button[type="submit"]')).toBeVisible();

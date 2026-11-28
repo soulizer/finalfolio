@@ -556,7 +556,9 @@ export function createProjectFromUserTemplate(templateId: string) {
 }
 
 export function fetchProject(projectId: string) {
-  return readJson<ProjectRecord>(`/api/projects/${projectId}`);
+  // Deleted projects must not be served from a stale HTTP cache when an editor
+  // tab is restored from the back/forward cache or regains focus.
+  return readJson<ProjectRecord>(`/api/projects/${projectId}`, { cache: 'no-store' });
 }
 
 export function updateProject(

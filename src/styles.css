@@ -688,7 +688,6 @@ a:focus-visible {
 }
 
 
-
 .hero-proof__track {
   display: flex;
   flex-wrap: nowrap;
@@ -1258,7 +1257,6 @@ a:focus-visible {
     0 12px 24px rgba(92, 28, 28, 0.16);
 }
 
-
 .editor-panel--project-actions {
   display: grid;
   gap: 12px;
@@ -1341,7 +1339,6 @@ a:focus-visible {
   font-size: 0.9rem;
   line-height: 1.6;
 }
-
 
 .editor-layout {
   display: grid;
@@ -1468,7 +1465,6 @@ a:focus-visible {
   font-weight: 500;
   line-height: 1.08;
 }
-
 
 
 .panel-tag {
@@ -2193,7 +2189,6 @@ a:focus-visible {
   margin-top: 8px;
 }
 
-
 .loading-stack {
   display: grid;
   gap: 8px;
@@ -2695,13 +2690,6 @@ a:focus-visible {
   text-align: center;
 }
 
-.admin-notice__label {
-  font-family: var(--font-ui);
-  font-size: 0.72rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
 
 .admin-notice p {
   margin: 0;
@@ -3144,7 +3132,6 @@ a:focus-visible {
   border-radius: 0;
 }
 
-
 .admin-detail-preview__placeholder,
 .admin-upload-preview__placeholder {
   width: 100%;
@@ -3581,7 +3568,6 @@ a:focus-visible {
 .editor-canvas::before {
   display: none;
 }
-
 
 .editor-layout--loading .editor-sidebar {
   overflow: hidden;
@@ -4266,7 +4252,6 @@ button.asset-frame {
   border-color: rgba(122, 46, 46, 0.2);
   color: #7a2e2e;
 }
-
 
 .page-strip-panel__header {
   display: flex;
@@ -5028,7 +5013,6 @@ button.asset-frame {
   isolation: isolate;
 }
 
-
 .issue-viewer__viewport--placeholder {
   overflow: hidden;
 }
@@ -5757,7 +5741,6 @@ button.asset-frame {
 .issue-view-fullscreen-controls__button {
   min-width: 96px;
 }
-
 
 .issue-view-shell--mobile-portrait {
   --issue-mobile-top-inset: max(12px, calc(env(safe-area-inset-top, 0px) + 8px));
@@ -7144,7 +7127,6 @@ button.asset-frame {
   }
 }
 
-
 .product-brief {
   width: var(--site-width);
   margin: 0 auto;
@@ -7367,7 +7349,6 @@ html[lang='zh-CN'] .admin-stat-card strong {
     font-size: clamp(2.3rem, 10vw, 3.4rem);
   }
 }
-
 
 /* ------------------------------------------------------------------ */
 /* Shared UI primitives (added in the 2026-11 review pass)             */
@@ -7707,7 +7688,6 @@ html[lang='zh-CN'] .admin-stat-card strong {
 
 
 
-
 .magazine-editable {
   cursor: text;
   border-radius: var(--radius-xs);
@@ -7720,8 +7700,6 @@ html[lang='zh-CN'] .admin-stat-card strong {
   box-shadow: 0 0 0 2px rgba(255, 214, 102, 0.35);
   outline: none;
 }
-
-
 
 
 
@@ -7911,8 +7889,6 @@ html[lang='zh-CN'] .admin-stat-card strong {
   display: none;
 }
 
-.button--danger,
-
 /* Muted placeholder text inside editor fields. */
 .editor-panel .field input::placeholder {
   color: rgba(17, 17, 17, 0.34);
@@ -7981,9 +7957,6 @@ html[lang='zh-CN'] .admin-stat-card strong {
 
 
 
-
-
-
 .asset-rail__empty {
   display: grid;
   justify-items: center;
@@ -8015,7 +7988,6 @@ html[lang='zh-CN'] .admin-stat-card strong {
   box-shadow: 0 0 0 2px rgba(214, 168, 64, 0.4);
   border-radius: 2px;
 }
-
 
 /* ---------------------------------------------------------------------------
    Typography split: the designed font is reserved for rendered folio pages.
@@ -8334,7 +8306,6 @@ html[lang='zh-CN'] body {
     min-height: 44px;
   }
 }
-
 
 
 /* Unified sequence chip: meta row + dot, optional title and actions. */
@@ -8841,7 +8812,6 @@ html[lang='zh-CN'] body {
 }
 
 
-
 .layout-editor-main {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
@@ -8975,7 +8945,6 @@ html[lang='zh-CN'] body {
   opacity: 0.4;
   cursor: not-allowed;
 }
-
 
 
 .layout-editor-footer {
@@ -9141,7 +9110,6 @@ html[lang='zh-CN'] body {
     flex: 1 1 auto;
   }
 }
-
 
 .template-pack-card__stats {
   margin: 0;
@@ -10586,7 +10554,6 @@ html[lang='zh-CN'] body {
   color: rgba(17, 17, 17, 0.62);
 }
 
-
 .asset-frame__state {
   position: absolute;
   inset: 0;
@@ -10689,7 +10656,6 @@ html[lang='zh-CN'] body {
 .ai-library-more {
   justify-self: start;
 }
-
 
 .auth-unalbum {
   display: grid;
@@ -10915,7 +10881,6 @@ html[lang='zh-CN'] body {
 }
 
 
-
 .editor-shell .upload-button.button--primary {
   color: var(--paper);
 }
@@ -11046,7 +11011,6 @@ html[lang='zh-CN'] body {
 }
 
 
-
 /* Text-first editor action grids. Every standard control is 36px tall. */
 .editor-button-grid {
   display: grid;
@@ -11096,7 +11060,6 @@ html[lang='zh-CN'] body {
   width: 100%;
   height: var(--control-height-sm);
 }
-
 
 /* Reveal-on-scroll must never hide content for reduced-motion users or print. */
 @media (prefers-reduced-motion: reduce) {

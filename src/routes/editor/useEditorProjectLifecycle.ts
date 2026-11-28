@@ -154,6 +154,58 @@ export function useEditorProjectLifecycle({
   }, [projectId]);
 
   useEffect(() => {
+    if (!projectId) {
+      return;
+    }
+    const currentProjectId = projectId;
+
+    let checking = false;
+    let lastCheckedAt = 0;
+
+    async function checkProjectStillExists() {
+      const now = Date.now();
+      if (checking || now - lastCheckedAt < 15_000) {
+        return;
+      }
+      checking = true;
+      lastCheckedAt = now;
+
+      try {
+        await fetchProject(currentProjectId);
+      } catch (error) {
+        if ((error as { status?: number }).status !== 404) {
+          return;
+        }
+        setProjectRecord(null);
+        setLoadState('error');
+        setSaveState('error');
+        setLoadError(error instanceof Error ? error.message : translate('Project not found.'));
+        setMessage(null);
+      } finally {
+        checking = false;
+      }
+    }
+
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        void checkProjectStillExists();
+      }
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void checkProjectStillExists();
+      }
+    };
+
+    window.addEventListener('pageshow', handlePageShow);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('pageshow', handlePageShow);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [projectId, setLoadError, setLoadState, setMessage, setProjectRecord, setSaveState]);
+
+  useEffect(() => {
     if (loadState !== 'ready' || saveConflict) {
       return;
     }

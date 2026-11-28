@@ -60,6 +60,10 @@ Spacing tokens: `--space-1..10` (4–48px). Component tokens:
 
 - Shared material: warm gradient, 1px inset highlight, soft shadow, 4px radius.
 - Primary: dark ink material. Ghost: warm translucent. Danger: danger glyph/tone.
+  Filled danger buttons use light text (`#fff7f7`) on the red surface; danger
+  ghost keeps the red text on a light surface.
+- Transient notices show only the action message. Do not prefix them with a
+  generic page label such as "Account update" / "Admin update".
 - No `translateY` lift on hover; press moves 1px down.
 - Text buttons keep readable labels; icon-only actions require `aria-label` and
   `title`.

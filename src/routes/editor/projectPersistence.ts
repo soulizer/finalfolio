@@ -51,6 +51,7 @@ type SaveProjectRecordOptions = {
   manual: boolean;
   getCurrentProject?: () => ProjectState;
   onConflict?: (message: string) => void;
+  onProjectMissing?: (message: string) => void;
   onSaveSuccess?: () => void;
   session: UserSession | null;
   project: ProjectState;
@@ -97,6 +98,7 @@ type StartNewDraftOptions = ProjectHydrationSetters & {
 type CreateEditorProjectPersistenceActionsOptions = ProjectHydrationSetters & {
   getCurrentProject?: () => ProjectState;
   onConflict?: (message: string) => void;
+  onProjectMissing?: (message: string) => void;
   onSaveSuccess?: () => void;
   session: UserSession | null;
   project: ProjectState;
@@ -122,6 +124,7 @@ export function createEditorProjectPersistenceActions({
   ownedUploads,
   getCurrentProject,
   onConflict,
+  onProjectMissing,
   onSaveSuccess,
   getInitialSlot,
   lastSavedSnapshotRef,
@@ -166,6 +169,7 @@ export function createEditorProjectPersistenceActions({
       manual,
       getCurrentProject,
       onConflict,
+      onProjectMissing,
       onSaveSuccess,
       session,
       project,
@@ -360,6 +364,7 @@ export async function saveProjectRecord({
   manual,
   getCurrentProject,
   onConflict,
+  onProjectMissing,
   onSaveSuccess,
   session,
   project,
@@ -439,6 +444,10 @@ export async function saveProjectRecord({
   } catch (error) {
     setSaveState('error');
     const messageText = error instanceof Error ? error.message : 'Save failed.';
+    if ((error as { status?: number }).status === 404) {
+      onProjectMissing?.(messageText);
+      return;
+    }
     setMessage(messageText);
 
     if ((error as { code?: string }).code === 'revision_conflict') {

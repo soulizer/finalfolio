@@ -624,7 +624,7 @@ export function AccountPage() {
 
   return (
     <div className="editor-shell editor-shell--site-page editor-shell--account">
-      <TransientNotice message={message} onDismiss={() => setMessage(null)} label={t('Account update')} />
+      <TransientNotice message={message} onDismiss={() => setMessage(null)} />
       <SitePageHeader
         current="account"
         signedIn

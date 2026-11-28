@@ -82,19 +82,14 @@ test('accepted terms are informational, with no continue gate', async ({ page })
   await expect(page.locator('.terms-gate button')).toHaveCount(0);
 });
 
-test('admin and account notices keep their own labels', async ({ page }) => {
+test('notices show the message without a page-level label', async ({ page }) => {
   await signInAs(page, 'e2e-admin@example.com', 'Password123!', '/admin');
   await expect(page.locator('.admin-console')).toBeVisible({ timeout: 15_000 });
   await page.route('**/api/admin/summary', (route) => route.abort());
   await page.getByRole('button', { name: 'Refresh', exact: true }).click();
-  await expect(page.locator('.admin-notice__label')).toHaveText(/admin update/i, { timeout: 10_000 });
-
-  await page.unroute('**/api/admin/summary');
-  await page.goto('/account');
-  await expect(page.locator('.account-console')).toBeVisible({ timeout: 15_000 });
-  await page.route('**/api/account/summary', (route) => route.abort());
-  await page.getByRole('button', { name: 'Refresh', exact: true }).click();
-  await expect(page.locator('.admin-notice__label')).toHaveText(/account update/i, { timeout: 10_000 });
+  await expect(page.locator('.admin-notice')).toContainText(/network connection failed/i, { timeout: 10_000 });
+  await expect(page.locator('.admin-notice__label')).toHaveCount(0);
+  await expect(page.locator('.admin-notice')).not.toContainText('Admin update');
 });
 
 test('mobile pages do not overflow horizontally', async ({ browser }) => {

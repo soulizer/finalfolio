@@ -586,6 +586,13 @@ export function EditorPage() {
     ownedUploads,
     getCurrentProject: getProject,
     onConflict: setSaveConflict,
+    onProjectMissing: (message) => {
+      setProjectRecord(null);
+      setLoadState('error');
+      setSaveState('error');
+      setLoadError(message);
+      setMessage(null);
+    },
     onSaveSuccess: () => setSaveConflict(null),
     getInitialSlot,
     lastSavedSnapshotRef,

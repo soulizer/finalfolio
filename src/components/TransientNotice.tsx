@@ -7,11 +7,9 @@ const DISMISS_EVENTS = ['pointerdown', 'keydown', 'wheel', 'focusin'] as const;
 export function TransientNotice({
   message,
   onDismiss,
-  label,
 }: {
   message: string | null;
   onDismiss: () => void;
-  label?: string;
 }) {
   const t = useT();
   const dismissRef = useRef(onDismiss);
@@ -53,7 +51,6 @@ export function TransientNotice({
   return (
     <div className="admin-notice-overlay" role="status" aria-live="polite" aria-atomic="true">
       <div className="admin-notice cookie-bar message-bar">
-        <span className="admin-notice__label">{label ?? t('Notice')}</span>
         <p>{t(message)}</p>
       </div>
     </div>
