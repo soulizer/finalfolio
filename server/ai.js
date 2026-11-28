@@ -581,10 +581,13 @@ async function selectProviders(config) {
         entry && entry.successes > 0 ? entry.totalLatencyMs / entry.successes : null;
       return { provider, score: providerScore(entry), avgLatencyMs };
     })
+    // The admin order is the operator's explicit preference. Telemetry only
+    // breaks ties: a provider that answered a quick text ping first must not
+    // jump ahead of the chosen primary for a 50-photo vision request.
     .sort(
       (a, b) =>
-        a.score - b.score ||
         a.provider.order - b.provider.order ||
+        a.score - b.score ||
         a.provider.createdAt.localeCompare(b.provider.createdAt),
     );
 }
@@ -808,6 +811,9 @@ async function callProvider(provider, messages, { timeoutMs = AI_TOTAL_BUDGET_MS
         temperature: 0.6,
         max_tokens: maxTokens,
         stream: true,
+        // Layout planning is structured output, not deep reasoning. Low effort
+        // keeps 45-50 photo requests inside the job budget.
+        ...(isOpenCodeGoProvider(provider) ? { reasoning_effort: 'low' } : {}),
       }),
       signal: controller.signal,
     });
@@ -1082,7 +1088,13 @@ function recoverChatContent(raw) {
       60_000,
       Math.min(config.requestTimeoutMs || AI_TOTAL_BUDGET_MS, AI_TOTAL_BUDGET_MS),
     );
-    const hedgeMs = Math.max(30_000, Math.min(AI_SLOW_PROVIDER_HEDGE_MS, Math.floor(totalBudgetMs / 2)));
+    // Large vision jobs legitimately take 2-3 minutes. Starting a backup at
+    // 100s made a fast text-oriented relay race ahead of the chosen primary
+    // and doubled cost. Give big selections 75% of the budget before hedging.
+    const hedgeMs =
+      normalizedImages.length > 24
+        ? Math.max(120_000, Math.floor(totalBudgetMs * 0.75))
+        : Math.max(30_000, Math.min(AI_SLOW_PROVIDER_HEDGE_MS, Math.floor(totalBudgetMs / 2)));
     const deadlineAt = Date.now() + totalBudgetMs;
     const remainingBudgetMs = () => Math.max(15_000, deadlineAt - Date.now());
 

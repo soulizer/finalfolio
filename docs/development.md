@@ -91,6 +91,12 @@ parts, so the model must accept image input.
   a Console key is not needed on the Go endpoint, but the session header is.
 - The admin **Test connection** only sends text. Confirm vision with a real
   multi-photo arrangement.
+- Provider routing follows the admin order first; measured latency only breaks
+  ties. This keeps the chosen primary ahead of a provider that merely answered
+  a quick text ping.
+- OpenCode Go requests use `reasoning_effort: low`. Layout planning is
+  structured output, and full reasoning effort made 45-50 photo jobs exceed the
+  time budget.
 - Large selections get a larger page budget (14-20 pages at 37-50 photos).
   The server only rejects a plan that references no selected photo; the client
   appends filler pages for any photo the model leaves out.
