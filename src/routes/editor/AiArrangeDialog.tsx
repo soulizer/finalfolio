@@ -150,23 +150,8 @@ async function readAssetPhoto(asset: Asset): Promise<AiPhoto> {
   const previewUrl = getAssetSource(asset, 'thumb') || getAssetSource(asset, 'preview') || asset.src;
   const analysis = hasUsableAnalysis(asset.analysis) ? asset.analysis : undefined;
 
-  // An analysed photo (for example an UnAlbum import) already has tags and a
-  // description. Planning only needs those words and the dimensions, so skip
-  // decoding and re-encoding the image entirely.
-  if (analysis && asset.width && asset.height) {
-    return {
-      id: `asset:${asset.id}`,
-      kind: 'asset',
-      asset,
-      assetId: asset.id,
-      name: asset.name,
-      previewUrl,
-      width: asset.width,
-      height: asset.height,
-      thumbnail: '',
-      analysis,
-    };
-  }
+  // Even analyzed photos need their pixels in the request: imported analysis
+  // can be wrong, while the thumbnail is the model's visual ground truth.
 
   let image: HTMLImageElement;
   try {
@@ -793,8 +778,9 @@ export function AiArrangeDialog({
               name: photo.name,
               width: photo.width,
               height: photo.height,
-              // Photos that already have upstream analysis travel as text only.
-              dataUrl: photo.analysis ? '' : photo.thumbnail,
+              // Always send the thumbnail: imported analysis can be wrong, and
+              // the model must see what is actually on the page.
+              dataUrl: photo.thumbnail,
               ...(photo.analysis
                 ? { analysis: { description: photo.analysis.description, tags: photo.analysis.tags } }
                 : {}),
@@ -849,9 +835,9 @@ export function AiArrangeDialog({
     setError(null);
     try {
       await onApply(bundle, selectedPlan, photos);
-      setBundle(null);
-      setSelectedPlanId(null);
-      setPhase('select');
+      // Keep the generated plans so reopening the dialog lets the user choose
+      // another one instead of paying for a fresh generation.
+      setPhase('results');
       onClose();
     } catch (applyError) {
       setError(rawErrorMessage(applyError) || t('Unable to apply this AI plan.'));

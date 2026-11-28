@@ -88,7 +88,19 @@ function pageCapacity(page: AiPlanPage) {
  * count, unused photos) have no model copy at all — both get the localized
  * starter title for their template instead.
  */
-function defaultPlanPageTitle(template: TemplateId, page?: Partial<AiPlanPage>) {
+const AI_FALLBACK_ROLE: Record<TemplateId, string> = {
+  cover: 'AI opening',
+  essay: 'AI feature',
+  folio: 'AI feature',
+  grid: 'AI details',
+  diptych: 'AI pairing',
+  panorama: 'AI wide view',
+  mosaic: 'AI details',
+  triptych: 'AI sequence',
+  custom: 'AI details',
+};
+
+function defaultPlanPageTitle(template: TemplateId, page?: Partial<AiPlanPage>, baseTitle = '') {
   const kicker = sanitizeString(page?.kicker);
   if (kicker) {
     return kicker;
@@ -97,15 +109,17 @@ function defaultPlanPageTitle(template: TemplateId, page?: Partial<AiPlanPage>) 
   if (caption) {
     return caption.length > 28 ? `${caption.slice(0, 27)}…` : caption;
   }
-  return translate('Untitled page');
+  const role = translate(AI_FALLBACK_ROLE[template] ?? 'Details');
+  const base = sanitizeString(baseTitle);
+  return base ? `${base} · ${role}` : role;
 }
 
-function createEmptyPlanPage(template: TemplateId, theme: PageThemeId): AiPlanPage {
+function createEmptyPlanPage(template: TemplateId, theme: PageThemeId, baseTitle = ''): AiPlanPage {
   return {
     template,
     theme,
     kicker: '',
-    title: defaultPlanPageTitle(template),
+    title: defaultPlanPageTitle(template, undefined, baseTitle),
     deck: '',
     body: '',
     caption: '',
@@ -118,7 +132,7 @@ function createEmptyPlanPage(template: TemplateId, theme: PageThemeId): AiPlanPa
  * must land somewhere: fill free frames first, then append pages until every
  * photo is placed. The caller keeps the page count even afterwards.
  */
-function ensureAllPhotosUsed(pages: AiPlanPage[], imageCount: number): AiPlanPage[] {
+function ensureAllPhotosUsed(pages: AiPlanPage[], imageCount: number, baseTitle = ''): AiPlanPage[] {
   if (!Number.isFinite(imageCount) || imageCount <= 0) {
     return pages;
   }
@@ -158,7 +172,7 @@ function ensureAllPhotosUsed(pages: AiPlanPage[], imageCount: number): AiPlanPag
     const template = remaining === 1 ? 'folio' : filler.template;
     const capacity = remaining === 1 ? 1 : filler.capacity;
     const theme = result[result.length - 1]?.theme ?? 'warm-beige';
-    const page = createEmptyPlanPage(template, theme);
+    const page = createEmptyPlanPage(template, theme, baseTitle);
     page.assetIndexes = missing.splice(0, capacity);
     result.push(page);
   }
@@ -178,7 +192,7 @@ function sanitizeString(value: unknown, fallback = '') {
   return typeof value === 'string' ? value.trim() : fallback;
 }
 
-function normalizePage(value: unknown, imageCount: number): AiPlanPage | null {
+function normalizePage(value: unknown, imageCount: number, baseTitle = ''): AiPlanPage | null {
   if (!value || typeof value !== 'object') {
     return null;
   }
@@ -210,7 +224,7 @@ function normalizePage(value: unknown, imageCount: number): AiPlanPage | null {
     template: template as TemplateId,
     theme,
     kicker: sanitizeString(page.kicker),
-    title: sanitizeString(page.title) || defaultPlanPageTitle(template as TemplateId, page),
+    title: sanitizeString(page.title) || defaultPlanPageTitle(template as TemplateId, page, baseTitle),
     deck: sanitizeString(page.deck),
     body: sanitizeString(page.body),
     caption: sanitizeString(page.caption),
@@ -228,8 +242,10 @@ export function normalizeAiPlanBundle(value: unknown, prompt: string, imageCount
       }
 
       const plan = rawPlan as Record<string, unknown>;
+      const planBaseTitle =
+        sanitizeString(plan.folioTitle) || sanitizeString(payload.folioTitle) || sanitizeString(plan.name);
       const pages = (Array.isArray(plan.pages) ? plan.pages : [])
-        .map((page) => normalizePage(page, imageCount))
+        .map((page) => normalizePage(page, imageCount, planBaseTitle))
         .filter((page): page is AiPlanPage => Boolean(page))
         .slice(0, PROJECT_PAGE_LIMIT);
       if (!pages.length) {
@@ -242,15 +258,15 @@ export function normalizeAiPlanBundle(value: unknown, prompt: string, imageCount
       if (pages.length % 2 === 1 && pages.length < PROJECT_PAGE_LIMIT) {
         const lastPage = pages[pages.length - 1];
         const closingAssetIndex = [...lastPage.assetIndexes].reverse().find((index) => index >= 0 && index < imageCount);
-        const closingPage = createEmptyPlanPage('folio', lastPage.theme);
+        const closingPage = createEmptyPlanPage('folio', lastPage.theme, planBaseTitle);
         closingPage.assetIndexes = closingAssetIndex === undefined ? [] : [closingAssetIndex];
         pages.push(closingPage);
       }
 
-      const filledPages = [...ensureAllPhotosUsed(pages, imageCount)];
+      const filledPages = [...ensureAllPhotosUsed(pages, imageCount, planBaseTitle)];
       if (filledPages.length % 2 === 1 && filledPages.length < PROJECT_PAGE_LIMIT) {
         const lastPage = filledPages[filledPages.length - 1];
-        filledPages.push(createEmptyPlanPage('folio', lastPage.theme));
+        filledPages.push(createEmptyPlanPage('folio', lastPage.theme, planBaseTitle));
       }
 
       const usedIndexes = new Set<number>();
@@ -313,7 +329,7 @@ export function applyAiPlanToProject({
     return createPageDraft(page.template, createPageId(), {
       theme: page.theme,
       kicker: page.kicker,
-      title: page.title.trim() || defaultPlanPageTitle(page.template, page),
+      title: page.title.trim() || defaultPlanPageTitle(page.template, page, plan.folioTitle || bundle.folioTitle),
       deck: page.deck,
       body: page.body,
       caption: page.caption,

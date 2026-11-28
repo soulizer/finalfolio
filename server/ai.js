@@ -95,6 +95,22 @@ export const AI_LAYOUT_GUIDE = `【版式与容量手册】（文字按中文字
 - triptych（3 图，三联）：引题 ≤10，标题 ≤16，导语 ≤40，正文 ≤80，图注 ≤22。
 某一页不使用某字段时，请输出空字符串，不要省略键。
 
+【画框形状与选图】
+- cover：一页一张大图，接近竖向 3:4 / 4:5；选最强、最能独立成立的主图，主体完整，避免超宽横幅。
+- essay：一张较大的图文框（接近方形或 4:5）配正文；适合环境、人物、叙事型照片，不选超宽全景。
+- folio：整页一张大图，横竖都可，但必须是这一组里最有力量的画面；主体不能被裁掉。
+- grid：四个接近方形的小框；适合细节、纹理、同场景的多个角度，不要四张都放同一构图。
+- diptych：两张并排的竖向框（约 2:3）；选有关联或形成对照的两张，例如同一人物两种状态、同一场景两种距离。
+- panorama：上下两条宽幅横框（约 16:9 / 2:1）；只放真正的横构图、远景或全景，不要把竖构图硬塞进去。
+- mosaic：一张大幅主图 + 两张小细节；主图必须是最强画面，另外两张补充质感或局部，不要三张平权。
+- triptych：三张高竖向框（约 2:3）；适合同一人物/主体的连续状态、三联节奏或重复母题。
+
+【页面文字必须贴合本页图片】
+1. 每一页的 title、deck、body、caption 只能描述该页 assetIndexes 指向的照片，不能把别的照片的物种、人物、地点或情节写进来。
+2. 同一页有多张图片时，文字要说明它们之间的关系（同一主体、同一场景、前后景、对比、细节、序列），不要逐张罗列互不相关的描述。
+3. 缩略图是唯一视觉事实来源。清单中的既有分析可能不准确或来自其他照片；不得直接照抄其中的物种/人物/物体名称，只有缩略图里清楚可见时才能写。
+4. 写完后逐页自检：这一页放了哪些编号？标题和正文是否与这些编号的画面一致？不确定就用克制的视觉语言，不要编造具体物种或事件。
+
 【作品集标识】每套方案必须自带 folioTitle、folioSubtitle、issue、frameRadius；如果顶层也提供了同名键，以方案内的为准。
 - issue 是作品集标识，必须来自作品内容（主题词、系列名、地点或时间），4-10 个字，例如「山影 · 春」「夜行笔记」「城南 · 2024」。
 - 严禁输出「AI 01」「AI 02」「方案一」这类与作品无关的编号。三套方案的标识都应不同且各自贴合其内容。
@@ -841,13 +857,13 @@ function recoverChatContent(raw) {
 
     let totalChars = 0;
     const normalizedImages = images.map((image, index) => {
-      // Photos that already carry AI analysis (for example an UnAlbum import)
-      // are described in text instead of being re-uploaded as pixels: the
-      // request gets smaller, faster and cheaper without losing information.
+      // Always send the thumbnail as visual ground truth. Existing analysis
+      // (often imported from another service) can be wrong or belong to a
+      // different photo, so it is auxiliary context only.
       const analysis = sanitizeImageAnalysis(image?.analysis);
-      const dataUrl = analysis ? '' : typeof image?.dataUrl === 'string' ? image.dataUrl : '';
-      if (!analysis && !/^data:image\/(?:jpeg|jpg|png|webp);base64,/i.test(dataUrl)) {
-        throw createBadRequest('Every AI image must be a JPEG, PNG, or WebP thumbnail.');
+      const dataUrl = typeof image?.dataUrl === 'string' ? image.dataUrl : '';
+      if (!/^data:image\/(?:jpeg|jpg|png|webp);base64,/i.test(dataUrl)) {
+        throw createBadRequest('Every AI image must include a JPEG, PNG, or WebP thumbnail.');
       }
       if (dataUrl.length > MAX_THUMBNAIL_CHARS) {
         throw createBadRequest('An AI thumbnail is too large.');
@@ -869,25 +885,28 @@ function recoverChatContent(raw) {
     const userPrompt = sanitizeText(prompt || config.prompt, 'AI prompt', 12000);
     const imageList = normalizedImages
       .map((image) => {
-        const dimensions = image.width && image.height ? ` (${image.width}×${image.height})` : '';
-        if (!image.analysis) {
-          return `${image.index}. ${image.name}${dimensions} — 附缩略图`;
+        const orientation =
+          image.width && image.height
+            ? image.width > image.height * 1.15
+              ? '横向'
+              : image.height > image.width * 1.15
+                ? '竖向'
+                : '近方形'
+            : '';
+        const dimensions =
+          image.width && image.height ? ` (${image.width}×${image.height}${orientation ? `，${orientation}` : ''})` : '';
+        const parts = [`${image.index}. ${image.name}${dimensions} — 附缩略图`];
+        if (image.analysis?.description) {
+          parts.push(`参考分析（可能不准确，必须以缩略图为准）：${image.analysis.description}`);
         }
-        const parts = [`${image.index}. ${image.name}${dimensions} — 已有分析`];
-        if (image.analysis.description) {
-          parts.push(`描述：${image.analysis.description}`);
-        }
-        if (image.analysis.tags.length) {
-          parts.push(`标签：${image.analysis.tags.join('、')}`);
+        if (image.analysis?.tags.length) {
+          parts.push(`参考标签（可能不准确）：${image.analysis.tags.join('、')}`);
         }
         return parts.join('；');
       })
       .join('\n');
-    const attachedImages = normalizedImages.filter((image) => image.dataUrl);
-    const analyzedCount = normalizedImages.length - attachedImages.length;
-    const listIntro = analyzedCount
-      ? `请根据以下 ${normalizedImages.length} 张照片设计画册。其中 ${attachedImages.length} 张附有缩略图，${analyzedCount} 张只有既有的图片分析文字（已由原相册完成分析，直接采信，不要重新分析）。`
-      : `请分析以下 ${normalizedImages.length} 张照片并按要求返回 JSON。`;
+    const attachedImages = normalizedImages;
+    const listIntro = `请逐张查看以下 ${normalizedImages.length} 张照片的缩略图，再设计画册。缩略图是唯一视觉事实来源；清单里的既有分析可能不准确或来自别的照片，只能作为辅助，不能直接照抄其中的物种、人物或物体名称。`;
     const messages = [
       { role: 'system', content: `${userPrompt}\n\n${AI_LAYOUT_GUIDE}` },
       {

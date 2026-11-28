@@ -99,6 +99,12 @@ test('AI arrangement previews three plans and applies the chosen one', async ({ 
   await expect(page.locator('.page-chip')).toHaveCount(2, { timeout: 20_000 });
   await expect(page.locator('.editor-panel--project-actions input').first()).toHaveValue('AI test folio');
   await expect(page.locator('.page-chip em').first()).toContainText('Cover');
+
+  // Applying a plan does not throw the generated plans away: reopening lets
+  // the user pick another one instead of regenerating from scratch.
+  await page.getByRole('button', { name: 'Lay out with AI' }).click();
+  await expect(page.locator('.ai-plan-card')).toHaveCount(3);
+  await expect(page.getByRole('button', { name: 'Apply this plan' })).toBeVisible();
 });
 
 
@@ -231,6 +237,7 @@ test('AI plans without titles still produce saveable pages', async ({ page }) =>
 
   // The empty titles from the provider (and the padding page we add) must be
   // filled before the project reaches the server, which rejects empty titles.
+  await expect(page.locator('.page-chip').filter({ hasText: 'Untitled page' })).toHaveCount(0);
   await expect(page.locator('.panel-note--status')).not.toContainText('Page title is required');
   await page.getByRole('button', { name: 'Save folio' }).click();
   await expect(page).toHaveURL(/\/editor\/[a-z0-9_-]+$/, { timeout: 20_000 });

@@ -98,14 +98,22 @@ Entry points are marked **Experimental / 实验功能**.
   (default 180 s, hard cap 280 s).
 - Hedged retries move through the enabled pool; invalid output triggers one
   self-correction retry on the same provider.
-- Only small JPEG thumbnails are sent. Photos with existing analysis (for
-  example UnAlbum imports) send text only.
+- Small JPEG thumbnails are always sent as visual ground truth. Existing
+  analysis (for example UnAlbum imports) is auxiliary context only, because it
+  can be incomplete or belong to a different photo.
+- The prompt includes frame-shape guidance per template and requires each
+  page's title/copy to describe only the photos assigned to that page, including
+  how multiple photos on one page relate.
 - Plans are validated against built-in templates/themes and clamped to the
   selected assets. Every page must carry a page-specific title; missing titles
   are sent back to the provider for one correction.
-- Generated plans stay in the dialog session when it is closed. Reopening
-  **Lay out with AI** returns to those unused plans instead of a blank screen;
-  after a plan is applied the session resets.
+- Generated plans stay in the dialog session when it is closed, including after
+  a plan has been applied. Reopening **Lay out with AI** shows the same plans so
+  the user can choose another one; a new generation starts only when the user
+  explicitly changes style or regenerates.
+- Filler pages added to use leftover photos or reach an even count use a
+  contextual plan-title + role label, never "Untitled page" or template filler
+  copy.
 - Nothing changes in the editor until the user applies a plan.
 - API keys are stored server-side in `data/ai/config.json` (`0600`); admin
   responses expose only `hasApiKey` and a masked hint.
