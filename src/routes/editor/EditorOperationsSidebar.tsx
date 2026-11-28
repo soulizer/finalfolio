@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocale, useT } from '../../i18n';
-import { DEFAULT_PROJECT_FONTS, FONT_OPTIONS, normalizeProjectFonts } from '../../editor/fonts';
+import { DEFAULT_PROJECT_FONTS, FONT_OPTIONS, getFontOption, normalizeProjectFonts } from '../../editor/fonts';
 import type { UserSession } from '../../editor/api';
 import { getUserPrimaryIdentity } from '../../editor/identity';
 import {
@@ -141,6 +141,29 @@ export function EditorOperationsSidebar({
   const t = useT();
   const { locale } = useLocale();
   const fontOptions = locale === 'zh' ? FONT_OPTIONS.filter((font) => font.chinese) : FONT_OPTIONS;
+  const [loadingFontRole, setLoadingFontRole] = useState<string | null>(null);
+
+  async function ensureFontReady(role: string, fontId: string) {
+    if (typeof document === 'undefined' || !('fonts' in document)) {
+      return;
+    }
+    const family = getFontOption(fontId).stack.split(',')[0]?.trim();
+    if (!family || family.startsWith('var(')) {
+      return;
+    }
+    if (document.fonts.check(`16px ${family}`)) {
+      return;
+    }
+    setLoadingFontRole(role);
+    try {
+      await document.fonts.load(`16px ${family}`);
+    } catch {
+      // A missing font falls back to the next family in the stack.
+    } finally {
+      setLoadingFontRole((current) => (current === role ? null : current));
+    }
+  }
+
   const [projectDetailsOpen, setProjectDetailsOpen] = useState(false);
   const frameRadiusRoundThreshold = Math.max(PROJECT_FRAME_RADIUS_DEFAULT + 10, PROJECT_FRAME_RADIUS_MAX - 12);
   const frameRadiusLabel =
@@ -211,12 +234,13 @@ export function EditorOperationsSidebar({
               </span>
               <select
                 value={normalizeProjectFonts(project.fonts)[role] ?? DEFAULT_PROJECT_FONTS[role]}
-                onChange={(event) =>
+                onChange={(event) => {
+                  void ensureFontReady(role, event.target.value);
                   updateProject((current) => ({
                     ...current,
                     fonts: { ...normalizeProjectFonts(current.fonts), [role]: event.target.value },
-                  }))
-                }
+                  }));
+                }}
               >
                 {fontOptions.map((font) => (
                   <option key={font.id} value={font.id}>
@@ -227,6 +251,11 @@ export function EditorOperationsSidebar({
             </label>
           ))}
         </div>
+        {loadingFontRole ? (
+          <p className="panel-note editor-font-loading" role="status">
+            {t('Loading font…')}
+          </p>
+        ) : null}
         <p className="panel-note panel-note--status">{t(statusText)}</p>
         {saveConflict ? (
           <div className="editor-conflict-notice" role="alert">

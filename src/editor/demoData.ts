@@ -14,7 +14,7 @@ import {
   PROJECT_SUBTITLE_LIMIT,
   PROJECT_TITLE_LIMIT,
 } from './limits';
-import { DEFAULT_PROJECT_FONTS } from './fonts';
+import { DEFAULT_PROJECT_FONTS, normalizeProjectFonts } from './fonts';
 import {
   CUSTOM_LAYOUT_GAP_X_PERCENT,
   CUSTOM_LAYOUT_GAP_Y_PERCENT,
@@ -1217,6 +1217,7 @@ export function createProjectFromUserTemplate(templatePayload: UserTemplatePaylo
     subtitle: typeof normalizedPayload.subtitle === 'string' ? normalizedPayload.subtitle : project.subtitle,
     issue: typeof normalizedPayload.issue === 'string' ? normalizedPayload.issue : project.issue,
     frameRadius: normalizedPayload.frameRadius,
+    fonts: project.fonts,
     assets: [],
     pages,
   });
@@ -1252,6 +1253,9 @@ export function normalizeProjectState(project: unknown): ProjectState {
     ),
     issue: trimToLimit(issue, PROJECT_ISSUE_LIMIT),
     frameRadius: normalizeFrameRadius(nextProject.frameRadius),
+    // Fonts are part of the persisted project. Dropping them here made every
+    // save/hydration snap back to the default stack.
+    fonts: normalizeProjectFonts(nextProject.fonts),
     assets,
     pages,
   };

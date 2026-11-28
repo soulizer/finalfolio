@@ -1895,6 +1895,7 @@ const zh: Record<string, string> = {
   'Medium files': '文件中',
   'Largest files': '文件最大',
   'Typography': '字体',
+  'Loading font…': '正在加载字体…',
   'Title font': '标题字体',
   'Deck font': '导语字体',
   'Caption font': '图注字体',

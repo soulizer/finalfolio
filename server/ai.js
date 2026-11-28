@@ -377,6 +377,7 @@ function validatePlanBundle(parsed, imageCount = 0) {
   if (!plans.length) {
     return { reason: 'The AI response did not include any plans.', detail: '缺少 plans 数组或 plans 为空。' };
   }
+  let titledPages = 0;
   try {
   plans.forEach((plan, planIndex) => {
     const pages = Array.isArray(plan?.pages) ? plan.pages : [];
@@ -395,11 +396,8 @@ function validatePlanBundle(parsed, imageCount = 0) {
         );
       }
       const title = typeof page?.title === 'string' ? page.title.trim() : '';
-      if (!title) {
-        throw new PlanValidationError(
-          `Plan ${planIndex + 1} page ${pageIndex + 1} had no specific title.`,
-          `第 ${planIndex + 1} 套方案第 ${pageIndex + 1} 页缺少具体标题。每一页都必须写贴合该页内容的 title，不能为空或复用模板默认句。`,
-        );
+      if (title) {
+        titledPages += 1;
       }
       page.theme = normalizePlanTheme(page?.theme);
       if (!Array.isArray(page.assetIndexes)) {
@@ -446,6 +444,12 @@ function validatePlanBundle(parsed, imageCount = 0) {
       return { reason: error.reason, detail: error.detail };
     }
     throw error;
+  }
+  if (titledPages === 0) {
+    return {
+      reason: 'The AI response had no page titles.',
+      detail: '所有页面都没有标题。请为每页写贴合该页照片的具体标题，不能为空。',
+    };
   }
   return null;
 }

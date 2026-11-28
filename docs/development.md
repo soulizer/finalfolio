@@ -106,6 +106,19 @@ parts, so the model must accept image input.
   through a per-file queue with unique temp files; a corrupt file is ignored
   and replaced on the next write.
 
+## AI cache and typography
+
+- `src/editor/aiCache.ts` keeps prepared 256px thumbnails and plan-derived
+  photo descriptions in IndexedDB, keyed by asset id plus size. Reopening the
+  dialog or retrying a generation reuses them. Thumbnails are still sent to
+  the provider; cached text is auxiliary context, never a replacement for the
+  pixels.
+- `normalizeProjectState` must preserve `fonts`. Dropping it here made every
+  save, autosave response, hydration and template application reset the folio
+  to the default font stack.
+- Font files are loaded on demand and can be several megabytes. The typography
+  panel shows a loading note while the selected family downloads.
+
 ## Performance guardrails
 
 - `jszip` and `html-to-image` are dynamic imports inside the export functions;

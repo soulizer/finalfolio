@@ -11,6 +11,14 @@ import type { UnalbumPhoto } from '../../editor/api';
 import { PhotoThumb } from '../../ui/PhotoThumb';
 import { MarqueeGrid } from '../../ui/MarqueeGrid';
 import type { Asset, AssetAnalysis } from '../../editor/types';
+import {
+  assetCacheKey,
+  fileCacheKey,
+  readCachedAnalysis,
+  readCachedThumbnail,
+  writeCachedAnalysis,
+  writeCachedThumbnail,
+} from '../../editor/aiCache';
 import { ExperimentalBadge } from '../../ui/ExperimentalBadge';
 import { useModalFocus } from '../../ui/useModalFocus';
 import {
@@ -125,9 +133,24 @@ function createThumbnail(image: HTMLImageElement) {
 
 async function readPhoto(file: File): Promise<AiPhoto> {
   const previewUrl = URL.createObjectURL(file);
+  const key = fileCacheKey(file);
   try {
+    const cached = await readCachedThumbnail(key);
+    if (cached) {
+      return {
+        id: createPhotoId(file),
+        kind: 'local',
+        file,
+        name: file.name,
+        previewUrl,
+        thumbnail: cached.thumbnail,
+        width: cached.width,
+        height: cached.height,
+      };
+    }
     const image = await loadImageElement(previewUrl);
     const thumbnail = createThumbnail(image);
+    writeCachedThumbnail(key, thumbnail);
     return {
       id: createPhotoId(file),
       kind: 'local',
@@ -148,10 +171,31 @@ function hasUsableAnalysis(analysis: AssetAnalysis | undefined): analysis is Ass
 
 async function readAssetPhoto(asset: Asset): Promise<AiPhoto> {
   const previewUrl = getAssetSource(asset, 'thumb') || getAssetSource(asset, 'preview') || asset.src;
-  const analysis = hasUsableAnalysis(asset.analysis) ? asset.analysis : undefined;
+  const key = assetCacheKey(asset);
+  const [cachedThumbnail, cachedAnalysis] = await Promise.all([
+    readCachedThumbnail(key),
+    readCachedAnalysis(key),
+  ]);
+  // Imported analysis wins when present; otherwise reuse what an earlier plan
+  // already learned about this asset. The pixels are still sent below.
+  const analysis = hasUsableAnalysis(asset.analysis)
+    ? asset.analysis
+    : cachedAnalysis ?? undefined;
 
-  // Even analyzed photos need their pixels in the request: imported analysis
-  // can be wrong, while the thumbnail is the model's visual ground truth.
+  if (cachedThumbnail) {
+    return {
+      id: `asset:${asset.id}`,
+      kind: 'asset',
+      asset,
+      assetId: asset.id,
+      name: asset.name,
+      previewUrl,
+      thumbnail: cachedThumbnail.thumbnail,
+      width: cachedThumbnail.width,
+      height: cachedThumbnail.height,
+      ...(analysis ? { analysis } : {}),
+    };
+  }
 
   let image: HTMLImageElement;
   try {
@@ -161,6 +205,7 @@ async function readAssetPhoto(asset: Asset): Promise<AiPhoto> {
   }
   try {
     const thumbnail = createThumbnail(image);
+    writeCachedThumbnail(key, thumbnail);
     return {
       id: `asset:${asset.id}`,
       kind: 'asset',
@@ -174,6 +219,34 @@ async function readAssetPhoto(asset: Asset): Promise<AiPhoto> {
   } catch {
     throw new Error('Unable to read this image thumbnail. Upload the file instead.');
   }
+}
+
+/** Reuse the plan copy as a compact, locally cached description next time. */
+function cachePlanAnalysis(photos: AiPhoto[], bundle: AiPlanBundle) {
+  bundle.plans.forEach((plan) => {
+    plan.pages.forEach((page) => {
+      page.assetIndexes.forEach((index) => {
+        const photo = photos[index];
+        if (!photo?.asset) {
+          return;
+        }
+        const description = [page.title, page.deck, page.body, page.caption]
+          .map((part) => part?.trim())
+          .filter(Boolean)
+          .join('。')
+          .slice(0, 500);
+        if (!description) {
+          return;
+        }
+        writeCachedAnalysis(assetCacheKey(photo.asset), {
+          description,
+          tags: [plan.name, page.kicker].map((tag) => tag?.trim()).filter(Boolean).slice(0, 4),
+          source: 'ai-plan',
+          analyzedAt: new Date().toISOString(),
+        });
+      });
+    });
+  });
 }
 
 function localizeAiError(message: string, t: (key: string) => string) {
@@ -809,6 +882,7 @@ export function AiArrangeDialog({
         response = await requestPlans();
       }
       const nextBundle = normalizeAiPlanBundle(response, response.prompt || composedPrompt, photos.length);
+      cachePlanAnalysis(photos, nextBundle);
       setBundle(nextBundle);
       setSelectedPlanId(nextBundle.plans[0]?.id ?? null);
       setPhase('results');

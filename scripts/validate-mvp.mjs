@@ -1740,10 +1740,11 @@ try {
     assert.match(serverAi, /validatePlanBundle/);
     assert.match(serverAi, /缩略图是唯一视觉事实来源/);
     assert.match(serverAi, /画框形状与选图/);
-    assert.match(serverAi, /had no specific title/);
+    assert.match(serverAi, /titledPages/);
     assert.match(serverAi, /可能不准确/);
     assert.match(aiArrangeDialog, /dataUrl: photo\.thumbnail/);
-    assert.match(aiArrangeDialog, /Even analyzed photos need their pixels/);
+    assert.match(aiArrangeDialog, /readCachedThumbnail/);
+    assert.match(aiArrangeDialog, /cachePlanAnalysis/);
     assert.doesNotMatch(aiArrangeDialog, /thumbnail: '',/);
     assert.match(serverAi, /Every AI image must include a JPEG, PNG, or WebP thumbnail/);
     assert.match(serverAi, /标签与图片交替出现/);
